@@ -1,0 +1,56 @@
+# latency reference measurement, 11 August 2026
+#
+# Source: a webrtc-internals dump, session 37-1, 93 s, Brave 151 on Windows. The
+# raw dump is not versioned: ICE candidates are addresses, and those were the
+# real addresses of the home network.
+#
+# The page was opened from the public URL, but the media stayed at home: the
+# candidate pair chosen was host <-> host, both on the same home IPv6. It is
+# exactly the trap already written among the invariants — at home it does not
+# show.
+#
+# Chrome has removed googCurrentDelayMs. The modern equivalent is
+# jitterBufferDelay/jitterBufferEmittedCount, to which decoding and rendering are
+# added. Comparison with the previous engine's 83 ms is therefore indicative, not
+# exact: they are two related quantities, not the same one.
+
+VIDEO
+  jitter buffer delay            from 8.5 ms to 57 ms, in steps
+  buffer target                  from 12 ms to 65 ms, then steady
+  minimum required by the network  11-14 ms for the whole session
+  total processing delay         58 ms in the steady state
+  jitter                         3-6 ms
+  gap between frames             33.3 ms, standard deviation 5-11 ms
+  decoding                       0.4-2.8 ms per frame, on the GPU
+                                 (ExternalDecoder D3D11VideoDecoder,
+                                 powerEfficientDecoder=true)
+
+  The target rises while the minimum stays put: it is not the network. It is
+  synchronisation with the audio. The audio path of the watching PC has 41.8 ms
+  of playout delay (AP-totalPlayoutDelay/totalSamplesCount, constant), plus 20 ms
+  of buffer: Chrome aligns the video to that clock, in jumps of ~15 ms, and stops
+  at 65. It does not depend on us and cannot be corrected from here.
+
+AUDIO
+  jitter buffer delay            30 ms constant
+  target                         20 ms constant
+  playout delay                  41.8 ms constant (the listener's device)
+  concealed samples              0
+  interruptions                  0
+
+DELIVERY
+  packets lost                   0 out of 28,854 video, 0 out of 4,670 audio
+  NACK                           0
+  PLI                            2, both in the first second
+  freezes                        0
+  frames dropped                 0
+  keyframes                      47 in 93 s, that is a GOP of 2 s
+  cadence                        29-32 fps
+  bandwidth                      ~2.5 Mbit/s video, 64 kbit/s audio
+
+CONFIRMATION OF A CORRECTED DEFECT
+  The dump holds six candidate pairs in state "succeeded", and only one with
+  nominated=true. Looking for the pair in use by scanning the "succeeded" ones —
+  which is what our report did — returns one of six at random. The transport
+  instead declares selectedCandidatePairChanges=2: one change in the first second
+  and then stable for the whole session.

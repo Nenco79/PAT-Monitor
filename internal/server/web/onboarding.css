@@ -1,0 +1,1211 @@
+/* Style of the first-configuration path.
+ *
+ * It lives in a file of its own and not inside the page: the
+ * Content-Security-Policy declares `script-src 'self'` and inline **scripts**
+ * are not executed. The style follows the same road by choice, not by
+ * obligation — `style-src` still allows 'unsafe-inline' — so that the day that
+ * permission goes, this file will not notice.
+ *
+ * **The one exception is declared**: the blades of grass carry the animation's
+ * duration and phase in the `style` attribute, one per blade. It is not an
+ * oversight, it is the only way to break the periodicity without writing
+ * forty-three rules by hand. They are styles, not scripts: the CSP allows them.
+ *
+ * **Deliberately a different identity from the viewer's**, and that is not an
+ * inconsistency. The monitor is watched at night, on a phone, and there a dark
+ * background is not a preference but a necessity; the configuration is done
+ * once, in daylight, in front of a computer, and it is the first contact with
+ * the product. What holds the two faces together is what does not depend on the
+ * light: the seven-size, three-weight type scale, the multiples of 4, the radii,
+ * the pill of the buttons, and the phase colours — which are the same ones, only
+ * their lightness changes, because the ground they sit on changes.
+ */
+
+:root {
+  /* --- earth --- */
+  --ground:      #E5DFD3;
+  --ground-deep: #D7CEBD;
+  --card:        #FBF8F2;
+  --card-sunk:   #F1ECE2;
+  --line:        #D3C9B6;
+  --line-soft:   #E0D8C8;
+
+  --ink:    #2E2A24;
+  --ink-2:  #574F44;
+  /* Measured: #7A7264 on the card's cream gives 4.48:1, just under the
+     threshold, and on the earth ground it drops to 3.0:1. This one is 5.34:1 on
+     the card; text that sits **outside** the cards uses --ink-2. */
+  --muted:  #6E6659;
+
+  /* --- colour by phase: it says where you are, it does not decorate ------
+     Each group of steps has its own, and the eyebrow, the progress bar, the
+     button and the illustration's accents take it together. */
+  --c-home:   #17706E;   /* deep teal: security and home            */
+  --c-choice: #8A4F7D;   /* plum: the fork                          */
+  --c-away:   #3C5CA8;   /* indigo: the whole Tailscale stretch     */
+  --c-ready:  #4F7F31;   /* leaf green: arrived                     */
+  --c-stop:   #B3452F;   /* brick: only what is wrong               */
+  --c-note:   #A66A12;   /* amber: things worth knowing             */
+
+  /* The ink that sits **on top of** a phase colour: the text of a filled
+     button, the digit of a badge. It does not change with the palette, because
+     its ground is not the page but the pill — which is why it does not appear in
+     `body.day`. The same value is also `--card` in the light palette: one
+     number, two meanings, and a name for only one of them. */
+  --on-phase: #FBF8F2;
+
+  --accent: var(--c-home);
+  --phase: var(--accent);           /* reassigned by .step */
+
+  /* Pastels for the little stars: the same tones as the phases, washed out — but
+     not past the ground's lightness. A pale cream disappears because it is as
+     light as the earth: on a warm ground a pastel shows if it goes down in tone,
+     not if it goes up in opacity. */
+  --star-1: #7CC0BC;
+  --star-2: #BC91B4;
+  --star-3: #8DA3D3;
+  --star-4: #D6B76B;
+
+  /* --- type scale: seven sizes, three weights (400 · 500 · 600) ---
+     h2 at 17 and lead at 19 — two sizes two pixels apart — do not read as a
+     hierarchy, they read as a mistake. h2 goes above the lead. */
+  --t-micro: 11px;   /* eyebrows, small-caps labels */
+  --t-small: 13px;   /* captions, notes under the outcomes */
+  --t-ui:    14px;   /* boxes, secondary text, scaffolding */
+  --t-body:  16px;   /* body text */
+  --t-lead:  18px;   /* the opening line of each step */
+  --t-h2:    22px;   /* subheadings inside a step */
+  /* **The scale is declared whole even where not all of it is used.** This sheet
+     has no first-level headings — the step uses --t-hero, which is a size of its
+     own — but the scale is what holds the two faces together when the palettes
+     diverge: seven sizes, the same as over there, breakpoint included. Removing
+     one because it is not needed today makes whoever needs it tomorrow reinvent
+     it. */
+  --t-h1:    28px;
+  /* **The step's title is bigger, and that is why it has a name of its own.**
+     36px written inside --t-h1 would be the same symbol with two values in the
+     two sheets: whoever reads --t-h1 believes they are reading the shared scale,
+     and the shared scale is precisely what holds the two faces together when the
+     palettes diverge. The other six sizes match; this one does not, because a
+     full-page path has an opening the viewer does not have. */
+  --t-hero:  36px;
+
+  /* --- spacing scale: multiples of 4 --- */
+  --s1: 4px;  --s2: 8px;  --s3: 12px; --s4: 16px;
+  --s5: 24px; --s6: 32px; --s7: 40px; --s8: 56px;
+
+  /* One typeface for everything that is read, plus the monospace for addresses
+     and technical messages. Serif headings are legible, but every heading makes
+     the page change family, and in a path where one scrolls step after step the
+     change shows on every screen. The headings are told apart by size, weight
+     and tracking, which is enough. */
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  --mono: ui-monospace, SFMono-Regular, "Cascadia Mono", Consolas, monospace;
+
+  /* **The stage is pure black, in daylight too.** Same value and same reason as
+     in `style.css`, where the argument is set out in full: it is the preview,
+     that is, the same letterbox. */
+  --stage: #000;
+
+  /* **The dark island inside the light page**: the strip under the preview and
+     the meter sitting on it. It is not the night palette — the values drift by
+     one or two points from the dark `--card`, `--ground-deep` and `--ink-2` —
+     and it is not the day one either. A name of its own stops the drift where it
+     is: if one day they are to be the night's colours, that is one line instead
+     of three values to chase. */
+  --preview-foot:  #241F19;
+  --preview-track: #0F0D0A;
+  --preview-ink:   #B8AE9C;
+
+  /* **The accent wash of the drawn tray panel**, written as the mixture and not
+     as its result. In the tray it is `blend(ground, accent, 0.22)`, computed
+     at draw time, so no palette holds the number — but both of its ingredients
+     are here, and `palLight`'s accent **is** `--c-home`. Written as `#B8C7BD`
+     it would be a second copy of a value the panel keeps recomputing; written
+     as the mix, moving either ingredient moves the drawing with the panel.
+     `--c-home` and not `--phase`: the last step is green, and the tray's accent
+     is not.
+
+     It has two users — the fill of the command with the focus, and the code
+     beside it — which is why it has a name at all. The border of that same
+     pill is the 60% mix and stays inline: one user, and a name nobody looks
+     up. It is the `.note` boxes' habit, where ground and border are the phase
+     at 8% and 26% and no hex is written anywhere. */
+  --tray-wash: color-mix(in srgb, var(--c-home) 22%, var(--ground));
+
+  --shadow-s:    0 1px 2px #2E2A2408;
+  --shadow-card: var(--shadow-s), 0 10px 28px -18px #2E2A2433;
+
+  /* **The scale of radii, and the rule that generates it is nesting**: a box
+     inside another wants a smaller radius than the one containing it. These are
+     not four steps chosen at a desk — they are the four roles nesting produces.
+
+       -l   the surface that contains cards — today only the explainer
+       ---  the card: the step, the sign-in box
+       -s   what sits inside a card: fields, notes, addresses
+       -xs  what is smaller than a line of text: code, codes to scan, images,
+            the focus ring
+
+     A pill is not a step of this scale: it is `999px`, and on a track 10 px high
+     a radius of 5 is exactly that — mapping it onto a step would say the wrong
+     thing about what it wants to be.
+
+     **Declared whole even where not all of it is needed today.** It is the same
+     care as with the type scale, and for the same reason: the sheets downstream
+     — `i18n.css`, which two pages with two palettes read — can use only what is
+     declared in both places they might end up. `--radius-s` living only in
+     `style.css` is why the language chooser wrote `10px` by hand. */
+  --radius-l:  16px;
+  --radius:    14px;
+  --radius-s:  10px;
+  --radius-xs:  6px;
+
+  /* **The focus ring, in two numbers.** Written out in full in three sheets, one
+     of the three had already gone its own way — `.lang select` had 2px/2px
+     against the others' 2.5/3 — that is, the usual divergence on a component
+     that must have one face: whoever tabs between the language chooser and the
+     password field saw two different rings.
+
+     It does not change with the light, so it lives here beside the sizes and not
+     beside the colours. The gap is **1 px and not 3**: at three, the ground shows
+     between ring and border, and on a dark page that line reads as a second
+     black outline. Measured, the band was 6 px; now it is 4. */
+  --focus-w:   2px;
+  --focus-gap: 1px;
+}
+
+* { box-sizing: border-box; }
+/* **The sizes are ours, and iOS has to be told.** WebKit inflates text inside a
+   block it considers wide, by a factor that depends on the size it starts from:
+   reported from a phone, the panel's group headings sit level with the readings
+   in portrait and come out **larger** than them in landscape, which is the same
+   page and the same 11 px against 13. `100%` and not `none`: what is switched
+   off is the automatic inflation, not the reader's own zoom. It costs nothing
+   anywhere else — no desktop engine inflates. */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100%;
+  background: linear-gradient(180deg, var(--ground) 0%, var(--ground) 52%, var(--ground-deep) 100%);
+  background-attachment: fixed;
+  color: var(--ink);
+  font-weight: 400;
+  font-size: var(--t-body);
+  line-height: 1.65;
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ==========================================================================
+   Backdrop
+   ========================================================================== */
+
+.sky {
+  position: fixed;
+  inset: 0 0 96px 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.sky svg { position: absolute; }
+
+/* **Only the stars one can actually see pulse**, and the rest are drawn still.
+   Measured on this machine at 120 Hz: 105 pulsing stars and 43 swaying blades
+   cost 0.245 of a core, against 0.098 for the same backdrop with nothing moving
+   — and the price is per animated element, about 1.8 milli-cores each, the same
+   for a star as for a blade. So the lever is **how many** move, not which kind:
+   twenty-five stars and eight blades take the whole page from 0.42 to 0.22.
+   On a 60 Hz screen halve all of it.
+
+   **The still ones carry the middle of the pulse's range.** With no rule they
+   would sit at full opacity, that is, the eighty that do not move would be the
+   conspicuous ones — and the animation's time-average is exactly the midpoint,
+   because the value is linear in a progress whose easing is symmetric. */
+.star { opacity: .54; }
+
+/* transform-box: fill-box is mandatory. Without it, transform-origin resolves
+   against the viewBox and every star scales around a point that is not its own. */
+.star.pulse {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: twinkle 5s ease-in-out infinite;
+}
+/* The little stars sit in the corners, far from the column of text: they can
+   afford to be seen. The limit is that they stay backdrop — if the pulsing draws
+   the eye while one is reading, it has gone too far. */
+@keyframes twinkle {
+  0%, 100% { opacity: .34; transform: scale(.82); }
+  50%      { opacity: .74; transform: scale(1);   }
+}
+
+/* The little stars sit in four clusters, one per corner: gathered at the edges
+   they leave the column of text clear, which is the thing to read. */
+.corner { width: 268px; height: 268px; }
+.c-tl { top: 10px;    left: 8px;   }
+.c-tr { top: 14px;    right: 10px; }
+.c-bl { bottom: 6px;  left: 12px;  }
+.c-br { bottom: 10px; right: 14px; }
+
+/* Little stars scattered over the rest of the background, not only in the
+   corners: .sky svg is already position:absolute, so top/left in percentages is
+   enough — this way they spread at any window size. The ones behind the column
+   of text are simply covered by the card's ground. */
+
+.meadow {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  height: 108px;
+  z-index: 0;
+  pointer-events: none;
+}
+.meadow > svg { display: block; width: 100%; height: 100%; }
+
+/* Same reason: without fill-box the blades all rotate around the bottom of the
+   viewBox — hundreds of units away — and "fly" instead of swaying. */
+/* **The class is on the eight blades that sway, not on the forty-three drawn.**
+   A still blade sits at rotate(0), which is the geometry it was drawn with, so
+   nothing about it changes — and it needs neither this rule nor a duration for
+   an animation it does not run. Which eight is chosen by hand, non-adjacent and
+   irregularly spaced across the width, for the same reason the spacings are
+   engraved rather than computed: a regular selection is a second periodic
+   pattern laid over the first.
+
+   Duration and phase sit **on each blade**, in the markup. Assigned with
+   :nth-child(4n) they would be a periodic pattern: four blades swaying in
+   unison, with the movement's periodicity added to the positions'. The value
+   below serves only whatever does not carry one of its own. */
+.blade {
+  transform-box: fill-box;
+  transform-origin: bottom center;
+  animation: sway 4.6s ease-in-out infinite;
+}
+@keyframes sway {
+  0%, 100% { transform: rotate(-3deg); }
+  50%      { transform: rotate(3deg);  }
+}
+
+/* Tail and ear rotate around the point where they are attached to the body,
+   expressed in the units of the dog's viewBox: here transform-box stays
+   view-box. If the drawing moves, these two numbers move with it. */
+.tail {
+  transform-origin: 100px 74px;
+  animation: wag .38s ease-in-out infinite alternate;
+}
+@keyframes wag {
+  from { transform: rotate(-16deg); }
+  to   { transform: rotate(22deg);  }
+}
+.ear {
+  transform-origin: 52px 25px;
+  animation: flick 7s ease-in-out infinite;
+}
+@keyframes flick {
+  0%, 90%, 100% { transform: rotate(0); }
+  94%           { transform: rotate(-14deg); }
+}
+
+/* ==========================================================================
+   Layout
+   ========================================================================== */
+
+.wrap {
+  position: relative;
+  z-index: 1;
+  max-width: 640px;
+  margin: 0 auto;
+  /* The extra 32 px at the top are the room for the language chooser, which sits
+     fixed in the top right corner (see `i18n.css`). Without it, on a narrow
+     screen the chooser lands on the step count — measured at 360 px: chooser up
+     to 35, header from 24. The room is made here and not inside `i18n.css`
+     because it is this sheet that knows where the content is, and the width at
+     which the two touch depends on `max-width`, not on the chooser. */
+  padding: calc(var(--s7) + 32px) var(--s5) 160px;
+}
+
+/* --- progress --- */
+
+.progress { margin-bottom: var(--s7); }
+
+.progress-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s3);
+  margin-bottom: var(--s2);
+}
+.progress-now {
+  font-weight: 600;
+  font-size: var(--t-ui);
+  line-height: 1.3;
+  font-family: var(--sans);
+  color: var(--phase);
+  transition: color .3s ease;
+}
+.progress-count {
+  font-weight: 400;
+  font-size: var(--t-small);
+  line-height: 1.3;
+  font-family: var(--sans);
+  /* It sits on the earth ground, not on a card: there --muted does not reach 4.5:1. */
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.rail { display: flex; gap: var(--s1); }
+.rail i {
+  height: 4px;
+  flex: 1;
+  border-radius: 999px;
+  background: #00000012;
+  transition: background .35s ease;
+}
+.rail i.done { background: var(--phase); opacity: .35; }
+.rail i.now  { background: var(--phase); }
+
+/* --- step --- */
+
+.step { display: none; }
+.step.show { display: block; animation: enter .3s cubic-bezier(.2,.7,.3,1); }
+@keyframes enter { from { opacity: 0; transform: translateY(10px); } }
+
+.step.home   { --phase: var(--c-home);   }
+.step.choice { --phase: var(--c-choice); }
+.step.away   { --phase: var(--c-away);   }
+.step.ready  { --phase: var(--c-ready);  }
+.step.stop   { --phase: var(--c-stop);   }
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  margin: 0 0 var(--s3);
+  font-weight: 600;
+  font-size: var(--t-micro);
+  line-height: 1.4;
+  font-family: var(--sans);
+  letter-spacing: .11em;
+  text-transform: uppercase;
+  color: var(--phase);
+}
+.eyebrow::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--phase);
+}
+
+h1 {
+  margin: 0 0 var(--s4);
+  font-weight: 600;
+  font-size: var(--t-hero);
+  line-height: 1.15;
+  font-family: var(--sans);
+  letter-spacing: -.028em;
+  text-wrap: balance;
+}
+
+h2 {
+  margin: var(--s7) 0 var(--s3);
+  font-weight: 600;
+  font-size: var(--t-h2);
+  line-height: 1.3;
+  font-family: var(--sans);
+  letter-spacing: -.018em;
+}
+
+/* The browser's default bold is 700, which is not on our scale: without this
+   line every <strong> inside a paragraph introduces a fourth weight. */
+strong, b { font-weight: 600; }
+
+p { margin: 0 0 var(--s4); }
+p.lead { font-size: var(--t-lead); line-height: 1.55; color: var(--ink-2); }
+p.small { font-size: var(--t-ui); color: var(--muted); }
+
+/* --- illustrations --- */
+
+.art {
+  margin: var(--s6) 0;
+  padding: var(--s5) var(--s5) var(--s4);
+  background: var(--card);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+}
+.art svg { display: block; width: 100%; height: auto; }
+
+/* **A drawing of the panel is not stretched to the width of the card.** The tray
+   panel is 260 points wide and some three hundred tall: blown up to the card it
+   filled half the figure with nothing, and the shape one is meant to recognise
+   came out at twice the size it has on screen. Capped at its own width the
+   drawing is life-size — the buttons are the 40 they really are and the labels
+   the 14 they really are — which is the same reason the icon in that figure
+   keeps the proportions of the one the program draws. */
+.art.life-size svg { max-width: 340px; margin-inline: auto; }
+
+/* Left to itself, SVG text is set in the browser's default sans, usually Arial,
+   which is not the page's typeface: the drawings' labels would come out in a
+   different face from everything else, by a difference too small to notice and
+   large enough to make the page look careless.
+   This rule wins over the attribute, which has lower priority. */
+.art svg text { font-family: var(--sans); }
+/* **And the labels' colour is decided by the palette, not by seventeen hex
+   values.** They were all `#7A7264`, which is the grey this same sheet
+   **rejected** for text a few lines above: 4.48:1 on the card, "just under the
+   threshold". But the ground they sit on is not the card — `.art` is sunken, and
+   inside the explainer it is sunken twice — so the real figure is 4.28:1, under
+   the threshold with room to spare and in the worse direction.
+
+   `:not([fill])` is not an affectation: a CSS rule **wins** over the
+   presentation attribute, so a `fill` written here would also grey out the
+   labels that say something with their colour — the indigo of the Tailscale
+   stretch, the green of what has worked. This way the token applies to whatever
+   asked for nothing, and whatever asked for a colour keeps it. */
+.art svg text:not([fill]) { fill: var(--muted); }
+.art svg text.mono { font-family: var(--mono); }
+.art figcaption {
+  margin-top: var(--s4);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--line-soft);
+  font-weight: 400;
+  font-size: var(--t-small);
+  line-height: 1.55;
+  font-family: var(--sans);
+  color: var(--muted);
+  text-align: center;
+  text-wrap: pretty;
+}
+
+/* --- actions --- */
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s3);
+  align-items: center;
+  margin-top: var(--s7);
+}
+
+/* `.btn` also sits on an `<a>`, and the three lines that follow are for that.
+   A button centres its own text and ignores underlining by construction; a link
+   does not — it stayed top-aligned inside the pill, underlined, that is, a badly
+   drawn button instead of a button. The defect shows only where the link is, and
+   that is why it survived: the same classes on different elements do not give
+   the same result. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* The same breathing room between glyph and label as the viewer's bar, and
+     from the same place: the value comes from a measurement of the glyphs — how
+     much air they carry inside the box — and that measurement does not change
+     from one page to another. It lives in `icons.css`, which both pages read. */
+  gap: var(--gap-ico);
+  text-decoration: none;
+  min-height: 48px;
+  padding: var(--s3) var(--s6);
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: var(--phase);
+  color: var(--on-phase);
+  font-weight: 600;
+  font-size: var(--t-body);
+  line-height: 1.2;
+  font-family: var(--sans);
+  cursor: pointer;
+  transition: filter .18s ease, transform .12s ease;
+}
+
+/* **The primary action fills the column, the secondary ones do not.**
+   At their natural width and left-aligned, under blocks that run edge to edge —
+   the illustration, the address box — they read as two objects propped there
+   rather than as the step's base. Below 560 px they were already full width,
+   which said by itself what the intention was: it was missing above. */
+.actions > .btn,
+.addr-actions > .btn { flex: 1 1 auto; }
+.actions > .btn.ghost,
+.addr-actions > .btn.ghost { flex: 0 1 auto; }
+/* Under `hover: hover`, as in the viewer's sheet: on a touch screen a tap
+   leaves the element hovered until the next one lands elsewhere, so a pressed
+   button stays lit with nothing to take the light away. `:active` is not in
+   here — it lasts as long as the finger. */
+@media (hover: hover) {
+  .btn:hover { filter: brightness(1.12); transform: translateY(-1px); }
+}
+/* The press carries the mark the hover carries: with no pointer there is no
+   lift to cancel, and `translateY(0)` alone would leave a tap unanswered. */
+.btn:active { transform: translateY(0); filter: brightness(1.12); }
+
+.btn.ghost {
+  background: transparent;
+  border-color: var(--line);
+  color: var(--muted);
+  font-weight: 500;
+}
+@media (hover: hover) {
+  .btn.ghost:hover { background: #00000008; filter: none; transform: none; }
+}
+.btn.ghost:active { background: #00000008; filter: none; transform: none; }
+
+.escape {
+  margin-top: var(--s5);
+  font-size: var(--t-ui);
+  /* Like .progress-count: outside the cards. */
+  color: var(--ink-2);
+}
+.escape button {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: var(--phase);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+/* --- boxes --- */
+
+.note {
+  --tone: var(--phase);
+  margin: var(--s5) 0;
+  padding: var(--s4) var(--s5);
+  border-radius: var(--radius-s);
+  border: 1px solid color-mix(in srgb, var(--tone) 26%, transparent);
+  background: color-mix(in srgb, var(--tone) 8%, transparent);
+  /* The boxes are content, not small print at the foot of a contract: they sit
+     at the text's size, and ground and border are enough to tell them apart. */
+  font-size: var(--t-body);
+  line-height: 1.6;
+}
+.note.warn { --tone: var(--c-note); }
+.note.bad  { --tone: var(--c-stop); }
+.note strong { font-weight: 600; }
+.note :last-child { margin-bottom: 0; }
+
+.tech {
+  margin: var(--s5) 0;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-s);
+  background: var(--card-sunk);
+  overflow: hidden;
+}
+.tech summary {
+  padding: var(--s3) var(--s4);
+  font-weight: 500;
+  font-size: var(--t-ui);
+  line-height: 1.4;
+  font-family: var(--sans);
+  color: var(--muted);
+  cursor: pointer;
+  list-style: none;
+}
+.tech summary::-webkit-details-marker { display: none; }
+.tech summary::before { content: "▸  "; color: var(--phase); }
+.tech[open] summary::before { content: "▾  "; }
+.tech .body { padding: 0 var(--s4) var(--s4); font-size: var(--t-ui); }
+
+code.block {
+  display: block;
+  margin-top: var(--s2);
+  padding: var(--s3) var(--s4);
+  background: #2E2A240D;
+  border-radius: var(--radius-xs);
+  font-weight: 400;
+  font-size: var(--t-small);
+  line-height: 1.6;
+  font-family: var(--mono);
+  color: var(--ink);
+  word-break: break-all;
+  user-select: all;
+}
+
+.addr {
+  margin: var(--s5) 0;
+  padding: var(--s4) var(--s5);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-s);
+  background: var(--card);
+}
+.addr .lbl {
+  display: block;
+  margin-bottom: var(--s2);
+  font-weight: 600;
+  font-size: var(--t-micro);
+  line-height: 1.4;
+  font-family: var(--sans);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.addr code.block { color: var(--phase); font-weight: 500; }
+.addr p { margin: 0; font-size: var(--t-ui); }
+
+/* **The address and its code live in the same box.** Two boxes in a row — the
+   address, then the code to scan — read in a column as two things to do, while
+   they are two ways of doing the same one: getting to that address. Whoever has
+   the phone in hand uses the code, whoever has the computer copies the text, and
+   neither has to wonder whether the other box is meant for them. */
+.addr.with-qr { display: flex; gap: var(--s5); align-items: center; }
+/* `min-width: 0` is not pedantry: without it a flex item does not go below the
+   width of its own content, and a long address would push the code out of the
+   box instead of wrapping. */
+.addr.with-qr .addr-text { flex: 1 1 auto; min-width: 0; }
+.addr.with-qr .qr {
+  flex: 0 0 auto;
+  width: 168px;
+  height: 168px;
+  border-radius: var(--radius-xs);
+  /* The light ground lives inside the SVG: a transparent code takes the colour
+     of whatever is under it, and on the cream the contrast drops below what
+     readers expect. */
+  background: #FBF8F2;
+}
+.addr.with-qr p { margin-top: var(--s3); color: var(--muted); }
+
+/* The waiting sentence takes the place of the code's box, it does not sit
+   inside it: the same air above and below, so that the jump when the address
+   arrives is the content appearing and not a lurch of the layout. */
+.addr .pending {
+  margin: 0;
+  padding: var(--s3) 0;
+  color: var(--muted);
+  font-size: var(--t-ui);
+}
+
+/* The spinner that stands in for the code until there is an address.
+ *
+ * The same size as `.qr`, and not for symmetry: when the code arrives it takes
+ * exactly the spinner's place, and the box does not change height under the eyes
+ * of whoever is reading the line beside it.
+ *
+ * Under `prefers-reduced-motion` the animation goes out — the general rule is at
+ * the foot of this sheet — and a still ring is left. Nothing is lost, because
+ * **the information is carried by the text**: in place of the address it says
+ * that we are waiting. The spinner is the extra for whoever is looking from a
+ * distance. */
+.addr.with-qr .qr-waiting {
+  flex: 0 0 auto;
+  width: 168px;
+  height: 168px;
+  border-radius: var(--radius-xs);
+  background: #FBF8F2;
+  display: grid;
+  place-items: center;
+}
+.qr-waiting > span {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  /* A ring nearly all off with a quarter lit: turning, it is the quarter that
+     reads as movement. A full circle turning cannot be seen to turn. */
+  border: 3px solid var(--line);
+  border-top-color: var(--phase);
+  animation: qr-spin 900ms linear infinite;
+}
+@keyframes qr-spin { to { transform: rotate(360deg); } }
+@media (max-width: 520px) {
+  .addr.with-qr { flex-direction: column; align-items: flex-start; }
+}
+
+/* --- outcomes --- */
+
+.results { margin: var(--s5) 0; padding: 0; list-style: none; }
+.results li {
+  display: flex;
+  gap: var(--s3);
+  align-items: flex-start;
+  padding: var(--s4) 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+.results li:last-child { border-bottom: 0; }
+.results .badge {
+  flex: none;
+  width: 22px; height: 22px;
+  margin-top: 2px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 600;
+  font-size: 12px;
+  line-height: 1;
+  font-family: var(--sans);
+  color: var(--on-phase);
+}
+.results .badge.ok { background: var(--c-ready); }
+.results .badge.no { background: var(--c-stop); }
+.results b { font-weight: 600; }
+.results small { display: block; margin-top: 2px; font-size: var(--t-small); color: var(--muted); }
+
+/* ==========================================================================
+   Animations of the illustrations
+   ========================================================================== */
+
+/* One vocabulary of movement, and it holds for the whole page.
+   Outside the illustrations everything moves slowly and with soft acceleration:
+   the grass sways, the little stars breathe, the tail wags. A marching dash
+   pattern was the only thing at constant linear time, and it jarred — it looked
+   like a network diagram that had wandered into a picture book.
+   Traffic is now shown with a few dots that glide, on the same easing curve as
+   everything else, and the line under them stays still. */
+
+/* traffic on a straight segment: --d is the length to cover */
+.glide    { animation: glide 3.4s cubic-bezier(.5, 0, .5, 1) infinite; }
+.glide.d2 { animation-delay: -1.7s; }
+@keyframes glide {
+  0%   { opacity: 0; transform: translateX(0); }
+  14%  { opacity: 1; }
+  86%  { opacity: 1; }
+  100% { opacity: 0; transform: translateX(var(--d, 40px)); }
+}
+
+/* traffic on a curve: the path is repeated in offset-path */
+.travel    { animation: travel 3.4s cubic-bezier(.5, 0, .5, 1) infinite; }
+.travel.d2 { animation-delay: -1.7s; }
+@keyframes travel {
+  0%   { opacity: 0; offset-distance: 0%; }
+  14%  { opacity: 1; }
+  86%  { opacity: 1; }
+  100% { opacity: 0; offset-distance: 100%; }
+}
+
+.breathe { animation: breathe 2.8s ease-in-out infinite; }
+@keyframes breathe { 0%, 100% { opacity: .32; } 50% { opacity: 1; } }
+
+/* The recording indicator pulses instead of blinking on and off: it says the
+   same thing and is not the page's only jerky movement. */
+.blink { animation: blink 2.4s ease-in-out infinite; }
+@keyframes blink { 0%, 100% { opacity: .25; } 45%, 55% { opacity: 1; } }
+
+.fill { animation: fill 3.6s ease-in-out infinite; }
+@keyframes fill { from { stroke-dashoffset: 214; } to { stroke-dashoffset: 0; } }
+
+.lift { animation: lift 3.2s ease-in-out infinite; }
+@keyframes lift {
+  0%, 30%  { transform: translateX(0);    }
+  55%, 90% { transform: translateX(22px); }
+  100%     { transform: translateX(0);    }
+}
+.gate-open {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: gate 3.2s ease-in-out infinite;
+}
+@keyframes gate {
+  0%, 30%  { transform: scaleY(1); opacity: 1; }
+  55%, 90% { transform: scaleY(0); opacity: 0; }
+  100%     { transform: scaleY(1); opacity: 1; }
+}
+
+/* **The illustration's bars are a drawing, and now they declare it.**
+   Following the real level read from `/api/status` made sense while they were
+   the only indicator: bars that move by themselves would say "I hear" precisely
+   where nothing is heard. Since the real meter sits beside them — the decibels
+   written out, the peak that holds, the four states named for whoever cannot see
+   — the proof is no longer theirs, and staying hooked to the measurement made
+   them a second instrument disguised as an illustration: three bars rising and
+   falling **together** read as a reading, and whoever looks has no way of
+   knowing which of the two things on the screen is really measuring.
+
+   Now a wave runs through them: the three crests arrive a third of a period
+   apart, and that is what tells it from three bouncing bars. **No meter shows a
+   crest that travels**, and that is precisely why it belongs here — a drawing
+   that resembles no instrument cannot be mistaken for a measurement. The proof
+   stays where it is the only one that can be, in the meter beside it. */
+/* **It is clipped, not squashed.** With `scaleY` the bar shortens and its radius
+   shortens with it: at a fifth of the height the rounded ends become ellipses,
+   and a pill going flat shows. A radius is a measurement in pixels, and no scale
+   leaves it in pixels.
+   Clipping instead removes the top part of the whole pill and re-rounds the edge
+   it has just created: `round 5px` is the same `rx` as the rectangle, so the
+   shape is the same at every height — what changes is how much of it is seen. */
+@keyframes wave {
+  0%, 100% { clip-path: inset(78% 0 0 0 round 5px); }
+  50%      { clip-path: inset(0    0 0 0 round 5px); }
+}
+.lvl > rect {
+  clip-path: inset(78% 0 0 0 round 5px);
+  animation: wave 1.8s ease-in-out infinite;
+}
+/* **Exactly a third of a period between one bar and the next.** That is the
+   phase shift that passes the crest from one to another instead of making them
+   rise together, and it is also what guarantees the property that matters: at
+   120 degrees apart the three are **never** at the same height — measured, ten
+   samples out of ten with three different heights — and three bars that never
+   line up do not resemble a reading.
+   The delay is negative so that the wave is already under way at the first
+   frame: with positive delays the third bar would stand still for 1.2 s when the
+   step opens, which is exactly when it is looked at. */
+.lvl .bar-b { animation-delay: -.6s; }
+.lvl .bar-c { animation-delay: -1.2s; }
+
+/* Still, what is left is a **waveform**, not three equal bars: without movement
+   the drawing has to say the same as before, and three bars at the same height
+   would go back to resembling a reading. */
+@media (prefers-reduced-motion: reduce) {
+  .lvl > rect { animation: none; }
+  .lvl .bar-b { clip-path: inset(38% 0 0 0 round 5px); }
+  .lvl .bar-c { clip-path: inset(0   0 0 0 round 5px); }
+}
+
+/* ==========================================================================
+   Accessibility and adaptation
+   ========================================================================== */
+
+:focus-visible {
+  outline: var(--focus-w) solid var(--phase);
+  outline-offset: var(--focus-gap);
+  border-radius: var(--radius-xs);
+}
+
+/* Nothing that moves carries information: it all goes out with no loss. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+@media (max-width: 540px) {
+  /* --t-h1 comes down as in the viewer even though no rule here reads it: an
+     entry of the shared scale that behaves differently in the two sheets is a
+     trap for whoever adds a heading tomorrow. */
+  :root { --t-hero: 27px; --t-h1: 24px; --t-lead: 17px; }
+  /* The extra 28 px are the room for the language chooser, which here is smaller
+     and closer to the edge. See the full rule above. */
+  .wrap { padding: calc(var(--s5) + 28px) var(--s4) 150px; }
+  .actions .btn { width: 100%; }
+  /* On a narrow screen the clusters would end up under the text: they shrink and
+     fade instead of disappearing. */
+  .corner { width: 158px; height: 158px; opacity: .5; }
+}
+
+/* ==========================================================================
+   Product additions: elements the prototype did not have because it talked to
+   nobody.
+   ========================================================================== */
+
+/* --- live preview (step 1) ---------------------------------------------- */
+
+.preview {
+  margin: var(--s5) 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--stage);
+}
+.preview video {
+  display: block;
+  width: 100%;
+  /* Reserved before the stream arrives: without it the page jumps hundreds of
+     pixels the moment the camera opens, and whoever was reading loses the
+     thread. */
+  aspect-ratio: 16 / 9;
+  object-fit: contain;
+  background: var(--stage);
+}
+
+/* --- password form (step 0) --------------------------------------------- */
+
+#pw-form label,
+#pw-signin label,
+#pw-change-form label {
+  display: block;
+  margin: var(--s4) 0 var(--s1);
+  font-weight: 500;
+  font-size: var(--t-ui);
+  line-height: 1.4;
+  font-family: var(--sans);
+  color: var(--ink-2);
+}
+#pw-form input,
+#pw-signin input,
+#pw-change-form input {
+  width: 100%;
+  padding: 0 var(--s4);
+  /* 48px and 16px are not typography. Below 48 a finger misses the target; below
+     16 iOS zooms the page by itself at the first focus and never puts it
+     back. */
+  height: 48px;
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 1.4;
+  font-family: var(--sans);
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-s);
+}
+/* **The ring is given by the global rule**, the same everywhere. An exception of
+   2 and 2 here would be two rings of different sizes inside the same product,
+   and they are noticed precisely when moving from one screen to another, which
+   is the only place they can be compared. What is left is the border, which
+   lights up at every focus — and the two lines are exactly the same as in
+   `style.css`, so that the password field behaves alike on all four pages that
+   have one. */
+#pw-form input:focus,
+#pw-signin input:focus,
+#pw-change-form input:focus { border-color: var(--phase); }
+#pw-form input:focus:not(:focus-visible),
+#pw-signin input:focus:not(:focus-visible),
+#pw-change-form input:focus:not(:focus-visible) { outline: none; }
+
+/* **The line under the field, and that is why it is not called `.msg`.** That
+   name belonged to a different component in `style.css`: there the message is a
+   **box** — border, ground, the vocabulary of the `.note`s — because on `/login`
+   and `/setup` it is the only answer the page gives and it has to be found. Here
+   it sits under the field it belongs to, and a box would compete with the step's
+   real `.note`s.
+
+   Two roles under one name: no page loads both sheets, so they did not collide —
+   they lied. The cure is the one used for `--t-hero`: the value stays as it is
+   and the name changes.
+
+   **And `show` is not here because it never was.** The script wrote it — `'msg
+   show error'` — and no rule in this sheet reads it: the line does not appear
+   and disappear, the space is reserved by `min-height` so that a message
+   arriving does not move the button. A class nobody looks up does not
+   protest. */
+.field-msg {
+  margin: var(--s3) 0 0;
+  font-weight: 500;
+  font-size: var(--t-ui);
+  line-height: 1.5;
+  font-family: var(--sans);
+  min-height: 1.5em;      /* reserved: a message appearing must not move the button */
+}
+.field-msg.error { color: var(--c-stop); }
+.field-msg.ok    { color: var(--c-ready); }
+
+/* --- actions under an address ------------------------------------------- */
+
+.addr-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin-top: var(--s3);
+}
+.addr-actions .btn { min-height: 44px; padding: 0 var(--s5); }
+
+/* --- outcome still unknown ---------------------------------------------- */
+
+/* The third state exists on purpose. A check that has no answer yet is neither a
+   success nor a fault, and showing it green for an instant before turning red is
+   the quickest way to make people believe something broke while they watched. */
+.results .badge.wait { background: var(--muted); }
+.results .badge.warn { background: var(--c-note); }
+
+/* --- focus moved by hand is not a control's focus ----------------------- */
+
+/* When the step changes the focus goes to the heading, otherwise whoever
+   navigates by keyboard or with a screen reader would stay on a button that is
+   now hidden and "changing step" would not happen for them.
+   That heading, though, is not a control: a focus outline on a heading makes it
+   look selected, and when the page opens it is the first thing one sees. It is
+   removed **only** from elements with tabindex="-1", that is, the ones that
+   receive the focus from us and never with the Tab key: real controls keep their
+   outline, which they need. */
+[tabindex="-1"]:focus { outline: none; }
+
+/* --- level meter (step 1) ------------------------------------------------ */
+
+/* It sits **under the video and not inside the illustration**: the video proves
+   the camera, this proves the microphone, and the two proofs stay together
+   because the step asks a single question — "can it be seen and heard?".
+   Horizontal because that is the shape in which a level is read out of the
+   corner of the eye: the length is compared with the edge without measuring. */
+
+.preview-foot {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s2) var(--s4);
+  background: var(--preview-foot);
+}
+
+.preview-state {
+  margin: 0;
+  flex: 0 0 auto;
+  font-weight: 500;
+  font-size: var(--t-small);
+  line-height: 1.4;
+  font-family: var(--sans);
+  color: #E5DFD3;
+  /* It does not shrink and does not wrap: it is the line that reports faults,
+     and a fault line broken in half is worse than no line. */
+  white-space: nowrap;
+}
+
+.vu { flex: 1 1 auto; min-width: 80px; }
+
+.vu-track {
+  position: relative;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--preview-track);
+  overflow: hidden;
+}
+
+.vu-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  border-radius: 999px;
+  background: var(--c-ready);
+  /* A thread of inertia going up and down: without it, at sixty frames a second
+     the bar flickers and reads as noise rather than as a level. It has to stay
+     **short**, because here the speed is the information. */
+  transition: width .06s linear, background-color .18s linear;
+}
+.vu-fill.loud { background: var(--c-note); }
+.vu-fill.peak { background: var(--c-stop); }
+
+/* The peak falling slowly is what tells a meter from a bar. A short sound — a
+   cough, a bark — lifts the bar for an instant and the eye has no time to see
+   it; the mark stays and declares it. */
+.vu-peak {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  left: 0;
+  background: #FBF8F2;
+  opacity: .85;
+  transition: left .12s linear;
+}
+
+.vu-read {
+  flex: 0 0 auto;
+  min-width: 8ch;              /* reserved: the changing number must not move the bar */
+  text-align: right;
+  font-weight: 500;
+  font-size: var(--t-small);
+  line-height: 1.4;
+  font-family: var(--mono);
+  color: var(--preview-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* On a narrow screen the state line and the number would take the bar's place,
+   and the bar is the thing that has to be looked at. */
+@media (max-width: 520px) {
+  .preview-foot { flex-wrap: wrap; }
+  .vu { order: 3; flex-basis: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vu-fill, .vu-peak { transition: none; }
+}
+/* --- the explainer ---------------------------------------------------------
+   "How it works" used to be step 4 of the path and is now a box that opens. It
+   is a native `<dialog>`, and the reason is entirely in what comes free: closing
+   with Esc, the focus confined inside, the focus returned to the button that
+   opened it, and the rest of the page declared inert to whoever navigates with a
+   screen reader. Doing it by hand would mean rewriting those four things, and
+   that is exactly the list home-made modals lack.
+
+   The phase is the Tailscale stretch's: it opens from there and has to look like
+   the same thing, not like a system window that has wandered into the path. */
+#explainer {
+  --phase: var(--c-away);
+  width: min(640px, calc(100vw - var(--s5) * 2));
+  max-height: min(84vh, 900px);
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-l);
+  background: var(--card);
+  color: var(--ink);
+  font-weight: 400;
+  font-size: var(--t-body);
+  line-height: 1.65;
+  font-family: var(--sans);
+  overflow: hidden;
+  /* A modal `<dialog>` centres itself, but only if no margin is imposed on it:
+     `margin: auto` is what holds for both axes. */
+  margin: auto;
+}
+
+/* **A height cap is not enough to make the body scroll.** With the box as a
+   block, `max-height` simply clips: the child inherits no limit, so its
+   `overflow-y: auto` has nothing to scroll and what overflows disappears under
+   the edge — the "got it" row included. A flex column plus `min-height: 0` on the
+   body: it is that pair that turns the clipping into a scroll.
+
+   **And it goes on `[open]`, never on the box alone.** A closed `<dialog>` is
+   invisible because the browser gives it `display: none`, and that rule is beaten
+   by any `display` we write with an id: the box stayed open at the foot of the
+   page, that is, under the current screen, and looked like content of the step.
+   It is not a styling detail — it is the switch. */
+#explainer[open] {
+  display: flex;
+  flex-direction: column;
+  animation: enter .22s cubic-bezier(.2,.7,.3,1);
+}
+#explainer::backdrop {
+  background: color-mix(in srgb, #2E2A24 62%, transparent);
+  backdrop-filter: blur(2px);
+}
+
+/* The body scrolls, the closing row does not: in a box as tall as the screen, a
+   "got it" that sits at the end of the text is found only by scrolling all the
+   way down, and whoever opened it out of curiosity wants to leave at once. */
+.explainer-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--s6) var(--s5) var(--s5);
+}
+.explainer-body h2 {
+  margin: 0 0 var(--s4);
+  font-weight: 600;
+  font-size: var(--t-h2);
+  line-height: 1.3;
+  font-family: var(--sans);
+  color: var(--phase);
+}
+.explainer-body h3 {
+  margin: var(--s6) 0 var(--s2);
+  font-weight: 600;
+  font-size: var(--t-lead);
+  line-height: 1.35;
+  font-family: var(--sans);
+  color: var(--ink);
+}
+.explainer-body p { margin: 0 0 var(--s4); }
+/* Inside the box the illustration is not a card resting on the earth: it is
+   already on a card, and repeating ground and shadow makes it look lifted twice.
+   The border stays, which is what separates it from the text. */
+.explainer-body .art { background: var(--card-sunk); box-shadow: none; }
+.explainer-body > :last-child { margin-bottom: 0; }
+.explainer-close {
+  display: flex;
+  justify-content: flex-end;
+  padding: var(--s3) var(--s5) var(--s4);
+  border-top: 1px solid var(--line-soft);
+  background: var(--card-sunk);
+}
+
+/* --- `hidden` has to mean hidden ---------------------------------------- */
+
+/* **Any `display` we write beats the attribute, and not by specificity: the
+   author's style always wins over the browser's.** `[hidden] { display: none }`
+   lives in the default sheet, so a single `.addr.with-qr { display: flex }` — or
+   a `.block`, or an `li` in a laid-out list — is enough for `element.hidden =
+   true` to hide nothing.
+
+   It is not a hypothesis: measured on the guided path, **four** elements marked
+   `hidden` were visible — the box with the address from outside, its outcome row
+   with the green tick, and the two commands of the Funnel step that must appear
+   only to an administrator. Whoever chose "at home is enough for me" reached the
+   end and found a second empty box and a green tick on something they had not
+   done.
+
+   It is the third time this family has come back: the `<dialog>` that stayed
+   open at the foot of the page, the label that erased the icon, and now this.
+   The rule lives here once and for all instead of being rechecked element by
+   element — `!important` is what the language offers for saying "this is not
+   negotiable", and it is the remedy the specification itself recommends. */
+[hidden] { display: none !important; }

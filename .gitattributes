@@ -1,0 +1,70 @@
+# Source code in the repository is LF, always, even when the working copy on
+# Windows is CRLF.
+#
+# Without this line the behaviour depends on core.autocrlf, that is, on a
+# **machine-global** setting and not on the project: where it is on the diffs
+# come out clean, and on a clone where it is not the first change to a file would
+# rewrite every one of its lines. A two-hundred-line diff for one changed line
+# hides the change, which is the only thing the diff was there to show.
+*.go      text eol=lf
+*.md      text eol=lf
+*.js      text eol=lf
+*.css     text eol=lf
+*.html    text eol=lf
+*.json    text eol=lf
+*.mod     text eol=lf
+*.sum     text eol=lf
+
+# The baselines are ours and are read, not redistributed, so they follow the
+# repository's LF like everything else we write. `licenses/**` below is the
+# opposite case and takes it back for the licence texts: **that line has to stay
+# after this one**, because the last rule that matches is the one that wins.
+*.txt     text eol=lf
+
+# build.ps1 is run by PowerShell on Windows: there CRLF is the convention.
+*.ps1     text eol=crlf
+
+# The workflows are read by Linux and Windows runners alike and never by a
+# Windows editor, so they follow the repository's LF like the source. Without a
+# line of their own they would fall back to core.autocrlf, which is the machine
+# setting this whole file exists to stop mattering — and YAML is the format
+# where a stray CR is least likely to announce itself.
+*.yml     text eol=lf
+*.yaml    text eol=lf
+
+# The files that carry the rules follow them: with no extension to match they
+# fall back to core.autocrlf, which is the machine setting this whole file
+# exists to stop mattering.
+.gitattributes  text eol=lf
+.gitignore      text eol=lf
+
+# The two artefacts we ship without producing them: libopus compiled to
+# WebAssembly, and the recogniser's weights. Git already treats them as binary
+# and today it is right -- it looks for a NUL in the first bytes -- so nothing
+# is broken. But that is a heuristic reading the content, not a rule about the
+# file, and a converted `.wasm` would be a corruption with no error anywhere.
+# `binary` says it outright, and stops `git diff` rendering six megabytes of
+# weights as text.
+*.wasm    binary
+*.gguf    binary
+
+# The social preview card. The same argument as the two above, with one
+# difference: this one is ours, and the file that makes it is committed beside
+# it (images/social-preview.html). Saying it outright also stops a diff rendering
+# a hundred kilobytes of PNG as text.
+*.png     binary
+
+# And the one picture that is a photograph rather than a page: a webcam frame
+# fills a PNG eleven times over, so images/viewer.jpg is a JPEG and needs the
+# same line. It is here rather than only beside the file because the next
+# photograph will not remember to ask.
+*.jpg     binary
+
+# Licence texts are reproduced **as they are**. They have no extension, and
+# without a line of their own core.autocrlf converts them, that is, a setting of
+# the machine: the working copy would hold bytes different from those written by
+# whoever wrote the licence. For code that is irrelevant, for a text that is
+# redistributed verbatim it is not.
+LICENSE     -text
+NOTICE      -text
+licenses/** -text

@@ -1,0 +1,789 @@
+# the recognition thresholds, measured on public datasets — 6 September 2026
+#
+# **Thresholds are not tuned on the developer's house.** A few recordings taken
+# here would give thresholds right for this room, this dog and this microphone,
+# and wrong for anybody else — with no way of noticing, because they would work
+# perfectly well where they were chosen. What is needed is recordings labelled by
+# other people, many of them, and of different provenance.
+#
+# What follows is CED-tiny run over three public datasets. The model is the same
+# one that runs in the monitor, `internal/ced/ced-tiny-q8_0.gguf`, and the path is
+# the real one: reading, resampling with `internal/resample`, front-end, forward
+# pass. Parity with the oracle is in `baselines/ced.txt`.
+
+THE THREE DATASETS, AND WHY THESE
+
+  ESC-50                                        CC BY-NC · 600 MB · GitHub
+    2000 clips, 50 classes of 40, five seconds, mono 16-bit 44.1 kHz.
+    Positives: `crying_baby` 40, `dog` 40. Negatives: the other 48 classes.
+    It is the benchmark almost every model of this family reports, and it is the
+    only downloadable dataset that has **infant crying** as a class of its own.
+      github.com/karolpiczak/ESC-50 (archive/refs/heads/master.zip)
+
+  UrbanSound8K                                  CC BY-NC · 6.0 GB · Zenodo
+    8732 clips (8708 evaluated), ten urban classes, up to four seconds, rates
+    and depths **not uniform** — 8, 16, 24 and 32 bits, mono and stereo, from 8
+    to 192 kHz.
+    Positives: `dog_bark` 1000. The negative that matters: `children_playing`
+    1000. Every excerpt carries a `salience`: 1 in the foreground, 2 in the
+    background.
+      zenodo.org/records/1203745
+
+  FSD50K, the eval only                  CC-BY (per clip) · 6.2 GB · Zenodo
+    10,231 clips, 200 classes of the AudioSet ontology, from 0.3 to 30 seconds.
+    Positives: `Bark` 122, `Crying_and_sobbing` 42.
+    It is the most **varied** of the three: 132 cats, 78 miaows, 785 speech, 253
+    laughter, that is, exactly the confusions the other two suggest.
+      zenodo.org/records/4060432 (ground_truth + eval_audio .z01 and .zip)
+
+  AudioSet, which CED is trained on, **is not usable**: the audio is not
+  distributed, only YouTube identifiers and some features. Having it would mean
+  collecting twenty thousand videos, which is fragile and is not ours to do. The
+  three datasets above are the benchmarks the models of this family report, and
+  they all come from Freesound: compared with AudioSet they are different
+  material, which is the property that is needed.
+
+  What is **missing**, and it is the weak half: infant crying. In all the freely
+  downloadable material there are **forty clips**, ESC-50's. FSD50K has
+  `Crying_and_sobbing`, which includes adult crying, and in its 200-class
+  vocabulary "Baby cry" does not exist. The specialised corpora — donateacry,
+  Baby Chillanto, ICSD — classify **why** a child is crying, not whether it is,
+  and none of the three has a licence permitting redistribution of what comes out
+  of them.
+
+THE CLASSES: THE WIDE LIST WAS HARMFUL
+
+  The first list looked at everything that sounded related and took the maximum.
+  **Every extra class brings its own false positives**, and two were disastrous.
+  Measured on ESC-50, per single class:
+
+    class                    positives:median   negatives:max   what causes it
+    Bark                          0.508            0.019       pig
+    Dog                           0.776            0.442       brushing_teeth
+    Domestic animals, pets        0.685            0.877       cat
+    Bow-wow                       0.368            0.117       pig
+    Baby cry, infant cry          0.574            0.136       cat
+    Crying, sobbing               0.391            0.181       cat
+    Screaming                     0.002            0.204       coughing
+
+  "Domestic animals, pets" gives 0.877 on a cat: including it means importing its
+  false positives. "Dog" is the strongest on the positives and catches
+  `brushing_teeth` at 0.442. "Screaming" is worth two thousandths on the
+  positives.
+
+  What is left:
+    bark = max(Bark, Bow-wow)
+    cry  = max(Baby cry infant cry, Crying sobbing)
+
+  On ESC-50, at threshold 0.10, "Bark + Dog" makes **15 false positives** where
+  "Bark + Bow-wow" makes one. The difference is not the threshold: it is the
+  list.
+
+THE THRESHOLD WAS 0.20, AND WHAT IT BOUGHT
+
+  These numbers stand; the threshold does not. It is 0.15 from 12 September
+  2026, measured in the last section of this file.
+
+                          positives                   false
+  bark, Bark + Bow-wow
+    ESC-50                38/40                       0 out of 1960
+    UrbanSound8K          82% in the foreground       4 out of 7710
+                          36% in the background
+    FSD50K                81% (clips inside the       0 real out of 10,109
+                          window)                      (the 9 that pass are all
+                                                        dog clips without the
+                                                        Bark label)
+  cry, Baby cry + Crying sobbing
+    ESC-50                39/40                       0 out of 1960
+    UrbanSound8K          — no positives              1 out of 8708
+    FSD50K                20-37%                      2 out of 10,189
+
+  **The bark holds up on three independent datasets, the cry on forty clips.**
+  The two FSD50K rows for the cry are weak and are to be read for what they are:
+  42 clips of `Crying_and_sobbing`, which is adult crying as much as infant, and
+  the model is trained to tell them apart. It is not a refutation of the number,
+  it is the absence of a confirmation.
+
+  The low recall on UrbanSound8K is not the model's, and it is measured: the
+  `salience` explains it on its own — 82% on foreground barks, 36% on background
+  ones, and under a second of duration 29%. A dog three blocks away covered by
+  traffic is a clip legitimately labelled `dog_bark` and is not what this program
+  has to catch: that one is a dog **in the room**.
+
+  The same holds for FSD50K, where the recall depends on the clip's duration:
+  inside the window 81%, above the window 46% — because there the model splits
+  and averages the logits at equal weight, and it is the dilution below seen from
+  the other side. **Before believing a low recall one looks at what it was fed.**
+
+THE DILUTION, WHICH IS THE RESULT THAT CHANGES THE DESIGN
+
+  The datasets' clips last five seconds and the event fills them. The monitor's
+  window lasts 10.11 and a real event occupies a fraction of it. Measured on
+  twenty positives per kind, the event placed at the centre of a whole window,
+  first in silence and then on a room's floor at -46 dBFS:
+
+    event     cry (median)            bark (median)
+              silence / room          silence / room
+     5.0 s     0.819  /  0.378         0.497  /  0.563
+     2.0 s     0.657  /  0.173         0.476  /  0.561
+     1.0 s     0.299  /  0.025         0.421  /  0.529
+     0.5 s     0.050  /  0.006         0.385  /  0.461
+
+  **The bark does not dilute and the cry collapses.** Half a second of barking
+  inside ten is still worth 0.46; one second of crying is worth 0.025, that is,
+  it is invisible. A bark is a burst with a signature of its own, a cry is a long
+  shape the model recognises only if there is enough of it.
+
+  Two design consequences follow that no five-second clip could have revealed:
+
+  1. **The model is not asked at the instant the gate opens.** There the window
+     holds one second of event and nine of what came before. It is asked
+     afterwards, when the event has filled part of the window.
+
+  2. **For the cry the lever is not the threshold, it is time.** Raising it to
+     0.30 would cover ESC-50's cat (0.181) and UrbanSound8K's children playing
+     (0.292), but the positives diluted in a real room sit at the tenth
+     percentile at 0.166: precisely the case that matters would be lost. The
+     answer is to require the threshold to be exceeded over **two consecutive
+     windows** — a cat miaows once, a child cries for minutes. It is the same
+     thing that already separates cry and bark in `internal/detect`: "the only
+     thing that separates them is time".
+     It does not hold for the bark: a bark is a short episode, and demanding two
+     windows would mean losing it.
+
+CONFUSIONS TO KEEP IN MIND
+
+  bark      snoring 0.361 at p95 and 0.438 at maximum on ESC-50 — **and snoring
+            is a bedroom sound**, that is, the worst possible confusion for this
+            product. With "Bark + Bow-wow" it drops to 0.036.
+            brushing_teeth 0.442, but only through the class "Dog".
+            air_conditioner 0.428 on one UrbanSound8K clip.
+  cry       cat 0.181 on ESC-50 and children_playing 0.292 on UrbanSound8K.
+            The cat that sounds like a baby is a fact as old as cats; here it is
+            measured.
+            A bird from FSD50K at 0.554, which is the single highest value seen
+            on a negative for the cry.
+
+
+THE GATE: WHAT IT LETS THROUGH, AND WHICH KNOB MATTERS
+
+  `internal/detect`'s shape detector decides when to wake the model, and **it is
+  judged the other way round**: what matters about the model is that it does not
+  get things wrong, about the gate that it loses nothing — what does not pass
+  here the model will never see. The price of letting too much through is not a
+  false alarm, it is half a second of CPU per passage.
+
+  Measured with `pat-sounds gate`, which brings every clip **to the same level
+  above a floor settled at -46 dBFS**. It is a choice and it has to be
+  understood: the absolute level of a dataset clip means nothing — it depends on
+  how whoever uploaded it to Freesound had their gain set — while the gate's
+  threshold is a distance from the **room's** floor. Bringing them all to the
+  same level, the threshold in dB stops being the variable, and the two things a
+  dataset can really teach are left: **the band and the shape in time**.
+
+  With band 150-2500 Hz, 12 dB above the floor, and two hits — which was the
+  tuning when these rows were taken:
+
+    ESC-50, positives          cry 97% pass, bark 82% pass
+    ESC-50, what passes anyway   rooster 100%, laughing 87%, hen 82%,
+                                 footsteps 82%, keyboard_typing 80%
+    ESC-50, what it stops       rain 0%, wind 5%, crickets 5%,
+                                 washing_machine 7%, helicopter 7%,
+                                 airplane 12%, train 12%, vacuum_cleaner 15%
+    UrbanSound8K, what it stops engine_idling 0%, air_conditioner 2%,
+                                 jackhammer 3%, gun_shot 2%, car_horn 5%,
+                                 siren 8%
+
+  **What the gate really separates is the intermittent from the continuous**, and
+  it does that well: an engine, an air conditioner, rain almost never get
+  through. What it does not separate is a bark from a cockerel, from laughter or
+  from a keyboard — and that is not a defect, it is the model's job.
+
+  THE BAND IS ALMOST INERT
+    150-2500 Hz    negatives that pass 47.7%   cry 92.5%  bark 65%
+    0-8000 Hz      negatives that pass 51.6%   cry 92.5%  bark 65%
+    120-1640 Hz    negatives that pass 42.0%   cry 80.0%  bark 65%
+
+    Removing the band altogether costs **four points** more negatives and does
+    not touch the positives: that criterion buys far less than it seems, because
+    almost every sound has a zero-crossing rate inside that range. Narrowing it
+    to the 120-1640 Hz of the physiological literature costs **12.5 points of
+    recall on the cry** to gain 5.7 of rejection: that is the wrong direction for
+    a gate. **It stays as it is** because it is almost free, not because it does
+    much.
+
+  THE HITS ARE THE REAL LEVER, AND THEY COST RECALL
+    ESC-50, threshold 12 dB:
+      one hit     cry 100.0%  bark 85.0%  pass 59.0%
+      two hits    cry  92.5%  bark 65.0%  pass 47.7%
+      three hits  cry  80.0%  bark 50.0%  pass 38.4%
+    UrbanSound8K, threshold 12 dB (1000 barks instead of 40):
+      one hit     bark 54.4%  pass 15.2%
+      two hits    bark 35.2%  pass  9.1%
+      three hits  bark 18.8%  pass  8.0%
+
+    With **one hit alone the recall on the cry is 100% at any threshold**, and
+    the bark gains twenty points on ESC-50 and nineteen on UrbanSound8K.
+
+  HENCE THE CONCLUSION, AND IT HAS BEEN APPLIED
+    With the model downstream the answer is **one hit**: there the recall is
+    everything, because the model is what decides and an event the gate loses is
+    lost for ever.
+
+    That conclusion could not be applied while the gate's own verdict became the
+    alert: at one hit it would have sounded on 59% of a room's loud sounds. **The
+    two knobs moved together with the model**, and today they are both moved:
+    `internal/ced` decides, and `DefaultBarkHits` and `DefaultCryHits` are 1.
+
+  THE COMPARISON WITH URBANSOUND8K HAS A LIMIT, AND IT HAS TO BE SAID
+    There the recall and the negatives that pass **fall together** — 85% and 59%
+    on ESC-50 against 54% and 15% — and two columns that fall together are not
+    the signature of wrong thresholds. UrbanSound8K's clips are excerpts of
+    street recordings: normalising the whole clip also raises its floor above the
+    threshold, and the gate stops seeing a burst because it sees an unbroken
+    sound. ESC-50, which is isolated events on a silent floor, is the right
+    material for this question — and it is also a bedroom's condition.
+
+  WHAT THE DATASET CANNOT TEACH
+    The distance from the floor. It is a property of the **room**, not of the
+    sound, and the datasets do not have one: the useful number is the one
+    measured here with the real microphone, a floor at -46 dBFS with the room
+    empty, which is in `baselines/ced.txt`. The twelve dB stay, and what moves
+    them will at most be a measurement in a different room.
+
+  HOW OFTEN IT OPENS, IN A REAL ROOM
+    Three minutes from this machine's microphone, at night, room with nobody in
+    it:
+
+                                          two hits       one hit
+      100 ms blocks                         1796           1798
+      settled floor                       -44.9 dBFS     -40.9 dBFS
+      blocks above the threshold            11 (0.61%)     31 (1.72%)
+      times the gate opened                 **zero**       **six**
+
+    **The left-hand column was taken with the earlier tuning, and no longer
+    holds.** With two hits the gate never opened and the model's cost at rest was
+    zero; with one — which is today's tuning — a single isolated hit is enough,
+    and six arrived in three minutes. The honest number is **1.7% of a core**:
+    six half-second classifications in a hundred and eighty-one seconds.
+    (The floor was also four dB higher, so the two columns do not differ by the
+    tuning alone — but the direction is not in doubt, because one hit opens where
+    two did not.)
+
+    **The count is per event and not per hour**, and that does not change: half a
+    second every time the gate opens, with the cap of one classification every
+    five seconds. The worst case is unbroken crying, where that cap is worth 10%
+    of a core for as long as it lasts.
+
+    **A review found the correction, not a remeasurement**: the number zero had
+    been taken two commits before the tuning changed, and nobody had redone it. A
+    measurement is attributed to the configuration it was taken in, otherwise it
+    outlives the thing it described.
+
+    A room with a street under the window would give another number, and that is
+    why this line says **where** it was taken.
+
+HOW IT IS REDONE
+
+  The datasets are not in the repository and must not be. They are downloaded
+  from the three addresses above and passed through `pat-sounds`, which writes one
+  CSV per dataset — one row per clip, one column per candidate class — and then
+  judges it. The pass costs: 2m43s for ESC-50, 9m03s for UrbanSound8K, 37m46s for
+  FSD50K, with four workers on this machine.
+
+  **Everything is written down and decided afterwards**: the pass is expensive and
+  the questions are many — which subset of classes, which threshold, which
+  aggregation — and at no cost one can change one's mind.
+
+  The number to look at first is **how many clips were evaluated**, not the
+  scores: 2000 out of 2000 for ESC-50, 8708 out of 8732 for UrbanSound8K, 10,231
+  for FSD50K. A WAV reader that refuses a format skips those clips in silence,
+  and the recall that follows looks like the model's — it happened: 45% of
+  UrbanSound8K declares `WAVE_FORMAT_EXTENSIBLE`, which is not a format but an
+  indirection to the real code inside the subformat GUID.
+
+LIVE, THE WHOLE CHAIN — 6 September 2026
+
+  Real ESC-50 clips played through the speakers and picked up by this machine's
+  microphone, with the monitor running: speaker, room, microphone, analysis at
+  16 kHz, gate, model, alert. **It is the only test that crosses the air too.**
+
+  **The conditions were adverse, and that has to be said because it changes how
+  the numbers are read**: a noisy room and a low playback volume. What follows is
+  therefore a **floor** and not a ceiling — the sound reached the microphone
+  attenuated and on a floor higher than a night-time one, and the model
+  recognised it all the same. A real bark in the room, at its own distance and
+  volume, sits above these values.
+
+  eight `dog` clips
+    0.000 → 0.143 → 0.266 → 0.343 → 0.435 (class Bow-wow, then Bark)
+    `bark` alert at the first verdict above 0.20
+    cry **0.000 throughout**
+
+  eight `crying_baby` clips
+    0.020 → 0.323 (first confirmation, no alert) → 0.430 (second) → `cry` alert;
+    then 0.590, 0.417, 0.422
+    bark **0.000 throughout**
+
+  Three things that can be seen only here. **The dilution at work**: the score
+  rises as the window fills with the sound, it does not jump. **The two-
+  confirmation rule**: it costs one window, that is about five seconds, and it is
+  visible in the row at 0.323 that raised nothing. **And the two events do not
+  cross**: none of the sixteen classifications gave more than zero to the wrong
+  event.
+
+  Cost per window, measured with everything else running: 502-550 ms.
+
+THE FOURTH SET, AND WHAT IT DID TO THE WEAK HALF — 11 September 2026
+
+  The paragraph above says the freely downloadable material holds **forty**
+  infant cries, ESC-50's, and that the specialised corpora classify **why** a
+  child is crying rather than whether it is. The first is wrong and the second
+  is true and beside the point: **the labels are useless to us and the audio is
+  not.** What was needed was positives, and a corpus labelled by cause is a
+  corpus of positives with the labels thrown away.
+
+  donateacry-corpus                            ODbL · 50 MB · GitHub
+    457 clips in the curated subset, 8 kHz mono 16-bit, about seven seconds
+    each, 53 minutes in all: 382 hungry, 27 discomfort, 24 tired, 16 belly
+    pain, 8 burping. Collected through a mobile app and published, in the
+    authors' words, "in their original, unmodified, unchecked form".
+    Positives only: it brings no negatives, which is the half already covered
+    ten thousand clips over.
+      github.com/gveres/donateacry-corpus
+
+  **The licence objection does not hold either.** The note above says none of
+  the three corpora permits redistributing what comes out of them; the ODbL
+  permits producing works from the database with attribution, and what leaves
+  this repository is a table of numbers — no audio of anybody's is
+  redistributed, and none is in the repository. It is a lighter condition than
+  the CC BY-NC of the two sets already in use.
+
+  **It is not AudioSet**, which is the property that matters: CED is trained on
+  AudioSet, so a corpus drawn from it would measure memory rather than skill.
+  That is why ICSD was left out although it is the best fit on paper — 338 real
+  ten-second clips, strongly labelled, which is exactly this window — its cries
+  come from Baby Chillanto, donateacry **and AudioSet** with no per-clip
+  attribution, so the contamination cannot be separated out. CryCeleb2023 was
+  left out for a different reason: 26k files and 6.5 hours, but they are
+  manually segmented **expirations** from newborns in hospital within a day of
+  birth, that is, the wrong granularity and a very narrow condition.
+
+  WHAT IT SAYS, WHOLE CLIPS
+
+    positives n=457   min 0.000   p10 0.069   median 0.561
+
+    threshold      recall
+        0.10     393/457 (85%)
+        0.15     383/457 (83%)
+        0.20     363/457 (79%)
+        0.30     329/457 (71%)
+
+    against ESC-50's forty, which give 39/40 (97%) at 0.20.
+
+    By cause, which is the one use the labels have: belly pain is the hardest
+    — 16 clips, median 0.326, 56% at 0.20 — and discomfort the easiest, 92%.
+    The bulk is hunger, 382 clips at 79%.
+
+  AND TWO OF THE 457 ANNOUNCE A DOG
+
+    On a corpus that is nothing but infant crying, two clips put `bark` above
+    0.20 — 0.303 and 0.206 — with `cry` at 0.005 and 0.001. That is, the cry
+    does not fire and the dog does: a pure false alarm, and **the bark asks for
+    one window where the cry asks for two**, so nothing downstream catches it.
+
+    0.44% of the recordings, and the reading is not settled. It may be the
+    model, and it may be the corpus: these samples are published, in the
+    authors' own words, "in their original, unmodified, unchecked form", and a
+    clip the model scores at 0.005 for crying may simply not contain a cry. The
+    two do not separate without listening to them, which is why this is written
+    as a measurement and not as a defect.
+
+  TWO EXPLANATIONS WERE MEASURED AND BOTH FELL
+
+    A lower recall on another corpus has three candidate causes and they
+    predict the same number, so two were removed by experiment rather than by
+    argument.
+
+    **Not the band.** These recordings are 8 kHz, so everything above 4 kHz is
+    missing from them. The same forty ESC-50 clips with their spectrum zeroed
+    above 4 kHz — one variable moved, the rate and the length left alone —
+    give **40/40 at 0.20**, min 0.218, median 0.657 against the 0.599 they give
+    whole. Removing the top half of the spectrum does not cost anything here;
+    it gains a little.
+
+    **Not the level.** The medians are 1.8 dB apart (ESC-50 -20.0 dBFS,
+    donateacry -21.8), but the **tails** are not: the tenth percentile is -22.6
+    against **-36.6**. Bringing every event to -20 dBFS before mixing — what
+    `gate` already does, and now `dilute -level` — moves donateacry's diluted
+    median from 0.204 to 0.220 and ESC-50's from 0.323 to 0.324. That is, it
+    changes nothing, and the fact that it changes nothing on the set that was
+    already at that level is what says the normalisation works.
+
+    What is left is the material: **cries recorded by parents on a phone are
+    harder than forty curated clips**, and the hard ones are quieter and
+    sparser — the lost ones sit at -28.3 dBFS filling 39% of their clip, the
+    caught ones at -20.9 dBFS filling 52%.
+
+  THE DILUTION, RE-MEASURED — AND THE PUBLISHED NUMBER WAS TWO CLIPS
+
+    Five seconds of cry at the centre of a whole window, on a room floor of
+    -46 dBFS:
+
+      positives                                   median      p10
+      ESC-50, 20 — the number published above       0.378     0.166
+      ESC-50, 40 — all it has                       0.323     0.082
+      ESC-50, 40, every event at -20 dBFS           0.324     0.079
+      donateacry, 150                               0.204     0.004
+      donateacry, 150, every event at -20 dBFS      0.220     0.005
+
+    **Doubling the sample halved the tenth percentile**, and that on its own
+    settles what kind of number 0.166 was: the tenth percentile of twenty
+    clips is the second value in the list, which is one sample wearing a
+    statistic's name. On a hundred and fifty it is the fifteenth.
+
+    What it does to the design is the opposite of weakening it. The rule that
+    the threshold must be exceeded on **two consecutive windows** was argued
+    from 0.166; at a diluted median of 0.204 the argument is much stronger,
+    because half of the windows of a real cry fall on the wrong side of 0.20
+    on their own. It still works for the reason it was written: a cry lasts
+    minutes and the recogniser is asked every five seconds, so a window that
+    fails is followed by others. What could not survive is raising the
+    threshold to 0.30, which the diluted median is now below.
+
+    **And the question this opens is not answered here.** Lowering it — 0.15
+    gives 83% instead of 79% on whole clips — cannot be decided from
+    positives: it needs the false ones re-measured over UrbanSound8K and
+    FSD50K, which is twelve gigabytes and another day. It is written among the
+    open questions rather than guessed at.
+
+  WHAT IS STILL MISSING
+
+    One more provenance. The bark stands on three independent sets; the cry now
+    stands on 497 clips from **two**, and donateacry is one collection method —
+    a phone, close, in a home. It is no longer forty, and it is not three.
+
+  HOW IT WAS DONE
+
+    pat-sounds score -kind donateacry -dir ...\donateacry -out donateacry.csv
+    pat-sounds judge -kind donateacry -scores donateacry.csv
+    pat-sounds dilute -kind donateacry -dir ...\donateacry -bg ...\ESC-50-master -n 150
+    pat-sounds dilute -kind donateacry -dir ... -bg ... -n 150 -level -20
+
+    `-bg` is there because the room background is ESC-50's `clock_tick` and a
+    corpus of cries has nothing of the kind: without it the tool refuses, which
+    is right — the column "on the room background" would otherwise have
+    measured the event in silence and looked like the answer to a different
+    question.
+
+    **And `dilute` had a resampler built for 44.1 kHz applied to whatever
+    arrived.** With ESC-50 it was correct because every clip there is 44.1; on
+    an 8 kHz corpus it would have stretched every event by five and a half and
+    scored something else entirely — a measurement that answers, and answers
+    about another sound. One resampler per rate now, as `score` already did.
+
+THE ROOM ITSELF, WHICH NO OTHER SET CARRIES — 11 September 2026
+
+  Every corpus here was recorded close to the sound. The monitor is not: it is a
+  laptop on the other side of a bedroom, off to one side, in a room with walls.
+  That axis had never been measured, and one dataset carries it.
+
+  CSIBE-AIBO                                   CC BY 4.0 · 355 MB · Zenodo
+    CSIBE-RAW played back through a good speaker and **recorded again** by the
+    microphones of a Sony ERS-7 robot, in four configurations: speaker at 1 m
+    and 30 degrees off the head, and at 3 m, 1 m high, 180 degrees — that is,
+    behind it — each in a reverberant and a non-reverberant room. `baby cry` is
+    one of its fourteen classes.
+      zenodo.org/records/1243714 (csibe_aibo_20180508.zip)
+
+  **The sample is eight recordings, not 240 clips.** Each configuration holds
+  240 files and they are pieces of eight cries, one of which is 125 of them.
+  Counting the files would have given a sample five times larger than the one
+  there is; it is stated here because the first version of this measurement
+  made that mistake.
+
+  **And the four sessions are not at one level**: they were recorded on four
+  days with different gains, 1 m dry at -29.5 dBFS and 3 m dry at -50.4. So
+  every window is brought to -20 dBFS before being scored, and what is left
+  between the four is the room.
+
+  WHAT IT SAYS
+
+    The fragments are put back in order into the cry they came from and cut
+    into windows of the model's own length — 21 windows per configuration,
+    which is what eight recordings give.
+
+      configuration       median   p10     min
+      1 m, dry             0.614   0.432   0.140
+      3 m, dry             0.582   0.397   0.128
+      1 m, reverberant     0.493   0.291   0.176
+      3 m, reverberant     0.604   0.267   0.062
+
+    **At equal level the room costs almost nothing.** All four sit above the
+    threshold of 0.20 at the median and at the tenth percentile. The ordering
+    does not hold together — 3 m reverberant scores above 1 m reverberant —
+    and with 21 windows from 8 recordings that is what it should be read as:
+    the differences between configurations are noise, and no reverberation
+    effect can be claimed from this.
+
+    **What it does say is where the distance bites.** Three metres off-axis
+    costs 20.9 dB of level and almost nothing of shape, and the level is
+    exactly where the other corpus loses its recall — the cries donateacry
+    misses sit at -28.3 dBFS. So distance harms through the level and not
+    through the acoustics, which is the half the gate already governs with its
+    twelve dB above the floor.
+
+    **Contamination does not touch that conclusion.** CSIBE's sources were
+    "collected from the internet", so an overlap with what CED was trained on
+    cannot be excluded and a high score is weak evidence on its own. But it
+    would help all four configurations equally, and what is read here is the
+    comparison between them.
+
+  THE FIRST ATTEMPT WAS WRONG, AND THE CONTROL IS WHAT SAID SO
+
+    The clips are about a second long, so the first version repeated each one
+    until it filled the window. That gave medians of 0.087, 0.066, 0.028 and
+    0.012 — a factor of seven between dry and reverberant, which reads as a
+    strong result and is an artefact.
+
+    The control: **the same treatment applied to ESC-50's forty cries**, which
+    are known to score 0.599 whole. Cut to a second, tiled and levelled, they
+    give **0.003** — below every CSIBE configuration. The treatment, not the
+    room, was what the numbers were measuring, and comparing 0.087 with 0.012
+    where a known-good positive gives 0.003 is comparing noise with noise.
+
+    It is the dilution chapter from the other side: a cry is a long shape, and
+    a second of it repeated ten times is a repetition, not a shape. **A
+    manipulation that flattens everything looks exactly like a phenomenon that
+    flattens everything, and only running the known case through the same
+    manipulation separates them.**
+
+  WHAT WAS LOOKED AT AND NOT USED
+
+    Four more were examined while looking for a third provenance of crying, and
+    none of them is one:
+
+      Mendeley "Infant's Cry Sound"  CC BY 4.0, three classes — hungry, tired,
+        uncomfortable — which are donateacry's own, that is, the same
+        provenance under another name.
+      Jaclyn-Foo/Baby-Crying-Detection-Database  extracted from YouTube, with
+        no licence and no paper: the same unseparable overlap with what CED was
+        trained on as ICSD, plus nothing to rely on.
+      TUT Rare sound events (DCASE 2017)  `baby cry` is one of its three target
+        classes and the isolated events are a single 639 MB archive rather than
+        the 17 GB of mixtures. Its `FREESOUNDCREDITS.txt` is the point: the
+        events come from Freesound, which is where ESC-50 and FSD50K come from.
+        Another selection of the same source, not another source.
+      CryCeleb2023  6.5 hours from 786 newborns, and they are manually
+        segmented **expirations** recorded in hospital within a day of birth:
+        the wrong granularity and a very narrow condition. CC BY-NC-ND, gated.
+
+    So the third provenance is still missing, and what was gained instead is an
+    axis nobody had measured at all.
+
+HOW FAR ABOVE THE ROOM A SOUND HAS TO BE — 11 September 2026
+
+  Every corpus here is recorded close to the sound, so every number above
+  describes a loud event. The monitor's events are not loud: they are across a
+  bedroom. What was never measured is where the chain stops answering, and this
+  is that curve.
+
+  **Turning the volume down on the clips does not measure it.** The front end
+  normalises on the window's own maximum, so a file made quieter is mostly the
+  same file to the model: measured, taking 20 dB off all 457 cries moves the
+  median from 0.561 to 0.483, that is, 14% for a factor of ten. What has to fall
+  is the **distance from the room's floor**, with the floor left where the room
+  really puts it — which is what `pat-sounds dilute -sweep` does: five seconds
+  of event at the centre of a whole window, the background fixed at -46 dBFS,
+  and the event walked down towards it.
+
+    above the floor        cry, 150 real      cry, ESC-50's 40      bark, 40
+                          median  >=0.20     median  >=0.20     median  >=0.20
+      +30 dB               0.253    58%       0.375    85%       0.553   100%
+      +24 dB               0.207    53%       0.311    78%       0.524   100%
+      +18 dB               0.160    38%       0.240    55%       0.478    95%
+      +12 dB               0.098    25%       0.158    40%       0.407    92%
+       +9 dB               0.074    15%       0.138    32%       0.360    92%
+       +6 dB               0.044     6%       0.102     8%       0.313    88%
+       +3 dB               0.025     1%       0.071     0%       0.272    72%
+        0 dB               0.012     0%       0.042     0%       0.222    52%
+       -3 dB               0.006     0%       0.017     0%       0.185    38%
+
+  **The bark is still heard at the room's own level, and below it.** At 0 dB —
+  an event no louder than the background — half of the barks are still over the
+  threshold, and at -3 dB more than a third. The cry is gone by +6 dB. That is
+  the dilution asymmetry again and much larger: a bark is a burst with a
+  signature of its own, a cry is a long shape at low contrast, and low contrast
+  is exactly what a quiet room takes away.
+
+  **THE GATE OPENS AT +12 dB, AND AT +12 dB THE CRY IS AT 25%.**
+
+  `internal/detect` lets a sound through at twelve decibels above the floor, and
+  that number was chosen where it belongs — measuring the floor of a real room
+  with the real microphone — and it does what a gate must do, which is to lose
+  nothing. **What nobody had measured is what happens on the other side**: at
+  the gate's own threshold the recogniser answers for a quarter of the cries and
+  for 92% of the barks. The chain's real sensitivity is set by the model, not by
+  the gate, and for the cry it sits somewhere between +18 and +24 dB — which is
+  two octaves of loudness away from where the gate opens.
+
+  It is not a defect of the gate, and this is not a reason to move it: a gate
+  that let less through would lose what the model can still catch. It is that
+  **one threshold serves two detectors that need numbers twenty decibels
+  apart**, and the cry's half of that had never been written down.
+
+  WHAT THIS DOES NOT SAY
+
+    **It does not say the monitor cannot hear a child across a room.** It is a
+    sensitivity curve, and turning it into an answer needs the other half: how
+    far above the floor a real cry actually sits at two or three metres. That is
+    still unmeasured and still needs a room — a real cry, or a speaker driven to
+    a realistic level. What can be said arithmetically is the exchange rate:
+    three metres off-axis cost 20.9 dB, so a cry sitting at +30 dB from a metre
+    away is at +9 dB from three, which is the row where the cry is at 15%.
+
+    And the lower threshold the open questions ask about is worth a little more
+    here than it looked: the gap between 0.20 and 0.15 is exactly where these
+    rows are thickest.
+
+THE THRESHOLD MOVES TO 0.15 — 12 September 2026
+
+  The question that was left open: on whole clips 0.15 catches 83% of donateacry's
+  real cries against 79%, and whether that is worth having could not be decided
+  from the positives. The two sets that carry the negatives were downloaded and
+  re-scored — 12.3 GB, 8708 clips of UrbanSound8K and 10,231 of FSD50K, 57 minutes
+  of passes — and the answer is that **both codes gain, and one number serves
+  both**.
+
+  WHAT IS CAUGHT
+
+    cry     donateacry, 457 real cries     363 (79%)  ->  383 (83%)     +20
+            FSD50K, Crying_and_sobbing      13 (30%)  ->   15 (35%)      +2
+            ESC-50, crying_baby             39 (97%)  ->   39 (97%)       0
+    bark    UrbanSound8K, dog_bark         660 (66%)  ->  698 (69%)     +38
+            FSD50K, Bark                    74 (60%)  ->   77 (63%)      +3
+            ESC-50, dog                     38 (95%)  ->   38 (95%)       0
+
+  WHAT IS PAID
+
+    cry     ESC-50            0/1960   ->  1/1960     the cat, 0.181
+            UrbanSound8K      1/8708   ->  4/8708     three children_playing
+            FSD50K            2/10,189 ->  4/10,189   a door squeak, a gasp
+    bark    ESC-50            0/1960   ->  0/1960
+            UrbanSound8K      4/7710   ->  5/7710
+            FSD50K            9/10,109 -> 10/10,109   (the 9 are dog clips
+                                                       without the Bark label)
+
+  **Sixty-three more real events for eight more false ones**, over some twenty
+  thousand negative clips per code. As a rate: the cry goes from 0.014% to
+  0.043%, the bark from 0.066% to 0.076%.
+
+  AND THE NEXT STEP DOWN IS WHERE IT TURNS
+
+    from 0.20 to 0.15    +63 caught    +8 false
+    from 0.15 to 0.10    +49 caught   +22 false
+
+  The knee is at 0.15. It was not chosen for being a round number between the
+  two: 0.10 was measured in the same pass and costs nearly three times as much
+  for less.
+
+  WHAT ENTERS, BY NAME
+
+    A count hides what a name shows. At 0.15 the new false positives for the cry
+    are ESC-50's cat at 0.181; children_playing at 0.185, 0.178 and 0.160 on
+    UrbanSound8K, in a class whose worst clip was already through at 0.292; and
+    on FSD50K a door squeak at 0.192 and a gasp at 0.187. **Nothing new in
+    kind** — every one of them is a confusion the old threshold already had at
+    its own edge, and the two worst negatives of all, a bird at 0.554 and a
+    shouting man at 0.252, were through at 0.20 and are untouched by this.
+
+  WHAT THIS DOES NOT SETTLE
+
+    The two-window rule is argued from "a cat miaows once", and that argument has
+    never been measured — it matters more now that the threshold sits below the
+    cat. The window is 10.11 s and the question is asked every 5, so consecutive
+    classifications overlap by half a window and one miaow is seen twice; the two
+    confirmations need not be consecutive either. What may still save it is
+    dilution, which is brutal. And it does not apply at all to the three
+    children_playing: children playing are not an event that happens once.
+
+  HOW IT WAS RUN
+
+    pat-sounds score -kind urbansound8k -dir DIR\UrbanSound8K -out us8k.csv
+    pat-sounds score -kind fsd50k       -dir DIR\FSD50K       -out fsd.csv
+    pat-sounds judge -kind urbansound8k -scores us8k.csv
+    pat-sounds judge -kind fsd50k       -scores fsd.csv
+
+    8708 of 8732 clips evaluated on UrbanSound8K — the same 24 skipped as the
+    first time, sixteen shorter than one patch and eight at 4 bits per sample —
+    and 10,231 of 10,231 on FSD50K. The passes took 9m and 47m49s with six
+    workers.
+
+THE THIRD PROVENANCE IS NOT GOING TO BE DOWNLOADED — 12 September 2026
+
+  Four candidates were excluded above, and what stayed open was whether anything
+  could simply be fetched. The roads were counted instead of guessed, and the way
+  they divide is itself the answer.
+
+  FREE, AND ALREADY HERE
+
+    Kaggle warcoder/infant-cry-audio-corpus   describes itself, in its own words,
+      as "built through the Donate-a-cry campaign". It is donateacry, mirrored —
+      and most of the "baby cry" sets on Kaggle are re-uploads of that or of
+      ESC-50. Taking one would add a source that is not a source.
+    ICSD   open, and part of its cries come from AudioSet, which CED is trained
+      on. Its Hugging Face copy is gated as well.
+    BigSoundBank, archive.org, effects libraries   the family Freesound belongs
+      to, which is where ESC-50 and FSD50K already come from.
+
+  FREE, INDEPENDENT, AND THE WRONG SHAPE
+
+    CryCeleb2023   a click-through on Hugging Face with no human approval, so it
+      is the one thing here that can really be downloaded today. 786 infants,
+      26k files, 6.5 hours — and the card says it ships manually segmented
+      expirations only, from infants born in one country. The exclusion recorded
+      above survives reading the licence page.
+
+  INDEPENDENT, AND EVERY ONE BEHIND A GATE
+
+    HomeBank de Barbaro Cry Corpus   a Google form, a commitment to delete the
+      audio when the work is done, and a citation. 22 infants of 1-10 months, a
+      LENA recorder in a vest worn by the child, up to 72 h per family at home:
+      61.3 h labelled in 44,129 segments of 5 s, over 7 h of them crying, with
+      an inter-rater kappa of 0.847.
+    Baby Chillanto   a request to INAOE. 2268 clips, Mexican intensive care,
+      built for asphyxia and deafness.
+    OxVoc   a form emailed to the author, for 173 sounds across every category —
+      some thirty cries, fewer than ESC-50's forty, which this file already
+      records as not being a sample.
+    IIIT-S ICSD   no distribution: write to the authors.
+    SPLAN, iCOPE, ChatterBaby   no published route at all.
+    Nexdata, Axon Data   sold. The 50 hours listed on Kaggle are a vendor's
+      window onto a commercial set.
+
+  WHAT THE DIVISION MEANS
+
+    The gate is not an accident: it is the price of the independence. These are
+    recordings of identifiable infants, made by researchers with an ethics
+    committee behind them, so a corpus that can sit on a public URL is by
+    construction one whose audio somebody else had already collected from a
+    library — that is, one of the two provenances already here.
+
+    The division is **three-way and not two**, and the middle row is why: free
+    and independent is possible, and the one corpus that is both ships the
+    wrong thing. Saying "free and independent exclude each other" would be
+    tidier and would walk straight past CryCeleb2023, two paragraphs above.
+
+    So the third provenance is closed, rather than left open as though the
+    search had merely been shallow.
+
+    What the search did turn up is a **different** question, and it was left
+    open instead. Every negative in this file comes from somebody else's
+    street or from Freesound, and the dilution above assembles an event at the
+    centre of a window over a floor measured on another evening: it simulates
+    the condition the monitor works in. de Barbaro is a recording of it, and
+    what is worth the form is not its seven hours of crying but the other 54,
+    home audio that is **not** crying from the same rooms and continuous. Its
+    two caveats are known in advance: it merges *fussing* into *crying*, so a
+    recall read off those labels understates us, and the microphone rides on the
+    child's chest, so it says nothing about three metres.

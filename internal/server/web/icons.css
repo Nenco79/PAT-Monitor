@@ -1,0 +1,63 @@
+/* ======================= icons =======================
+
+   A sheet of its own because two pages read it, the viewer and the
+   configuration path, and those two have different palettes and no sheet in
+   common. Written twice, this rule would diverge at the first touch — it
+   happened with `--t-h1`, which was 28 in one sheet and 24 in the other with
+   nothing to say so.
+
+   The glyphs are **Tabler Icons v3.46.0, MIT**, pasted verbatim into the pages.
+   The licence is in `licenses/manually-added/tabler-icons/`, beside libopus's
+   and for the same reason: it is somebody else's work that ends up in the
+   binary, and no tool can find it for us.
+
+   **Outline and not filled, and `currentColor` and not a hue**: that way an
+   icon follows its button's colour — off, on, inert — without a second rule
+   somebody will one day forget to update. It is the same reason the fault
+   predicates are written once.
+
+   `flex: none` because an SVG inside a flex container lets itself be squashed
+   in silence when the row is narrow: it would become an oval, and nobody would
+   be able to say why. */
+/* The space between the glyph and the word lives here, and it is 8 px and not
+   6.
+   **Measured:** the air each glyph carries inside the box of 24 is not the same
+   — 2 units for `mood-cry` and `dog`, 4 for `microphone`, 5 for `walk` — so at
+   a constant gap the ink ends up 7.3 px from the text in the first two and 9.3
+   in the others. It showed, and it was reported by looking at the bar.
+   The gap is raised rather than the two tight glyphs corrected: a table of
+   per-icon adjustments is a second list that diverges at the first new glyph,
+   and being too wide is noticed far less than being too tight. */
+:root { --gap-ico: 8px; }
+
+.ico {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  /* Two in the set's grid of 24, which at 16 px rendered makes 1.33 real. It is
+     not touched "because it looks thin": it is the weight those glyphs were
+     drawn with, and changing it mashes them together at exactly the small
+     size. */
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* A pair of glyphs where only one appears, and what chooses it is the button's
+   declared state. The state is therefore written once, where a screen reader
+   reads it too, rather than in a line of JavaScript that can forget it — it is
+   the same reason the toggles' pill lights up from `aria-pressed`.
+
+   **Two attributes and one pair of classes**, because they are one idea: a
+   section that opens says so with `aria-expanded` and a mode that is on says so
+   with `aria-pressed`. "Details" is the first, full screen the second. A second
+   pair of names for the second attribute would be the copy that diverges — and
+   here it would diverge silently, because a glyph that fails to swap looks like
+   a button that did not respond. */
+.i-close,
+[aria-expanded="true"] .i-open,
+[aria-pressed="true"] .i-open { display: none; }
+[aria-expanded="true"] .i-close,
+[aria-pressed="true"] .i-close { display: block; }

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="/icon-32.png">
+<!-- iOS reads neither the manifest's display nor its icons on every version, so
+     these two say the same thing in Apple's own words: saved to the Home Screen
+     the monitor opens with no browser chrome, and it opens with the drawing
+     rather than with a screenshot of whatever room was on screen. -->
+<link rel="apple-touch-icon" href="/icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<!-- `black` and not `black-translucent`: translucent puts the page under the
+     clock, and the top of the viewer is where the alert banner and the state
+     line live. -->
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<!-- No `theme-color`: this page is the cream one, and the night ground
+     would be the wrong colour while a second literal copied out of the
+     palette would be the wrong idea. The browser's own default is
+     right here. -->
+<title data-i18n="setup.page-title"></title>
+<link rel="stylesheet" href="/style.css">
+<!-- icons.css here too, although this page has no glyphs: `style.css` is the
+     viewer's own sheet, and some of its rules read `--gap-ico`, which is
+     declared in there. A missing token does not protest — its line simply
+     becomes invalid, like `--radius-s` in the language selector — so the first
+     button with an icon added here would come out with the glyph stuck to the
+     word, and nothing would say so. -->
+<link rel="stylesheet" href="/icons.css">
+<link rel="stylesheet" href="/i18n.css">
+</head>
+<!-- Light palette, unlike the other two pages: the first configuration is done
+     once, by day, in front of the computer, and it is the first contact with
+     the product. The pages opened at three in the morning stay dark. The full
+     explanation is at the top of style.css. -->
+<body class="day">
+<div class="lang" data-lang></div>
+
+<div class="center">
+  <!-- An explicit method="post" and action are the safety net: if the script
+       were not executed, the browser still sends a POST and the password does
+       not end up in the address bar. The server accepts both JSON and a form. -->
+  <form class="card" id="form" data-mode="setup"
+        method="post" action="/api/setup" autocomplete="on">
+    <h1 data-i18n="setup.title"></h1>
+    <p class="sub" data-i18n="setup.subtitle"></p>
+
+    <label for="password" data-i18n="setup.password"></label>
+    <input type="password" id="password" name="password"
+           autocomplete="new-password" minlength="8" required autofocus>
+
+    <label for="confirm" data-i18n="setup.confirm"></label>
+    <input type="password" id="confirm" name="confirm"
+           autocomplete="new-password" minlength="8" required>
+
+    <button type="submit" id="submit" data-i18n="setup.submit"></button>
+    <p class="msg" id="msg"></p>
+
+    <p class="hint" data-i18n="setup.hint"></p>
+  </form>
+</div>
+<script src="/dictionary.js"></script>
+<script src="/i18n.js"></script>
+<script src="/auth.js"></script>
+</body>
+</html>

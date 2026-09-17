@@ -1,0 +1,1702 @@
+# capture reference measurement, 11 September 2026 (evening), second round
+# NVIDIA GeForce RTX 4080, driver 32.0.16.1664
+# Logitech Brio 105 carried over from the development machine
+#
+# **First measurement on NVIDIA.** Nobody had ever run this program on that
+# vendor: the table at the top of CLAUDE.md had three columns and NVIDIA was not
+# one of them. These are the numbers.
+#
+# **It is not compared with the Intel or AMD reports**, and cannot be: different
+# scene, light, camera and encoder. Each machine is compared with itself.
+#
+# **This is the second round.** The first, on another USB port, is in the history
+# at commit 4f1e448 — its camera delivered 14.5 fps against the 19.4 here, so its
+# numbers are superseded rather than kept. What it is worth reading for is that
+# two of its claims were wrong, and are corrected below.
+#
+#   video          782 frames, 19.4 fps, 1565 - 1568 kbit/s out of 2500 asked
+#   keyframes      20, against ~20 expected with a 2 s GOP
+#   profile        42e01f, one value, constrained baseline level 3.1
+#   quantiser      26.1 mean, p95 30, max 38, read from the STREAM
+#   audio          1993 Opus packets, 64 kbit/s, raw mode obtained
+#   video delivery median 48.2 ms, p95 64.7, max 68.1
+#   video in bursts  0 of 781 (0%)
+#
+# **The defect this item was opened for does not appear.** crbug.com/1088650's
+# symptoms are keyframes in bursts and the resolution stuck at 360p. The
+# keyframes are 20 against ~20 expected and evenly spaced, the stream carries one
+# `profile-level-id` and it is `42e01f` — the constrained baseline we ask for —
+# and the size is the one requested. What is measured is **our** encoder path,
+# not a browser decoding it.
+#
+# **The delivery is steady**: 0% in bursts on every stream, against AMD's 32-36%
+# on the video. The pairwise delivery recorded in capture-amd.txt is that chip's
+# and not the pipeline's.
+#
+# **Keyframes on demand are honoured**, which `IsModifiable` had refused to say:
+# it answers `E_NOTIMPL` here, exactly as AMD does while honouring them
+# perfectly. Asked for one a second over forty seconds, the stream carried **40
+# keyframes against the ~20 the GOP alone produces** — every request answered.
+# The timing of each is lost with that run's verdict, for the reason two
+# paragraphs down.
+#
+# **Both roads to the bitrate work.** By command 1379 -> 199 kbit/s within two
+# seconds, settling at 435-788 with the quantiser going 25 -> 40; by rebuilding
+# the encoder, 1482 -> 766 for 800 asked, `[OK]`. That is the AMD pattern and not
+# the Quick Sync one, so the cheap road — the one that interrupts nothing — is
+# the right one here.
+#
+# **B frames are refused**, `0x80070057`, so every start on this vendor logs
+# `some encoder settings were not accepted`. It is a log line and not an alert,
+# checked rather than assumed, and it costs nothing: `QPSlice` refuses a B slice
+# outright, and the quantiser was read on all 780 frames, so that stream had none
+# to refuse. The belt was refused and the braces held.
+#
+# ---------------------------------------------------------------------------
+# THE FINDING, and it is not about NVIDIA
+# ---------------------------------------------------------------------------
+#
+# **The resolution scale's own step kills the capture on this camera.** Asked for
+# 960x528 — three quarters of 1280x720 rounded to macroblocks, which is what the
+# monitor asks for when the picture has to shrink — the reader **accepted it**
+# and the next read failed:
+#
+#     video format changed  video=960x528@30  reader=960x528  error=<nil>
+#     capture interrupted, restarting  ran_for=20.693s  error="ReadSample: HRESULT 0x80004005"
+#     camera opened  format="NV12 1280x720@30"
+#
+# That is two seconds of no picture and a capture that comes back at **full
+# size**, that is, at the size the network had just been unable to carry. In the
+# monitor the scale would then ask again. What happens next was measured
+# afterwards — eight minutes, five requests for the same step, a backoff
+# doubling to sixteen seconds and ~32 s of black picture out of 70 — and it is
+# in CLAUDE.md, under the resolution scale.
+#
+# **It is the camera and not our code**, and the control says so: the same step,
+# on the development machine's ACER HD User Facing, went through with no
+# interruption at all — 669 frames, 26.5 fps, the format change clean. So a size
+# the Source Reader accepts can still be one the device will not deliver, and
+# `SetCurrentMediaType` answering `S_OK` says nothing about it. It is the same
+# shape as an `ICodecAPI` property accepted and never applied.
+#
+# **And it is not the USB port, which the first round got wrong.** That header
+# blamed the port for both the halved cadence and the scaling failures. The port
+# was changed and `pat-diag`'s scaling block is **identical** — 960x540 and
+# 848x480 still answer `ReadSample: HRESULT 0x80004005` while 1280x720 and
+# 640x360 are delivered — so only the cadence moved, 14.5 to 19.4 fps. Two
+# symptoms that arrived together were assumed to have one cause, and one of them
+# survived the remedy.
+#
+# **Whether 19.4 fps is the cable or the light is still unknown.** A Brio drops
+# its cadence in low light, and both rounds were taken late in the evening; the
+# port moved the number by a third, which says the cable is part of it and not
+# that it is all of it. It is why these numbers are compared only with
+# themselves.
+#
+# ---------------------------------------------------------------------------
+# THE INSTRUMENT, and a defect of its own
+# ---------------------------------------------------------------------------
+#
+# **Three of these eight runs ended without printing their verdict** — 4, 6 and
+# 7a — and one of the first round's seven did the same. The process died
+# immediately after its last per-second line, with no message on a stream that
+# was captured, and the next run started on time, so nothing hung. It has never
+# happened on the development machine across dozens of runs. What it costs is
+# visible here: the timing of the keyframe requests is gone, and the bitrate
+# verdict of 7a had to be reconstructed from the tick lines. The next round
+# records each run's exit code, which separates a crash from a clean exit, and
+# that is the only thing that will say what this is.
+#
+# ---------------------------------------------------------------------------
+# THIRD ROUND, 12 September 2026: two answers and one name
+# ---------------------------------------------------------------------------
+#
+# **Both steps of the resolution scale fail on this camera, not one.** The first
+# round found 960x528 killing the capture; asked again it did the same, and
+# 640x352 — the only other step there is — did the same again:
+#
+#     video format changed  video=640x352@30  reader=640x352  error=<nil>
+#     capture interrupted, restarting  error="ReadSample: HRESULT 0x80004005"
+#     camera opened  format="NV12 1280x720@30"
+#     [FAIL] resolution scaling: sizes seen in the stream 1280x720
+#
+# So on that device **the scale has nowhere to go**: every size below full is
+# accepted by the reader and then refused by the camera, and each attempt costs
+# a second of black and a restart at the size the network could not carry. A
+# failure that happens once is an episode; this one happened four times out of
+# four across two sizes and two rounds, which makes it a property.
+#
+# **The hope that the bottom step could be skipped to is dead**, and it was worth
+# asking: a camera that refuses the middle one could have been served by going
+# straight to the last. It refuses that too.
+#
+# **The silent deaths have a number: `-1073741819`, that is 0xC0000005, an access
+# violation.** Recording the exit code was the whole point of this round, and it
+# separates a crash from a clean exit, which no amount of reading the output
+# could. Both runs that crashed were the two carrying `-pli`; the three without
+# it finished and printed their verdicts. Across all three rounds the flag is
+# 3 for 3 and everything else is 3 in 12, so it is **not only** the flag.
+#
+# **Nothing is printed when it happens**, and that is itself evidence: a Win32
+# exception reaching the Go runtime prints `Exception 0xc0000005` and a stack,
+# as this file's own crash chapter records. Silence points at a thread the
+# runtime does not own — the encoder's own — but that is a hypothesis, and the
+# thing that would settle it is the Windows Application log, which names the
+# faulting module. It has not been read yet.
+#
+# **The next round stops asking two seconds before the end**, which is a designed
+# experiment and not a precaution: our request racing the encoder's release and
+# the encoder faulting as it is dismantled predict the same silence, and leaving
+# the teardown alone removes the first of the two.
+#
+# The transcripts below are verbatim, in the order they were run.
+#
+
+
+==============================================================================
+  pat-diag: the machine's inventory
+==============================================================================
+
+
+==============================================================================
+  CAPTURE DEVICES
+==============================================================================
+  usable webcams: 1
+  [video] Brio 105
+          \\?\usb#vid_046d&pid_094b&mi_00#6&1f2dbae&0&0000#{e5323777-f976-4f5b-9b55-b94699c46e44}\global
+          stream 0 (video):
+             0) YUY2 640x480 @30.00 fps
+             1) YUY2 640x480 @24.00 fps
+             2) YUY2 640x480 @20.00 fps
+             3) YUY2 640x480 @15.00 fps
+             4) YUY2 640x480 @10.00 fps
+             5) YUY2 640x480 @7.50 fps
+             6) YUY2 640x480 @5.00 fps
+             7) YUY2 160x120 @30.00 fps
+             8) YUY2 160x120 @24.00 fps
+             9) YUY2 160x120 @20.00 fps
+            10) YUY2 160x120 @15.00 fps
+            11) YUY2 160x120 @10.00 fps
+            12) YUY2 160x120 @7.50 fps
+            13) YUY2 160x120 @5.00 fps
+            14) YUY2 176x144 @30.00 fps
+            15) YUY2 176x144 @24.00 fps
+            16) YUY2 176x144 @20.00 fps
+            17) YUY2 176x144 @15.00 fps
+            18) YUY2 176x144 @10.00 fps
+            19) YUY2 176x144 @7.50 fps
+            20) YUY2 176x144 @5.00 fps
+            21) YUY2 320x176 @30.00 fps
+            22) YUY2 320x176 @24.00 fps
+            23) YUY2 320x176 @20.00 fps
+            24) YUY2 320x176 @15.00 fps
+            25) YUY2 320x176 @10.00 fps
+            26) YUY2 320x176 @7.50 fps
+            27) YUY2 320x176 @5.00 fps
+            28) YUY2 320x240 @30.00 fps
+            29) YUY2 320x240 @24.00 fps
+            30) YUY2 320x240 @20.00 fps
+            31) YUY2 320x240 @15.00 fps
+            32) YUY2 320x240 @10.00 fps
+            33) YUY2 320x240 @7.50 fps
+            34) YUY2 320x240 @5.00 fps
+            35) YUY2 352x288 @30.00 fps
+            36) YUY2 352x288 @24.00 fps
+            37) YUY2 352x288 @20.00 fps
+            38) YUY2 352x288 @15.00 fps
+            39) YUY2 352x288 @10.00 fps
+            40) YUY2 352x288 @7.50 fps
+            41) YUY2 352x288 @5.00 fps
+            42) YUY2 432x240 @30.00 fps
+            43) YUY2 432x240 @24.00 fps
+            44) YUY2 432x240 @20.00 fps
+            45) YUY2 432x240 @15.00 fps
+            46) YUY2 432x240 @10.00 fps
+            47) YUY2 432x240 @7.50 fps
+            48) YUY2 432x240 @5.00 fps
+            49) YUY2 544x288 @30.00 fps
+            50) YUY2 544x288 @24.00 fps
+            51) YUY2 544x288 @20.00 fps
+            52) YUY2 544x288 @15.00 fps
+            53) YUY2 544x288 @10.00 fps
+            54) YUY2 544x288 @7.50 fps
+            55) YUY2 544x288 @5.00 fps
+            56) YUY2 640x360 @30.00 fps
+            57) YUY2 640x360 @24.00 fps
+            58) YUY2 640x360 @20.00 fps
+            59) YUY2 640x360 @15.00 fps
+            60) YUY2 640x360 @10.00 fps
+            61) YUY2 640x360 @7.50 fps
+            62) YUY2 640x360 @5.00 fps
+            63) YUY2 752x416 @5.00 fps
+            64) YUY2 800x448 @5.00 fps
+            65) YUY2 800x600 @5.00 fps
+            66) YUY2 864x480 @5.00 fps
+            67) YUY2 960x544 @5.00 fps
+            68) YUY2 960x720 @5.00 fps
+            69) YUY2 1024x576 @5.00 fps
+            70) YUY2 1184x656 @5.00 fps
+            71) YUY2 1280x720 @5.00 fps
+            72) YUY2 1920x1080 @5.00 fps
+            73) NV12 640x480 @30.00 fps
+            74) MJPG 640x480 @30.00 fps
+            75) NV12 640x480 @24.00 fps
+            76) MJPG 640x480 @24.00 fps
+            77) NV12 640x480 @20.00 fps
+            78) MJPG 640x480 @20.00 fps
+            79) NV12 640x480 @15.00 fps
+            80) MJPG 640x480 @15.00 fps
+            81) NV12 640x480 @10.00 fps
+            82) MJPG 640x480 @10.00 fps
+            83) NV12 640x480 @7.50 fps
+            84) MJPG 640x480 @7.50 fps
+            85) NV12 640x480 @5.00 fps
+            86) MJPG 640x480 @5.00 fps
+            87) NV12 160x120 @30.00 fps
+            88) MJPG 160x120 @30.00 fps
+            89) NV12 160x120 @24.00 fps
+            90) MJPG 160x120 @24.00 fps
+            91) NV12 160x120 @20.00 fps
+            92) MJPG 160x120 @20.00 fps
+            93) NV12 160x120 @15.00 fps
+            94) MJPG 160x120 @15.00 fps
+            95) NV12 160x120 @10.00 fps
+            96) MJPG 160x120 @10.00 fps
+            97) NV12 160x120 @7.50 fps
+            98) MJPG 160x120 @7.50 fps
+            99) NV12 160x120 @5.00 fps
+            100) MJPG 160x120 @5.00 fps
+            101) NV12 176x144 @30.00 fps
+            102) MJPG 176x144 @30.00 fps
+            103) NV12 176x144 @24.00 fps
+            104) MJPG 176x144 @24.00 fps
+            105) NV12 176x144 @20.00 fps
+            106) MJPG 176x144 @20.00 fps
+            107) NV12 176x144 @15.00 fps
+            108) MJPG 176x144 @15.00 fps
+            109) NV12 176x144 @10.00 fps
+            110) MJPG 176x144 @10.00 fps
+            111) NV12 176x144 @7.50 fps
+            112) MJPG 176x144 @7.50 fps
+            113) NV12 176x144 @5.00 fps
+            114) MJPG 176x144 @5.00 fps
+            115) NV12 320x176 @30.00 fps
+            116) MJPG 320x176 @30.00 fps
+            117) NV12 320x176 @24.00 fps
+            118) MJPG 320x176 @24.00 fps
+            119) NV12 320x176 @20.00 fps
+            120) MJPG 320x176 @20.00 fps
+            121) NV12 320x176 @15.00 fps
+            122) MJPG 320x176 @15.00 fps
+            123) NV12 320x176 @10.00 fps
+            124) MJPG 320x176 @10.00 fps
+            125) NV12 320x176 @7.50 fps
+            126) MJPG 320x176 @7.50 fps
+            127) NV12 320x176 @5.00 fps
+            128) MJPG 320x176 @5.00 fps
+            129) NV12 320x240 @30.00 fps
+            130) MJPG 320x240 @30.00 fps
+            131) NV12 320x240 @24.00 fps
+            132) MJPG 320x240 @24.00 fps
+            133) NV12 320x240 @20.00 fps
+            134) MJPG 320x240 @20.00 fps
+            135) NV12 320x240 @15.00 fps
+            136) MJPG 320x240 @15.00 fps
+            137) NV12 320x240 @10.00 fps
+            138) MJPG 320x240 @10.00 fps
+            139) NV12 320x240 @7.50 fps
+            140) MJPG 320x240 @7.50 fps
+            141) NV12 320x240 @5.00 fps
+            142) MJPG 320x240 @5.00 fps
+            143) NV12 352x288 @30.00 fps
+            144) MJPG 352x288 @30.00 fps
+            145) NV12 352x288 @24.00 fps
+            146) MJPG 352x288 @24.00 fps
+            147) NV12 352x288 @20.00 fps
+            148) MJPG 352x288 @20.00 fps
+            149) NV12 352x288 @15.00 fps
+            150) MJPG 352x288 @15.00 fps
+            151) NV12 352x288 @10.00 fps
+            152) MJPG 352x288 @10.00 fps
+            153) NV12 352x288 @7.50 fps
+            154) MJPG 352x288 @7.50 fps
+            155) NV12 352x288 @5.00 fps
+            156) MJPG 352x288 @5.00 fps
+            157) NV12 432x240 @30.00 fps
+            158) MJPG 432x240 @30.00 fps
+            159) NV12 432x240 @24.00 fps
+            160) MJPG 432x240 @24.00 fps
+            161) NV12 432x240 @20.00 fps
+            162) MJPG 432x240 @20.00 fps
+            163) NV12 432x240 @15.00 fps
+            164) MJPG 432x240 @15.00 fps
+            165) NV12 432x240 @10.00 fps
+            166) MJPG 432x240 @10.00 fps
+            167) NV12 432x240 @7.50 fps
+            168) MJPG 432x240 @7.50 fps
+            169) NV12 432x240 @5.00 fps
+            170) MJPG 432x240 @5.00 fps
+            171) NV12 544x288 @30.00 fps
+            172) MJPG 544x288 @30.00 fps
+            173) NV12 544x288 @24.00 fps
+            174) MJPG 544x288 @24.00 fps
+            175) NV12 544x288 @20.00 fps
+            176) MJPG 544x288 @20.00 fps
+            177) NV12 544x288 @15.00 fps
+            178) MJPG 544x288 @15.00 fps
+            179) NV12 544x288 @10.00 fps
+            180) MJPG 544x288 @10.00 fps
+            181) NV12 544x288 @7.50 fps
+            182) MJPG 544x288 @7.50 fps
+            183) NV12 544x288 @5.00 fps
+            184) MJPG 544x288 @5.00 fps
+            185) NV12 640x360 @30.00 fps
+            186) MJPG 640x360 @30.00 fps
+            187) NV12 640x360 @24.00 fps
+            188) MJPG 640x360 @24.00 fps
+            189) NV12 640x360 @20.00 fps
+            190) MJPG 640x360 @20.00 fps
+            191) NV12 640x360 @15.00 fps
+            192) MJPG 640x360 @15.00 fps
+            193) NV12 640x360 @10.00 fps
+            194) MJPG 640x360 @10.00 fps
+            195) NV12 640x360 @7.50 fps
+            196) MJPG 640x360 @7.50 fps
+            197) NV12 640x360 @5.00 fps
+            198) MJPG 640x360 @5.00 fps
+            199) NV12 752x416 @30.00 fps
+            200) MJPG 752x416 @30.00 fps
+            201) NV12 752x416 @24.00 fps
+            202) MJPG 752x416 @24.00 fps
+            203) NV12 752x416 @20.00 fps
+            204) MJPG 752x416 @20.00 fps
+            205) NV12 752x416 @15.00 fps
+            206) MJPG 752x416 @15.00 fps
+            207) NV12 752x416 @10.00 fps
+            208) MJPG 752x416 @10.00 fps
+            209) NV12 752x416 @7.50 fps
+            210) MJPG 752x416 @7.50 fps
+            211) NV12 752x416 @5.00 fps
+            212) MJPG 752x416 @5.00 fps
+            213) NV12 800x448 @30.00 fps
+            214) MJPG 800x448 @30.00 fps
+            215) NV12 800x448 @24.00 fps
+            216) MJPG 800x448 @24.00 fps
+            217) NV12 800x448 @20.00 fps
+            218) MJPG 800x448 @20.00 fps
+            219) NV12 800x448 @15.00 fps
+            220) MJPG 800x448 @15.00 fps
+            221) NV12 800x448 @10.00 fps
+            222) MJPG 800x448 @10.00 fps
+            223) NV12 800x448 @7.50 fps
+            224) MJPG 800x448 @7.50 fps
+            225) NV12 800x448 @5.00 fps
+            226) MJPG 800x448 @5.00 fps
+            227) NV12 800x600 @30.00 fps
+            228) MJPG 800x600 @30.00 fps
+            229) NV12 800x600 @24.00 fps
+            230) MJPG 800x600 @24.00 fps
+            231) NV12 800x600 @20.00 fps
+            232) MJPG 800x600 @20.00 fps
+            233) NV12 800x600 @15.00 fps
+            234) MJPG 800x600 @15.00 fps
+            235) NV12 800x600 @10.00 fps
+            236) MJPG 800x600 @10.00 fps
+            237) NV12 800x600 @7.50 fps
+            238) MJPG 800x600 @7.50 fps
+            239) NV12 800x600 @5.00 fps
+            240) MJPG 800x600 @5.00 fps
+            241) NV12 864x480 @30.00 fps
+            242) MJPG 864x480 @30.00 fps
+            243) NV12 864x480 @24.00 fps
+            244) MJPG 864x480 @24.00 fps
+            245) NV12 864x480 @20.00 fps
+            246) MJPG 864x480 @20.00 fps
+            247) NV12 864x480 @15.00 fps
+            248) MJPG 864x480 @15.00 fps
+            249) NV12 864x480 @10.00 fps
+            250) MJPG 864x480 @10.00 fps
+            251) NV12 864x480 @7.50 fps
+            252) MJPG 864x480 @7.50 fps
+            253) NV12 864x480 @5.00 fps
+            254) MJPG 864x480 @5.00 fps
+            255) NV12 960x544 @30.00 fps
+            256) MJPG 960x544 @30.00 fps
+            257) NV12 960x544 @24.00 fps
+            258) MJPG 960x544 @24.00 fps
+            259) NV12 960x544 @20.00 fps
+            260) MJPG 960x544 @20.00 fps
+            261) NV12 960x544 @15.00 fps
+            262) MJPG 960x544 @15.00 fps
+            263) NV12 960x544 @10.00 fps
+            264) MJPG 960x544 @10.00 fps
+            265) NV12 960x544 @7.50 fps
+            266) MJPG 960x544 @7.50 fps
+            267) NV12 960x544 @5.00 fps
+            268) MJPG 960x544 @5.00 fps
+            269) NV12 960x720 @30.00 fps
+            270) MJPG 960x720 @30.00 fps
+            271) NV12 960x720 @24.00 fps
+            272) MJPG 960x720 @24.00 fps
+            273) NV12 960x720 @20.00 fps
+            274) MJPG 960x720 @20.00 fps
+            275) NV12 960x720 @15.00 fps
+            276) MJPG 960x720 @15.00 fps
+            277) NV12 960x720 @10.00 fps
+            278) MJPG 960x720 @10.00 fps
+            279) NV12 960x720 @7.50 fps
+            280) MJPG 960x720 @7.50 fps
+            281) NV12 960x720 @5.00 fps
+            282) MJPG 960x720 @5.00 fps
+            283) NV12 1024x576 @30.00 fps
+            284) MJPG 1024x576 @30.00 fps
+            285) NV12 1024x576 @24.00 fps
+            286) MJPG 1024x576 @24.00 fps
+            287) NV12 1024x576 @20.00 fps
+            288) MJPG 1024x576 @20.00 fps
+            289) NV12 1024x576 @15.00 fps
+            290) MJPG 1024x576 @15.00 fps
+            291) NV12 1024x576 @10.00 fps
+            292) MJPG 1024x576 @10.00 fps
+            293) NV12 1024x576 @7.50 fps
+            294) MJPG 1024x576 @7.50 fps
+            295) NV12 1024x576 @5.00 fps
+            296) MJPG 1024x576 @5.00 fps
+            297) NV12 1184x656 @30.00 fps
+            298) MJPG 1184x656 @30.00 fps
+            299) NV12 1184x656 @24.00 fps
+            300) MJPG 1184x656 @24.00 fps
+            301) NV12 1184x656 @20.00 fps
+            302) MJPG 1184x656 @20.00 fps
+            303) NV12 1184x656 @15.00 fps
+            304) MJPG 1184x656 @15.00 fps
+            305) NV12 1184x656 @10.00 fps
+            306) MJPG 1184x656 @10.00 fps
+            307) NV12 1184x656 @7.50 fps
+            308) MJPG 1184x656 @7.50 fps
+            309) NV12 1184x656 @5.00 fps
+            310) MJPG 1184x656 @5.00 fps
+            311) NV12 1280x720 @30.00 fps
+            312) MJPG 1280x720 @30.00 fps
+            313) NV12 1280x720 @24.00 fps
+            314) MJPG 1280x720 @24.00 fps
+            315) NV12 1280x720 @20.00 fps
+            316) MJPG 1280x720 @20.00 fps
+            317) NV12 1280x720 @15.00 fps
+            318) MJPG 1280x720 @15.00 fps
+            319) NV12 1280x720 @10.00 fps
+            320) MJPG 1280x720 @10.00 fps
+            321) NV12 1280x720 @7.50 fps
+            322) MJPG 1280x720 @7.50 fps
+            323) NV12 1280x720 @5.00 fps
+            324) MJPG 1280x720 @5.00 fps
+            325) NV12 1920x1080 @30.00 fps
+            326) MJPG 1920x1080 @30.00 fps
+            327) NV12 1920x1080 @24.00 fps
+            328) MJPG 1920x1080 @24.00 fps
+            329) NV12 1920x1080 @20.00 fps
+            330) MJPG 1920x1080 @20.00 fps
+            331) NV12 1920x1080 @15.00 fps
+            332) MJPG 1920x1080 @15.00 fps
+            333) NV12 1920x1080 @10.00 fps
+            334) MJPG 1920x1080 @10.00 fps
+            335) NV12 1920x1080 @7.50 fps
+            336) MJPG 1920x1080 @7.50 fps
+            337) NV12 1920x1080 @5.00 fps
+            338) MJPG 1920x1080 @5.00 fps
+
+  [audio] Microfono (Brio 105)
+          48000 Hz, 1 channels, 32 bit float
+          raw (OEM effects bypassed)
+          volume: 24.0 dB on a scale from 6.0 to 30.0 — HARDWARE (applied by the device)
+
+==============================================================================
+  H.264 ENCODERS
+==============================================================================
+  found: 3
+    NVIDIA H.264 Encoder MFT (asynchronous)
+    Microsoft AVC DX12 Encoder (synchronous)
+    H264 Encoder MFT (synchronous)
+
+  Direct3D 11: available
+  adapter: NVIDIA GeForce RTX 4080, driver 32.0.16.1664
+
+==============================================================================
+  CONFIGURATION TEST
+==============================================================================
+  requested: 1280x720@30, 2500 kbit/s, baseline profile
+
+  chosen encoder: NVIDIA H.264 Encoder MFT
+  asynchronous       true
+  Direct3D           true (SET_D3D_MANAGER: <nil>)
+  MF_TRANSFORM_ASYNC 1 (<nil>)
+  unlock read back   1 (<nil>)
+  input accepts      0x00
+  output ready       0x00
+  allocates output   true (buffer 0 bytes)
+  settings           B frames: SetValue: HRESULT 0x80070057
+  keyframe on demand declared; no answer on changing it while running (0x80004001)
+  hot bitrate change declared; no answer on changing it while running (0x80004001)
+  input adopted      NV12 1280x720 @30.00 fps 0 kbit/s
+  output adopted     H264 1280x720 @30.00 fps 2500 kbit/s
+  Invoke calls       1 (last error: <nil>)
+    event            METransformNeedInput (status 0x00000000)
+  subscription test  the fake event came back: the subscription works
+
+==============================================================================
+  RESOLUTION SCALING
+==============================================================================
+  1280x720   delivered
+   960x540   no frame: ReadSample: HRESULT 0x80004005
+   848x480   no frame: ReadSample: HRESULT 0x80004005
+   640x360   delivered
+  1280x720   delivered
+
+  The last row repeats the starting size: if it comes back, the change
+  is reversible and the scaler can climb again when the bandwidth does.
+
+==============================================================================
+  VERDICT
+==============================================================================
+  Encoding happens on the GPU.
+
+  Note: Intel accounts for the encoder's work under Task Manager's
+  "Video Decode" node, because the media engine is a single one.
+  Seeing zero on "Video Encode" does not mean the GPU is idle.
+
+
+==============================================================================
+  reference, first pass
+==============================================================================
+
+============================================================================
+  webcam:    Brio 105
+  requested: 1280x720@30, 2500 kbit/s
+  duration:  40s
+============================================================================
+time=2026-09-11T22:25:49.995+02:00 level=INFO msg="microphone opened" device="Microfono (Brio 105)" format="48000 Hz, 1 channels, 32 bit float" mode=raw no_oem_effects=true
+time=2026-09-11T22:25:50.116+02:00 level=INFO msg="sensitivity raised to the endpoint maximum" gain_db=6 mode=raw
+time=2026-09-11T22:25:50.116+02:00 level=INFO msg="audio active"
+time=2026-09-11T22:25:50.141+02:00 level=INFO msg="camera opened" format="NV12 1280x720@30"
+time=2026-09-11T22:25:50.258+02:00 level=INFO msg="capture started" encoder="NVIDIA H.264 Encoder MFT" video=1280x720@30 bitrate=2500
+time=2026-09-11T22:25:50.258+02:00 level=WARN msg="some encoder settings were not accepted" detail="B frames: SetValue: HRESULT 0x80070057"
+     1s  video     4 frames (1 key)     876 kbit/s  qp  27  audio    42 pkt  level  -34.9 dBFS
+     2s  video    24 frames (1 key)    1663 kbit/s  qp  26  audio    92 pkt  level  -35.1 dBFS
+     3s  video    44 frames (2 key)    1934 kbit/s  qp  25  audio   142 pkt  level  -35.5 dBFS
+     4s  video    64 frames (3 key)    1901 kbit/s  qp  25  audio   192 pkt  level  -34.9 dBFS
+     5s  video    84 frames (3 key)    1501 kbit/s  qp  26  audio   242 pkt  level  -35.8 dBFS
+     6s  video   104 frames (4 key)    1678 kbit/s  qp  25  audio   292 pkt  level  -35.0 dBFS
+     7s  video   124 frames (5 key)    1866 kbit/s  qp  25  audio   342 pkt  level  -35.5 dBFS
+     8s  video   144 frames (5 key)     980 kbit/s  qp  33  audio   392 pkt  level  -35.3 dBFS
+     9s  video   164 frames (6 key)    1567 kbit/s  qp  35  audio   442 pkt  level  -35.2 dBFS
+    10s  video   184 frames (7 key)     780 kbit/s  qp  34  audio   492 pkt  level  -35.4 dBFS
+    11s  video   204 frames (7 key)    1019 kbit/s  qp  35  audio   542 pkt  level  -35.1 dBFS
+time=2026-09-11T22:26:01.259+02:00 level=INFO msg="the bitrate command takes effect on this encoder" asked_kbps=1250 before_kbps=1725 after_kbps=1005
+    12s  video   224 frames (8 key)    2201 kbit/s  qp  32  audio   592 pkt  level  -35.7 dBFS
+    13s  video   243 frames (9 key)    1330 kbit/s  qp  26  audio   642 pkt  level  -35.5 dBFS
+    14s  video   264 frames (9 key)    1198 kbit/s  qp  27  audio   692 pkt  level  -35.6 dBFS
+    15s  video   283 frames (10 key)    1358 kbit/s  qp  26  audio   742 pkt  level  -35.4 dBFS
+    16s  video   303 frames (11 key)    1584 kbit/s  qp  26  audio   792 pkt  level  -35.5 dBFS
+    17s  video   323 frames (11 key)    1315 kbit/s  qp  26  audio   842 pkt  level  -35.5 dBFS
+    18s  video   343 frames (12 key)    1660 kbit/s  qp  25  audio   892 pkt  level  -35.5 dBFS
+    19s  video   363 frames (13 key)    1763 kbit/s  qp  26  audio   942 pkt  level  -35.6 dBFS
+    20s  video   383 frames (13 key)    1489 kbit/s  qp  26  audio   992 pkt  level  -36.0 dBFS
+    21s  video   403 frames (14 key)    1802 kbit/s  qp  25  audio  1042 pkt  level  -36.1 dBFS
+    22s  video   423 frames (15 key)    1827 kbit/s  qp  26  audio  1092 pkt  level  -35.6 dBFS
+    23s  video   443 frames (15 key)    1281 kbit/s  qp  26  audio  1142 pkt  level  -36.0 dBFS
+    24s  video   463 frames (16 key)    1742 kbit/s  qp  26  audio  1192 pkt  level  -35.7 dBFS
+    25s  video   483 frames (17 key)    1850 kbit/s  qp  26  audio  1242 pkt  level  -35.6 dBFS
+    26s  video   503 frames (17 key)    1428 kbit/s  qp  26  audio  1292 pkt  level  -35.4 dBFS
+    27s  video   523 frames (18 key)    1774 kbit/s  qp  26  audio  1342 pkt  level  -35.6 dBFS
+    28s  video   543 frames (19 key)    1767 kbit/s  qp  26  audio  1392 pkt  level  -35.6 dBFS
+    29s  video   562 frames (19 key)    1454 kbit/s  qp  26  audio  1442 pkt  level  -35.9 dBFS
+    30s  video   583 frames (20 key)    1873 kbit/s  qp  26  audio  1492 pkt  level  -35.9 dBFS
+    31s  video   602 frames (21 key)    1512 kbit/s  qp  26  audio  1542 pkt  level  -35.7 dBFS
+    32s  video   622 frames (21 key)    1455 kbit/s  qp  25  audio  1592 pkt  level  -35.5 dBFS
+    33s  video   642 frames (22 key)    1795 kbit/s  qp  25  audio  1642 pkt  level  -35.9 dBFS
+    34s  video   662 frames (23 key)    1702 kbit/s  qp  26  audio  1692 pkt  level  -35.9 dBFS
+    35s  video   682 frames (23 key)    1454 kbit/s  qp  24  audio  1742 pkt  level  -36.0 dBFS
+    36s  video   702 frames (24 key)    1688 kbit/s  qp  26  audio  1792 pkt  level  -35.8 dBFS
+    37s  video   722 frames (25 key)    2102 kbit/s  qp  25  audio  1842 pkt  level  -35.9 dBFS
+    38s  video   742 frames (25 key)    1328 kbit/s  qp  26  audio  1892 pkt  level  -35.7 dBFS
+    39s  video   762 frames (26 key)    1782 kbit/s  qp  25  audio  1942 pkt  level  -35.9 dBFS
+
+============================================================================
+  VERDICT — 40.3s actual
+============================================================================
+  [OK  ] video: 782 frames, 19.4 fps, 1565 kbit/s
+  [OK  ] keyframes: 27 (expected ~20 with a 2s GOP)
+  [OK  ] parameter sets in the stream: SPS=true PPS=true, profile-level-id=42e01f
+  [    ] quantiser: mean 24.8, p95 29, max 37, over 781 frames (from stream)
+  [    ] no cross-check: over 782 frames the encoder sets 16 attributes and the quantiser is not among them — the absence is its own, we use the stream
+  [OK  ] audio: 1992 Opus packets, 64 kbit/s
+  [OK  ] motion: 130 gray frames, max frame-to-frame difference 0.76
+  [OK  ] audio analysis: 39.8s, RMS -35.6 dBFS, peak -27.5 dBFS (1382 LSB), exact zeros 0.0%, floor 178.84 LSB -> working
+
+  Delivery video (Annex-B) (nominal 33ms, 781 intervals):
+    intervals    min 40.8ms   median 48.2ms   p95 64.5ms   max 69ms
+    in bursts    0 of 781 (0%)
+    bursts       none: steady delivery
+
+  Delivery audio (Opus in Ogg) (nominal 20ms, 1991 intervals):
+    intervals    min 17.8ms   median 20ms   p95 21ms   max 22.2ms
+    in bursts    0 of 1991 (0%)
+    bursts       none: steady delivery
+
+  Delivery audio (raw PCM) (nominal 100ms, 397 intervals):
+    intervals    min 98.4ms   median 100ms   p95 100.9ms   max 101.8ms
+    in bursts    0 of 397 (0%)
+    bursts       none: steady delivery
+
+  Delivery WASAPI callback (under load) (nominal 10ms, 3984 intervals):
+    intervals    min 7.9ms   median 10ms   p95 10.7ms   max 11.9ms
+    in bursts    0 of 3984 (0%)
+    bursts       none: steady delivery
+
+  Delivery audio (encoder output) (nominal 20ms, 1991 intervals):
+    intervals    min 17.8ms   median 20ms   p95 21ms   max 22.2ms
+    in bursts    0 of 1991 (0%)
+    bursts       none: steady delivery
+
+  [OK  ] audio in WASAPI raw mode (OEM effects bypassed): true
+----------------------------------------------------------------------------
+  Pipeline working: the four streams arrive with valid data.
+
+
+==============================================================================
+  reference, second pass
+==============================================================================
+
+============================================================================
+  webcam:    Brio 105
+  requested: 1280x720@30, 2500 kbit/s
+  duration:  40s
+============================================================================
+time=2026-09-11T22:26:30.366+02:00 level=INFO msg="microphone opened" device="Microfono (Brio 105)" format="48000 Hz, 1 channels, 32 bit float" mode=raw no_oem_effects=true
+time=2026-09-11T22:26:30.478+02:00 level=INFO msg="sensitivity raised to the endpoint maximum" gain_db=6 mode=raw
+time=2026-09-11T22:26:30.478+02:00 level=INFO msg="audio active"
+time=2026-09-11T22:26:30.520+02:00 level=INFO msg="camera opened" format="NV12 1280x720@30"
+time=2026-09-11T22:26:30.626+02:00 level=INFO msg="capture started" encoder="NVIDIA H.264 Encoder MFT" video=1280x720@30 bitrate=2500
+time=2026-09-11T22:26:30.626+02:00 level=WARN msg="some encoder settings were not accepted" detail="B frames: SetValue: HRESULT 0x80070057"
+     1s  video     5 frames (1 key)     861 kbit/s  qp  28  audio    42 pkt  level  -35.9 dBFS
+     2s  video    25 frames (1 key)    1666 kbit/s  qp  26  audio    92 pkt  level  -35.9 dBFS
+     3s  video    44 frames (2 key)    1682 kbit/s  qp  25  audio   142 pkt  level  -35.8 dBFS
+     4s  video    64 frames (3 key)    1817 kbit/s  qp  25  audio   192 pkt  level  -35.7 dBFS
+     5s  video    84 frames (3 key)    1502 kbit/s  qp  25  audio   242 pkt  level  -35.6 dBFS
+     6s  video   104 frames (4 key)    1764 kbit/s  qp  25  audio   292 pkt  level  -35.7 dBFS
+     7s  video   124 frames (5 key)    1817 kbit/s  qp  25  audio   342 pkt  level  -35.5 dBFS
+     8s  video   144 frames (5 key)    1221 kbit/s  qp  33  audio   392 pkt  level  -35.8 dBFS
+     9s  video   164 frames (6 key)    1437 kbit/s  qp  35  audio   442 pkt  level  -35.8 dBFS
+    10s  video   184 frames (7 key)    1025 kbit/s  qp  35  audio   492 pkt  level  -35.6 dBFS
+    11s  video   204 frames (7 key)     939 kbit/s  qp  34  audio   542 pkt  level  -35.2 dBFS
+time=2026-09-11T22:26:41.626+02:00 level=INFO msg="the bitrate command takes effect on this encoder" asked_kbps=1250 before_kbps=1723 after_kbps=1048
+    12s  video   224 frames (8 key)    2261 kbit/s  qp  31  audio   592 pkt  level  -35.4 dBFS
+    13s  video   244 frames (9 key)    1184 kbit/s  qp  25  audio   642 pkt  level  -35.4 dBFS
+    14s  video   264 frames (9 key)    1123 kbit/s  qp  27  audio   692 pkt  level  -35.6 dBFS
+    15s  video   284 frames (10 key)    1531 kbit/s  qp  27  audio   742 pkt  level  -36.1 dBFS
+    16s  video   303 frames (11 key)    1486 kbit/s  qp  26  audio   792 pkt  level  -35.9 dBFS
+    17s  video   324 frames (11 key)    1471 kbit/s  qp  26  audio   842 pkt  level  -35.7 dBFS
+    18s  video   343 frames (12 key)    1717 kbit/s  qp  26  audio   892 pkt  level  -35.5 dBFS
+    19s  video   363 frames (13 key)    1877 kbit/s  qp  26  audio   942 pkt  level  -35.7 dBFS
+    20s  video   383 frames (13 key)    1382 kbit/s  qp  26  audio   992 pkt  level  -35.9 dBFS
+    21s  video   403 frames (14 key)    1599 kbit/s  qp  26  audio  1042 pkt  level  -35.9 dBFS
+    22s  video   423 frames (15 key)    1664 kbit/s  qp  26  audio  1092 pkt  level  -36.0 dBFS
+    23s  video   443 frames (15 key)    1572 kbit/s  qp  26  audio  1142 pkt  level  -36.0 dBFS
+    24s  video   463 frames (16 key)    1834 kbit/s  qp  26  audio  1192 pkt  level  -35.5 dBFS
+    25s  video   483 frames (17 key)    1653 kbit/s  qp  26  audio  1242 pkt  level  -35.7 dBFS
+    26s  video   503 frames (17 key)    1443 kbit/s  qp  25  audio  1292 pkt  level  -35.4 dBFS
+    27s  video   523 frames (18 key)    1839 kbit/s  qp  26  audio  1342 pkt  level  -35.5 dBFS
+    28s  video   543 frames (19 key)    1677 kbit/s  qp  26  audio  1392 pkt  level  -35.3 dBFS
+    29s  video   563 frames (19 key)    1440 kbit/s  qp  26  audio  1442 pkt  level  -35.4 dBFS
+    30s  video   583 frames (20 key)    1760 kbit/s  qp  25  audio  1492 pkt  level  -35.6 dBFS
+    31s  video   603 frames (21 key)    2004 kbit/s  qp  26  audio  1542 pkt  level  -35.8 dBFS
+    32s  video   622 frames (21 key)    1191 kbit/s  qp  27  audio  1592 pkt  level  -35.9 dBFS
+    33s  video   642 frames (22 key)    1759 kbit/s  qp  26  audio  1642 pkt  level  -36.0 dBFS
+    34s  video   663 frames (23 key)    1792 kbit/s  qp  25  audio  1692 pkt  level  -35.6 dBFS
+    35s  video   682 frames (23 key)    1525 kbit/s  qp  26  audio  1742 pkt  level  -35.5 dBFS
+    36s  video   702 frames (24 key)    1812 kbit/s  qp  26  audio  1792 pkt  level  -35.7 dBFS
+    37s  video   722 frames (25 key)    1781 kbit/s  qp  26  audio  1842 pkt  level  -35.7 dBFS
+    38s  video   742 frames (25 key)    1477 kbit/s  qp  26  audio  1892 pkt  level  -35.8 dBFS
+    39s  video   762 frames (26 key)    1699 kbit/s  qp  26  audio  1942 pkt  level  -36.0 dBFS
+
+============================================================================
+  VERDICT — 40.3s actual
+============================================================================
+  [OK  ] video: 782 frames, 19.4 fps, 1568 kbit/s
+  [OK  ] keyframes: 27 (expected ~20 with a 2s GOP)
+  [OK  ] parameter sets in the stream: SPS=true PPS=true, profile-level-id=42e01f
+  [    ] quantiser: mean 24.9, p95 29, max 37, over 781 frames (from stream)
+  [    ] no cross-check: over 782 frames the encoder sets 16 attributes and the quantiser is not among them — the absence is its own, we use the stream
+  [OK  ] audio: 1993 Opus packets, 64 kbit/s
+  [OK  ] motion: 130 gray frames, max frame-to-frame difference 0.78
+  [OK  ] audio analysis: 39.8s, RMS -35.7 dBFS, peak -28.8 dBFS (1191 LSB), exact zeros 0.0%, floor 152.84 LSB -> working
+
+  Delivery video (Annex-B) (nominal 33ms, 781 intervals):
+    intervals    min 40.9ms   median 48.2ms   p95 64.7ms   max 68.1ms
+    in bursts    0 of 781 (0%)
+    bursts       none: steady delivery
+
+  Delivery audio (Opus in Ogg) (nominal 20ms, 1992 intervals):
+    intervals    min 17.5ms   median 20ms   p95 20.9ms   max 22.2ms
+    in bursts    0 of 1992 (0%)
+    bursts       none: steady delivery
+
+  Delivery audio (raw PCM) (nominal 100ms, 397 intervals):
+    intervals    min 98.2ms   median 100ms   p95 100.9ms   max 101.6ms
+    in bursts    0 of 397 (0%)
+    bursts       none: steady delivery
+
+  Delivery WASAPI callback (under load) (nominal 10ms, 3985 intervals):
+    intervals    min 8.2ms   median 10ms   p95 10.7ms   max 11.6ms
+    in bursts    0 of 3985 (0%)
+    bursts       none: steady delivery
+
+  Delivery audio (encoder output) (nominal 20ms, 1992 intervals):
+    intervals    min 17.5ms   median 20ms   p95 20.9ms   max 22.2ms
+    in bursts    0 of 1992 (0%)
+    bursts       none: steady delivery
+
+  [OK  ] audio in WASAPI raw mode (OEM effects bypassed): true
+----------------------------------------------------------------------------
+  Pipeline working: the four streams arrive with valid data.
+
+
+==============================================================================
+  reference, third pass (ended without its verdict)
+==============================================================================
+
+============================================================================
+  webcam:    Brio 105
+  requested: 1280x720@30, 2500 kbit/s
+  duration:  40s
+============================================================================
+time=2026-09-11T22:27:10.730+02:00 level=INFO msg="microphone opened" device="Microfono (Brio 105)" format="48000 Hz, 1 channels, 32 bit float" mode=raw no_oem_effects=true
+time=2026-09-11T22:27:10.847+02:00 level=INFO msg="sensitivity raised to the endpoint maximum" gain_db=6 mode=raw
+time=2026-09-11T22:27:10.847+02:00 level=INFO msg="audio active"
+time=2026-09-11T22:27:10.885+02:00 level=INFO msg="camera opened" format="NV12 1280x720@30"
+time=2026-09-11T22:27:10.978+02:00 level=INFO msg="capture started" encoder="NVIDIA H.264 Encoder MFT" video=1280x720@30 bitrate=2500
+time=2026-09-11T22:27:10.978+02:00 level=WARN msg="some encoder settings were not accepted" detail="B frames: SetValue: HRESULT 0x80070057"
+     1s  video     5 frames (1 key)     892 kbit/s  qp  28  audio    42 pkt  level  -36.2 dBFS
+     2s  video    25 frames (1 key)    1624 kbit/s  qp  26  audio    92 pkt  level  -35.9 dBFS
+     3s  video    45 frames (2 key)    1745 kbit/s  qp  25  audio   142 pkt  level  -35.8 dBFS
+     4s  video    65 frames (3 key)    1860 kbit/s  qp  25  audio   192 pkt  level  -35.7 dBFS
+     5s  video    85 frames (3 key)    1622 kbit/s  qp  25  audio   242 pkt  level  -35.9 dBFS
+     6s  video   104 frames (4 key)    1775 kbit/s  qp  26  audio   292 pkt  level  -35.5 dBFS
+     7s  video   125 frames (5 key)    2064 kbit/s  qp  25  audio   342 pkt  level  -35.3 dBFS
+     8s  video   144 frames (5 key)     816 kbit/s  qp  32  audio   392 pkt  level  -35.6 dBFS
+     9s  video   164 frames (6 key)    1301 kbit/s  qp  36  audio   442 pkt  level  -35.5 dBFS
+    10s  video   184 frames (7 key)    1004 kbit/s  qp  34  audio   492 pkt  level  -36.2 dBFS
+    11s  video   204 frames (7 key)    1195 kbit/s  qp  34  audio   542 pkt  level  -36.2 dBFS
+time=2026-09-11T22:27:21.979+02:00 level=INFO msg="the bitrate command takes effect on this encoder" asked_kbps=1250 before_kbps=1784 after_kbps=1020
+    12s  video   224 frames (8 key)    2004 kbit/s  qp  35  audio   592 pkt  level  -36.1 dBFS
+    13s  video   244 frames (9 key)    1230 kbit/s  qp  26  audio   642 pkt  level  -35.9 dBFS
+    14s  video   264 frames (9 key)    1140 kbit/s  qp  27  audio   692 pkt  level  -36.1 dBFS
+    15s  video   284 frames (10 key)    1487 kbit/s  qp  27  audio   742 pkt  level  -35.8 dBFS
+    16s  video   304 frames (11 key)    1774 kbit/s  qp  26  audio   792 pkt  level  -35.9 dBFS
+    17s  video   324 frames (11 key)    1383 kbit/s  qp  26  audio   842 pkt  level  -35.6 dBFS
+    18s  video   344 frames (12 key)    1724 kbit/s  qp  26  audio   892 pkt  level  -36.0 dBFS
+    19s  video   364 frames (13 key)    1693 kbit/s  qp  26  audio   942 pkt  level  -36.1 dBFS
+    20s  video   383 frames (13 key)    1226 kbit/s  qp  26  audio   992 pkt  level  -36.2 dBFS
+    21s  video   404 frames (14 key)    1794 kbit/s  qp  25  audio  1042 pkt  level  -36.2 dBFS
+    22s  video   423 frames (15 key)    1760 kbit/s  qp  25  audio  1092 pkt  level  -36.3 dBFS
+    23s  video   443 frames (15 key)    1441 kbit/s  qp  25  audio  1142 pkt  level  -36.0 dBFS
+    24s  video   463 frames (16 key)    1852 kbit/s  qp  26  audio  1192 pkt  level  -35.9 dBFS
+    25s  video   483 frames (17 key)    1689 kbit/s  qp  26  audio  1242 pkt  level  -36.4 dBFS
+    26s  video   503 frames (17 key)    1466 kbit/s  qp  26  audio  1292 pkt  level  -35.8 dBFS
+    27s  video   523 frames (18 key)    1691 kbit/s  qp  26  audio  1342 pkt  level  -36.1 dBFS
+    28s  video   543 frames (19 key)    2014 kbit/s  qp  26  audio  1392 pkt  level  -36.3 dBFS
+    29s  video   563 frames (19 key)    1409 kbit/s  qp  27  audio  1442 pkt  level  -36.1 dBFS
+    30s  video   583 frames (20 key)    1639 kbit/s  qp  26  audio  1492 pkt  level  -36.0 dBFS
+    31s  video   603 frames (21 key)    1651 kbit/s  qp  26  audio  1542 pkt  level  -35.2 dBFS
+    32s  video   623 frames (21 key)    1643 kbit/s  qp  26  audio  1592 pkt  level  -35.7 dBFS
+    33s  video   643 frames (22 key)    1637 kbit/s  qp  25  audio  1642 pkt  level  -35.7 dBFS
+    34s  video   663 frames (23 key)    1980 kbit/s  qp  25  audio  1692 pkt  level  -35.7 dBFS
+    35s  video   683 frames (23 key)    1357 kbit/s  qp  26  audio  1742 pkt  level  -35.9 dBFS
+    36s  video   703 frames (24 key)    1659 kbit/s  qp  25  audio  1792 pkt  level  -35.8 dBFS
+    37s  video   723 frames (25 key)    1902 kbit/s  qp  25  audio  1842 pkt  level  -36.1 dBFS
+    38s  video   742 frames (25 key)    1417 kbit/s  qp  26  audio  1892 pkt  level  -36.2 dBFS
+    39s  video   762 frames (26 key)    1651 kbit/s  qp  26  audio  1942 pkt  level  -36.0 dBFS
+    40s  video   782 frames (27 key)    1789 kbit/s  qp  26  audio  1992 pkt  level  -36.2 dBFS
+
+
+==============================================================================
+  the scale's own step: -h2 528 -w2 960
+==============================================================================
+
+============================================================================
+  webcam:    Brio 105
+  requested: 1280x720@30, 2500 kbit/s
+  duration:  40s
+============================================================================
+time=2026-09-11T22:27:51.018+02:00 level=INFO msg="microphone opened" device="Microfono (Brio 105)" format="48000 Hz, 1 channels, 32 bit float" mode=raw no_oem_effects=true
+time=2026-09-11T22:27:51.136+02:00 level=INFO msg="sensitivity raised to the endpoint maximum" gain_db=6 mode=raw
+time=2026-09-11T22:27:51.136+02:00 level=INFO msg="audio active"
+time=2026-09-11T22:27:51.166+02:00 level=INFO msg="camera opened" format="NV12 1280x720@30"
+time=2026-09-11T22:27:51.273+02:00 level=INFO msg="capture started" encoder="NVIDIA H.264 Encoder MFT" video=1280x720@30 bitrate=2500
+time=2026-09-11T22:27:51.273+02:00 level=WARN msg="some encoder settings were not accepted" detail="B frames: SetValue: HRESULT 0x80070057"
+     1s  video     5 frames (1 key)     891 kbit/s  qp  28  audio    42 pkt  level  -35.6 dBFS
+     2s  video    24 frames (1 key)    1571 kbit/s  qp  27  audio    92 pkt  level  -35.4 dBFS
+     3s  video    44 frames (2 key)    1783 kbit/s  qp  25  audio   142 pkt  level  -35.5 dBFS
+     4s  video    64 frames (3 key)    1823 kbit/s  qp  25  audio   192 pkt  level  -35.7 dBFS
+     5s  video    84 frames (3 key)    1655 kbit/s  qp  25  audio   242 pkt  level  -35.8 dBFS
+     6s  video   104 frames (4 key)    1746 kbit/s  qp  25  audio   292 pkt  level  -35.9 dBFS
+     7s  video   124 frames (5 key)    1945 kbit/s  qp  26  audio   342 pkt  level  -35.0 dBFS
+     8s  video   144 frames (5 key)     922 kbit/s  qp  33  audio   392 pkt  level  -35.7 dBFS
+     9s  video   164 frames (6 key)    1274 kbit/s  qp  36  audio   442 pkt  level  -35.3 dBFS
+    10s  video   184 frames (7 key)    1002 kbit/s  qp  34  audio   492 pkt  level  -35.9 dBFS
+    11s  video   204 frames (7 key)    1257 kbit/s  qp  34  audio   542 pkt  level  -36.0 dBFS
+time=2026-09-11T22:28:02.274+02:00 level=INFO msg="the bitrate command takes effect on this encoder" asked_kbps=1250 before_kbps=1772 after_kbps=1022
+    12s  video   224 frames (8 key)    2020 kbit/s  qp  34  audio   592 pkt  level  -36.0 dBFS
+    13s  video   244 frames (9 key)    1195 kbit/s  qp  26  audio   642 pkt  level  -35.8 dBFS
+    14s  video   264 frames (9 key)    1164 kbit/s  qp  26  audio   692 pkt  level  -36.0 dBFS
+    15s  video   284 frames (10 key)    1577 kbit/s  qp  26  audio   742 pkt  level  -35.7 dBFS
+    16s  video   303 frames (11 key)    1483 kbit/s  qp  26  audio   792 pkt  level  -35.9 dBFS
+    17s  video   324 frames (11 key)    1525 kbit/s  qp  25  audio   842 pkt  level  -35.6 dBFS
+    18s  video   343 frames (12 key)    1693 kbit/s  qp  26  audio   892 pkt  level  -35.7 dBFS
+    19s  video   363 frames (13 key)    1794 kbit/s  qp  26  audio   942 pkt  level  -35.2 dBFS
+
+  --- asked for 960x528@30 ---
+
+    20s  video   383 frames (13 key)    1382 kbit/s  qp  26  audio   992 pkt  level  -35.2 dBFS
+time=2026-09-11T22:28:11.412+02:00 level=INFO msg="video format changed" video=960x528@30 declared=30 reader=960x528 error=<nil>
+time=2026-09-11T22:28:11.693+02:00 level=ERROR msg="capture interrupted, restarting" ran_for=20.693s waiting=1s error="ReadSample: HRESULT 0x80004005"
+    21s  video   383 frames (13 key)       0 kbit/s  qp   -  audio  1042 pkt  level  -34.1 dBFS
+time=2026-09-11T22:28:12.834+02:00 level=INFO msg="camera opened" format="NV12 1280x720@30"
+time=2026-09-11T22:28:12.917+02:00 level=INFO msg="capture started" encoder="NVIDIA H.264 Encoder MFT" video=1280x720@30 bitrate=2500
+time=2026-09-11T22:28:12.917+02:00 level=WARN msg="some encoder settings were not accepted" detail="B frames: SetValue: HRESULT 0x80070057"
+    22s  video   383 frames (13 key)       0 kbit/s  qp   -  audio  1092 pkt  level  -34.9 dBFS
+    23s  video   395 frames (14 key)    1349 kbit/s  qp  28  audio  1142 pkt  level  -35.3 dBFS
+    24s  video   415 frames (15 key)    1849 kbit/s  qp  25  audio  1192 pkt  level  -36.8 dBFS
+    25s  video   434 frames (15 key)    1568 kbit/s  qp  25  audio  1242 pkt  level  -36.0 dBFS
+    26s  video   455 frames (16 key)    1848 kbit/s  qp  25  audio  1292 pkt  level  -36.3 dBFS
+    27s  video   474 frames (17 key)    1717 kbit/s  qp  24  audio  1342 pkt  level  -36.0 dBFS
+    28s  video   494 frames (17 key)    1488 kbit/s  qp  25  audio  1392 pkt  level  -35.8 dBFS
+    29s  video   514 frames (18 key)    1758 kbit/s  qp  25  audio  1442 pkt  level  -36.2 dBFS
+    30s  video   534 frames (19 key)    1875 kbit/s  qp  25  audio  1492 pkt  level  -36.1 dBFS
+    31s  video   554 frames (19 key)    1589 kbit/s  qp  25  audio  1542 pkt  level  -35.6 dBFS
+    32s  video   574 frames (20 key)    1843 kbit/s  qp  25  audio  1592 pkt  level  -35.9 dBFS
+    33s  video   594 frames (21 key)    1774 kbit/s  qp  25  audio  1642 pkt  level  -35.6 dBFS
+    34s  video   614 frames (21 key)    1515 kbit/s  qp  26  audio  1692 pkt  level  -35.5 dBFS
+    35s  video   634 frames (22 key)    1843 kbit/s  qp  26  audio  1742 pkt  level  -35.5 dBFS
+    36s  video   654 frames (23 key)    1728 kbit/s  qp  26  audio  1792 pkt  level  -35.6 dBFS
+    37s  video   674 frames (23 key)    1576 kbit/s  qp  26  audio  1842 pkt  level  -35.4 dBFS
+    38s  video   694 frames (24 key)    1610 kbit/s  qp  26  audio  1892 pkt  level  -35.4 dBFS
+    39s  video   714 frames (25 key)    1701 kbit/s  qp  25  audio  1942 pkt  level  -35.9 dBFS
+    40s  video   734 frames (25 key)    1592 kbit/s  qp  25  audio  1992 pkt  level  -36.0 dBFS
+
+============================================================================
+  VERDICT — 40.3s actual
+============================================================================
+  [OK  ] video: 734 frames, 18.2 fps, 1486 kbit/s
+  [OK  ] keyframes: 25 (expected ~20 with a 2s GOP)
+  [OK  ] parameter sets in the stream: SPS=true PPS=true, profile-level-id=42e01f
+  [FAIL] resolution scaling: sizes seen in the stream 1280x720
+  [    ] quantiser: mean 24.9, p95 30, max 37, over 733 frames (from stream)
+  [    ] no cross-check: over 734 frames the encoder sets 16 attributes and the quantiser is not among them — the absence is its own, we use the stream
+  [OK  ] audio: 1992 Opus packets, 64 kbit/s
+  [OK  ] motion: 122 gray frames, max frame-to-frame difference 0.70
+  [OK  ] audio analysis: 39.8s, RMS -35.7 dBFS, peak -26.3 dBFS (1588 LSB), exact zeros 0.0%, floor 188.75 LSB -> working
+
+  Delivery video (Annex-B) (nominal 33ms, 733 intervals):
+    intervals    min 42.9ms   median 48.3ms   p95 64.9ms   max 2.4803s
+    in bursts    0 of 733 (0%)
+    bursts       none: steady delivery
+
+  Delivery audio (Opus in Ogg) (nominal 20ms, 1991 intervals):
+    intervals    min 18.1ms   median 20ms   p95 21ms   max 21.8ms
+    in bursts    0 of 1991 (0%)
+    bursts       none: steady delivery
+
+  Delivery audio (raw PCM) (nominal 100ms, 397 intervals):
+    intervals    min 97.8ms   median 100ms   p95 101.1ms   max 101.9ms
+    in bursts    0 of 397 (0%)
+    bursts       none: steady delivery
+
+  Delivery WASAPI callback (under load) (nominal 10ms, 3984 intervals):
+    intervals    min 8.2ms   median 10ms   p95 10.7ms   max 11.9ms
+    in bursts    0 of 3984 (0%)
+    bursts       none: steady delivery
+
+  Delivery audio (encoder output) (nominal 20ms, 1991 intervals):
+    intervals    min 18.1ms   median 20ms   p95 21ms   max 21.8ms
+    in bursts    0 of 1991 (0%)
+    bursts       none: steady delivery
+
+  [OK  ] audio in WASAPI raw mode (OEM effects bypassed): true
+  [FAIL] pipeline restarts: 1 (expected 0)
+----------------------------------------------------------------------------
+  Pipeline NOT working: see the FAIL lines above.
+
+
+==============================================================================
+  keyframes on demand: -pli 1s (ended without its verdict)
+==============================================================================
+
+============================================================================
+  webcam:    Brio 105
+  requested: 1280x720@30, 2500 kbit/s
+  duration:  40s
+============================================================================
+time=2026-09-11T22:28:31.415+02:00 level=INFO msg="microphone opened" device="Microfono (Brio 105)" format="48000 Hz, 1 channels, 32 bit float" mode=raw no_oem_effects=true
+time=2026-09-11T22:28:31.530+02:00 level=INFO msg="sensitivity raised to the endpoint maximum" gain_db=6 mode=raw
+time=2026-09-11T22:28:31.530+02:00 level=INFO msg="audio active"
+time=2026-09-11T22:28:31.568+02:00 level=INFO msg="camera opened" format="NV12 1280x720@30"
+time=2026-09-11T22:28:31.675+02:00 level=INFO msg="capture started" encoder="NVIDIA H.264 Encoder MFT" video=1280x720@30 bitrate=2500
+time=2026-09-11T22:28:31.675+02:00 level=WARN msg="some encoder settings were not accepted" detail="B frames: SetValue: HRESULT 0x80070057"
+     1s  video     5 frames (1 key)     794 kbit/s  qp  27  audio    42 pkt  level  -36.0 dBFS
+     2s  video    24 frames (2 key)    1737 kbit/s  qp  27  audio    92 pkt  level  -36.2 dBFS
+     3s  video    44 frames (3 key)    1673 kbit/s  qp  25  audio   142 pkt  level  -36.1 dBFS
+     4s  video    64 frames (4 key)    1806 kbit/s  qp  28  audio   192 pkt  level  -35.9 dBFS
+     5s  video    84 frames (5 key)    1580 kbit/s  qp  27  audio   242 pkt  level  -35.9 dBFS
+     6s  video   104 frames (6 key)    1688 kbit/s  qp  27  audio   292 pkt  level  -35.9 dBFS
+     7s  video   124 frames (7 key)    1618 kbit/s  qp  26  audio   342 pkt  level  -35.7 dBFS
+     8s  video   144 frames (8 key)    1232 kbit/s  qp  31  audio   392 pkt  level  -35.5 dBFS
+     9s  video   164 frames (9 key)    1363 kbit/s  qp  33  audio   442 pkt  level  -35.7 dBFS
+    10s  video   184 frames (10 key)    1028 kbit/s  qp  35  audio   492 pkt  level  -35.7 dBFS
+    11s  video   204 frames (11 key)    1077 kbit/s  qp  35  audio   542 pkt  level  -35.7 dBFS
+time=2026-09-11T22:28:42.676+02:00 level=INFO msg="the bitrate command takes effect on this encoder" asked_kbps=1250 before_kbps=1624 after_kbps=1068
+    12s  video   224 frames (12 key)    1441 kbit/s  qp  30  audio   592 pkt  level  -35.8 dBFS
+    13s  video   244 frames (13 key)    1359 kbit/s  qp  29  audio   642 pkt  level  -35.8 dBFS
+    14s  video   264 frames (14 key)    1451 kbit/s  qp  27  audio   692 pkt  level  -35.7 dBFS
+    15s  video   284 frames (15 key)    1434 kbit/s  qp  28  audio   742 pkt  level  -35.8 dBFS
+    16s  video   303 frames (16 key)    1480 kbit/s  qp  28  audio   792 pkt  level  -35.7 dBFS
+    17s  video   324 frames (17 key)    1728 kbit/s  qp  26  audio   842 pkt  level  -35.6 dBFS
+    18s  video   343 frames (18 key)    1555 kbit/s  qp  28  audio   892 pkt  level  -35.9 dBFS
+    19s  video   363 frames (19 key)    1518 kbit/s  qp  26  audio   942 pkt  level  -36.1 dBFS
+    20s  video   383 frames (20 key)    1572 kbit/s  qp  26  audio   992 pkt  level  -36.3 dBFS
+    21s  video   403 frames (21 key)    1567 kbit/s  qp  27  audio  1042 pkt  level  -36.2 dBFS
+    22s  video   423 frames (22 key)    1672 kbit/s  qp  27  audio  1092 pkt  level  -36.1 dBFS
+    23s  video   443 frames (23 key)    1760 kbit/s  qp  27  audio  1142 pkt  level  -36.3 dBFS
+    24s  video   463 frames (24 key)    1663 kbit/s  qp  26  audio  1192 pkt  level  -36.2 dBFS
+    25s  video   483 frames (25 key)    1632 kbit/s  qp  27  audio  1242 pkt  level  -36.3 dBFS
+    26s  video   503 frames (26 key)    1800 kbit/s  qp  26  audio  1292 pkt  level  -36.2 dBFS
+    27s  video   523 frames (27 key)    1595 kbit/s  qp  27  audio  1342 pkt  level  -36.1 dBFS
+    28s  video   543 frames (28 key)    1675 kbit/s  qp  27  audio  1392 pkt  level  -35.9 dBFS
+    29s  video   563 frames (29 key)    1686 kbit/s  qp  27  audio  1442 pkt  level  -35.8 dBFS
+    30s  video   583 frames (30 key)    1680 kbit/s  qp  27  audio  1492 pkt  level  -36.0 dBFS
+    31s  video   603 frames (31 key)    1591 kbit/s  qp  26  audio  1542 pkt  level  -36.0 dBFS
+    32s  video   622 frames (32 key)    1570 kbit/s  qp  27  audio  1592 pkt  level  -35.7 dBFS
+    33s  video   642 frames (33 key)    1781 kbit/s  qp  26  audio  1642 pkt  level  -35.8 dBFS
+    34s  video   662 frames (34 key)    1549 kbit/s  qp  27  audio  1692 pkt  level  -35.8 dBFS
+    35s  video   682 frames (35 key)    1631 kbit/s  qp  27  audio  1742 pkt  level  -35.7 dBFS
+    36s  video   702 frames (36 key)    1616 kbit/s  qp  27  audio  1792 pkt  level  -36.0 dBFS
+    37s  video   722 frames (37 key)    1674 kbit/s  qp  27  audio  1842 pkt  level  -35.8 dBFS
+    38s  video   742 frames (38 key)    1654 kbit/s  qp  27  audio  1892 pkt  level  -36.0 dBFS
+    39s  video   762 frames (39 key)    1668 kbit/s  qp  27  audio  1942 pkt  level  -35.9 dBFS
+    40s  video   782 frames (40 key)    1671 kbit/s  qp  27  audio  1992 pkt  level  -36.2 dBFS
+
+
+==============================================================================
+  the bitrate by command (ended without its verdict)
+==============================================================================
+
+============================================================================
+  webcam:    Brio 105
+  requested: 1280x720@30, 2500 kbit/s
+  duration:  40s
+============================================================================
+time=2026-09-11T22:29:11.705+02:00 level=INFO msg="microphone opened" device="Microfono (Brio 105)" format="48000 Hz, 1 channels, 32 bit float" mode=raw no_oem_effects=true
+time=2026-09-11T22:29:11.835+02:00 level=INFO msg="sensitivity raised to the endpoint maximum" gain_db=6 mode=raw
+time=2026-09-11T22:29:11.835+02:00 level=INFO msg="audio active"
+time=2026-09-11T22:29:11.857+02:00 level=INFO msg="camera opened" format="NV12 1280x720@30"
+time=2026-09-11T22:29:11.955+02:00 level=INFO msg="capture started" encoder="NVIDIA H.264 Encoder MFT" video=1280x720@30 bitrate=2500
+time=2026-09-11T22:29:11.955+02:00 level=WARN msg="some encoder settings were not accepted" detail="B frames: SetValue: HRESULT 0x80070057"
+     1s  video     5 frames (1 key)     902 kbit/s  qp  28  audio    41 pkt  level  -35.9 dBFS
+     2s  video    25 frames (1 key)    1622 kbit/s  qp  26  audio    91 pkt  level  -35.7 dBFS
+     3s  video    45 frames (2 key)    1721 kbit/s  qp  25  audio   141 pkt  level  -35.9 dBFS
+     4s  video    65 frames (3 key)    1875 kbit/s  qp  24  audio   191 pkt  level  -36.1 dBFS
+     5s  video    85 frames (3 key)    1533 kbit/s  qp  25  audio   241 pkt  level  -36.0 dBFS
+     6s  video   104 frames (4 key)    1799 kbit/s  qp  25  audio   291 pkt  level  -36.0 dBFS
+     7s  video   124 frames (5 key)    1809 kbit/s  qp  26  audio   341 pkt  level  -36.0 dBFS
+     8s  video   144 frames (5 key)    1218 kbit/s  qp  32  audio   391 pkt  level  -35.9 dBFS
+     9s  video   164 frames (6 key)    1430 kbit/s  qp  35  audio   441 pkt  level  -36.0 dBFS
+    10s  video   184 frames (7 key)     758 kbit/s  qp  35  audio   491 pkt  level  -35.8 dBFS
+    11s  video   204 frames (7 key)    1012 kbit/s  qp  35  audio   541 pkt  level  -35.8 dBFS
+time=2026-09-11T22:29:22.957+02:00 level=INFO msg="the bitrate command takes effect on this encoder" asked_kbps=1250 before_kbps=1774 after_kbps=1002
+    12s  video   224 frames (8 key)    1304 kbit/s  qp  29  audio   591 pkt  level  -34.6 dBFS
+    13s  video   244 frames (9 key)    1663 kbit/s  qp  25  audio   641 pkt  level  -35.9 dBFS
+    14s  video   264 frames (9 key)    1294 kbit/s  qp  26  audio   691 pkt  level  -35.7 dBFS
+    15s  video   284 frames (10 key)    1506 kbit/s  qp  26  audio   741 pkt  level  -35.8 dBFS
+    16s  video   304 frames (11 key)    1763 kbit/s  qp  26  audio   791 pkt  level  -35.7 dBFS
+    17s  video   324 frames (11 key)    1490 kbit/s  qp  25  audio   841 pkt  level  -35.9 dBFS
+    18s  video   344 frames (12 key)    1739 kbit/s  qp  25  audio   891 pkt  level  -35.7 dBFS
+    19s  video   364 frames (13 key)    1884 kbit/s  qp  25  audio   941 pkt  level  -35.6 dBFS
+    20s  video   384 frames (13 key)    1379 kbit/s  qp  26  audio   991 pkt  level  -35.5 dBFS
+
+  --- asked for 800 kbit/s (was 2500), by command ---
+
+    21s  video   404 frames (14 key)    1355 kbit/s  qp  39  audio  1041 pkt  level  -36.1 dBFS
+    22s  video   423 frames (15 key)     199 kbit/s  qp  40  audio  1091 pkt  level  -36.1 dBFS
+    23s  video   443 frames (15 key)     788 kbit/s  qp  37  audio  1141 pkt  level  -36.0 dBFS
+    24s  video   463 frames (16 key)     662 kbit/s  qp  30  audio  1191 pkt  level  -35.6 dBFS
+    25s  video   483 frames (17 key)     542 kbit/s  qp  34  audio  1241 pkt  level  -35.4 dBFS
+    26s  video   503 frames (17 key)     564 kbit/s  qp  35  audio  1291 pkt  level  -35.3 dBFS
+    27s  video   523 frames (18 key)     398 kbit/s  qp  33  audio  1341 pkt  level  -35.5 dBFS
+    28s  video   543 frames (19 key)     450 kbit/s  qp  34  audio  1391 pkt  level  -35.6 dBFS
+    29s  video   563 frames (19 key)     449 kbit/s  qp  34  audio  1441 pkt  level  -35.6 dBFS
+    30s  video   583 frames (20 key)     544 kbit/s  qp  35  audio  1491 pkt  level  -35.9 dBFS
+    31s  video   603 frames (21 key)     619 kbit/s  qp  34  audio  1541 pkt  level  -35.8 dBFS
+    32s  video   623 frames (21 key)     445 kbit/s  qp  34  audio  1591 pkt  level  -35.9 dBFS
+    33s  video   642 frames (22 key)     623 kbit/s  qp  36  audio  1641 pkt  level  -35.9 dBFS
+    34s  video   663 frames (23 key)     631 kbit/s  qp  34  audio  1691 pkt  level  -35.7 dBFS
+    35s  video   682 frames (23 key)     520 kbit/s  qp  35  audio  1741 pkt  level  -36.1 dBFS
+    36s  video   702 frames (24 key)     581 kbit/s  qp  34  audio  1791 pkt  level  -36.1 dBFS
+    37s  video   723 frames (25 key)     548 kbit/s  qp  35  audio  1841 pkt  level  -36.0 dBFS
+    38s  video   742 frames (25 key)     582 kbit/s  qp  34  audio  1891 pkt  level  -35.5 dBFS
+    39s  video   762 frames (26 key)     390 kbit/s  qp  34  audio  1941 pkt  level  -35.9 dBFS
+    40s  video   782 frames (27 key)     435 kbit/s  qp  34  audio  1991 pkt  level  -35.8 dBFS
+
+
+==============================================================================
+  the bitrate by rebuilding the encoder
+==============================================================================
+
+============================================================================
+  webcam:    Brio 105
+  requested: 1280x720@30, 2500 kbit/s
+  duration:  40s
+============================================================================
+time=2026-09-11T22:29:51.986+02:00 level=INFO msg="microphone opened" device="Microfono (Brio 105)" format="48000 Hz, 1 channels, 32 bit float" mode=raw no_oem_effects=true
+time=2026-09-11T22:29:52.114+02:00 level=INFO msg="sensitivity raised to the endpoint maximum" gain_db=6 mode=raw
+time=2026-09-11T22:29:52.114+02:00 level=INFO msg="audio active"
+time=2026-09-11T22:29:52.136+02:00 level=INFO msg="camera opened" format="NV12 1280x720@30"
+time=2026-09-11T22:29:52.233+02:00 level=INFO msg="capture started" encoder="NVIDIA H.264 Encoder MFT" video=1280x720@30 bitrate=2500
+time=2026-09-11T22:29:52.233+02:00 level=WARN msg="some encoder settings were not accepted" detail="B frames: SetValue: HRESULT 0x80070057"
+     1s  video     5 frames (1 key)     800 kbit/s  qp  27  audio    41 pkt  level  -36.0 dBFS
+     2s  video    25 frames (1 key)    1720 kbit/s  qp  27  audio    91 pkt  level  -36.1 dBFS
+     3s  video    45 frames (2 key)    1645 kbit/s  qp  26  audio   141 pkt  level  -35.9 dBFS
+     4s  video    65 frames (3 key)    1976 kbit/s  qp  25  audio   191 pkt  level  -35.7 dBFS
+     5s  video    85 frames (3 key)    1491 kbit/s  qp  25  audio   241 pkt  level  -35.8 dBFS
+     6s  video   104 frames (4 key)    1770 kbit/s  qp  26  audio   291 pkt  level  -35.7 dBFS
+     7s  video   125 frames (5 key)    1792 kbit/s  qp  25  audio   341 pkt  level  -35.5 dBFS
+     8s  video   144 frames (5 key)    1170 kbit/s  qp  32  audio   391 pkt  level  -35.6 dBFS
+     9s  video   164 frames (6 key)    1425 kbit/s  qp  36  audio   441 pkt  level  -36.0 dBFS
+    10s  video   184 frames (7 key)     772 kbit/s  qp  35  audio   491 pkt  level  -35.9 dBFS
+    11s  video   204 frames (7 key)    1034 kbit/s  qp  35  audio   541 pkt  level  -36.0 dBFS
+time=2026-09-11T22:30:03.234+02:00 level=INFO msg="the bitrate command takes effect on this encoder" asked_kbps=1250 before_kbps=1713 after_kbps=1027
+    12s  video   224 frames (8 key)    2289 kbit/s  qp  31  audio   591 pkt  level  -36.1 dBFS
+    13s  video   244 frames (9 key)    1517 kbit/s  qp  26  audio   641 pkt  level  -35.7 dBFS
+    14s  video   264 frames (9 key)    1117 kbit/s  qp  27  audio   691 pkt  level  -36.0 dBFS
+    15s  video   284 frames (10 key)    1429 kbit/s  qp  26  audio   741 pkt  level  -36.0 dBFS
+    16s  video   304 frames (11 key)    1468 kbit/s  qp  26  audio   791 pkt  level  -36.1 dBFS
+    17s  video   324 frames (11 key)    1452 kbit/s  qp  25  audio   841 pkt  level  -36.0 dBFS
+    18s  video   344 frames (12 key)    1512 kbit/s  qp  26  audio   891 pkt  level  -36.0 dBFS
+    19s  video   363 frames (13 key)    1902 kbit/s  qp  26  audio   941 pkt  level  -35.6 dBFS
+
+  --- asked for 800 kbit/s (was 2500), by reconfiguration ---
+
+    20s  video   384 frames (13 key)    1353 kbit/s  qp  26  audio   991 pkt  level  -36.2 dBFS
+    21s  video   402 frames (14 key)    1102 kbit/s  qp  38  audio  1041 pkt  level  -35.8 dBFS
+    22s  video   422 frames (14 key)     532 kbit/s  qp  36  audio  1091 pkt  level  -36.1 dBFS
+    23s  video   442 frames (14 key)     965 kbit/s  qp  38  audio  1141 pkt  level  -36.0 dBFS
+    24s  video   462 frames (15 key)    1053 kbit/s  qp  38  audio  1191 pkt  level  -36.1 dBFS
+    25s  video   482 frames (15 key)     358 kbit/s  qp  36  audio  1241 pkt  level  -35.9 dBFS
+    26s  video   502 frames (15 key)     965 kbit/s  qp  38  audio  1291 pkt  level  -35.6 dBFS
+    27s  video   522 frames (16 key)    1044 kbit/s  qp  38  audio  1341 pkt  level  -35.7 dBFS
+    28s  video   542 frames (16 key)     356 kbit/s  qp  35  audio  1391 pkt  level  -35.7 dBFS
+    29s  video   562 frames (16 key)     977 kbit/s  qp  38  audio  1441 pkt  level  -35.8 dBFS
+    30s  video   582 frames (17 key)    1042 kbit/s  qp  38  audio  1491 pkt  level  -35.9 dBFS
+    31s  video   602 frames (17 key)     358 kbit/s  qp  35  audio  1541 pkt  level  -35.6 dBFS
+    32s  video   622 frames (17 key)     961 kbit/s  qp  38  audio  1591 pkt  level  -35.9 dBFS
+    33s  video   641 frames (18 key)    1036 kbit/s  qp  38  audio  1641 pkt  level  -35.7 dBFS
+    34s  video   662 frames (18 key)     361 kbit/s  qp  36  audio  1691 pkt  level  -36.0 dBFS
+    35s  video   681 frames (18 key)     964 kbit/s  qp  38  audio  1741 pkt  level  -35.8 dBFS
+    36s  video   701 frames (19 key)    1051 kbit/s  qp  38  audio  1791 pkt  level  -35.8 dBFS
+    37s  video   721 frames (19 key)     351 kbit/s  qp  36  audio  1841 pkt  level  -36.0 dBFS
+    38s  video   741 frames (19 key)     958 kbit/s  qp  38  audio  1891 pkt  level  -36.1 dBFS
+    39s  video   761 frames (20 key)     880 kbit/s  qp  38  audio  1941 pkt  level  -35.9 dBFS
+    40s  video   781 frames (20 key)     232 kbit/s  qp  32  audio  1991 pkt  level  -35.6 dBFS
+
+============================================================================
+  VERDICT — 40.3s actual
+============================================================================
+  [OK  ] video: 781 frames, 19.4 fps, 1121 kbit/s
+  [OK  ] hot bitrate: asked 800, produced 1482 before and 766 after
+  [OK  ] keyframes: 20 (expected ~20 with a 2s GOP)
+  [OK  ] parameter sets in the stream: SPS=true PPS=true, profile-level-id=42e01f
+  [    ] quantiser: mean 27.7, p95 37, max 40, over 780 frames (from stream)
+  [    ] no cross-check: over 781 frames the encoder sets 16 attributes and the quantiser is not among them — the absence is its own, we use the stream
+  [OK  ] audio: 1992 Opus packets, 64 kbit/s
+  [OK  ] motion: 130 gray frames, max frame-to-frame difference 0.70
+  [OK  ] audio analysis: 39.8s, RMS -35.9 dBFS, peak -29.2 dBFS (1133 LSB), exact zeros 0.0%, floor 148.30 LSB -> working
+
+  Delivery video (Annex-B) (nominal 33ms, 780 intervals):
+    intervals    min 39.8ms   median 48.3ms   p95 65ms   max 112.4ms
+    in bursts    0 of 780 (0%)
+    bursts       none: steady delivery
+
+  Delivery audio (Opus in Ogg) (nominal 20ms, 1991 intervals):
+    intervals    min 17.8ms   median 20ms   p95 20.9ms   max 22ms
+    in bursts    0 of 1991 (0%)
+    bursts       none: steady delivery
+
+  Delivery audio (raw PCM) (nominal 100ms, 397 intervals):
+    intervals    min 98.2ms   median 100ms   p95 100.9ms   max 101.5ms
+    in bursts    0 of 397 (0%)
+    bursts       none: steady delivery
+
+  Delivery WASAPI callback (under load) (nominal 10ms, 3983 intervals):
+    intervals    min 8.1ms   median 10ms   p95 10.7ms   max 11.8ms
+    in bursts    0 of 3983 (0%)
+    bursts       none: steady delivery
+
+  Delivery audio (encoder output) (nominal 20ms, 1991 intervals):
+    intervals    min 17.8ms   median 20.1ms   p95 20.9ms   max 22ms
+    in bursts    0 of 1991 (0%)
+    bursts       none: steady delivery
+
+  [OK  ] audio in WASAPI raw mode (OEM effects bypassed): true
+----------------------------------------------------------------------------
+  Pipeline working: the four streams arrive with valid data.
+
+
+==============================================================================
+  the cadence dropped to two frames a second
+==============================================================================
+
+============================================================================
+  webcam:    Brio 105
+  requested: 1280x720@30, 2500 kbit/s
+  duration:  40s
+============================================================================
+time=2026-09-11T22:30:32.327+02:00 level=INFO msg="microphone opened" device="Microfono (Brio 105)" format="48000 Hz, 1 channels, 32 bit float" mode=raw no_oem_effects=true
+time=2026-09-11T22:30:32.448+02:00 level=INFO msg="sensitivity raised to the endpoint maximum" gain_db=6 mode=raw
+time=2026-09-11T22:30:32.448+02:00 level=INFO msg="audio active"
+time=2026-09-11T22:30:32.474+02:00 level=INFO msg="camera opened" format="NV12 1280x720@30"
+time=2026-09-11T22:30:32.576+02:00 level=INFO msg="capture started" encoder="NVIDIA H.264 Encoder MFT" video=1280x720@30 bitrate=2500
+time=2026-09-11T22:30:32.576+02:00 level=WARN msg="some encoder settings were not accepted" detail="B frames: SetValue: HRESULT 0x80070057"
+     1s  video     5 frames (1 key)     910 kbit/s  qp  28  audio    42 pkt  level  -36.0 dBFS
+     2s  video    25 frames (1 key)    1643 kbit/s  qp  26  audio    92 pkt  level  -36.3 dBFS
+     3s  video    45 frames (2 key)    1745 kbit/s  qp  25  audio   142 pkt  level  -35.8 dBFS
+     4s  video    65 frames (3 key)    1819 kbit/s  qp  25  audio   192 pkt  level  -35.2 dBFS
+     5s  video    85 frames (3 key)    1588 kbit/s  qp  25  audio   242 pkt  level  -36.0 dBFS
+     6s  video   104 frames (4 key)    1717 kbit/s  qp  26  audio   292 pkt  level  -35.8 dBFS
+     7s  video   125 frames (5 key)    2051 kbit/s  qp  25  audio   342 pkt  level  -35.1 dBFS
+     8s  video   144 frames (5 key)     804 kbit/s  qp  34  audio   392 pkt  level  -35.3 dBFS
+     9s  video   164 frames (6 key)    1449 kbit/s  qp  35  audio   442 pkt  level  -35.5 dBFS
+    10s  video   184 frames (7 key)     979 kbit/s  qp  34  audio   492 pkt  level  -35.8 dBFS
+    11s  video   204 frames (7 key)    1188 kbit/s  qp  33  audio   542 pkt  level  -35.7 dBFS
+time=2026-09-11T22:30:43.577+02:00 level=INFO msg="the bitrate command takes effect on this encoder" asked_kbps=1250 before_kbps=1774 after_kbps=1024
+    12s  video   224 frames (8 key)    1132 kbit/s  qp  34  audio   592 pkt  level  -35.5 dBFS
+    13s  video   244 frames (9 key)    1556 kbit/s  qp  26  audio   642 pkt  level  -35.9 dBFS
+    14s  video   264 frames (9 key)    1349 kbit/s  qp  26  audio   692 pkt  level  -35.8 dBFS
+    15s  video   284 frames (10 key)    1646 kbit/s  qp  25  audio   742 pkt  level  -35.5 dBFS
+    16s  video   304 frames (11 key)    1565 kbit/s  qp  26  audio   792 pkt  level  -35.5 dBFS
+    17s  video   324 frames (11 key)    1688 kbit/s  qp  25  audio   842 pkt  level  -36.0 dBFS
+    18s  video   344 frames (12 key)    1729 kbit/s  qp  26  audio   892 pkt  level  -35.6 dBFS
+    19s  video   364 frames (13 key)    1552 kbit/s  qp  26  audio   942 pkt  level  -35.7 dBFS
+    20s  video   383 frames (13 key)    1428 kbit/s  qp  25  audio   992 pkt  level  -35.8 dBFS
+
+  --- asked for 1280x720@2 ---
+
+time=2026-09-11T22:30:52.347+02:00 level=INFO msg="video format changed" video=1280x720@2 declared=2 reader=1280x720 error=<nil>
+    21s  video   387 frames (14 key)    2889 kbit/s  qp  24  audio  1042 pkt  level  -36.0 dBFS
+    22s  video   389 frames (15 key)    2651 kbit/s  qp   8  audio  1092 pkt  level  -35.8 dBFS
+    23s  video   391 frames (16 key)    2501 kbit/s  qp   9  audio  1142 pkt  level  -35.7 dBFS
+    24s  video   393 frames (17 key)    2497 kbit/s  qp   9  audio  1192 pkt  level  -35.8 dBFS
+    25s  video   395 frames (18 key)    2503 kbit/s  qp   9  audio  1242 pkt  level  -35.8 dBFS
+    26s  video   397 frames (19 key)    2499 kbit/s  qp   9  audio  1292 pkt  level  -36.1 dBFS
+    27s  video   399 frames (20 key)    2504 kbit/s  qp   9  audio  1342 pkt  level  -36.0 dBFS
+    28s  video   401 frames (21 key)    2496 kbit/s  qp   9  audio  1392 pkt  level  -36.0 dBFS
+    29s  video   403 frames (22 key)    2500 kbit/s  qp   9  audio  1442 pkt  level  -36.0 dBFS
+    30s  video   405 frames (23 key)    2502 kbit/s  qp   9  audio  1492 pkt  level  -35.6 dBFS
+    31s  video   407 frames (24 key)    2497 kbit/s  qp   9  audio  1542 pkt  level  -35.6 dBFS
+    32s  video   409 frames (25 key)    2502 kbit/s  qp   9  audio  1592 pkt  level  -35.8 dBFS
+    33s  video   411 frames (26 key)    2499 kbit/s  qp   9  audio  1642 pkt  level  -35.5 dBFS
+    34s  video   413 frames (27 key)    2501 kbit/s  qp   9  audio  1692 pkt  level  -35.8 dBFS
+    35s  video   415 frames (28 key)    2505 kbit/s  qp   9  audio  1742 pkt  level  -35.5 dBFS
+    36s  video   417 frames (29 key)    2499 kbit/s  qp   9  audio  1792 pkt  level  -36.2 dBFS
+    37s  video   419 frames (30 key)    2496 kbit/s  qp   9  audio  1842 pkt  level  -35.9 dBFS
+    38s  video   421 frames (31 key)    2503 kbit/s  qp   9  audio  1892 pkt  level  -36.0 dBFS
+    39s  video   423 frames (32 key)    2497 kbit/s  qp   9  audio  1942 pkt  level  -36.0 dBFS
+    40s  video   425 frames (33 key)    2502 kbit/s  qp   9  audio  1992 pkt  level  -36.0 dBFS
+
+============================================================================
+  VERDICT — 40.3s actual
+============================================================================
+  [OK  ] video: 425 frames, 10.5 fps, 1987 kbit/s
+  [OK  ] keyframes: 33 (expected ~20 with a 2s GOP)
+  [OK  ] parameter sets in the stream: SPS=true PPS=true, profile-level-id=42e01f
+  [    ] quantiser: mean 23.7, p95 32, max 37, over 424 frames (from stream)
+  [    ] no cross-check: over 425 frames the encoder sets 16 attributes and the quantiser is not among them — the absence is its own, we use the stream
+  [OK  ] audio: 1992 Opus packets, 64 kbit/s
+  [OK  ] motion: 130 gray frames, max frame-to-frame difference 0.75
+  [OK  ] audio analysis: 39.8s, RMS -35.8 dBFS, peak -27.8 dBFS (1331 LSB), exact zeros 0.0%, floor 163.55 LSB -> working
+
+  Delivery video (Annex-B) (nominal 33ms, 424 intervals):
+    intervals    min 39.5ms   median 48.6ms   p95 494.7ms   max 513.8ms
+    in bursts    0 of 424 (0%)
+    bursts       none: steady delivery
+
+  Delivery audio (Opus in Ogg) (nominal 20ms, 1991 intervals):
+    intervals    min 17.1ms   median 20ms   p95 21.2ms   max 22.9ms
+    in bursts    0 of 1991 (0%)
+    bursts       none: steady delivery
+
+  Delivery audio (raw PCM) (nominal 100ms, 397 intervals):
+    intervals    min 98ms   median 100.1ms   p95 101.1ms   max 102.1ms
+    in bursts    0 of 397 (0%)
+    bursts       none: steady delivery
+
+  Delivery WASAPI callback (under load) (nominal 10ms, 3984 intervals):
+    intervals    min 8.5ms   median 10ms   p95 10.7ms   max 11.7ms
+    in bursts    0 of 3984 (0%)
+    bursts       none: steady delivery
+
+  Delivery audio (encoder output) (nominal 20ms, 1991 intervals):
+    intervals    min 17.1ms   median 20ms   p95 21.2ms   max 22.9ms
+    in bursts    0 of 1991 (0%)
+    bursts       none: steady delivery
+
+  [OK  ] audio in WASAPI raw mode (OEM effects bypassed): true
+----------------------------------------------------------------------------
+  Pipeline working: the four streams arrive with valid data.
+
+==============================================================================
+  THIRD ROUND - keyframes on demand (crashed at teardown)
+==============================================================================
+
+============================================================================
+  webcam:    Brio 105
+  requested: 1280x720@30, 2500 kbit/s
+  duration:  40s
+============================================================================
+time=2026-09-12T02:20:42.880+02:00 level=INFO msg="microphone opened" device="Microfono (Brio 105)" format="48000 Hz, 1 channels, 32 bit float" mode=raw no_oem_effects=true
+time=2026-09-12T02:20:42.998+02:00 level=INFO msg="camera opened" format="NV12 1280x720@30"
+time=2026-09-12T02:20:43.002+02:00 level=INFO msg="sensitivity raised to the endpoint maximum" gain_db=6 mode=raw
+time=2026-09-12T02:20:43.002+02:00 level=INFO msg="audio active"
+time=2026-09-12T02:20:43.107+02:00 level=INFO msg="capture started" encoder="NVIDIA H.264 Encoder MFT" video=1280x720@30 bitrate=2500
+time=2026-09-12T02:20:43.107+02:00 level=WARN msg="some encoder settings were not accepted" detail="B frames: SetValue: HRESULT 0x80070057"
+     1s  video     5 frames (1 key)     853 kbit/s  qp  28  audio    41 pkt  level  -36.1 dBFS
+     2s  video    25 frames (2 key)    1656 kbit/s  qp  26  audio    91 pkt  level  -35.7 dBFS
+     3s  video    45 frames (3 key)    1722 kbit/s  qp  28  audio   141 pkt  level  -35.4 dBFS
+     4s  video    65 frames (4 key)    1638 kbit/s  qp  27  audio   191 pkt  level  -35.5 dBFS
+     5s  video    85 frames (5 key)    1656 kbit/s  qp  26  audio   241 pkt  level  -35.8 dBFS
+     6s  video   104 frames (6 key)    1594 kbit/s  qp  27  audio   291 pkt  level  -35.7 dBFS
+     7s  video   125 frames (7 key)    1839 kbit/s  qp  27  audio   341 pkt  level  -35.4 dBFS
+     8s  video   145 frames (8 key)    1489 kbit/s  qp  31  audio   391 pkt  level  -35.2 dBFS
+     9s  video   164 frames (9 key)    1015 kbit/s  qp  34  audio   441 pkt  level  -35.3 dBFS
+    10s  video   184 frames (10 key)    1366 kbit/s  qp  36  audio   491 pkt  level  -35.3 dBFS
+    11s  video   204 frames (11 key)    1151 kbit/s  qp  35  audio   541 pkt  level  -35.6 dBFS
+time=2026-09-12T02:20:54.108+02:00 level=INFO msg="the bitrate command takes effect on this encoder" asked_kbps=1250 before_kbps=1668 after_kbps=1144
+    12s  video   224 frames (12 key)    1214 kbit/s  qp  30  audio   591 pkt  level  -36.3 dBFS
+    13s  video   244 frames (13 key)    1389 kbit/s  qp  29  audio   641 pkt  level  -35.8 dBFS
+    14s  video   264 frames (14 key)    1391 kbit/s  qp  26  audio   691 pkt  level  -35.1 dBFS
+    15s  video   284 frames (15 key)    1510 kbit/s  qp  28  audio   741 pkt  level  -35.7 dBFS
+    16s  video   304 frames (16 key)    1617 kbit/s  qp  27  audio   791 pkt  level  -35.3 dBFS
+    17s  video   324 frames (17 key)    1572 kbit/s  qp  27  audio   841 pkt  level  -35.6 dBFS
+    18s  video   344 frames (18 key)    1737 kbit/s  qp  27  audio   891 pkt  level  -35.7 dBFS
+    19s  video   364 frames (19 key)    1554 kbit/s  qp  28  audio   941 pkt  level  -35.8 dBFS
+    20s  video   384 frames (20 key)    1774 kbit/s  qp  28  audio   991 pkt  level  -36.3 dBFS
+    21s  video   404 frames (21 key)    1717 kbit/s  qp  27  audio  1041 pkt  level  -35.9 dBFS
+    22s  video   423 frames (22 key)    1456 kbit/s  qp  28  audio  1091 pkt  level  -35.9 dBFS
+    23s  video   443 frames (23 key)    1771 kbit/s  qp  27  audio  1141 pkt  level  -35.8 dBFS
+    24s  video   463 frames (24 key)    1657 kbit/s  qp  27  audio  1191 pkt  level  -35.9 dBFS
+    25s  video   483 frames (25 key)    1497 kbit/s  qp  26  audio  1241 pkt  level  -35.6 dBFS
+    26s  video   503 frames (26 key)    1590 kbit/s  qp  27  audio  1291 pkt  level  -35.9 dBFS
+    27s  video   523 frames (27 key)    1836 kbit/s  qp  26  audio  1341 pkt  level  -35.7 dBFS
+    28s  video   543 frames (28 key)    1457 kbit/s  qp  27  audio  1391 pkt  level  -35.0 dBFS
+    29s  video   563 frames (29 key)    1689 kbit/s  qp  27  audio  1441 pkt  level  -36.1 dBFS
+    30s  video   583 frames (30 key)    1679 kbit/s  qp  26  audio  1491 pkt  level  -35.9 dBFS
+    31s  video   603 frames (31 key)    1502 kbit/s  qp  26  audio  1541 pkt  level  -35.7 dBFS
+    32s  video   623 frames (32 key)    1771 kbit/s  qp  26  audio  1591 pkt  level  -36.1 dBFS
+    33s  video   643 frames (33 key)    1543 kbit/s  qp  26  audio  1641 pkt  level  -35.4 dBFS
+    34s  video   663 frames (34 key)    1725 kbit/s  qp  28  audio  1691 pkt  level  -35.6 dBFS
+    35s  video   683 frames (35 key)    1557 kbit/s  qp  26  audio  1741 pkt  level  -35.6 dBFS
+    36s  video   703 frames (36 key)    1728 kbit/s  qp  27  audio  1791 pkt  level  -36.0 dBFS
+    37s  video   723 frames (37 key)    1737 kbit/s  qp  26  audio  1841 pkt  level  -36.1 dBFS
+    38s  video   742 frames (38 key)    1498 kbit/s  qp  26  audio  1891 pkt  level  -35.5 dBFS
+    39s  video   762 frames (39 key)    1580 kbit/s  qp  27  audio  1941 pkt  level  -35.5 dBFS
+    40s  video   782 frames (40 key)    1631 kbit/s  qp  26  audio  1991 pkt  level  -35.7 dBFS
+ 
+  exit code: -1073741819 
+
+
+==============================================================================
+  THIRD ROUND - keyframes on demand again (crashed at teardown)
+==============================================================================
+
+============================================================================
+  webcam:    Brio 105
+  requested: 1280x720@30, 2500 kbit/s
+  duration:  40s
+============================================================================
+time=2026-09-12T02:21:23.150+02:00 level=INFO msg="microphone opened" device="Microfono (Brio 105)" format="48000 Hz, 1 channels, 32 bit float" mode=raw no_oem_effects=true
+time=2026-09-12T02:21:23.273+02:00 level=INFO msg="sensitivity raised to the endpoint maximum" gain_db=6 mode=raw
+time=2026-09-12T02:21:23.273+02:00 level=INFO msg="audio active"
+time=2026-09-12T02:21:23.308+02:00 level=INFO msg="camera opened" format="NV12 1280x720@30"
+time=2026-09-12T02:21:23.408+02:00 level=INFO msg="capture started" encoder="NVIDIA H.264 Encoder MFT" video=1280x720@30 bitrate=2500
+time=2026-09-12T02:21:23.408+02:00 level=WARN msg="some encoder settings were not accepted" detail="B frames: SetValue: HRESULT 0x80070057"
+     1s  video     5 frames (1 key)     888 kbit/s  qp  27  audio    42 pkt  level  -35.4 dBFS
+     2s  video    25 frames (2 key)    1605 kbit/s  qp  27  audio    92 pkt  level  -35.8 dBFS
+     3s  video    44 frames (3 key)    1665 kbit/s  qp  26  audio   142 pkt  level  -36.3 dBFS
+     4s  video    64 frames (4 key)    1661 kbit/s  qp  27  audio   192 pkt  level  -35.5 dBFS
+     5s  video    84 frames (5 key)    1737 kbit/s  qp  26  audio   242 pkt  level  -35.6 dBFS
+     6s  video   104 frames (6 key)    1596 kbit/s  qp  27  audio   292 pkt  level  -34.8 dBFS
+     7s  video   124 frames (7 key)    1607 kbit/s  qp  27  audio   342 pkt  level  -35.6 dBFS
+     8s  video   144 frames (8 key)    1610 kbit/s  qp  31  audio   392 pkt  level  -35.5 dBFS
+     9s  video   164 frames (9 key)    1072 kbit/s  qp  35  audio   442 pkt  level  -35.2 dBFS
+    10s  video   184 frames (10 key)    1090 kbit/s  qp  35  audio   492 pkt  level  -35.5 dBFS
+    11s  video   204 frames (11 key)    1070 kbit/s  qp  34  audio   542 pkt  level  -35.6 dBFS
+time=2026-09-12T02:21:34.409+02:00 level=INFO msg="the bitrate command takes effect on this encoder" asked_kbps=1250 before_kbps=1654 after_kbps=1091
+    12s  video   224 frames (12 key)    1378 kbit/s  qp  30  audio   592 pkt  level  -35.7 dBFS
+    13s  video   244 frames (13 key)    1333 kbit/s  qp  29  audio   642 pkt  level  -35.9 dBFS
+    14s  video   264 frames (14 key)    1474 kbit/s  qp  27  audio   692 pkt  level  -35.6 dBFS
+    15s  video   284 frames (15 key)    1645 kbit/s  qp  27  audio   742 pkt  level  -33.5 dBFS
+    16s  video   304 frames (16 key)    1633 kbit/s  qp  27  audio   792 pkt  level  -34.5 dBFS
+    17s  video   324 frames (17 key)    1680 kbit/s  qp  27  audio   842 pkt  level  -35.4 dBFS
+    18s  video   343 frames (18 key)    1403 kbit/s  qp  28  audio   892 pkt  level  -35.5 dBFS
+    19s  video   363 frames (19 key)    1557 kbit/s  qp  28  audio   942 pkt  level  -35.6 dBFS
+    20s  video   383 frames (20 key)    1764 kbit/s  qp  26  audio   992 pkt  level  -35.5 dBFS
+    21s  video   403 frames (21 key)    1474 kbit/s  qp  26  audio  1042 pkt  level  -35.6 dBFS
+    22s  video   423 frames (22 key)    1664 kbit/s  qp  27  audio  1092 pkt  level  -35.6 dBFS
+    23s  video   443 frames (23 key)    1505 kbit/s  qp  27  audio  1142 pkt  level  -35.4 dBFS
+    24s  video   463 frames (24 key)    1645 kbit/s  qp  27  audio  1192 pkt  level  -35.4 dBFS
+    25s  video   483 frames (25 key)    1626 kbit/s  qp  27  audio  1242 pkt  level  -35.9 dBFS
+    26s  video   503 frames (26 key)    1668 kbit/s  qp  27  audio  1292 pkt  level  -35.9 dBFS
+    27s  video   523 frames (27 key)    1649 kbit/s  qp  27  audio  1342 pkt  level  -36.0 dBFS
+    28s  video   543 frames (28 key)    1631 kbit/s  qp  27  audio  1392 pkt  level  -35.8 dBFS
+    29s  video   563 frames (29 key)    1636 kbit/s  qp  27  audio  1442 pkt  level  -35.6 dBFS
+    30s  video   583 frames (30 key)    1677 kbit/s  qp  27  audio  1492 pkt  level  -35.9 dBFS
+    31s  video   603 frames (31 key)    1682 kbit/s  qp  27  audio  1542 pkt  level  -36.1 dBFS
+    32s  video   622 frames (32 key)    1584 kbit/s  qp  28  audio  1592 pkt  level  -36.2 dBFS
+    33s  video   642 frames (33 key)    1673 kbit/s  qp  27  audio  1642 pkt  level  -36.2 dBFS
+    34s  video   663 frames (34 key)    1668 kbit/s  qp  27  audio  1692 pkt  level  -36.0 dBFS
+    35s  video   682 frames (35 key)    1657 kbit/s  qp  27  audio  1742 pkt  level  -36.1 dBFS
+    36s  video   702 frames (36 key)    1663 kbit/s  qp  27  audio  1792 pkt  level  -36.0 dBFS
+    37s  video   722 frames (37 key)    1666 kbit/s  qp  27  audio  1842 pkt  level  -36.1 dBFS
+    38s  video   742 frames (38 key)    1673 kbit/s  qp  27  audio  1892 pkt  level  -36.1 dBFS
+    39s  video   762 frames (39 key)    1661 kbit/s  qp  27  audio  1942 pkt  level  -36.1 dBFS
+    40s  video   782 frames (40 key)    1664 kbit/s  qp  27  audio  1992 pkt  level  -35.9 dBFS
+ 
+  exit code: -1073741819 
+
+
+==============================================================================
+  THIRD ROUND - the scale's first step, 960x528, asked a second time
+==============================================================================
+
+============================================================================
+  webcam:    Brio 105
+  requested: 1280x720@30, 2500 kbit/s
+  duration:  40s
+============================================================================
+time=2026-09-12T02:22:03.431+02:00 level=INFO msg="microphone opened" device="Microfono (Brio 105)" format="48000 Hz, 1 channels, 32 bit float" mode=raw no_oem_effects=true
+time=2026-09-12T02:22:03.555+02:00 level=INFO msg="sensitivity raised to the endpoint maximum" gain_db=6 mode=raw
+time=2026-09-12T02:22:03.555+02:00 level=INFO msg="audio active"
+time=2026-09-12T02:22:03.580+02:00 level=INFO msg="camera opened" format="NV12 1280x720@30"
+time=2026-09-12T02:22:03.676+02:00 level=INFO msg="capture started" encoder="NVIDIA H.264 Encoder MFT" video=1280x720@30 bitrate=2500
+time=2026-09-12T02:22:03.676+02:00 level=WARN msg="some encoder settings were not accepted" detail="B frames: SetValue: HRESULT 0x80070057"
+     1s  video     5 frames (1 key)     896 kbit/s  qp  28  audio    42 pkt  level  -36.4 dBFS
+     2s  video    25 frames (1 key)    1651 kbit/s  qp  26  audio    92 pkt  level  -36.4 dBFS
+     3s  video    45 frames (2 key)    1756 kbit/s  qp  25  audio   142 pkt  level  -36.4 dBFS
+     4s  video    65 frames (3 key)    1765 kbit/s  qp  25  audio   192 pkt  level  -36.2 dBFS
+     5s  video    85 frames (3 key)    1541 kbit/s  qp  24  audio   242 pkt  level  -36.0 dBFS
+     6s  video   104 frames (4 key)    1664 kbit/s  qp  26  audio   292 pkt  level  -36.2 dBFS
+     7s  video   125 frames (5 key)    1884 kbit/s  qp  25  audio   342 pkt  level  -35.7 dBFS
+     8s  video   144 frames (5 key)    1111 kbit/s  qp  32  audio   392 pkt  level  -35.9 dBFS
+     9s  video   164 frames (6 key)    1443 kbit/s  qp  34  audio   442 pkt  level  -35.9 dBFS
+    10s  video   184 frames (7 key)    1031 kbit/s  qp  35  audio   492 pkt  level  -35.9 dBFS
+    11s  video   204 frames (7 key)     943 kbit/s  qp  35  audio   542 pkt  level  -36.0 dBFS
+time=2026-09-12T02:22:14.677+02:00 level=INFO msg="the bitrate command takes effect on this encoder" asked_kbps=1250 before_kbps=1700 after_kbps=1061
+    12s  video   224 frames (8 key)    1336 kbit/s  qp  29  audio   592 pkt  level  -35.9 dBFS
+    13s  video   244 frames (9 key)    1630 kbit/s  qp  26  audio   642 pkt  level  -35.9 dBFS
+    14s  video   264 frames (9 key)    1325 kbit/s  qp  26  audio   692 pkt  level  -35.8 dBFS
+    15s  video   284 frames (10 key)    1536 kbit/s  qp  26  audio   742 pkt  level  -36.6 dBFS
+    16s  video   304 frames (11 key)    1877 kbit/s  qp  25  audio   792 pkt  level  -36.0 dBFS
+    17s  video   324 frames (11 key)    1302 kbit/s  qp  26  audio   842 pkt  level  -36.1 dBFS
+    18s  video   344 frames (12 key)    1792 kbit/s  qp  25  audio   892 pkt  level  -35.8 dBFS
+    19s  video   364 frames (13 key)    1883 kbit/s  qp  25  audio   942 pkt  level  -35.8 dBFS
+
+  --- asked for 960x528@30 ---
+
+    20s  video   384 frames (13 key)    1264 kbit/s  qp  26  audio   992 pkt  level  -35.9 dBFS
+time=2026-09-12T02:22:23.880+02:00 level=INFO msg="video format changed" video=960x528@30 declared=30 reader=960x528 error=<nil>
+time=2026-09-12T02:22:24.158+02:00 level=ERROR msg="capture interrupted, restarting" ran_for=20.743s waiting=1s error="ReadSample: HRESULT 0x80004005"
+    21s  video   384 frames (13 key)       0 kbit/s  qp   -  audio  1042 pkt  level  -36.2 dBFS
+time=2026-09-12T02:22:25.306+02:00 level=INFO msg="camera opened" format="NV12 1280x720@30"
+time=2026-09-12T02:22:25.388+02:00 level=INFO msg="capture started" encoder="NVIDIA H.264 Encoder MFT" video=1280x720@30 bitrate=2500
+time=2026-09-12T02:22:25.388+02:00 level=WARN msg="some encoder settings were not accepted" detail="B frames: SetValue: HRESULT 0x80070057"
+    22s  video   384 frames (13 key)       0 kbit/s  qp   -  audio  1092 pkt  level  -36.1 dBFS
+    23s  video   394 frames (14 key)     879 kbit/s  qp  28  audio  1142 pkt  level  -35.7 dBFS
+    24s  video   413 frames (14 key)    1617 kbit/s  qp  26  audio  1192 pkt  level  -36.0 dBFS
+    25s  video   434 frames (15 key)    2040 kbit/s  qp  27  audio  1242 pkt  level  -35.8 dBFS
+    26s  video   453 frames (16 key)    1803 kbit/s  qp  27  audio  1292 pkt  level  -36.2 dBFS
+    27s  video   473 frames (16 key)    1589 kbit/s  qp  26  audio  1342 pkt  level  -36.0 dBFS
+    28s  video   493 frames (17 key)    1761 kbit/s  qp  27  audio  1392 pkt  level  -35.9 dBFS
+    29s  video   513 frames (18 key)    1867 kbit/s  qp  27  audio  1442 pkt  level  -36.1 dBFS
+    30s  video   533 frames (18 key)    1449 kbit/s  qp  27  audio  1492 pkt  level  -36.2 dBFS
+    31s  video   553 frames (19 key)    1723 kbit/s  qp  27  audio  1542 pkt  level  -34.7 dBFS
+    32s  video   573 frames (20 key)    1726 kbit/s  qp  27  audio  1592 pkt  level  -35.7 dBFS
+    33s  video   593 frames (20 key)    1557 kbit/s  qp  27  audio  1642 pkt  level  -35.6 dBFS
+    34s  video   613 frames (21 key)    1737 kbit/s  qp  27  audio  1692 pkt  level  -35.7 dBFS
+    35s  video   633 frames (22 key)    1648 kbit/s  qp  27  audio  1742 pkt  level  -36.2 dBFS
+    36s  video   653 frames (22 key)    1589 kbit/s  qp  26  audio  1792 pkt  level  -36.0 dBFS
+    37s  video   673 frames (23 key)    1704 kbit/s  qp  26  audio  1842 pkt  level  -36.1 dBFS
+    38s  video   692 frames (24 key)    1624 kbit/s  qp  27  audio  1892 pkt  level  -36.0 dBFS
+    39s  video   712 frames (24 key)    1590 kbit/s  qp  26  audio  1942 pkt  level  -36.1 dBFS
+    40s  video   732 frames (25 key)    1693 kbit/s  qp  27  audio  1992 pkt  level  -36.2 dBFS
+
+============================================================================
+  VERDICT — 40.3s actual
+============================================================================
+  [OK  ] video: 732 frames, 18.2 fps, 1470 kbit/s
+  [OK  ] keyframes: 25 (expected ~20 with a 2s GOP)
+  [OK  ] parameter sets in the stream: SPS=true PPS=true, profile-level-id=42e01f
+  [FAIL] resolution scaling: sizes seen in the stream 1280x720
+  [    ] quantiser: mean 25.4, p95 29, max 37, over 731 frames (from stream)
+  [    ] no cross-check: over 732 frames the encoder sets 16 attributes and the quantiser is not among them — the absence is its own, we use the stream
+  [OK  ] audio: 1992 Opus packets, 64 kbit/s
+  [OK  ] motion: 122 gray frames, max frame-to-frame difference 4.89
+  [OK  ] audio analysis: 39.8s, RMS -36.0 dBFS, peak -28.1 dBFS (1285 LSB), exact zeros 0.0%, floor 154.86 LSB -> working
+
+  Delivery video (Annex-B) (nominal 33ms, 731 intervals):
+    intervals    min 40.9ms   median 48.3ms   p95 64.9ms   max 2.5331s
+    in bursts    0 of 731 (0%)
+    bursts       none: steady delivery
+
+  Delivery audio (Opus in Ogg) (nominal 20ms, 1991 intervals):
+    intervals    min 17.4ms   median 20ms   p95 21.2ms   max 22.5ms
+    in bursts    0 of 1991 (0%)
+    bursts       none: steady delivery
+
+  Delivery audio (raw PCM) (nominal 100ms, 397 intervals):
+    intervals    min 97.1ms   median 100ms   p95 101.2ms   max 102.3ms
+    in bursts    0 of 397 (0%)
+    bursts       none: steady delivery
+
+  Delivery WASAPI callback (under load) (nominal 10ms, 3984 intervals):
+    intervals    min 8.4ms   median 10ms   p95 10.7ms   max 11.9ms
+    in bursts    0 of 3984 (0%)
+    bursts       none: steady delivery
+
+  Delivery audio (encoder output) (nominal 20ms, 1991 intervals):
+    intervals    min 17.4ms   median 20ms   p95 21.2ms   max 22.5ms
+    in bursts    0 of 1991 (0%)
+    bursts       none: steady delivery
+
+  [OK  ] audio in WASAPI raw mode (OEM effects bypassed): true
+  [FAIL] pipeline restarts: 1 (expected 0)
+----------------------------------------------------------------------------
+  Pipeline NOT working: see the FAIL lines above.
+
+ 
+  exit code: 1 
+
+
+==============================================================================
+  THIRD ROUND - the scale's last step, 640x352
+==============================================================================
+
+============================================================================
+  webcam:    Brio 105
+  requested: 1280x720@30, 2500 kbit/s
+  duration:  40s
+============================================================================
+time=2026-09-12T02:22:43.803+02:00 level=INFO msg="microphone opened" device="Microfono (Brio 105)" format="48000 Hz, 1 channels, 32 bit float" mode=raw no_oem_effects=true
+time=2026-09-12T02:22:43.918+02:00 level=INFO msg="sensitivity raised to the endpoint maximum" gain_db=6 mode=raw
+time=2026-09-12T02:22:43.918+02:00 level=INFO msg="audio active"
+time=2026-09-12T02:22:43.955+02:00 level=INFO msg="camera opened" format="NV12 1280x720@30"
+time=2026-09-12T02:22:44.057+02:00 level=INFO msg="capture started" encoder="NVIDIA H.264 Encoder MFT" video=1280x720@30 bitrate=2500
+time=2026-09-12T02:22:44.057+02:00 level=WARN msg="some encoder settings were not accepted" detail="B frames: SetValue: HRESULT 0x80070057"
+     1s  video     4 frames (1 key)     651 kbit/s  qp  27  audio    42 pkt  level  -36.0 dBFS
+     2s  video    24 frames (1 key)    1471 kbit/s  qp  28  audio    92 pkt  level  -36.1 dBFS
+     3s  video    44 frames (2 key)    1895 kbit/s  qp  26  audio   142 pkt  level  -36.1 dBFS
+     4s  video    64 frames (3 key)    1972 kbit/s  qp  26  audio   192 pkt  level  -36.0 dBFS
+     5s  video    84 frames (3 key)    1472 kbit/s  qp  26  audio   242 pkt  level  -36.0 dBFS
+     6s  video   104 frames (4 key)    1813 kbit/s  qp  26  audio   292 pkt  level  -36.0 dBFS
+     7s  video   124 frames (5 key)    1783 kbit/s  qp  27  audio   342 pkt  level  -35.7 dBFS
+     8s  video   144 frames (5 key)    1157 kbit/s  qp  32  audio   392 pkt  level  -36.1 dBFS
+     9s  video   163 frames (6 key)    1254 kbit/s  qp  37  audio   442 pkt  level  -36.0 dBFS
+    10s  video   184 frames (7 key)    1212 kbit/s  qp  35  audio   492 pkt  level  -35.8 dBFS
+    11s  video   203 frames (7 key)     984 kbit/s  qp  35  audio   542 pkt  level  -35.8 dBFS
+time=2026-09-12T02:22:55.058+02:00 level=INFO msg="the bitrate command takes effect on this encoder" asked_kbps=1250 before_kbps=1756 after_kbps=1089
+    12s  video   223 frames (8 key)    2505 kbit/s  qp  33  audio   592 pkt  level  -36.3 dBFS
+    13s  video   243 frames (9 key)    1272 kbit/s  qp  27  audio   642 pkt  level  -35.7 dBFS
+    14s  video   263 frames (9 key)     971 kbit/s  qp  28  audio   692 pkt  level  -35.8 dBFS
+    15s  video   283 frames (10 key)    1433 kbit/s  qp  28  audio   742 pkt  level  -36.0 dBFS
+    16s  video   303 frames (11 key)    1586 kbit/s  qp  27  audio   792 pkt  level  -36.1 dBFS
+    17s  video   323 frames (11 key)    1259 kbit/s  qp  27  audio   842 pkt  level  -36.0 dBFS
+    18s  video   343 frames (12 key)    1528 kbit/s  qp  26  audio   892 pkt  level  -36.0 dBFS
+    19s  video   363 frames (13 key)    1680 kbit/s  qp  27  audio   942 pkt  level  -36.0 dBFS
+
+  --- asked for 640x352@30 ---
+
+    20s  video   383 frames (13 key)    1471 kbit/s  qp  26  audio   992 pkt  level  -35.9 dBFS
+time=2026-09-12T02:23:04.231+02:00 level=INFO msg="video format changed" video=640x352@30 declared=30 reader=640x352 error=<nil>
+time=2026-09-12T02:23:04.512+02:00 level=ERROR msg="capture interrupted, restarting" ran_for=20.726s waiting=1s error="ReadSample: HRESULT 0x80004005"
+    21s  video   383 frames (13 key)       0 kbit/s  qp   -  audio  1042 pkt  level  -36.0 dBFS
+time=2026-09-12T02:23:05.657+02:00 level=INFO msg="camera opened" format="NV12 1280x720@30"
+time=2026-09-12T02:23:05.741+02:00 level=INFO msg="capture started" encoder="NVIDIA H.264 Encoder MFT" video=1280x720@30 bitrate=2500
+time=2026-09-12T02:23:05.741+02:00 level=WARN msg="some encoder settings were not accepted" detail="B frames: SetValue: HRESULT 0x80070057"
+    22s  video   383 frames (13 key)       0 kbit/s  qp   -  audio  1092 pkt  level  -35.8 dBFS
+    23s  video   390 frames (14 key)     779 kbit/s  qp  29  audio  1142 pkt  level  -35.8 dBFS
+    24s  video   405 frames (14 key)    1317 kbit/s  qp  26  audio  1192 pkt  level  -36.1 dBFS
+    25s  video   420 frames (15 key)    1356 kbit/s  qp  26  audio  1242 pkt  level  -35.6 dBFS
+    26s  video   435 frames (15 key)    1190 kbit/s  qp  26  audio  1292 pkt  level  -35.7 dBFS
+    27s  video   450 frames (16 key)    1504 kbit/s  qp  26  audio  1342 pkt  level  -35.6 dBFS
+    28s  video   465 frames (16 key)    1092 kbit/s  qp  26  audio  1392 pkt  level  -35.5 dBFS
+    29s  video   480 frames (17 key)    1357 kbit/s  qp  26  audio  1442 pkt  level  -35.8 dBFS
+    30s  video   495 frames (17 key)    1186 kbit/s  qp  26  audio  1492 pkt  level  -35.7 dBFS
+    31s  video   509 frames (18 key)    1418 kbit/s  qp  27  audio  1542 pkt  level  -35.7 dBFS
+    32s  video   525 frames (18 key)    1212 kbit/s  qp  26  audio  1592 pkt  level  -35.6 dBFS
+    33s  video   540 frames (19 key)    1259 kbit/s  qp  27  audio  1642 pkt  level  -36.0 dBFS
+    34s  video   554 frames (19 key)    1082 kbit/s  qp  26  audio  1692 pkt  level  -36.2 dBFS
+    35s  video   569 frames (20 key)    1316 kbit/s  qp  26  audio  1742 pkt  level  -36.2 dBFS
+    36s  video   584 frames (20 key)    1069 kbit/s  qp  26  audio  1792 pkt  level  -35.5 dBFS
+    37s  video   599 frames (21 key)    1648 kbit/s  qp  26  audio  1842 pkt  level  -35.7 dBFS
+    38s  video   614 frames (21 key)     953 kbit/s  qp  27  audio  1892 pkt  level  -35.8 dBFS
+    39s  video   629 frames (22 key)    1490 kbit/s  qp  26  audio  1942 pkt  level  -36.2 dBFS
+    40s  video   644 frames (22 key)     990 kbit/s  qp  27  audio  1992 pkt  level  -36.1 dBFS
+
+============================================================================
+  VERDICT — 40.3s actual
+============================================================================
+  [OK  ] video: 644 frames, 16.0 fps, 1280 kbit/s
+  [OK  ] keyframes: 22 (expected ~20 with a 2s GOP)
+  [OK  ] parameter sets in the stream: SPS=true PPS=true, profile-level-id=42e01f
+  [FAIL] resolution scaling: sizes seen in the stream 1280x720
+  [    ] quantiser: mean 26.1, p95 32, max 38, over 643 frames (from stream)
+  [    ] no cross-check: over 644 frames the encoder sets 16 attributes and the quantiser is not among them — the absence is its own, we use the stream
+  [OK  ] audio: 1992 Opus packets, 64 kbit/s
+  [OK  ] motion: 107 gray frames, max frame-to-frame difference 4.55
+  [OK  ] audio analysis: 39.8s, RMS -35.9 dBFS, peak -28.5 dBFS (1227 LSB), exact zeros 0.0%, floor 152.09 LSB -> working
+
+  Delivery video (Annex-B) (nominal 33ms, 643 intervals):
+    intervals    min 41.5ms   median 51.6ms   p95 79.6ms   max 2.5819s
+    in bursts    0 of 643 (0%)
+    bursts       none: steady delivery
+
+  Delivery audio (Opus in Ogg) (nominal 20ms, 1991 intervals):
+    intervals    min 16.6ms   median 20ms   p95 21.3ms   max 22.4ms
+    in bursts    0 of 1991 (0%)
+    bursts       none: steady delivery
+
+  Delivery audio (raw PCM) (nominal 100ms, 397 intervals):
+    intervals    min 96.9ms   median 100ms   p95 101.3ms   max 102.5ms
+    in bursts    0 of 397 (0%)
+    bursts       none: steady delivery
+
+  Delivery WASAPI callback (under load) (nominal 10ms, 3984 intervals):
+    intervals    min 8ms   median 10ms   p95 10.7ms   max 12ms
+    in bursts    0 of 3984 (0%)
+    bursts       none: steady delivery
+
+  Delivery audio (encoder output) (nominal 20ms, 1991 intervals):
+    intervals    min 16.6ms   median 20ms   p95 21.3ms   max 22.4ms
+    in bursts    0 of 1991 (0%)
+    bursts       none: steady delivery
+
+  [OK  ] audio in WASAPI raw mode (OEM effects bypassed): true
+  [FAIL] pipeline restarts: 1 (expected 0)
+----------------------------------------------------------------------------
+  Pipeline NOT working: see the FAIL lines above.
+
+ 
+  exit code: 1 
+
+
+==============================================================================
+  THIRD ROUND - the bitrate by command, with its verdict this time
+==============================================================================
+
+============================================================================
+  webcam:    Brio 105
+  requested: 1280x720@30, 2500 kbit/s
+  duration:  40s
+============================================================================
+time=2026-09-12T02:23:24.186+02:00 level=INFO msg="microphone opened" device="Microfono (Brio 105)" format="48000 Hz, 1 channels, 32 bit float" mode=raw no_oem_effects=true
+time=2026-09-12T02:23:24.299+02:00 level=INFO msg="sensitivity raised to the endpoint maximum" gain_db=6 mode=raw
+time=2026-09-12T02:23:24.299+02:00 level=INFO msg="audio active"
+time=2026-09-12T02:23:24.344+02:00 level=INFO msg="camera opened" format="NV12 1280x720@30"
+time=2026-09-12T02:23:24.445+02:00 level=INFO msg="capture started" encoder="NVIDIA H.264 Encoder MFT" video=1280x720@30 bitrate=2500
+time=2026-09-12T02:23:24.445+02:00 level=WARN msg="some encoder settings were not accepted" detail="B frames: SetValue: HRESULT 0x80070057"
+     1s  video     2 frames (1 key)     310 kbit/s  qp  26  audio    42 pkt  level  -35.6 dBFS
+     2s  video    17 frames (1 key)    1526 kbit/s  qp  28  audio    92 pkt  level  -35.8 dBFS
+     3s  video    32 frames (2 key)    1361 kbit/s  qp  27  audio   142 pkt  level  -35.7 dBFS
+     4s  video    47 frames (2 key)    1160 kbit/s  qp  26  audio   192 pkt  level  -35.9 dBFS
+     5s  video    62 frames (3 key)    1650 kbit/s  qp  26  audio   242 pkt  level  -35.3 dBFS
+     6s  video    77 frames (3 key)     930 kbit/s  qp  27  audio   292 pkt  level  -35.3 dBFS
+     7s  video    92 frames (4 key)    1438 kbit/s  qp  26  audio   342 pkt  level  -35.6 dBFS
+     8s  video   107 frames (4 key)     501 kbit/s  qp  32  audio   392 pkt  level  -35.3 dBFS
+     9s  video   122 frames (5 key)    1273 kbit/s  qp  35  audio   442 pkt  level  -35.5 dBFS
+    10s  video   137 frames (5 key)     844 kbit/s  qp  36  audio   492 pkt  level  -35.4 dBFS
+    11s  video   152 frames (6 key)     863 kbit/s  qp  35  audio   542 pkt  level  -35.7 dBFS
+time=2026-09-12T02:23:35.445+02:00 level=INFO msg="the bitrate command takes effect on this encoder" asked_kbps=1250 before_kbps=1262 after_kbps=949
+    12s  video   167 frames (6 key)    1293 kbit/s  qp  29  audio   592 pkt  level  -36.0 dBFS
+    13s  video   182 frames (7 key)    1153 kbit/s  qp  27  audio   642 pkt  level  -35.8 dBFS
+    14s  video   197 frames (7 key)    1005 kbit/s  qp  27  audio   692 pkt  level  -35.7 dBFS
+    15s  video   212 frames (8 key)    1289 kbit/s  qp  26  audio   742 pkt  level  -35.7 dBFS
+    16s  video   227 frames (8 key)     974 kbit/s  qp  26  audio   792 pkt  level  -35.7 dBFS
+    17s  video   242 frames (9 key)    1324 kbit/s  qp  26  audio   842 pkt  level  -35.9 dBFS
+    18s  video   256 frames (9 key)     944 kbit/s  qp  26  audio   892 pkt  level  -35.9 dBFS
+    19s  video   271 frames (10 key)    1334 kbit/s  qp  26  audio   942 pkt  level  -35.7 dBFS
+    20s  video   286 frames (10 key)    1011 kbit/s  qp  27  audio   992 pkt  level  -35.6 dBFS
+
+  --- asked for 800 kbit/s (was 2500), by command ---
+
+    21s  video   301 frames (11 key)     188 kbit/s  qp  40  audio  1042 pkt  level  -35.4 dBFS
+    22s  video   316 frames (11 key)     962 kbit/s  qp  39  audio  1092 pkt  level  -35.4 dBFS
+    23s  video   331 frames (12 key)     733 kbit/s  qp  36  audio  1142 pkt  level  -35.4 dBFS
+    24s  video   346 frames (12 key)     392 kbit/s  qp  37  audio  1192 pkt  level  -35.6 dBFS
+    25s  video   361 frames (13 key)     641 kbit/s  qp  39  audio  1242 pkt  level  -35.6 dBFS
+    26s  video   376 frames (13 key)     381 kbit/s  qp  36  audio  1292 pkt  level  -35.8 dBFS
+    27s  video   391 frames (14 key)     532 kbit/s  qp  36  audio  1342 pkt  level  -35.7 dBFS
+    28s  video   406 frames (14 key)     556 kbit/s  qp  34  audio  1392 pkt  level  -35.7 dBFS
+    29s  video   421 frames (15 key)     119 kbit/s  qp  37  audio  1442 pkt  level  -35.9 dBFS
+    30s  video   436 frames (15 key)     470 kbit/s  qp  36  audio  1492 pkt  level  -36.0 dBFS
+    31s  video   451 frames (16 key)     588 kbit/s  qp  35  audio  1542 pkt  level  -36.1 dBFS
+    32s  video   466 frames (16 key)      98 kbit/s  qp  36  audio  1592 pkt  level  -35.9 dBFS
+    33s  video   481 frames (17 key)     547 kbit/s  qp  37  audio  1642 pkt  level  -36.1 dBFS
+    34s  video   496 frames (17 key)     545 kbit/s  qp  29  audio  1692 pkt  level  -35.7 dBFS
+    35s  video   511 frames (18 key)     152 kbit/s  qp  36  audio  1742 pkt  level  -35.7 dBFS
+    36s  video   525 frames (18 key)     385 kbit/s  qp  36  audio  1792 pkt  level  -35.6 dBFS
+    37s  video   541 frames (19 key)     537 kbit/s  qp  36  audio  1842 pkt  level  -35.6 dBFS
+    38s  video   556 frames (19 key)     460 kbit/s  qp  35  audio  1892 pkt  level  -35.8 dBFS
+    39s  video   570 frames (19 key)     150 kbit/s  qp  36  audio  1942 pkt  level  -36.0 dBFS
+    40s  video   586 frames (20 key)     451 kbit/s  qp  36  audio  1992 pkt  level  -35.8 dBFS
+
+============================================================================
+  VERDICT — 40.4s actual
+============================================================================
+  [OK  ] video: 586 frames, 14.5 fps, 770 kbit/s
+  [OK  ] hot bitrate: asked 800, produced 1109 before and 436 after
+  [OK  ] keyframes: 20 (expected ~20 with a 2s GOP)
+  [OK  ] parameter sets in the stream: SPS=true PPS=true, profile-level-id=42e01f
+  [    ] quantiser: mean 28.3, p95 36, max 41, over 585 frames (from stream)
+  [    ] no cross-check: over 586 frames the encoder sets 16 attributes and the quantiser is not among them — the absence is its own, we use the stream
+  [OK  ] audio: 1993 Opus packets, 64 kbit/s
+  [OK  ] motion: 98 gray frames, max frame-to-frame difference 0.77
+  [OK  ] audio analysis: 39.8s, RMS -35.7 dBFS, peak -28.4 dBFS (1246 LSB), exact zeros 0.0%, floor 168.97 LSB -> working
+
+  Delivery video (Annex-B) (nominal 33ms, 585 intervals):
+    intervals    min 54.5ms   median 64.4ms   p95 81.4ms   max 86.2ms
+    in bursts    0 of 585 (0%)
+    bursts       none: steady delivery
+
+  Delivery audio (Opus in Ogg) (nominal 20ms, 1992 intervals):
+    intervals    min 17.9ms   median 20ms   p95 21ms   max 22.6ms
+    in bursts    0 of 1992 (0%)
+    bursts       none: steady delivery
+
+  Delivery audio (raw PCM) (nominal 100ms, 397 intervals):
+    intervals    min 98.2ms   median 100ms   p95 101ms   max 102.1ms
+    in bursts    0 of 397 (0%)
+    bursts       none: steady delivery
+
+  Delivery WASAPI callback (under load) (nominal 10ms, 3985 intervals):
+    intervals    min 8.3ms   median 10ms   p95 10.7ms   max 12ms
+    in bursts    0 of 3985 (0%)
+    bursts       none: steady delivery
+
+  Delivery audio (encoder output) (nominal 20ms, 1992 intervals):
+    intervals    min 17.9ms   median 20ms   p95 21ms   max 22.6ms
+    in bursts    0 of 1992 (0%)
+    bursts       none: steady delivery
+
+  [OK  ] audio in WASAPI raw mode (OEM effects bypassed): true
+----------------------------------------------------------------------------
+  Pipeline working: the four streams arrive with valid data.
+
+ 
+  exit code: 0 

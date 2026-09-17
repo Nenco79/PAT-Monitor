@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="/icon-32.png">
+<!-- iOS reads neither the manifest's display nor its icons on every version, so
+     these two say the same thing in Apple's own words: saved to the Home Screen
+     the monitor opens with no browser chrome, and it opens with the drawing
+     rather than with a screenshot of whatever room was on screen. -->
+<link rel="apple-touch-icon" href="/icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<!-- `black` and not `black-translucent`: translucent puts the page under the
+     clock, and the top of the viewer is where the alert banner and the state
+     line live. -->
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="theme-color" content="#171512">
+<title>PAT Monitor</title>
+<!-- The viewer's own sheets, not one of its own: this page is its continuation
+     and inherits its dark palette. A second sheet to keep in step has already
+     cost `--t-h1` written 28 in one and 24 in the other. -->
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/icons.css">
+</head>
+<body>
+
+<!-- The glyphs live **in the markup**, as on the other two pages, and not inside
+     the code: here, though, the rows are built from JavaScript, so they are
+     cloned from these templates rather than written by hand one per row.
+
+     They are Tabler Icons v3.46.0, MIT, pasted verbatim: the licence is already
+     in `licenses/manually-added/tabler-icons/`. -->
+<template id="i-back">
+  <svg class="ico" viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M5 12l14 0" /><path d="M5 12l6 6" /><path d="M5 12l6 -6" />
+  </svg>
+</template>
+<template id="i-play">
+  <svg class="ico" viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M7 4v16l13 -8z" />
+  </svg>
+</template>
+<template id="i-download">
+  <svg class="ico" viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2" />
+    <path d="M7 11l5 5l5 -5" /><path d="M12 4l0 12" />
+  </svg>
+</template>
+<template id="i-keep">
+  <svg class="ico" viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M15 4.5l-4 4l-4 1.5l-1.5 1.5l7 7l1.5 -1.5l1.5 -4l4 -4" />
+    <path d="M9 15l-4.5 4.5" /><path d="M14.5 4l5.5 5.5" />
+  </svg>
+</template>
+<template id="i-delete">
+  <svg class="ico" viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M4 7l16 0" /><path d="M10 11l0 6" /><path d="M14 11l0 6" />
+    <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" />
+    <path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" />
+  </svg>
+</template>
+
+<div class="viewer clips">
+  <div class="clips-head">
+    <a class="ghost" id="back" href="/">
+      <svg class="ico" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M5 12l14 0" /><path d="M5 12l6 6" /><path d="M5 12l6 -6" />
+      </svg><span data-i18n="clips.back"></span></a>
+    <h1 data-i18n="clips.title"></h1>
+  </div>
+
+  <!-- There is **one** player, and it sits at the top: a row is pressed and the
+       clip loads here. One player per row would be one connection per row, and
+       over twenty clips through the funnel that is not a nuance.
+
+       Hidden until something is chosen: a black rectangle above an empty list
+       reads as a fault. -->
+  <div class="clips-player" id="player" hidden>
+    <video id="clip" controls playsinline preload="metadata"></video>
+    <div class="clips-playing">
+      <span id="playing-when"></span>
+      <span id="playing-what"></span>
+    </div>
+  </div>
+
+  <!-- The codec panel: it appears **only** if the browser declares it cannot
+       play what we write. It applies to Safari before iOS 17, which does not
+       play Opus audio inside MP4. Conditions that depend on the viewer's
+       browser are shown: nobody reads them inside the console. -->
+  <p class="warnbox" id="codec" data-i18n="clips.codec"></p>
+
+  <p class="clips-empty" id="empty" hidden data-i18n="clips.empty"></p>
+  <p class="warnbox" id="error" role="alert"></p>
+
+  <ul class="clips-list" id="list"></ul>
+
+  <p class="clips-note" id="note"></p>
+</div>
+<script src="/dictionary.js"></script>
+<script src="/i18n.js"></script>
+<script src="/clips.js"></script>
+</body>
+</html>

@@ -1,0 +1,2309 @@
+/* The monitor's stylesheet.
+   ============================================================================
+
+   The same system as the configuration path, and two palettes. The reason for
+   the difference is worth repeating here, because it is the kind of thing that
+   at the first tidy-up looks like an oversight to correct:
+
+     the monitor is watched at night, on a phone, and there a dark background is
+     not a preference but a necessity; the configuration is done once, in
+     daylight, in front of a computer.
+
+   So the viewer is **not** lightened to make it look like the other one. What
+   holds the two faces together is what does not depend on the light — the type
+   scale, the multiples of 4, the radii, the shape of the buttons, the vocabulary
+   of the boxes — and the **colours**, which are exactly the same from phase to
+   phase. Only their lightness changes, because the ground they sit on changes: a
+   teal tuned for the cream disappears on the near-black.
+
+   Which page takes which palette is not a matter of taste:
+
+     viewer          night   it is the three-in-the-morning page
+     sign-in         night   it is the door of the three-in-the-morning page, and
+                             a white flash before the video is exactly what we
+                             are trying to avoid
+     configuration   day     done once, at the computer, and it is the first
+                             contact with the product
+   ========================================================================== */
+
+:root {
+  /* --- type scale: seven sizes, three weights (400 · 500 · 600) --- */
+  --t-micro: 11px;   /* eyebrows, small-caps labels */
+  --t-small: 13px;   /* captions, notes */
+  --t-ui:    14px;   /* boxes, secondary text */
+  --t-body:  16px;   /* body text */
+  --t-lead:  18px;   /* opening line */
+  /* The heading of the recordings page. The scale holds whole in both sheets —
+     see the twin note in onboarding.css — so it was declared even while nothing
+     read it. A token that is missing does not protest: the line becomes invalid
+     and the heading drops to the body's size with no error anywhere. */
+  --t-h2:    22px;
+  --t-h1:    28px;
+  --t-hero:  36px;   /* not used here: the scale is declared whole */
+
+  /* --- spacing scale: multiples of 4 --- */
+  --s1: 4px;  --s2: 8px;  --s3: 12px; --s4: 16px;
+  --s5: 24px; --s6: 32px; --s7: 40px; --s8: 56px;
+
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  --mono: ui-monospace, SFMono-Regular, "Cascadia Mono", Consolas, monospace;
+
+  /* **The stage is pure black, and it does not follow the palette.** It is the
+     letterbox around the image: a tinted frame reads as a cast over the video,
+     so the warm near-black of the rest of the page will not do here. It holds
+     the same way in daylight — the configuration's preview is the same component
+     — and that is why the token exists in both sheets with the same value
+     instead of being written by hand four times here and twice there. */
+  --stage: #000;
+
+  /* **The shadow is a whole token, not a colour.** Identical geometry in the two
+     sheets and two different colours — 14/44 of pure black in the dark, 08/33 of
+     warm ink in daylight — and that is not an oversight: warm ink on the earth
+     weighs more than black, so in daylight it was lowered. And the warm one
+     **cannot** go on the night: `#2E2A24` on the `#171512` ground is lighter
+     than the ground, it would be a halo and not a shadow. On the near-black the
+     only direction available is pure black. */
+  --shadow-s:    0 1px 2px #00000014;
+  --shadow-card: var(--shadow-s), 0 10px 28px -18px #00000044;
+
+  /* **The scale of radii, and the rule that generates it is nesting**: a box
+     inside another wants a smaller radius than the one containing it. These are
+     not four steps chosen at a desk — they are the four roles nesting produces.
+
+       -l   the surface that contains cards — today only the explainer
+       ---  the card: the step, the sign-in box
+       -s   what sits inside a card: fields, notes, addresses
+       -xs  what is smaller than a line of text: code, codes to scan, images,
+            the focus ring
+
+     A pill is not a step of this scale: it is `999px`, and on a track 10 px high
+     a radius of 5 is exactly that — mapping it onto a step would say the wrong
+     thing about what it wants to be.
+
+     **Declared whole even where not all of it is needed today.** It is the same
+     care as with the type scale, and for the same reason: the sheets downstream
+     — `i18n.css`, which two pages with two palettes read — can use only what is
+     declared in both places they might end up. */
+  --radius-l:  16px;
+  --radius:    14px;
+  --radius-s:  10px;
+  --radius-xs:  6px;
+
+  /* **The focus ring, in two numbers.** Written out in full in three sheets, one
+     of the three had already gone its own way — `.lang select` had 2px/2px
+     against the others' 2.5/3 — that is, the usual divergence on a component
+     that must have one face: whoever tabs between the language chooser and the
+     password field saw two different rings.
+
+     It does not change with the light, so it lives here beside the sizes and not
+     beside the colours. The gap is **1 px and not 3**: at three, the ground shows
+     between ring and border, and on a dark page that line reads as a second
+     black outline. Measured, the band was 6 px; now it is 4. */
+  --focus-w:   2px;
+  --focus-gap: 1px;
+
+  /* ===================== night palette (the default) =====================
+
+     A **warm** near-black, not a blue one. The other sheet's earth is warm, and a
+     blue-grey next to that cream does not look like the same family: it looks
+     like a different program. The same mix, turned the other way. */
+  --ground:      #171512;
+  --ground-deep: #100F0D;
+  --card:        #211E1A;
+  --card-sunk:   #1A1815;
+  --line:        #322D26;
+  --line-soft:   #292420;
+
+  --ink:   #F0EBE2;
+  --ink-2: #C8C0B3;
+  --muted: #948B7C;
+
+  /* The phase colours, lifted just enough to stand off the dark ground. Same
+     colours as the other sheet, same meaning, different lightness. */
+  --c-home:   #3FA8A4;   /* teal: security and home            */
+  --c-away:   #7B93D8;   /* indigo: the Tailscale stretch      */
+  --c-ready:  #7FC45A;   /* leaf green: arrived, all well      */
+  /* Brick: what is wrong, and what does not come back. What the token
+     continues **not** to be is a colour for emphasis: that is why the recording
+     dot has `--c-rec` and not this one. */
+  --c-stop:   #E4705A;
+  --c-note:   #E0A340;   /* amber: things worth knowing        */
+
+  /* **The recording red, and it is not the brick.**
+
+     Two reds on one page is usually a muddle — here it is the right thing,
+     because `--c-stop` has a declared meaning three lines above: **only what is
+     wrong.** Dressing the recording button in that would teach people to read as
+     an alarm something that is working perfectly, and it is the same mistake the
+     meter avoids by not painting a loud cry in brick: the moment when the monitor
+     is doing its job is not a fault.
+
+     The filled dot is the sign with which any device declares it is recording,
+     and there the red **is** the meaning: it is the only colour in this sheet
+     that describes not a state of the monitor but a symbol the viewer knows from
+     elsewhere. More saturated than the brick on purpose, so the two are not
+     confused even at a glance in the dark.
+
+     It is not in `onboarding.css`: over there is nothing to record, and giving a
+     version of it for the earth would mean choosing a colour instead of
+     completing a scale. See `onlyOnOneSide` in palette_test.go. */
+  --c-rec:    #EF4A3C;   /* full red: it is recording          */
+
+  /* **An alias resolves where it is declared, not where it is read.** The two
+     lines below sit on `:root`, so here `var(--c-home)` becomes `#3FA8A4` at
+     once and the elements inherit that value, not the reference: the day palette
+     can redefine `--c-home` as much as it likes, it will never reach them again.
+     That is why `body.day` rewrites both of them — rewriting only the first is
+     not enough, because the second has already resolved here too. */
+
+  /* The ink that sits **on top of** a phase colour: the text of a filled button,
+     the digit of a badge. It does not change with the palette, because its
+     ground is not the page but the pill — which is why it does not appear in
+     `body.day`. The same value is also `--card` in the light palette: one
+     number, two meanings, and a name for only one of them. */
+  --on-phase: #FBF8F2;
+
+  --accent: var(--c-home);
+  --phase:  var(--accent);
+
+  /* Pastels for the little stars in the corners: adapted to the sign-in page's
+     dark ground. Bright and desaturated as in the other sheet. */
+  --star-1: #7DD9D3;   /* bright teal   */
+  --star-2: #D0B8CC;   /* bright plum   */
+  --star-3: #A8B8E8;   /* bright indigo */
+  --star-4: #E8D891;   /* bright amber  */
+
+  /* The veil over the video and its shadow: on the stage's pure black, not on
+     the page's ground. */
+  --veil: rgba(16, 15, 13, .68);
+}
+
+/* ===================== day palette =====================
+
+   The other sheet's earth, unchanged: it is the first contact with the product
+   and has to be recognisable as the same thing. */
+body.day {
+  --ground:      #E5DFD3;
+  --ground-deep: #D7CEBD;
+  --card:        #FBF8F2;
+  --card-sunk:   #F1ECE2;
+  --line:        #D3C9B6;
+  --line-soft:   #E0D8C8;
+
+  --ink:   #2E2A24;
+  --ink-2: #574F44;
+  --muted: #6E6659;
+
+  --c-home:   #17706E;
+  --c-away:   #3C5CA8;
+  --c-ready:  #4F7F31;
+  --c-stop:   #B3452F;
+  --c-note:   #A66A12;
+  /* The recording red, lowered for the earth: on the cream the night's full red
+     vibrates. Declared here too **even though no light page has a recording
+     button today**, and it is the same care as with the scale of radii: a phase
+     colour that holds at night and is missing in daylight is a line that becomes
+     invalid the day somebody uses it, with nothing to say so. */
+  --c-rec:    #C7301F;
+
+  /* Recomputed here, otherwise they stay the dark ones: it was `/setup`'s
+     primary button coming out in the light teal, that is, in the colour tuned
+     for the near-black. See the comment beside their first declaration. */
+  --accent: var(--c-home);
+  --phase:  var(--accent);
+
+  /* Pastels for the little stars on the light ground. Same tones as the other sheet. */
+  --star-1: #7CC0BC;
+  --star-2: #BC91B4;
+  --star-3: #8DA3D3;
+  --star-4: #D6B76B;
+
+  --veil: rgba(46, 42, 36, .55);
+
+  /* Recomputed as well: `--shadow-card` cites `--shadow-s`, and an alias
+     resolves where it is declared. */
+  --shadow-s:    0 1px 2px #2E2A2408;
+  --shadow-card: var(--shadow-s), 0 10px 28px -18px #2E2A2433;
+}
+
+/* ============================ base ============================ */
+
+* { box-sizing: border-box; }
+/* **The sizes are ours, and iOS has to be told.** WebKit inflates text inside a
+   block it considers wide, by a factor that depends on the size it starts from:
+   reported from a phone, the panel's group headings sit level with the readings
+   in portrait and come out **larger** than them in landscape, which is the same
+   page and the same 11 px against 13. `100%` and not `none`: what is switched
+   off is the automatic inflation, not the reader's own zoom. It costs nothing
+   anywhere else — no desktop engine inflates. */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--ground);
+  color: var(--ink);
+  font-weight: 400;
+  font-size: var(--t-body);
+  line-height: 1.6;
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* The browser's default bold is 700, which is not on our scale of three weights:
+   without this line every <strong> introduces a fourth. */
+strong, b { font-weight: 600; }
+
+/* One focus outline for everything, and a visible one: the page is used from the
+   keyboard too, and without this line the focus on a dark button is invisible. */
+:focus-visible {
+  outline: var(--focus-w) solid var(--phase);
+  outline-offset: var(--focus-gap);
+  border-radius: var(--radius-xs);
+}
+
+/* Nothing that moves carries information: it all goes out with no loss. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+/* ---------- buttons ----------
+
+   The same pill as the other sheet, and its minimum height: 48px is the size
+   below which a finger misses the target, and this page is used with one hand,
+   in the dark, while holding a child with the other. */
+button {
+  width: 100%;
+  min-height: 48px;
+  padding: var(--s3) var(--s6);
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: var(--phase);
+  color: var(--on-phase);
+  font-weight: 600;
+  font-size: var(--t-body);
+  line-height: 1.2;
+  font-family: var(--sans);
+  cursor: pointer;
+  transition: filter .18s ease, transform .12s ease;
+}
+/* **`:hover` is asked for where a pointer exists, and on a touch screen there
+   is none.**
+
+   A tap leaves the element hovered until the next tap lands somewhere else, so
+   on a phone "Details" stayed lit after being pressed — reported as a button
+   that keeps the colour Windows gives the one under the mouse, which is
+   exactly what it was: the same rule, on a device that cannot take the hover
+   away again. It is not the focus ring, which is `:focus-visible` and needs a
+   keyboard.
+
+   `hover: hover` describes the **primary** pointer, so a laptop with a
+   touchscreen keeps its hover and a phone never gets it.
+
+   **`:active` stays outside, and it had to be given something of its own.** It
+   lasts as long as the finger, so it is the one mark a touch screen can have
+   — but all it did was `translateY(0)`, that is, cancel the lift the hover
+   gives, and with the hover gone there was nothing left to cancel: taking the
+   hover off a phone would have left the press with no answer at all. So the
+   press now carries the mark the hover used to carry, and on a pointer it
+   still wins, being written after the block. */
+@media (hover: hover) {
+  button:hover { filter: brightness(1.12); transform: translateY(-1px); }
+}
+button:active { transform: translateY(0); filter: brightness(1.12); }
+button:disabled { opacity: .55; cursor: default; filter: none; transform: none; }
+
+button.ghost {
+  background: transparent;
+  border-color: var(--line);
+  color: var(--muted);
+  font-weight: 500;
+}
+/* `:not([aria-expanded="true"])` so that the grey of a hover does not paint over
+   a lit pill: on a lit control the answer to the finger is the brightness the
+   other buttons take, not a ground that hides the state. */
+@media (hover: hover) {
+  button.ghost:not([aria-expanded="true"]):hover {
+    background: #FFFFFF10;
+    filter: none;
+    transform: none;
+  }
+  body.day button.ghost:not([aria-expanded="true"]):hover { background: #00000008; }
+}
+/* On a ghost the brightness has almost nothing to work on — a transparent
+   ground and a muted word — so the press takes the ground the hover takes.
+   These are also the buttons that need it most: pressing "Details" or "Leave"
+   changes nothing about the button itself.
+
+   **The same ground must not be given to `.toggle`.** A lit toggle carries the
+   teal of `aria-pressed`, and a `:active` ground written after that rule beats
+   it at equal weight: the mark would read as the switch going **off** under
+   the finger. They keep the brightness, which works on both faces, and their
+   real answer to a press is the state flipping — which is a stronger mark
+   than any of this. */
+button.ghost:not([aria-expanded="true"]):active {
+  background: #FFFFFF10;
+  filter: none;
+  transform: none;
+}
+body.day button.ghost:not([aria-expanded="true"]):active { background: #00000008; }
+
+/* **The same pill on a link.**
+   "Recordings" and "Back to the monitor" lead from one page to another, so they
+   are links — they open in a new tab, they are copied, a screen reader reads
+   them for what they are — but they have to look like the other commands: two
+   things that are pressed and do not resemble each other read as two different
+   mechanisms. The properties are those of `button` and `button.ghost`, which are
+   not inherited on an `<a>`.
+
+   **And the pill to copy is the bar's, not the bare `<button>`'s.** The latter is
+   a screen's primary action — 48 px and body size — and a link never is: it sits
+   beside the bar's commands or at the foot of the details, and with those sizes
+   it towered over them, sixteen pixels taller and two of type larger. A command
+   that is not the most important and looks the most important is wrong guidance,
+   not a typographic choice. */
+a.ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--gap-ico);
+  min-height: 40px;
+  padding: var(--s2) var(--s4);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 500;
+  font-size: var(--t-ui);
+  line-height: 1.2;
+  font-family: var(--sans);
+  text-decoration: none;
+}
+@media (hover: hover) {
+  a.ghost:hover { background: #FFFFFF10; }
+  body.day a.ghost:hover { background: #00000008; }
+}
+/* The press carries what the hover carries, as on the buttons: without this a
+   tap on "Recordings" or on "Back to the monitor" answers with nothing at all,
+   which is the defect the hover guard created and the buttons already fixed. */
+a.ghost:active { background: #FFFFFF10; }
+body.day a.ghost:active { background: #00000008; }
+
+/* ============================ little stars in the corners ============================ */
+
+.sky {
+  position: fixed;
+  inset: 0 0 0 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.sky svg { position: absolute; }
+
+/* **Only the stars one can actually see pulse**, and the other eighty are drawn
+   still. The price of an animated SVG element was measured on the configuration
+   path, whose backdrop carries a meadow as well as this sky, and the numbers
+   live there with what they were taken on: what carries across is the rate,
+   about 1.8 milli-cores per pulsing element at 120 Hz, and the finding that the
+   lever is **how many** move rather than which kind.
+
+   **The still ones carry the middle of the pulse's range.** With no rule they
+   would sit at full opacity, that is, the eighty that do not move would be the
+   conspicuous ones. The animation's time-average is exactly the midpoint,
+   because the value is linear in a progress whose easing is symmetric — here
+   the range is the night palette's .3 to 1, hence .65 against the guided
+   path's .54. */
+.star { opacity: .65; }
+
+/* transform-box: fill-box is mandatory. Without it, transform-origin resolves
+   against the viewBox and every star scales around a point that is not its own. */
+.star.pulse {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: twinkle 5s ease-in-out infinite;
+}
+
+/* The little stars sit in the corners, far from the column of text: they can
+   afford to be seen. The limit is that they stay backdrop — if the pulsing draws
+   the eye while one is reading, it has gone too far. */
+@keyframes twinkle {
+  0%, 100% { opacity: .3; transform: scale(.82); }
+  50%      { opacity: 1; transform: scale(1);   }
+}
+
+/* The little stars sit in four clusters, one per corner: gathered at the edges
+   they leave the column of text clear, which is the thing to read. */
+.corner { width: 268px; height: 268px; }
+.c-tl { top: 10px;    left: 8px;   }
+.c-tr { top: 14px;    right: 10px; }
+.c-bl { bottom: 6px;  left: 12px;  }
+.c-br { bottom: 10px; right: 14px; }
+
+@media (max-width: 540px) {
+  /* On a narrow screen the clusters would end up under the text: they shrink and
+     fade instead of disappearing. */
+  .corner { width: 158px; height: 158px; opacity: .5; }
+}
+
+/* Little stars scattered over the rest of the background, not only in the
+   corners: .sky svg is already position:absolute, so top/left in percentages is
+   enough — this way they spread at any window size. The ones behind the card are
+   simply covered. */
+
+/* ============================ sign-in and configuration ============================ */
+
+.center {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--s5);
+}
+
+.card {
+  width: 100%;
+  max-width: 400px;
+  background: var(--card);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  padding: var(--s6);
+  box-shadow: var(--shadow-card);
+}
+
+.card h1 {
+  margin: 0 0 var(--s2);
+  font-weight: 600;
+  font-size: var(--t-h1);
+  line-height: 1.15;
+  font-family: var(--sans);
+  letter-spacing: -.028em;
+  text-wrap: balance;
+}
+
+.card p.sub {
+  margin: 0 0 var(--s6);
+  color: var(--ink-2);
+  font-size: var(--t-lead);
+  line-height: 1.5;
+}
+
+label {
+  display: block;
+  margin-bottom: var(--s2);
+  font-weight: 600;
+  font-size: var(--t-micro);
+  line-height: 1.4;
+  font-family: var(--sans);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* **A control rests on the card, it does not sink into it.** With `--card-sunk`,
+   which is the role of the **sunken** surface — the viewer's details, which sit
+   below and carry other things — on a near-black card the result is a rectangle
+   darker than the ground with a thread around it: from outside it reads as a
+   bordered black hole, and it is the heaviest element of the entrance page. The
+   very same field in the guided path and the language chooser already sat on
+   `--card`: three writings of the same component, and one said something else. */
+input[type="password"], input[type="text"] {
+  width: 100%;
+  padding: var(--s3) var(--s4);
+  margin-bottom: var(--s5);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-s);
+  color: var(--ink);
+  /* 16px, and it is not a typographic choice: below 16, iOS zooms the page by
+     itself when the field takes focus, and the page never goes back to how it
+     was. */
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 1.4;
+  font-family: var(--sans);
+}
+
+/* **The border lights up at every focus, the ring only from the keyboard.**
+   `input:focus { outline: none }` out-specifies the global `:focus-visible` rule
+   — 0,1,1 against 0,1,0 — and `:focus` catches the Tab key too: whoever reached
+   the password field with the keyboard had **no** ring at all, neither on
+   `/login` nor on `/setup`, while the same field in the guided path had one. Two
+   answers for the same component, and the one without a ring was on the door of
+   the night page.
+   Measured with a real Tab: `:focus-visible` depends on how the focus arrived,
+   and a `.focus()` from a script does not light it — a probe that does not know
+   that absolves all three pages. */
+input:focus { border-color: var(--phase); }
+input:focus:not(:focus-visible) { outline: none; }
+
+.msg {
+  margin-top: var(--s4);
+  padding: var(--s3) var(--s4);
+  border-radius: var(--radius-s);
+  border: 1px solid transparent;
+  font-size: var(--t-ui);
+  line-height: 1.5;
+  display: none;
+}
+.msg.show { display: block; }
+.msg.error {
+  color: var(--c-stop);
+  border-color: color-mix(in srgb, var(--c-stop) 30%, transparent);
+  background: color-mix(in srgb, var(--c-stop) 12%, transparent);
+}
+.msg.ok {
+  color: var(--c-ready);
+  border-color: color-mix(in srgb, var(--c-ready) 30%, transparent);
+  background: color-mix(in srgb, var(--c-ready) 12%, transparent);
+}
+
+.hint {
+  margin: var(--s6) 0 0;
+  padding-top: var(--s4);
+  border-top: 1px solid var(--line-soft);
+  font-size: var(--t-small);
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+/* ============================ viewer ============================ */
+
+.viewer {
+  /* **Over the picture the ground is the video, not a surface**, so these are
+     not palette entries and they do not live with the palette: a scrim, a
+     hairline and the ink that has to stay legible over whatever is being
+     filmed. `.overlay` already worked this way with the values written into it
+     — the same `#F0EBE2` the palette calls `--ink`, hand-copied — and one
+     declaration now serves it, the corner button and the rail.
+
+     **They sit on `.viewer` and not on `.stage`, and that was a defect first.**
+     A custom property is inherited down the DOM, and the bar is the stage's
+     **sibling**: declared on the stage, `var(--rail-btn)` did not resolve in
+     the rail at all, so every declaration using it became invalid and fell away
+     in silence. Measured, the rail's buttons came out **36x36 with no scrim**
+     instead of 48 with one — the size of their padding and glyph, which is what
+     is left when a `min-width` evaporates. **An undefined custom property does
+     not complain**: it is the family of the GUID that gives no error, in CSS.
+
+     `--rail-btn` is one figure because two rules need it: the size of a floating
+     control, and the room the rail leaves below itself for the one in the
+     corner. Written twice they would part company the first time somebody
+     changed the size, and the way out would end up under the last detection. */
+  --on-video: rgba(0, 0, 0, .55);
+  --on-video-line: rgba(255, 255, 255, .22);
+  --on-video-ink: #F0EBE2;
+  --rail-btn: 48px;
+  /* Half the button: the least that takes the pill's right cap out of sight. */
+  --rail-bleed: calc(var(--rail-btn) / 2);
+
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* The order is written out instead of inherited from the source because one band
+   moves: the "from outside" box sits above the bar when there is a step to take,
+   and below — together with the details — when it only says that it works.
+   Moving it with `order` instead of with two nodes avoids the second copy of the
+   markup, which is the thing that then diverges. */
+.alertbar { order: 1; }
+.stage    { order: 2; }
+.warnbox  { order: 3; }
+.remote   { order: 4; }
+.bar      { order: 5; }
+.remote.ok { order: 6; }
+.stats    { order: 7; }
+
+/* The stage stays pure black, not warm: it is the letterbox around the video,
+   and a tinted frame shows as a cast over the image. */
+.stage {
+  position: relative;
+  flex: 1;
+  background: var(--stage);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: var(--stage);
+  display: block;
+}
+
+/* Initial veil: on iOS the audio does not start without a user gesture, so an
+   explicit tap is needed anyway before one can listen. */
+.gate {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s4);
+  /* Semi-transparent on purpose: the video starts muted and the room is visible
+     behind the veil at once, without having to touch the screen first. */
+  background: var(--veil);
+  text-align: center;
+  padding: var(--s5);
+}
+
+.gate.hidden { display: none; }
+
+.gate button {
+  width: auto;
+  min-width: 220px;
+}
+
+.gate .why {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: var(--t-ui);
+  line-height: 1.55;
+  max-width: 320px;
+  text-wrap: pretty;
+}
+
+.overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: var(--s3) var(--s4);
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  background: linear-gradient(rgba(0, 0, 0, .6), transparent);
+  font-weight: 500;
+  font-size: var(--t-small);
+  line-height: 1.3;
+  font-family: var(--sans);
+  color: var(--on-video-ink);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, .6);
+  pointer-events: none;
+}
+
+/* The note beside the state: how many are watching. The muted colour, because it
+   accompanies "live" instead of competing with it — that is the text that says
+   whether the monitor works. It used to be two, the other being the media path,
+   which went with the relay. */
+#viewers { color: #C8C0B3; font-weight: 400; }
+#viewers:empty { display: none; }
+
+.dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--muted);
+  flex: none;
+}
+.dot.live { background: var(--c-ready); }
+.dot.warn { background: var(--c-note); }
+.dot.err  { background: var(--c-stop); }
+
+/* Audio level indicator: it lets one notice that the child is making a sound
+   even with the phone on silent. */
+.meter {
+  margin-left: auto;
+  width: 84px;
+  height: 6px;
+  background: rgba(255, 255, 255, .18);
+  border-radius: 999px;
+  overflow: hidden;
+  flex: none;
+}
+.meter > i {
+  display: block;
+  height: 100%;
+  width: 0%;
+  background: var(--c-ready);
+  /* Short on purpose: here **the speed is the information**, and it is the one
+     exception to this page's vocabulary of movement. */
+  transition: width .08s linear, background-color .18s linear;
+}
+/* The two thresholds are the guided path's — 0.72 and 0.92 — and that is not a
+   copy for convenience: the measurement is the **same formula on the same
+   stream**, RMS on the received stream scaled from -60 dBFS to 0, so the two
+   numbers speak of the same quantity. The distinction used to exist only in the
+   page one looks at once, in daylight, with the audio checkable by ear; it was
+   missing where the one that matters is.
+
+   **The peak is pale and not brick**, and here lies the difference between the
+   two pages. In the guided path clipping is a fault of the setting, and brick is
+   right. Here brick is the colour of the **fault** — the warning band, the broken
+   dot — and a loud cry is not a fault: it is the thing this program exists for.
+   Saying it in red over the video would teach people to read as an alarm the one
+   moment when the monitor is doing its job. */
+.meter > i.loud { background: var(--c-note); }
+.meter > i.peak { background: var(--ink); }
+
+/* **An empty track and a track that is not measuring cannot be the same
+   drawing.**
+
+   At level zero the bar is zero wide, so "silence" and "I do not know" are drawn
+   identically — and the second, drawn like the first, is a statement about the
+   room: it says the room is quiet. That is the wrong confidence in the worst
+   place, the same family as the microphone that delivers zeros with the page
+   green.
+   The hatching is on the whole track and not on the fill, because it is exactly
+   the fill that is not there: it reads as a scale with no needle. */
+.meter.unknown {
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(255, 255, 255, .18) 0 3px,
+    transparent 3px 6px
+  );
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  /* **The glass has edges the page does not see.** In landscape the notch eats
+     a strip down one side and the two `env(safe-area-inset-*)` say how wide it
+     is; in portrait they are both zero and what is left is the corner radius,
+     which no `env()` reports at all — that is what the side padding is for, and
+     it is why the inset is **added** to it rather than replacing it. Outside a
+     phone every one of these is zero and the bar is the one it always was. */
+  padding: var(--s3) calc(var(--s4) + env(safe-area-inset-right))
+           var(--s3) calc(var(--s4) + env(safe-area-inset-left));
+  background: var(--card);
+  border-top: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+
+/* **The bottom inset goes on whatever is last, and that is not always the
+   bar.** With the details closed the bar is the foot of the page and its
+   buttons sit against the home indicator — a bar of iPhone glass that takes the
+   touch instead of the button under it. With the details open the panel is
+   below it, and the same padding would be 34 px of card in the middle of the
+   page: the inset belongs to the edge of the screen, not to the element.
+
+   **And full screen is excluded by name, not by weight.** The comment here used
+   to argue that `.viewer.fs .bar` wins on specificity; it does not — `:not()`
+   contributes the class inside it, so both selectors are 0,3,0 and the winner
+   is whichever comes later in the file. The copy inside the phone's media query
+   sits after the rail's rule, so in full screen on a phone the rail really was
+   taking a bottom padding. It showed nowhere, the rail being anchored to the
+   top, which is exactly how a protection that is not in force stays invisible:
+   in that mode the safe area lives inside the pills' own shape, measured
+   further up, and nothing else is to be added to it. */
+.viewer:not(.details):not(.fs) .bar {
+  padding-bottom: calc(var(--s3) + env(safe-area-inset-bottom));
+}
+
+.bar button {
+  width: auto;
+  min-height: 40px;
+  padding: var(--s2) var(--s4);
+  font-size: var(--t-ui);
+  /* In line with the icon, not around it: `inline-flex` puts the glyph and the
+     word on the same optical line, which `vertical-align` never does well with
+     an SVG. The glyph's rule lives in `icons.css`, which two pages read. */
+  display: inline-flex;
+  align-items: center;
+  /* Centred, and it counts now that the three toggles sit on equal columns:
+     there the pill is wider than its content, and without this line the glyph
+     and the word huddle to the left leaving all the space on the right. On a
+     button that shrinks to its content it does not show; on one that receives a
+     column it does. */
+  justify-content: center;
+  gap: var(--gap-ico);
+}
+
+/* The group of three toggles: on a wide screen it is a row like the others, on a
+   phone it becomes a row of its own. A frame is not needed — the pill they share
+   and the tighter spacing between them than towards the commands beside are
+   enough to say they are one thing. */
+/* **Two rows of rule, one only when they really all fit.**
+
+   Left to itself the bar wrapped wherever it happened to between 541 and ~830
+   px, that is, across the whole band where one row is no longer enough but the
+   media query still said "wide screen": out came a full first row and an orphan
+   piece of the group below, different at every width. Now there is one shape:
+   the three detections above, the commands below, and the single row is used
+   **only where it has been measured that they fit**.
+
+   `order: -1` brings the group to the top without moving it in the source, where
+   it sits beside the other buttons because that is where it goes on the single
+   row. */
+.detectors {
+  order: -1;
+  flex-basis: 100%;
+  /* **Equal columns, not natural widths.** They are three parallel things — what
+     to watch for — and three pills of different widths make them read as three
+     objects that happen to be near each other. With `1fr` in a container of
+     indefinite width the tracks all take the size of the widest, so "equal when
+     there is room" is the default behaviour and does not need writing; when the
+     room is missing — the group on a full row on a phone — they share the row,
+     still in equal parts. */
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  align-items: center;
+  gap: var(--s1);
+}
+
+/* The two sides of the bar **do not exist on the two rows**: `display: contents`
+   removes the box and leaves the buttons direct children of the bar, so the
+   two-row shape is the one it has always been — measured pixel by pixel, before
+   and after, at the eight widths that matter. They exist only where they are
+   needed, on the single row, and that is where they become the two columns with
+   the group centred between them. */
+.side { display: contents; }
+
+.spacer { flex: 1; }
+
+/* ======================= full screen =======================
+
+   The night mode: the picture takes the whole screen and the commands become
+   half-pills cut by the two edges — speaking, clipping and silencing down the
+   left, the three detections down the right, the way out in the bottom-right
+   corner.
+
+   **The rail is the bar, restyled.** There is no second set of buttons — same
+   nodes, same ids, same listeners — so every line that paints a state goes on
+   working untouched. It is the `.remote` panel's rule, moved with `order` and
+   never written twice, applied to six controls; and the copy would have
+   diverged in the **state**, which is the half nobody looks at twice.
+
+   **The mode is ours and the Fullscreen API is an enhancement.** `position:
+   fixed` over the viewport fills the screen with or without it, because on an
+   iPhone before iOS 17.2 an element cannot go full screen at all and Brave
+   there does not expose it whatever the version. So the request is made and its
+   refusal changes nothing: weigh the effect, not the answer. What is lost where
+   it is refused is the browser's own bars, and the remedy for that is the
+   manifest and not an API.
+
+   **Two groups of three at the two edges, and that is what made everything else
+   go away.** The arrangements before it — a pile in one corner, then three
+   stations down one side — both had to fight the height: seven targets in one
+   column want 436 px and a phone laid down has 320 to 430 before the browser's
+   bars. So there was a height threshold, a wrap into two columns, an exemption
+   for the column the edge does not cut, and a spacer holding a seat. **Three per
+   side is 168 px**, which fits the shortest landscape screen with room to
+   spare, so the threshold, the wrap, the exemption and the spacer are all gone
+   and there is one shape at every size. The commands are on the left because
+   they are always in the same place and that is easier than remembering. */
+.viewer.fs {
+  position: fixed;
+  inset: 0;
+  /* **`dvh` because on iOS `inset: 0` is not the screen one can see.** Where the
+     API is refused the browser's bars stay and a fixed element is laid against
+     the **layout** viewport, which is taller: the bottom of the mode, and with
+     it the way out, ends up under the address bar. It comes after `inset: 0` on
+     purpose — where `dvh` is not understood the declaration is dropped and the
+     inset governs, which is what the code did before. */
+  height: 100dvh;
+  width: 100dvw;
+  z-index: 50;
+  /* The pills are wider than the screen on purpose: what hangs off the edges is
+     clipped here rather than left to the browser to decide. */
+  overflow: hidden;
+  /* The column's floor has to go, otherwise the grid is at least a screen tall
+     and the picture is pushed out of view. */
+  min-height: 0;
+  background: var(--stage);
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: auto 1fr auto;
+  grid-template-areas:
+    "alert"
+    "stage"
+    "warn";
+}
+
+/* Placed by name, so the `order` the column layout depends on stops mattering
+   and the source can stay as it is. The rail is given the **picture's own
+   cell**: that is how it comes to be over the video without one line of
+   absolute positioning, and it is why it needs no figure for the video's size. */
+.viewer.fs .alertbar { grid-area: alert; }
+.viewer.fs .stage    { grid-area: stage; min-height: 0; min-width: 0; }
+.viewer.fs .warnbox  { grid-area: warn; margin: 0; }
+.viewer.fs .bar      { grid-area: stage; }
+
+/* **What goes and what stays is not a matter of room.**
+
+   The alert banner stays, and it is the one thing here that is not negotiable:
+   it is the only alarm the program has, and a mode that hid it would be a baby
+   monitor that says nothing at exactly the hour it is watched. The warning box
+   stays for the same reason one step down — it is what explains the silence of
+   the room while somebody is speaking, and without it half duplex reads as a
+   fault.
+
+   The details, the "from outside" panel and "Leave" go: they are things one
+   does before or after, never while watching, and "Leave" in particular has no
+   business one thumb away from a rail used in the dark.
+
+   **`!important`, and it is not laziness: two of these win otherwise.** Opening
+   the details and then entering the mode left both panels in it — reported from
+   a phone, the details grid across the top of the picture. `.stats.show` is
+   worth the same 0,2,0 as this rule and is written later, so at equal weight it
+   commands; and `.viewer.details .remote.show.ok` is worth 0,4,0, so it commands
+   whatever the order. Climbing the ladder means writing `.viewer.fs
+   .remote.show.ok` and hoping nobody adds a class, which is a race rather than a
+   rule. `!important` is what the language offers for "this is not negotiable",
+   and it is the same remedy `[hidden]` already carries at the bottom of both
+   sheets. The mode also closes the details on the way in — see `app.js` — so in
+   practice this never has to fire. **That is the point of it**: the protection
+   downstream does not depend on the line upstream having run. */
+.viewer.fs .remote,
+.viewer.fs .stats,
+.viewer.fs #details,
+.viewer.fs #logout { display: none !important; }
+
+/* The rail: one row across the picture, the two groups pushed to the two edges
+   and both centred on the height.
+
+   `flex` and not the grid the wide bar becomes: that rule is worth 0,1,0 and
+   this one 0,2,0, so it commands at every width without a media query to keep
+   in step. The padding is nothing — the pills own the edges, and what keeps
+   their **glyphs** clear of a notch is in the shape itself, further down. */
+.viewer.fs .bar {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  /* **Anchored under the strip, not centred on the height.** Centred, the two
+     groups sat wherever the screen was tall — on a portrait phone in the middle
+     of the picture's band, on a landscape one halfway up the video — so where to
+     reach for them was a different place on every screen. At the top they are
+     always the same distance from the same edge.
+
+     **The clearance is the strip's own formula and not the 41 px it measures.**
+     That band is a line of `--t-small` at 1.3 between two `--s3`, so written as
+     the sum it follows whoever changes either token instead of being a frozen
+     number beside them. The safe area is deliberately not added: the strip
+     itself sits at `top: 0`, so "below the strip" is measured from the strip and
+     not from the glass.
+
+     **What it does not cover is the strip wrapping**, and that is declared
+     rather than guessed at: measured, 41 px on one line and **75 on a 320-wide
+     screen** when the viewer count and the path both appear and it takes three.
+     There the strip's last line comes down over the first pill. It is an old
+     phone in portrait, relayed, with somebody else watching — rare, and the
+     alternative was a constant that is wrong on every screen instead of one. */
+  align-items: flex-start;
+  padding: calc(2 * var(--s3) + 1.3 * var(--t-small)) 0 0 0;
+  gap: 0;
+  background: transparent;
+  border: 0;
+  justify-self: stretch;
+  align-self: stretch;
+  /* The same floor as the stage's, one element across: a grid item's automatic
+     minimum is its min-content, and the rail shares the picture's cell — with
+     the floor left in place the row grew to the rail's content and the bottom of
+     the mode went off the screen. */
+  min-height: 0;
+  /* The picture is behind it: only the buttons take the finger, not the empty
+     space between the two groups. */
+  pointer-events: none;
+}
+
+.viewer.fs .bar button { pointer-events: auto; }
+
+/* The two groups. Each keeps its box — the group's `role` and its label stay in
+   the accessibility tree, which `display: contents` costs in some browsers — and
+   each keeps its own gap, which is what says "these three are one" without a
+   frame. */
+.viewer.fs .side,
+.viewer.fs .detectors {
+  display: flex;
+  flex-direction: column;
+  order: 0;
+  flex-basis: auto;
+}
+
+/* **The same gap on both, and the tight one.** In the bar the group of three
+   detections is told apart from the commands beside it by sitting closer
+   together — no frame needed — and the commands kept the bar's wider gap here
+   out of that habit. On two opposite edges the habit is pointless: **what says
+   the two are two is the edge each is cut by**, so a second spacing says
+   nothing and only makes the left column look loose beside the right one. */
+.viewer.fs .side      { align-items: flex-start; gap: var(--s1); }
+.viewer.fs .detectors { align-items: flex-end;   gap: var(--s1); }
+
+/* What this mode does not show, and the spacer that used to hold a seat for the
+   way out: both would be items in the row, and `space-between` would push the
+   two groups off the edges to make room for them. */
+.viewer.fs .side.end,
+.viewer.fs .spacer { display: none; }
+
+/* **Icon only, and the word is clipped rather than removed.** `display: none`
+   would take the accessible name with it and leave a column of buttons a screen
+   reader cannot tell apart — `title` is a poor substitute and on a touch screen
+   it never appears at all. Clipped, the name is still there for whoever listens
+   and gone for whoever looks. */
+.viewer.fs .bar button > span,
+.on-video > span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* **Silence keeps its glyph for the rail alone, and a measurement said so.**
+
+   On the rail there are no words, so every button needs one. In the bar this
+   command has always been a word and nothing else, and giving it the glyph there
+   too widened the left side by 24 px — which is not 24: with `1fr auto 1fr` both
+   tracks take the wider side, so it is 48, and it moved the width below which
+   the middle group starts sliding from about 956 px to 1004. The threshold is
+   980. That is, the defect the 980 was measured to prevent came back **inside**
+   the single row: measured, the group shifted 9 px at 1000 and 19 at 980.
+
+   So the glyph is drawn where it is needed and nowhere else. The bar is left
+   exactly as it was measured — this number has been bought back twice already,
+   by shortening "Record" to "Clip" and "Mute the room" to "Mute", and it is not
+   spent on an icon that only the other mode needs. */
+#mute .ico { display: none; }
+.viewer.fs #mute .ico { display: block; }
+
+/* **A control that floats on the picture carries its own ground.** Everywhere
+   else a button can take its colour from the surface under it; here the surface
+   is whatever is being filmed, so a grey outline on a bright cot is not faint,
+   it is absent. The scrim and the ink are the viewer's, declared beside
+   `.overlay`'s, which has always worked this way.
+
+   The size is `--rail-btn` and not the bar's 40: this and the rail **are** the
+   interface in that mode, and 48 is the figure this page already holds itself
+   to — below it a finger misses, and it is used one-handed in the dark. */
+.stage .on-video,
+.viewer.fs .bar button {
+  /* **Centred, and the corner button had nobody to centre it.** `.bar button`
+     carries the `inline-flex` that puts a glyph on the optical centre, and that
+     one is not in the bar: it was a plain `inline-block` with an inline SVG, so
+     the glyph sat where text would start — left of centre and off the baseline.
+     Reported by looking at a photograph of a phone, and visible in no number the
+     layout probe was collecting. */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  min-height: var(--rail-btn);
+  min-width: var(--rail-btn);
+  gap: 0;
+  background: var(--on-video);
+  border: 1px solid var(--on-video-line);
+  color: var(--on-video-ink);
+}
+
+/* **A half pill running off the edge, not a circle.** The cap on the outer side
+   is past the screen, so what is left is a shape the edge has cut — and the gain
+   is where the glyph lands: a circle keeps its whole width on screen, so its ink
+   sits an inset plus a radius in from the edge, while a pill that bleeds puts
+   the ink **a radius nearer the thumb**.
+
+   **The safe area is inside the shape, and that was the reported defect.** It
+   used to be the rail's padding, so on a phone the whole thing was pushed in and
+   the pills stopped short of the edge with a band of picture beyond them — and
+   the desktop probe could not see it, because there every `env(safe-area-inset)`
+   is zero. Now the bleed carries it: the shape always reaches the physical edge,
+   while the padding that holds the content box away from that edge is the bleed
+   **plus** the inset, so the glyph is always clear of a notch. Two properties
+   that used to fight in one number, separated.
+
+   All the padding is on the outer side and the content box is therefore exactly
+   the part one can see, so `justify-content: center` centres the glyph in that
+   and not in the whole shape: with the usual padding still on the inner side the
+   glyph slid outwards to 12 px from the edge, that is, two pixels of ink past
+   the glass of a rounded phone. */
+.viewer.fs .side button {
+  border-radius: 0 999px 999px 0;
+  width: calc(var(--rail-btn) + var(--rail-bleed)
+              + env(safe-area-inset-left));
+  padding: 0 0 0 calc(var(--rail-bleed) + env(safe-area-inset-left));
+  margin-left: calc(-1 * var(--rail-bleed));
+}
+
+.viewer.fs .detectors button,
+.stage .on-video {
+  border-radius: 999px 0 0 999px;
+  width: calc(var(--rail-btn) + var(--rail-bleed)
+              + env(safe-area-inset-right));
+  padding: 0 calc(var(--rail-bleed) + env(safe-area-inset-right)) 0 0;
+  margin-right: calc(-1 * var(--rail-bleed));
+}
+
+/* Lit, it says so with the same teal pill as everywhere else — the shape for
+   "this is the state" is one across the whole product. The mix goes over the
+   scrim rather than replacing it, otherwise a lit button would turn transparent
+   over a bright picture. */
+.stage .on-video[aria-pressed="true"],
+.viewer.fs .bar button[aria-pressed="true"] {
+  border-color: color-mix(in srgb, var(--c-home) 60%, transparent);
+  background: color-mix(in srgb, var(--c-home) 34%, var(--on-video));
+  color: var(--on-video-ink);
+}
+
+/* The corner. **The same corner and the same shape in both modes**, which is the
+   point: pressing it does not send the eye looking for it somewhere else, and it
+   does not change under the finger either. `right: 0` and nothing else — the
+   bleed is the margin's job and it is already done; written here as well it was
+   counted twice, and half the visible pill went off the screen. */
+.stage .on-video {
+  position: absolute;
+  right: 0;
+  bottom: var(--s4);
+  height: var(--rail-btn);
+  z-index: 3;
+}
+
+/* In the mode this corner is the screen's, so it owes the clearance the home
+   indicator wants. Outside the mode the stage's bottom is not the screen's —
+   the bar is under it — so there is nothing to clear. */
+.viewer.fs .stage .on-video {
+  bottom: calc(var(--s4) + env(safe-area-inset-bottom));
+}
+
+/* Bigger because the glyph is now the whole label. The set's weight is not
+   touched — the SVG is drawn larger and its stroke grows with it, which is not
+   the same thing as thickening it at a fixed size. */
+.stage .on-video .ico,
+.viewer.fs .bar .ico { width: 20px; height: 20px; }
+
+.stats {
+  /* The last band of the page when the details are open: the bottom inset is
+     here for the same reason it is on the bar, and the sides for the corner. */
+  padding: var(--s4) calc(var(--s4) + env(safe-area-inset-right))
+           calc(var(--s4) + env(safe-area-inset-bottom))
+           calc(var(--s4) + env(safe-area-inset-left));
+  background: var(--card-sunk);
+  border-top: 1px solid var(--line);
+  font-size: var(--t-small);
+  color: var(--muted);
+  display: none;
+  /* **The floor of a column is what an inline pair needs to read.**
+
+     `auto-fit` with a 160 px floor gave **six** columns at 1200 px and the pair
+     written top to bottom in each of them: a reading and its name in a strip
+     narrower than the name. The arrangement is chosen by the width of the
+     container — name over value under ~200 px, name left and value right from
+     ~400 up — so the pair is inline and the floor is 330, which is where that
+     starts to hold. The count then follows the window instead of being declared
+     at three widths: one column on a phone, two on a tablet, three at 1200,
+     four at 1440, each between 330 and 430 px.
+
+     The price is the band between about 600 and 700 px, where one column takes
+     the whole width and the name is far from its reading. It is a window
+     somebody has dragged to that size, and the alternative — capping the row
+     — buys it by making the rules ragged, which is the thing being removed. */
+  /* **`min(330px, 100%)` and not `330px`**: a track cannot go below its own
+     minimum, so on a 320 px phone the 288 px of row held a 330 px column and
+     the page scrolled **sideways by 26 px** — measured, and not crossed by any
+     of the four widths this rule was tuned on. The `min()` says "330, or the
+     row if the row is narrower", which is the one case where a single column
+     has no choice anyway. */
+  grid-template-columns: repeat(auto-fit, minmax(min(330px, 100%), 1fr));
+  gap: 0 var(--s5);
+}
+
+/* **A row is one line: the name, then the reading at a fixed distance.**
+
+   The readings were flush right, which reads as a column while the column is
+   narrow and stops reading as anything once it is not. Measured on the real
+   page: the empty band between a name and its reading is **223 px median on a
+   390 px phone** and **279 px at 1700**, worst 338 — that is, a two-character
+   number sat a third of a metre of screen away from the word that names it, and
+   at every width, because `space-between` gives the gap whatever is left and
+   what is left is most of the row.
+
+   So the reading starts at a **fixed offset** instead of at the far edge. It is
+   still a column — fourteen readings aligned on one x — only aligned on the
+   edge the eye arrives from, and the distance from a name to its value is now
+   bounded by that offset rather than by the window. Tabular figures stay: they
+   are what keeps the digits of a column the same width.
+
+   `baseline` and not `center`: the two are different sizes, and it is the
+   writing that has to line up, not the boxes. It wraps, and that is for the
+   long ones — a media path, a version with its commit: they go to a line of
+   their own instead of squeezing the name. */
+.stats > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: flex-start;
+  gap: 0 var(--s4);
+  padding: var(--s2) 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+/* **The offset is an em measure and not a share of the row**, which is the
+   whole point: a percentage would put the reading somewhere else in every
+   column the grid happens to make, and the distance being *predictable* is what
+   was bought here. Ten ems is 130 px at this size, against the longest name
+   measured in either language — `Fotogrammi scartati`, 115 px — so it clears it
+   without a table of exceptions. A longer translation does not break it: the
+   name wraps inside its own column and the row grows, which is visible and
+   self-correcting rather than silent. */
+.stats > div > :first-child {
+  flex: 0 0 auto;
+  min-width: 10em;
+}
+/* The last reading has nothing under it to be separated from: what follows is
+   the link to the recordings, which is a command and carries its own shape. */
+.stats > div:last-of-type { border-bottom: 0; }
+.stats.show { display: grid; }
+
+/* **The heading of a group, and the rule above it.**
+
+   Fourteen readings of one weight are a list read to the end or not at all.
+   Three groups with a word over a hairline say where an argument starts — what
+   is being captured, the way in, what this run has done — and they separate at
+   no cost the two rows that are pressed from the twelve that are read.
+
+   **It is the eyebrow the sheet already has**, the one on `label` and on the
+   "from outside" box: a fourth way of writing a small heading is how a scale
+   stops being a scale.
+
+   `grid-column: 1 / -1` is what makes it a band and not a cell, and the rule
+   sits **above** the label rather than under it: it belongs to the break, not
+   to the group, so the first one does not need it — the panel's own top border
+   is already there.
+
+   **And the colour is a step up from the labels, because the size is a step
+   down.** It was `--muted`, which is the labels' own colour, at 11 px against
+   their 13: a heading smaller *and* no brighter than what it governs is
+   hierarchy the wrong way round, and it held only while a phone's single column
+   said which was which by position. Measured on the real page, both were
+   `rgb(148, 139, 124)` and both began at the same x — so on a wide window the
+   heading sat directly over the first label, quieter than it, and was reported
+   as confusable with one. `--ink-2` is the step the palette already has between
+   the labels and the readings, which is exactly the rank this word holds. */
+.stats-group {
+  grid-column: 1 / -1;
+  /* **The rule under the last row of the group is the break**, now that every
+     row carries one: a border here as well drew two lines a few pixels apart.
+     What is left to the heading is the air above it. */
+  margin: var(--s4) 0 var(--s1);
+  font-weight: 600;
+  font-size: var(--t-micro);
+  line-height: 1.4;
+  font-family: var(--sans);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+.stats-group:first-child { margin-top: 0; }
+
+.stats b {
+  display: inline;
+  /* Left, because the readings now begin at a common x rather than ending at
+     one: see the row above. */
+  text-align: left;
+  color: var(--ink);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The microphone's box.
+
+   **At rest it is a value of the details, and the arrow says it can be pressed.**
+   As a box — border, ground and 16 px of type in a grid where every other row is
+   a grey 13 px label with an `--ink` value under it — it read from outside as a
+   piece of another page that had landed there, and its row was 66 px tall
+   against the others' 42, that is, the band under "Microphone" widened and the
+   grid lost its step.
+
+   Now it takes the type, weight and colour of the value it replaces (`.stats
+   b`), and what tells it apart is the arrow — the same glyph as "Details", the
+   same shape and the same stroke weight. It is the division this page already
+   uses: one affordance, where it is needed, instead of a box that competes with
+   what is around it.
+
+   **The type is 13 px like the rest, and what that costs has to be said**: below
+   16, iOS zooms the page by itself when a control takes focus and never puts it
+   back. It is the price of consistency with the grid, and it is a choice — not an
+   oversight as it was elsewhere.
+
+   **The target stays big, though.** The vertical padding is there and is
+   cancelled by an equal and opposite margin: whoever presses finds 30 px of
+   usable height, whoever lays out counts 18 — so the row does not grow and the
+   finger does not miss the control in the dark. */
+/* **The cell is one like the others.** The menu is sized by us, so the box can
+   stay short — name clipped with an ellipsis and a tooltip, like every other
+   value in the grid — and what is read in full is in the open list, where the
+   names wrap. */
+
+/* **The two boxes look like what they are, and that is the answer to an
+   alignment that cannot be had.**
+
+   A `<select>` is as wide as its **longest** entry — wanted, because the menu
+   is sized from the same number — so with a short entry chosen the name starts
+   at the left of a wide box: on a panel whose readings are all flush right it
+   read as a value centred in its field, and that is how it was reported.
+   `text-align: right` cures it in Chrome and **not** on the phone, where the
+   engine does not honour it inside the control: two browsers, two pictures, and
+   the half that cannot be verified from here is the one the monitor is watched
+   on.
+
+   So the name is left where the control puts it and the control is given the
+   frame it never had: a hairline, a radius and a ground. Every settings panel
+   draws a field as a field, the row stops pretending to be a reading, and the
+   two rows one can **press** are told apart from the twelve that are read —
+   which is the thing the panel wanted to say anyway. It costs no engine
+   agreement: a border is a border everywhere. */
+.stats .pick-wrap {
+  position: relative;
+  /* **It takes what the row has left**, which is the same rule the readings
+     beside it now follow: the name column is fixed, everything after it belongs
+     to the value. A share of the row was the answer while the readings ended at
+     the right edge — the box had to end there too — and with the readings
+     starting at a fixed offset the box starts there as well, so the two boxes
+     go on matching each other by construction and the field ends where the row
+     does. `min-width: 0` is what stops a long entry sizing the control and
+     pushing it onto a line of its own. */
+  flex: 1 1 0;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xs);
+  padding-left: var(--s2);
+  background: var(--card);
+  /* **`flow-root` and not `block`, otherwise the negative margin escapes.** With
+     an ordinary block the child's margin merges with the parent's: the wrapper's
+     box stays 30 px tall like the control, and the focus ring drawn around it
+     ends up **over the row's label**. With a formatting context of its own the
+     -6 px stay inside and the wrapper is as tall as the row. The cell does not
+     change: it was already 42 px like the others, because those margins came off
+     the height calculation anyway. */
+  display: flow-root;
+  /* The wrapper carries the arrow at its right edge, and the control fills the
+     wrapper, so the two edges coincide and with them the focus ring. It used to
+     be `fit-content` here too, for a box that hugged its name; the box is now a
+     share of the row, and the frame is what says where it ends. */
+  /* The two arrows: the same pair as "Details", here as a **mask**. The colour
+     cannot live inside a `data:` URI — that document inherits nothing from the
+     page — so the image carries the shape and `background` supplies the colour,
+     as for the language chooser. */
+  --down: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6l6 -6'/%3E%3C/svg%3E");
+  --up: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 15l6 -6l6 6'/%3E%3C/svg%3E");
+}
+
+/* On a pseudo-element and not on the `<select>`: a mask on the control would
+   clip the control. `pointer-events: none` because the click has to reach the
+   menu, which is underneath. */
+.stats .pick-wrap::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 0;
+  width: 14px;
+  height: 14px;
+  transform: translateY(-50%);
+  background: var(--muted);
+  -webkit-mask: var(--down) no-repeat center / 14px 14px;
+  mask: var(--down) no-repeat center / 14px 14px;
+  pointer-events: none;
+}
+/* **The arrow says what happens when pressed**, as on "Details": down when the
+   menu is closed and about to be opened, up when it is open. A native `<select>`
+   has no state a stylesheet can read — `:open` exists only on the most recent
+   browsers — so the class is put on by the page, and when it cannot know, the
+   arrow stays down, which is the true direction nine times out of ten. */
+.stats .pick-wrap.open::after {
+  -webkit-mask-image: var(--up);
+  mask-image: var(--up);
+}
+@media (hover: hover) {
+  .stats .pick-wrap:hover::after { background: var(--ink); }
+}
+
+.stats .pick {
+  appearance: none;
+  -webkit-appearance: none;
+  display: block;
+  /* **The width is ours, and that is the whole point of this line.**
+
+     It used to be the control's own: `fit-content`, with a comment saying a
+     `<select>` is as wide as its **longest** entry. Measured, that is not one
+     rule but two — in Chrome the box follows the **chosen** entry (picking the
+     long microphone takes it from 158 px to 348), on the phone the longest —
+     and the result was two boxes in one panel with nothing in common: the
+     camera's snug, because "Prima webcam disponibile" happens to be the longest
+     entry of its own list, and the microphone's wide and half empty, because
+     "Predefinito di Windows" sits against a device name 2.7 times its width.
+     Reported twice, and the second time as what it is: no improvement, one long
+     and one short.
+
+     A share of the row instead. The two fields then start and end at the same
+     place as each other whatever is chosen, whatever the list holds and
+     whichever engine is drawing them — which is the property that was missing,
+     and no engine has to agree to anything for it to hold. An oversized name is
+     clipped with an ellipsis, as it already was. */
+  width: 100%;
+  /* The padding widens the target, the margin takes it out of the height
+     calculation: the row stays like the others. On the right the space is for
+     the arrow. */
+  padding: 6px 20px 6px 0;
+  margin: -6px 0;
+  background: transparent;
+  border: 0;
+  /* Needed only by the focus ring, which follows the element's radius. */
+  border-radius: var(--radius-xs);
+  /* The value it replaces: `.stats b`, that is 13 px, weight 500, `--ink`. */
+  color: var(--ink);
+  font-weight: 500;
+  font-size: var(--t-small);
+  line-height: 1.4;
+  font-family: var(--sans);
+  cursor: pointer;
+  /* An endpoint's name is long: it is clipped with an ellipsis instead of
+     disappearing under the arrow. */
+  text-overflow: ellipsis;
+}
+/* ---------- the menu, drawn by the page ----------
+
+   **`appearance: base-select` is the only road that removes the system blue
+   without removing the control.** A normal `<select>`'s menu is drawn by the
+   system: the entries accept a ground, the highlight of the chosen row does not
+   — Windows' accent stays — and what one gets by dressing only the entries is a
+   menu **half ours and half theirs**, stranger than one left whole to the
+   browser. The historical alternative was a list drawn by us, which costs
+   keyboard and screen reader: here it is not needed, because it stays a real
+   `<select>` — only the painter changes.
+
+   **And where it does not exist, nothing happens**: a value the browser does not
+   know makes the declaration invalid and `appearance: none` is left, that is,
+   the system menu as before. The rules on `::picker(select)` are discarded by
+   the parser along with the selector it does not understand.
+
+   The menu lives in the **page's top layer**, not in a system window: it is also
+   the only way we have to **photograph** it and really look at it, instead of
+   describing it. */
+.stats .pick,
+.stats .pick::picker(select) {
+  appearance: base-select;
+}
+.stats .pick {
+  /* The base form puts the control in `inline-flex`, and there `text-overflow`
+     has no grip: what overflows is the inner text box, not the control. With a
+     block the ellipsis is an ellipsis again. */
+  display: block;
+}
+.stats .pick {
+  /* The base form brings a border, a ground and padding of its own: here the
+     control has to stay the details' value, so ours go back on. */
+  border: 0;
+  background: transparent;
+  padding: 6px 20px 6px 0;
+  /* **And it brings wrapping too.** In the native form the selected name is one
+     line by construction; in the base form it is ordinary content, and an
+     eighty-eight character endpoint name breaks over two lines — the details row
+     grows and the grid loses its step, which is the defect just closed. One line
+     and the ellipsis, as in the other form. */
+  white-space: nowrap;
+  overflow: hidden;
+}
+/* The arrow is ours, on the wrapper: the base form's would be the second one. */
+.stats .pick::picker-icon { display: none; }
+
+/* **The clipping happens here, not on the control.** `text-overflow` acts on the
+   box that overflows, and in the base form that is the chosen entry's content:
+   put on the `<select>` it has no grip at all — measured, the name came out of
+   the control and passed under the arrow, cut mid-glyph and with no ellipsis. */
+.stats .pick button {
+  all: unset;
+  display: block;
+  width: 100%;
+  overflow: hidden;
+}
+.stats .pick selectedcontent {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.stats .pick::picker(select) {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-s);
+  background: var(--card);
+  box-shadow: var(--shadow-card);
+  padding: var(--s1);
+  /* The menu appears with no transitions: it is a list, not an animation. */
+  margin-top: var(--s1);
+  /* **From here down the width is our decision, and it used not to be.** The
+     system menu is as wide as the longest entry and cannot be governed: with the
+     names Windows gives, it started at the box's edge and carried on for half a
+     page. Now it starts from the box's width — `anchor-size` measures it — and
+     does not pass 420 px: beyond that the name **wraps** instead of widening the
+     box. A list of two entries on two lines can be read; one half a page wide
+     cannot.
+
+     **The width is declared, otherwise the space on the right dictates it.** An
+     anchored menu with no width of its own shrinks to whatever there is between
+     the box and the window's edge: the same page gave a list 420 px wide with
+     the cell in the first column and 158 with the cell in the fifth, that is,
+     four lines for one name. `max-content` is the longest entry, the cap stops
+     it, and under the cap the names wrap. */
+  width: max-content;
+  min-width: anchor-size(width);
+  max-width: min(92vw, 420px);
+}
+.stats .pick option {
+  padding: var(--s2) var(--s3);
+  border-radius: var(--radius-xs);
+  color: var(--ink);
+  background: transparent;
+  font-weight: 500;
+  font-size: var(--t-small);
+  line-height: 1.4;
+  font-family: var(--sans);
+  /* In the box the name is clipped, here it wraps: there a grid row has to be
+     respected, here it does not — and whoever opens the list opens it to read. */
+  white-space: normal;
+}
+/* **Two marks for two different things, and they do not cover each other.** The
+   teal says "this is the chosen one" and is the same as the bar's lit toggles;
+   the pale grey says "this one is under the finger". Written in the obvious
+   order, the chosen entry **under the finger** lost the teal and stayed grey,
+   that is, moving over the list one lost sight of which one was in use —
+   measured by reading the pixels: `#2E2C28`, the grey, where the teal should
+   have been. The case of the two together is declared, instead of being left to
+   the order of the rules. */
+.stats .pick option:checked {
+  background: color-mix(in srgb, var(--c-home) 22%, transparent);
+}
+.stats .pick option:hover,
+.stats .pick option:focus {
+  background: #FFFFFF10;
+}
+body.day .stats .pick option:hover,
+body.day .stats .pick option:focus {
+  background: #00000008;
+}
+.stats .pick option:checked:hover,
+.stats .pick option:checked:focus {
+  background: color-mix(in srgb, var(--c-home) 32%, transparent);
+}
+/* The base form's tick is not needed: the lit ground already says which entry is
+   chosen, and two marks for one thing is the tray panel's defect. */
+.stats .pick option::checkmark { display: none; }
+.stats .pick:disabled { color: var(--muted); cursor: default; }
+.stats .pick-wrap:has(.pick:disabled)::after { opacity: .4; }
+
+/* **The ring is drawn around the wrapper, not around the control.**
+   The target is 30 px tall and the row 18: the difference is the 6 px of padding
+   that the negative margin takes out of the calculation, and a ring around
+   **that** box climbs over the label of the row above — measured, it landed
+   inside it. The wrapper, though, is as tall as the row, so the ring sits where
+   it belongs and the finger still has its 30 px.
+
+   The two sizes stay everybody's (`--focus-w`, `--focus-gap`): what changes is
+   **where** it rests, not what it looks like. */
+.stats .pick:focus-visible { outline: none; }
+.stats .pick-wrap:has(.pick:focus-visible) {
+  outline: var(--focus-w) solid var(--phase);
+  outline-offset: var(--focus-gap);
+  border-radius: var(--radius-xs);
+}
+
+/* "No microphone" sits beside the box and not inside it: inside it would be an
+   entry of the list, that is, something one could choose.
+
+   **The colour is the message's severity and not the box's**, and they are the
+   alerts' two levels: brick where the device is missing, amber where another
+   one is being used in its place. Written on the element it was one colour per
+   box, so the identical "another one is capturing" line came out brick beside
+   the microphone and would have come out amber beside the camera. */
+.pick-state {
+  display: block;
+  margin-top: var(--s1);
+  /* In an inline row the third child would sit beside the box and push it: it
+     is a sentence about the row, so it takes a line of its own under it. It is
+     flush left with the name rather than with the reading, because it is a
+     sentence and not a value — and because a right edge to align to is exactly
+     what this panel no longer has. */
+  flex-basis: 100%;
+  text-align: left;
+}
+.pick-state.fault  { color: var(--c-stop); }
+.pick-state.notice { color: var(--c-note); }
+
+/* ---------- the link to the recordings ----------
+
+   **It lives inside the details panel, not under it.** As a sibling of the
+   details with an `order` that put it after, it appeared together with them and
+   looked like another thing, because it fell outside the sunken ground and rested
+   on the left. Now it is the grid's last cell — full width and centred, that is,
+   where a list ends and not where another one begins — and its appearing no
+   longer has a rule of its own: `.stats.show` decides it, which is the details'
+   only switch. Two switches for the same thing diverge at the first touch. */
+.stats .clips-link {
+  grid-column: 1 / -1;
+  justify-self: center;
+  margin-top: var(--s3);
+}
+
+/* ---------- the warning band ----------
+
+   It says that something is wrong, now. It sits above the video because that is
+   where the eye falls, and it disappears entirely when there is nothing: a line
+   that is always there becomes part of the frame and stops being read.
+
+   Two colours only, like the two levels: brick for a fault, amber for something
+   worth knowing. A finer scale nobody would be able to read at night. */
+.alertbar {
+  --tone: var(--c-stop);
+  display: none;
+  padding: var(--s4) var(--s5);
+  background: color-mix(in srgb, var(--tone) 22%, var(--ground));
+  border-bottom: 1px solid color-mix(in srgb, var(--tone) 46%, transparent);
+  color: var(--ink);
+  font-size: var(--t-ui);
+  line-height: 1.5;
+}
+.alertbar.show { display: block; }
+.alertbar.notice { --tone: var(--c-note); }
+/* An event is not a fault of lesser gravity: it is the thing the monitor exists
+   for, and it takes the teal of home instead of the brick. */
+.alertbar.event { --tone: var(--c-home); }
+
+/* The warning's text carries the weight, the time accompanies it: "for twenty
+   minutes" is what tells a fault that has just happened from one that has lasted
+   since one left the house. */
+.alertbar b { font-weight: 600; }
+.alertbar .when { opacity: .75; }
+
+/* The recovery announces itself and goes away by itself: it is good news, and
+   good news left on the screen becomes noise. */
+.alertbar.recovered { --tone: var(--c-ready); }
+
+/* ---------- what to listen for ----------
+
+   Toggles inside the command bar, beside the others. The pill tells them apart:
+   the others do something when pressed, these say what state you are in. On is
+   the colour of home, off is an outline, and the difference shows at a glance in
+   the dark — which is the condition this page is looked at in. */
+.toggle {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+}
+/* **A control that says how things are carries the pill, and "Details" is one
+   of them.**
+
+   It used to say so with its arrow alone — down when closed, up when open —
+   and that held while the arrow was drawn. On the phone's bar it is not, so the
+   one thing on screen saying whether the panel below is open had gone: pressing
+   it changed nothing that could be seen, which is the defect the bar's own rule
+   exists against. It is the same mark as the three detections and as "Talk",
+   written once for both attributes: `aria-pressed` for a switch, `aria-expanded`
+   for a thing that opens, which is the difference between the two and the
+   reason they are not one attribute.
+
+   **And the arrow stays where it is drawn**: on the single row it is a second
+   mark for the same state, and that is a rule this project holds — one mark for
+   one thing — but it is also the only affordance saying there is something
+   behind the button before it is pressed, which the pill cannot say while the
+   panel is closed. */
+.toggle[aria-pressed="true"],
+.ghost[aria-expanded="true"] {
+  border-color: color-mix(in srgb, var(--c-home) 60%, transparent);
+  background: color-mix(in srgb, var(--c-home) 22%, transparent);
+  color: var(--ink);
+}
+/* Inert until how it really is is known: no colour and no click. */
+.toggle:disabled { opacity: .45; cursor: default; }
+
+/* **The recording dot: filled, red, and the one glyph that does not follow
+   `currentColor`.**
+
+   The rule in `icons.css` exists so that an icon lights up with its pill without
+   a second rule to keep aligned, and it holds for all the others. Here the red
+   **is** the meaning — it is the sign with which any device declares it is
+   recording — and letting it follow the button's colour would make this command
+   indistinguishable from the three toggles beside it.
+
+   It stays red with the pill lit too: it is a symbol, not a state, and while the
+   clip is recording is exactly the moment when it has to be itself. The ground is
+   declared by the pill, as for all the others. */
+#record .ico {
+  fill: var(--c-rec);
+  stroke: var(--c-rec);
+}
+
+/* ---------- boxes ----------
+
+   The other sheet's .note: one colour, a border and a ground derived from it, and
+   the text at the body's size. The boxes are content, not small print at the foot
+   of a contract. */
+.warnbox {
+  --tone: var(--c-note);
+  margin: 0;
+  padding: var(--s4) var(--s5);
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid color-mix(in srgb, var(--tone) 26%, transparent);
+  background: color-mix(in srgb, var(--tone) 12%, transparent);
+  color: var(--ink);
+  font-size: var(--t-ui);
+  line-height: 1.6;
+  display: none;
+}
+.warnbox.show { display: block; }
+
+/* Access from outside the house: either the public address, or the step that is
+   missing. */
+.remote {
+  --tone: var(--c-note);
+  display: none;
+  padding: var(--s4) var(--s5);
+  border-top: 1px solid var(--line);
+  background: var(--card-sunk);
+  font-size: var(--t-ui);
+}
+.remote.show { display: block; }
+.remote.todo { --tone: var(--c-note); }
+
+/* When access from outside works, the box has nothing to say to whoever is
+   watching the room: it repeats the address of the page they already have open,
+   every night, under the video. It is the rule this page already applies to the
+   viewer count and to the warning band — what is always there stops being read —
+   missed precisely where it weighs most.
+
+   It is not deleted, though: the public address is needed by whoever has to pass
+   it to the other parent. So it goes down among the details, which is the place
+   for things that are looked for instead of being announced. When there is a step
+   to take it stays where it was, above the bar and always visible. */
+.remote.ok {
+  --tone: var(--c-ready);
+  display: none;
+}
+.viewer.details .remote.show.ok { display: block; }
+
+/* Text and code side by side, as in the guided path. The body is a second
+   container instead of turning `.remote` into a flex: that `display` is the
+   switch that lights the box — `.show`, `.ok`, the details open — and mixing
+   switching and layout in the same property is the defect already paid for on the
+   explainer's `<dialog>`. */
+.remote-body {
+  display: flex;
+  gap: var(--s5);
+  align-items: center;
+}
+/* `min-width: 0` is not pedantry: without it a flex item does not go below the
+   width of its own content, and a public address is long — it would push the code
+   out of the box instead of wrapping. */
+.remote-text { flex: 1 1 auto; min-width: 0; }
+.remote .qr {
+  flex: 0 0 auto;
+  /* Smaller than the other sheet's 168 px, and it fits: there it is the main
+     object of a screen done once, here it is a convenience in a details panel.
+     Going below is not worth it — a code of this length has 29 modules plus the
+     quiet zone, and at 120 px that leaves a little over three pixels per module,
+     which is the minimum a camera reads without bringing the phone up to the
+     screen. */
+  width: 120px;
+  height: 120px;
+  border-radius: var(--radius-s);
+  /* The light ground is already inside the SVG, and it is repeated here on
+     purpose: this page has a near-black ground, and a code that for an instant
+     drew itself transparent would be dark on dark — unreadable by the very camera
+     that has to read it. */
+  background: #FBF8F2;
+}
+
+.remote-head {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  margin-bottom: var(--s3);
+}
+
+/* The other sheet's eyebrow: dot, small caps, wide tracking. */
+.remote-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  font-weight: 600;
+  font-size: var(--t-micro);
+  line-height: 1.4;
+  font-family: var(--sans);
+  letter-spacing: .11em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.remote-label::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--tone);
+}
+.remote-phase {
+  font-weight: 600;
+  font-size: var(--t-ui);
+  line-height: 1.3;
+  font-family: var(--sans);
+  color: var(--tone);
+}
+
+.remote-action {
+  margin: 0 0 var(--s3);
+  color: var(--ink-2);
+  line-height: 1.6;
+  /* The message arrives from Tailscale already laid out over several lines. */
+  white-space: pre-line;
+}
+
+/* The public address is a block to copy, not a line of text: monospace, whole
+   selection at the first click, and wrapping where needed because a long URL must
+   not widen the page. */
+.remote-link {
+  display: none;
+  padding: var(--s3) var(--s4);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-s);
+  background: var(--card);
+  color: var(--tone);
+  font-weight: 500;
+  font-size: var(--t-small);
+  line-height: 1.6;
+  font-family: var(--mono);
+  word-break: break-all;
+  text-decoration: none;
+}
+.remote-link.show { display: block; }
+@media (hover: hover) { .remote-link:hover { border-color: var(--tone); } }
+.remote-link:active { border-color: var(--tone); }
+
+/* ============================ adaptation ============================ */
+
+@media (max-width: 540px) {
+  :root { --t-h1: 24px; --t-lead: 17px; }
+  .card { padding: var(--s5); }
+
+  /* On a phone the bar tightens, but the **shape** is the one it always has: the
+     three detections above, the commands below. It is the general rule, not a
+     special case for the phone. The two insets are the base rule's, repeated
+     because this is a shorthand and a shorthand rewrites all four sides. */
+  .bar {
+    padding: var(--s2) calc(var(--s3) + env(safe-area-inset-right))
+             var(--s2) calc(var(--s3) + env(safe-area-inset-left));
+    gap: var(--s2) var(--s1);
+  }
+  .viewer:not(.details):not(.fs) .bar {
+    padding-bottom: calc(var(--s2) + env(safe-area-inset-bottom));
+  }
+  /* Only the commands tighten, and they are the ones that have to: four on one
+     row at 360 px do not fit with the wide padding. The toggles have a row all to
+     themselves and stay legible pills. On equal parts this number no longer
+     decides a width — it decides how early a label breaks out of its own pill,
+     which is why it is `--s1` and not `--s2`.
+
+     **`.side` and not `.bar`, and it is not indifferent.** `display: contents`
+     removes the box and not the node: selectors look at the DOM, so once the
+     commands live inside the two sides, nothing matches `.bar > button` any more
+     — and a selector that stops matching gives no error, it just leaves the wide
+     padding where it does not fit. It was found by comparing pixel by pixel with
+     the earlier measurement: at 390 px the bar went from 106 to 154 px tall,
+     that is, a third row. */
+  .side > button { padding: var(--s2) var(--s1); }
+
+  /* **Equal parts on the lower row too, which is what the upper one has always
+     done.** The four commands used to take their natural widths and the spacer
+     ate what was left, so the row read as four pills of four different sizes
+     pushed against the two ends — beside a row of three equal ones. On a phone
+     that is also the row pressed in the dark: equal targets are found without
+     looking, and the widest word no longer decides who gets the room.
+
+     **`flex: 1 1 0` with `min-width: 0`, and both halves are needed.** Without
+     the second, a flex item cannot go below its own content, so the widest
+     label keeps its width and the others share what is left — equal everywhere
+     except in the one place the eye checks. With it the row is exactly N equal
+     parts however many buttons there are, which matters because "Talk" appears
+     only once the incoming track is laid.
+
+     **`:not(.fs)` is not caution.** In full screen `.side` is a **column**, and
+     a grow factor there stretches the pills to the height of the picture — the
+     rail's rules set the size and never the flex, so they would not stop it.
+
+     The spacer goes with the change: what pushed the two right-hand commands to
+     the end has nothing left to push. */
+  .viewer:not(.fs) .side > button { flex: 1 1 0; min-width: 0; }
+  .viewer:not(.fs) .spacer { display: none; }
+
+  /* **With the details open the picture is as tall as the picture, not as tall
+     as the screen** — what is between the two is letterbox, and with a panel
+     underneath it is dead height to scroll past.
+
+     **The first version of this comment claimed the panel squeezed the picture
+     to a sliver, and that was never measured.** It cannot happen: `.stage` is a
+     flex item with `min-height: auto`, so its floor is its own min-content,
+     which for a video with an intrinsic ratio is the picture at this width.
+     Measured on the same build at 390x844, with the rule taken out: the
+     panel half again as tall gives a stage of **219 px**, that is, exactly the
+     picture, and the page scrolls. The squeeze that was reported from the
+     probe — 738 px down to 256 — was the black going, not the picture.
+
+     What the rule really buys is that black: with the panel as it is the stage
+     grows to **315** and 96 of those pixels are letterbox between the picture
+     and the panel one has just asked for. And it buys the cap, which the floor
+     has not got: a camera filming a portrait wants **693 px** of an 844 px
+     screen and takes the bar off the bottom of the page, against 591 with the
+     cap.
+
+     **In landscape neither is needed, and that too is measured**, which is why
+     this stays a rule of the phone in portrait: at 844x390 the floor is 475 px,
+     the stage is already exactly the picture, and there is no letterbox to
+     remove. On a wide window the panel sits beside a large picture without
+     either of them giving anything up. */
+  .viewer.details .stage { flex: 0 0 auto; }
+  .viewer.details video { height: auto; max-height: 70dvh; }
+
+  /* **`minmax(0, 1fr)` and not `1fr`, and it fixes an overflow that was already
+     there.** A bare `1fr` track has its content as a floor, so at 360 px the
+     three detections wanted 352 px of a 336 px row and the third one was cut by
+     the edge of the screen — reported as buttons cut at the sides, and found
+     while measuring the row underneath. Now they share what there is, and it is
+     the grid's spelling of the `min-width: 0` the commands take above. */
+  .detectors { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* **On the phone's bar the "Details" arrow is not drawn**, and the number that
+   used to gate it is gone with it.
+
+   With five equal parts each command gets a fifth of the row, and the widest
+   content in it is that arrow plus "Dettagli": it broke out of its own pill by
+   2.9 px at 360 and 1.4 at 375. The first cure was to tighten the gap between
+   a glyph and its word from 8 px to 4, and that is a rule this project already
+   holds the other way — 8 and no less, because the air inside the drawings is
+   not the same for all of them and erring wide shows far less than erring
+   tight. Buying a pixel there to pay for an arrow elsewhere is the trade that
+   rule exists to refuse.
+
+   So the gap stays 8 and the arrow leaves the whole two-row bar. What it says
+   is said again by `aria-expanded`, which is what a screen reader reads, and by
+   the panel opening under the bar; it is the same shape as `#mute .ico`, drawn
+   on the rail alone. A glyph is dropped where it costs more room than it gives
+   back, never the word, because the word is the accessible name. */
+@media (max-width: 540px) {
+  #details .ico { display: none; }
+}
+
+/* The 360 px, which is the narrowest phone still around.
+
+   The row no longer wraps at any width — five equal parts always fit, because
+   `min-width: 0` lets them — so what is bought here is not a row, it is the
+   space a label has inside its own pill: three pixels of gap instead of four,
+   four times over. The horizontal padding stays the one set above and is not
+   widened back to six: on equal parts the padding no longer decides the width,
+   only how early the content breaks out of the shape. */
+@media (max-width: 400px) {
+  .bar { gap: var(--s2) 3px; }
+
+  /* In a column: side by side, the code would leave the address less than half a
+     row, and a public address does not fit. */
+  .remote-body { flex-direction: column; align-items: flex-start; }
+}
+
+/* **980 px, and the threshold is not where the buttons fit: it is where the group
+   stays put.**
+
+   The number is measured, not chosen, by driving a browser over the real markup
+   with the bar complete. They are two different measurements:
+
+     they fit        890 px in Italian, 820 in English — below that the buttons
+                     start to tighten
+     they stay put   980 px, and below that the middle group **moves when "Talk"
+                     appears**: 3 px at 970, 28 at 920
+
+   The second one commands. With `1fr auto 1fr` the two columns have a floor —
+   their content — and below 980 the left one, which has one button more, breaks
+   out of its track and pushes the centre: that is, exactly the control sliding
+   under the finger that this grid exists to avoid. Ninety pixels of margin over
+   the 890 are not caution, they are the property that is wanted.
+
+   The measurement is taken with "Talk" **visible**, which is the widest state the
+   bar reaches: tuning it on the other would give a bar that changes shape the
+   instant that button appears, right after the negotiation.
+
+   **It has to be measured again when a label changes**, and a command more is a
+   label more. It is the only number in this sheet that depends on the text, and
+   it is measured in every language, not in the one it was written in: the widest
+   dictates it. The history of this number is the proof — the extra button took it
+   to 1180 px, and shortening "Record" to "Clip" and "Mute the room" to "Mute"
+   brought it back to 980, forty above the 940 it had before that command. On a
+   phone those two short words bought more: the five commands are back on a single
+   row, 106 px at 390, the same height with and without "Talk". */
+@media (min-width: 980px) {
+  /* **Three columns, and the centre is the centre.**
+
+     The three detections say *what the monitor is watching for*, that is, they
+     are the thing one looks at; the commands at the sides are pressed. In the
+     centre the group is found without looking for it, and it is the only place in
+     the bar that does not depend on how long the words around it are.
+
+     Centring it **between its neighbours** — two spacers, or `margin: auto` —
+     would be one line and is not the same thing: the two ends measure 349 and 174
+     px, so the group would sit 87 px off centre, and it would **move by 48 when
+     "Talk" appears**. A control sliding under the finger is the defect this bar
+     has already paid for with its variable height. With two `1fr` columns the two
+     tracks are equal by construction, so the group never moves.
+
+     The price is that the single row starts later: two equal columns cost twice
+     the wider side instead of the sum of the two, that is, 40 px more. The
+     threshold stays **measured**, not chosen — see the comment above the media
+     query, which carries the two numbers and how they are taken. */
+  .bar {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+  }
+  /* In a grid `order` still counts and `flex-basis` does not: the group goes back
+     to its place in the source, which on the single row is already the middle
+     one. */
+  .detectors { order: 0; }
+  .side {
+    display: flex;
+    align-items: center;
+    gap: var(--s2);
+  }
+  /* What pushes the two right-hand commands to the end is the column, not the
+     spacer any more: keeping it would give a fourth item to a grid of three
+     columns, that is, a second row. */
+  .side.end { justify-content: flex-end; }
+  .spacer { display: none; }
+}
+
+/* ---------- the recordings page ----------
+
+   It reuses the viewer's sheet instead of having one of its own: it is its
+   continuation, and two sheets to keep aligned have already cost `--t-h1`
+   written 28 in one and 24 in the other.
+
+   The column here is not flexible with `order` as in the viewer: there the order
+   changes with the state — the access box goes up or down — here it does not. A
+   `flex` with nothing to reorder is a machine with no job. */
+.clips { display: block; padding-bottom: var(--s6); }
+
+.clips-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s4);
+  padding: var(--s4) var(--s5);
+  border-bottom: 1px solid var(--line);
+}
+
+/* **A heading takes a heading's step.** On `--t-lead`, which in the scale is the
+   opening line of a text — a body role, not a heading one — this was the only
+   `h1` in the product not to use one: next to the 40 px pill it read as a label
+   for the command on its left rather than as the page's name.
+
+   The step is `--t-h2` and not `--t-h1`: the 28 px are the opening of a screen
+   with nothing above it (`/login`, `/setup`), while this is a page heading as
+   wide as a command forty tall. The tight tracking is the same as `.card h1`'s —
+   a heading tightens to its size, and writing it in only one of the two places
+   would give two headings with two optical colours. */
+.clips-head h1 {
+  margin: 0;
+  font-weight: 600;
+  font-size: var(--t-h2);
+  line-height: 1.2;
+  font-family: var(--sans);
+  letter-spacing: -.028em;
+  color: var(--ink);
+}
+
+/* There is one player and it sits at the top. Pure black like the viewer's
+   stage: it is the frame around an image, and a tinted frame reads as a cast over
+   the video. */
+.clips-player { background: var(--stage); }
+.clips-player video {
+  display: block;
+  width: 100%;
+  max-height: 60vh;
+  background: var(--stage);
+}
+.clips-playing {
+  display: flex;
+  gap: var(--s3);
+  padding: var(--s2) var(--s5);
+  background: var(--card-sunk);
+  border-bottom: 1px solid var(--line);
+  font-size: var(--t-small);
+  color: var(--muted);
+}
+
+.clips-empty, .clips-note {
+  margin: 0;
+  padding: var(--s5);
+  color: var(--muted);
+  font-size: var(--t-ui);
+  line-height: 1.6;
+}
+.clips-note {
+  padding: var(--s3) var(--s5);
+  font-size: var(--t-small);
+  font-variant-numeric: tabular-nums;
+}
+
+.clips-list { margin: 0; padding: 0; list-style: none; }
+
+.clip-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s2) var(--s5);
+  border-bottom: 1px solid var(--line-soft);
+}
+/* **A row is one area, and the mouse lightens all of it.**
+   With the lighting on `.clip-open`, that is, on the data alone, moving the
+   mouse lit half a row and the three commands stayed dark, and the two halves
+   read as two things placed side by side instead of as one. Now the ground sits
+   on the row, and the buttons keep theirs, which is lighter: "this row, and
+   inside it, this command".
+
+   **And it no longer promises more than there is**: `.clip-open` is `flex: 1`, so
+   the gap between the data and the commands really is pressable and opens the
+   clip. The only lit stretch that cannot be pressed is the one under the three
+   buttons, which their grounds cover entirely as soon as the mouse is over
+   them.
+
+   Under `hover: hover` like every other hover in this sheet: a tap would
+   otherwise leave the row lit until the next one lands elsewhere, which on a
+   list reads as a selection nobody made. */
+@media (hover: hover) { .clip-row:hover { background: #FFFFFF08; } }
+/* A row is pressed too, and on a phone it is the only thing that answers before
+   the clip starts playing. */
+.clip-row:active { background: #FFFFFF08; }
+
+/* The clip that is playing declares itself with the colour of the lit toggles,
+   and with one mark only: see "one mark for one thing".
+
+   The case of the two together is declared, as for the microphone box's entries:
+   without it, at equal specificity the last rule written would win — either the
+   playing row loses its mark under the mouse, or the mouse has no effect
+   precisely on the row being looked at. */
+.clip-row.on { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+@media (hover: hover) {
+  .clip-row.on:hover { background: color-mix(in srgb, var(--accent) 18%, transparent); }
+}
+
+.clip-open {
+  flex: 1;
+  width: auto;
+  min-width: 180px;
+  display: flex;
+  align-items: center;
+  gap: var(--gap-ico);
+  min-height: 48px;
+  padding: var(--s2) 0;
+  background: none;
+  border: 0;
+  border-radius: var(--radius-s);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+/* The ground is supplied by the row; here all that is left is to switch off the
+   lift that `button:hover` gives every button, which on a list row would make the
+   data bounce. It goes in the same media block as the lift it undoes: written
+   outside, it would be a rule with nothing left to switch off. */
+@media (hover: hover) { .clip-open:hover { filter: none; transform: none; } }
+.clip-open .ico { color: var(--accent); }
+.clip-data { display: flex; flex-direction: column; gap: 2px; }
+.clip-open b { font-weight: 500; font-variant-numeric: tabular-nums; }
+.clip-open span { color: var(--ink-2); font-size: var(--t-small); }
+.clip-open em {
+  color: var(--muted);
+  font-size: var(--t-small);
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A row's commands are the same pills as the monitor's bar, only narrower: the
+   word is not removed — an icon alone on "delete" asks people to guess — but the
+   text drops to the notes' size. */
+/* **Three parallel commands carry three equal widths.** They are the three things
+   done to the same clip, and left at the length of their words they came out in
+   three different sizes — that is, a hierarchy drawn by a fact of spelling
+   instead of by a decision. It is the grid of the monitor bar's three toggles,
+   taken for the same reason: equal widths where things are parallel. */
+.clip-actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  align-items: center;
+  gap: var(--s2);
+  flex: none;
+}
+.clip-actions button.ghost, .clip-actions a.ghost {
+  width: auto;
+  min-height: 40px;
+  padding: 0 var(--s3);
+  font-size: var(--t-small);
+  color: var(--ink-2);
+  /* The same four lines as `.bar button`, and for the same reason: without them
+     the glyph and the word huddle together — on "Delete" the bin touched the D,
+     while "Download", which is an `<a>`, had its air. It could be seen only by
+     looking at the page. */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--gap-ico);
+}
+/* **On "Delete" the red is in the bin, not in the pill.**
+   A red outline and red text made that command the only different pill of the
+   three, and in a row where nothing is wrong: `--c-stop` is the colour of the
+   fault — the warning band, the broken dot — and stuck on a command that can
+   perfectly well be pressed it teaches people to read as an alarm something that
+   is not. It is the same mistake the meter avoids by not painting a loud cry in
+   brick.
+
+   The glyph does stay red, and it is the second icon not to follow its button's
+   colour after the recording dot: there as here the red **is** the meaning. What
+   protects against pressing by mistake was never the colour, it is the
+   confirmation question. */
+.clip-actions .danger .ico { color: var(--c-stop); }
+
+/* **The lock is the bar's toggle, and it does not need a rule of its own.**
+   `.clip-actions button.ghost` is worth 0,1,1 and beats `.toggle`, so at rest
+   that button is identical to the other two in the row; lit, `.toggle[aria-
+   pressed="true"]` commands, which is worth 0,2,0. That is, the teal pill arrives
+   by itself, and it is the same as the monitor's toggles: the same shape for the
+   same idea — "this is the state", not "this does a thing".
+
+   There used to be `.clip-kept` here, the badge of a kept clip. It went with the
+   lock's one-way street: since clips asked for by hand are born kept, the way
+   back is needed too, and a badge cannot be pressed. */
+
+/* --- `hidden` has to mean hidden ---------------------------------------- */
+
+/* **Any `display` we write beats the attribute, and not by specificity: the
+   author's style always wins over the browser's.** `[hidden] { display: none }`
+   lives in the default sheet, so a single `.addr.with-qr { display: flex }` — or
+   a `.block`, or an `li` in a laid-out list — is enough for `element.hidden =
+   true` to hide nothing.
+
+   It is not a hypothesis: measured on the guided path, **four** elements marked
+   `hidden` were visible — the box with the address from outside, its outcome row
+   with the green tick, and the two commands of the Funnel step that must appear
+   only to an administrator. Whoever chose "at home is enough for me" reached the
+   end and found a second empty box and a green tick on something they had not
+   done.
+
+   It is the third time this family has come back: the `<dialog>` that stayed
+   open at the foot of the page, the label that erased the icon, and now this.
+   The rule lives here once and for all instead of being rechecked element by
+   element — `!important` is what the language offers for saying "this is not
+   negotiable", and it is the remedy the specification itself recommends. */
+[hidden] { display: none !important; }

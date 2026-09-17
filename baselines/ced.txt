@@ -1,0 +1,163 @@
+# parity of internal/ced against ced.cpp, 5 September 2026
+#
+# This measurement answers one question only: **does the forward pass written
+# here give the same numbers as whoever runs the model for a living?** It cannot
+# be asked of `go test`, because it wants two things that are not in the
+# repository and must not be: the weights (11 MB, in workbench/, ignored by git)
+# and the oracle, which is somebody else's executable. A test that looked for
+# them on the disk of whoever runs it would pass here and skip everywhere else,
+# that is, it would prove nothing.
+#
+# The oracle is ced-cli v0.1.0 (ced.cpp, MIT), a Windows CPU x64 binary, which
+# runs the same GGUF through ggml. It is the same form of cross-check as
+# pat-opus: the confirmation comes from something we did not write.
+#
+# Machine: the Intel development laptop. Model: mispeech/ced-tiny, Apache-2.0,
+# 5.5 M parameters, 527 AudioSet classes.
+#
+# THE TWO FILES, AND WHICH OF THE TWO IS SAFE
+#
+# The q8_0 is in the repository, embedded with go:embed, so git holds its
+# fingerprint. The f16 is not: it lives in workbench/, which is ignored, that is,
+# it **exists only on the disk of whoever took this measurement**. So the
+# fingerprint is written here, which is the same rule already paid for with
+# libopus's .wasm — of an artefact that is shipped, or that measurements are made
+# on, one notes the provenance and the fingerprint, otherwise the only thing that
+# says whether what is downloaded again is what was measured does not exist.
+#
+#   sha256  workbench/ced-tiny-f16.gguf
+#           af8b81c67bae50bfca4ea83dbba77b3bae4fa6180d36c17d6877f7700aeeb77b
+#   sha256  internal/ced/ced-tiny-q8_0.gguf
+#           48bee4e2fc3cc85d7806e03471db24e77fda6c2a2e81ffe9ef67caebaf2bd674
+#
+# The q8_0 is quantised from the f16, and workbench/ held a **second identical
+# copy** of the embedded one. Two copies of the same artefact are the second list
+# that diverges: regenerating the model and forgetting one of them, pat-sounds
+# would measure the thresholds on a model that is not the one shipped, and nobody
+# would notice. The path to use is the embedded one.
+#
+# **Parity cannot be measured on the q8_0**, and those eleven megabytes are the
+# price of that. ced-cli does read the q8_0, so the comparison would run: what
+# would change is what the resulting number means. The question here is whether
+# the forward pass written in internal/ced is right, and the answer is worth 1e-5
+# against a declared tolerance of 1e-3. On a quantised file, though, the two sides
+# do not come back to floats by the same road — here the weights are converted to
+# float32 on opening, ggml works the block in integers and applies the scale
+# afterwards — so the deviation would be the sum of two differences: our
+# arithmetic, and the two roads back from eight bits to a number. That the second
+# is worth zero is precisely what one does not know without measuring it. **A
+# reference whose number has two possible causes is worth less than one that has
+# a single cause**, and it is the same reason the two encoders were compared on
+# the same machine, on the same scene and at the same bitrate: one variable at a
+# time.
+#
+# How it is redone:
+#   ced-cli classify workbench/ced-tiny-f16.gguf signal.wav --top-k 527
+# and on the other side a throwaway test in internal/ced that loads the same
+# file, reads the same WAV and calls Scores. The four signals are generated: a
+# 440 Hz sine, white noise, a sweep, silence, all 10.0 s mono 16 kHz.
+
+TOLERANCE
+  Declared **before** looking at the numbers: 1e-3 on the probability.
+  Below 1e-4 there is nothing to tell apart, because the oracle prints four
+  decimals. Above it, what remains is the sum of float32's deviations along
+  twelve blocks, in two implementations that sum in different orders.
+
+PARITY OVER ALL 527 CLASSES            mean deviation   worst
+  440 Hz sine                            4.0e-06        4.7e-05  Gong
+  white noise                            7.3e-06        3.2e-04  Static
+  sweep                                  5.2e-06        3.5e-04  Synthesizer
+  silence                                1.1e-05        6.7e-04  Silence
+
+  527 classes compared by name, none unpaired. The comparison is on the
+  probabilities and not on the logits because that is what the oracle prints: it
+  is the unfavourable direction, the deviations are squashed near zero and one.
+
+  The top five, as a sanity check (ours / oracle):
+    sine       0.9119 / 0.9119  Sine wave
+    noise      0.5263 / 0.5265  White noise
+    sweep      0.5922 / 0.5922  Sine wave
+    silence    0.5263 / 0.5256  Silence
+
+COST
+                        minimum   median   maximum   (15 windows, one core)
+  at rest                432 ms   442 ms   451 ms
+  with the encoder on    462 ms   487 ms   536 ms   <- +10% on the median
+
+  The load is `pat-capture -d 45s`, that is, camera, H.264 encoder, microphone
+  and Opus together. **In the same session the delivery of the four streams
+  stayed regular**: 0% of bursty intervals on the audio and on the encoder's
+  output, 2% on the WASAPI callback, which is the usual value. The model does not
+  disturb the media path.
+
+  It matches the estimate made before writing the code: 3.2 GFLOP at 7.1-7.6
+  GFLOPS measured on the matrix multiplier in pure Go. That is ~5% of a core if
+  the window were looked at every ten seconds — and it is not, because upstream
+  there is internal/detect's gate.
+
+  To be remeasured when `linear` is touched or when it moves to more goroutines.
+
+  **Time is also a measure of correctness, and here it was.** A first version of
+  `WindowSamples` returned `maxFrames*hop`, one sample too many: with centred
+  padding the frames are `1 + n/hop`, so going back wants `(maxFrames-1)*hop`.
+  Out came 1013 frames, that is two passes instead of one — 874 ms instead of 486
+  — and the method that exists to avoid the hole fell into it. **What found it
+  was not a wrong score but an almost doubled time**, in a measurement where the
+  scores were what was being looked at.
+
+THIS ROOM, FROM THE REAL MICROPHONE
+  32 s from the Intel Smart Sound microphone in raw mode, 48 kHz averaged by
+  three, an empty room at night, RMS -45.2 / -46.3 dBFS. Three windows.
+
+  The classes we watch, over all three windows:
+    Baby cry, infant cry   0.000    Bark        0.000
+    Crying, sobbing        0.000    Dog         0.000-0.001
+    Whimper                0.000    Howl        0.000
+    Wail, moan             0.000    Growling    0.000
+                                    Yip         0.000
+                                    Bow-wow     0.000
+    Speech 0.003-0.006     Silence 0.012-0.013
+
+  That is, **the false-positive floor on what interests us is zero**: a threshold
+  even as low as 0.1 would sit a hundred times above it.
+
+  What the model declares it hears instead:
+    Mouse 0.14-0.38   Bird 0.32-0.34   Chirp, tweet 0.19-0.22   Tick 0.07-0.10
+
+  **Hence the fact that matters more than the numbers: the probabilities are not
+  comparable between classes.** On an empty room the model is 38% sure it hears a
+  mouse. It does not harm us — we do not watch that class — but it means a single
+  threshold valid for every class would mean nothing: one looks at the classes
+  whose floor has been measured, and the threshold belongs to each of them.
+
+  **The half that matters is missing: a real cry and a real bark.** With no
+  positives there is no threshold to choose, only a floor to stay away from.
+
+f16 AGAINST q8_0
+  Same model, two quantisations: 11,283,104 bytes against 6,211,616.
+  Deviation on the probability, worst case over all 527:
+    sine       3.2e-03  Sine wave
+    noise      6.1e-03  Pink noise
+    sweep      1.5e-02  Sine wave
+    silence    8.5e-03  Silence
+  The top five stay the same and in the same order on three signals out of four;
+  on silence the fifth place changes between two classes at 0.013, which means
+  nothing. On an alarm threshold a hundredth of a probability is noise: **they
+  are the five megabytes not to ship.**
+
+  In memory they cost the same, ~22 MB: the weights are converted to float32 on
+  opening. The saving is in the file, not while it runs.
+
+THE HOLE JUST ABOVE THE WINDOW
+  The model was trained on 1012 frames, that is 10.12 s. Above that, the original
+  model splits into whole windows and fills the last with zeros, averaging the
+  logits **at equal weight**. Measured on a repeated 440 Hz sine:
+     2.00 s   0.9420
+     5.00 s   0.9316
+    10.12 s   0.4713   <- two pieces, the second is 1 frame of sound and 1011 of zeros
+    15.00 s   0.8863
+    25.00 s   0.8927
+  It is not a defect of ours and it is not corrected: correcting it would mean
+  parting from the oracle. Windows of Model.WindowSamples() are delivered, which
+  are 161,760 samples, that is 10.11 s — **the largest that does not split**, one
+  step below the edge and not above.

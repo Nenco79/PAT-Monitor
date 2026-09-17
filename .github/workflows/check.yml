@@ -1,0 +1,72 @@
+# Format, vet, the suite, and that build.ps1 still produces a binary.
+#
+# Windows only, and that is not an omission: the capture is Media Foundation and
+# WASAPI, most tests carry //go:build windows, and on anything else the tree
+# builds almost nothing and proves less.
+#
+# Releases are release.yml's business, and neither workflow signs anything —
+# the reason is written there.
+name: check
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  # No pull_request trigger: pull requests are turned off on this repository.
+  # Adding one here would be a job that never runs, which reads as coverage.
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: windows-latest
+    env:
+      CGO_ENABLED: "0"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # **Not the default of 1.** The build stamps the commit count into the
+          # binary as `r`, and in a shallow clone `git rev-list --count` answers
+          # 1 — with no error, on every build, for ever. An identifier that lies
+          # is worse than no identifier, and this is the shape it takes here.
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # gofmt exits 0 whether or not it found anything: it prints the files and
+      # says nothing else, so the check is on the output and not on the status.
+      # Measured rather than assumed.
+      - name: gofmt
+        shell: pwsh
+        run: |
+          $bad = gofmt -l .
+          if ($bad) { $bad; throw "the files above are not gofmt'd" }
+
+      - name: vet
+        run: go vet ./...
+
+      # The suite carries the guards this project relies on: the index against
+      # the chapters, the README against the tree, the catalogues against the
+      # codes, the sweep that refuses a bare `go` statement, the licence folder
+      # against what is linked in.
+      - name: test
+        run: go test ./...
+
+      # Not `go build`: build.ps1 stamps the version and the Tailscale node
+      # version through the linker and generates the icon resource, so building
+      # any other way tests something the product is not.
+      #
+      # **`powershell` and not `pwsh`, deliberately**, and it is the only step
+      # here that cares. They are two parsers: `pwsh` is PowerShell 7 and reads
+      # a BOM-less file as UTF-8, Windows PowerShell 5.1 reads it as ANSI — and
+      # build.ps1 has no BOM, so a multi-byte character inside one of its
+      # strings is a parse error on 5.1 and nothing at all on 7. The machine
+      # that runs this script is on 5.1, so a check on 7 would stay green over a
+      # script that does not start.
+      - name: build
+        shell: powershell
+        run: .\build.ps1

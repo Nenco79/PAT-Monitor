@@ -1,0 +1,359 @@
+# capture reference measurement, 20 August 2026 (evening)
+# AMD Ryzen 5 PRO 6650U with Radeon Graphics, driver 32.0.21045.1000
+#
+# **The transcript below is verbatim, and it is in Italian**: it is the output of
+# the build of that date, which spoke Italian, and a report is evidence — it is
+# not rewritten afterwards. What is ours is this header, and it is here that the
+# verdict lives; the numbers below do not depend on a language.
+#
+# **First reference measurement on this machine.** Until today there was only
+# one, taken on Intel, and it did not cover the chip on which the risky
+# manoeuvres are really risky: here rebuilding the encoder has already
+# interrupted the capture. A reference exists to answer "has it got worse?", and
+# the question is worth more where the failure is possible.
+#
+# It does not replace the Intel one, which stays in baselines/capture-intel.txt.
+# **Two machines are not compared with each other**: different scene, different
+# light, different encoder. Each is compared with itself.
+#
+#   video          1158 - 1162 frames, 28.2 - 28.7 fps
+#   bitrate        2240 - 2279 kbit/s out of 2500 asked for
+#   keyframes      20
+#   quantiser      21.6 - 21.7 mean, p95 23, max 25-26, read from the STREAM
+#   audio          1943 - 1975 Opus packets, 61-63 kbit/s
+#   video in bursts  376-418 out of ~1160 (32-36%)
+#   WASAPI in bursts 0-1 out of ~3900 (0%)
+#
+# **The video arrives in pairs, and it is not a fault of ours: it has always been
+# so.** A third of the intervals are bursty — `min 0s`, that is two frames
+# delivered at the same instant, then a gap of 67 ms. On Intel the same line says
+# 0%. It is the line CLAUDE.md says to look at first, so it had to be explained
+# rather than filed away: the totals meanwhile are perfect — 28.6 fps, 20
+# keyframes, everything [OK] — and that is exactly how this defect hides.
+#
+# Verified that **it is not a regression**, by the only road that can establish
+# it: rebuilding `pat-capture` from commit 702d929, that is from before the probe
+# and the two separate cadences, and remeasuring on the same machine in the same
+# session.
+#
+#                        702d929 (before)  9ef350a (now)
+#   in bursts            425 out of 1140 (37%) 376 out of 1157 (32%)
+#   median                       31.3 ms           31.2 ms
+#   p95                          81.2 ms           80.7 ms
+#   bursts               414, from 2 to 3  364, from 2 to 3
+#
+# Identical. The AMD encoder emits its frames two at a time, and nobody knew
+# because no measurement had ever been taken on this machine. If one day that
+# number really does change, now there is something to compare it with.
+#
+# **The bitrate probe bites here, and it is the opposite verdict to Intel's.**
+# Three times out of three, at INFO level and not WARN:
+#
+#   asked 1250   2474 -> 1422      2489 -> 1348      2458 -> 1383
+#
+# The throughput follows, so it stays on `SetBitrate` and does **not** move to
+# the reconfiguration — which on this chip is the manoeuvre that has already
+# killed the capture. It is the first time the probe has been observed on AMD: on
+# Quick Sync it declares the encoder deaf, here it absolves it. The two signatures
+# really do separate, which was why the probe was written.
+#
+# **And here the probe costs, where on Intel it did not.** The Intel report says
+# that four seconds at half bitrate out of forty would show "on an encoder that
+# really does answer SetBitrate", and this is that encoder: 2370 kbit/s with the
+# earlier binary against 2278 with the current one, that is -3.9% against the
+# -4.4% predicted. The difference between the two columns of the comparison **is
+# the probe**, not a regression.
+#
+# **The quantiser is read from the stream, and the attribute's absence is
+# declared.** Over 1158 frames the encoder sets 17 attributes and the quantiser
+# is not among them: reading seventeen of them is what proves we know how to
+# enumerate them, and without that count "it is missing" and "we cannot read it"
+# look alike.
+#
+# Variability between identical runs stays around +-30% on the delivery details:
+# do not chase a single measurement.
+
+
+===== esecuzione 1 =====
+============================================================================
+  webcam:   ACER HD User Facing
+  richiesto: 1280x720@30, 2500 kbit/s
+  durata:   40s
+============================================================================
+time=2026-08-22T08:34:34.352+02:00 level=INFO msg="telecamera aperta" formato="NV12 1280x720@30"
+time=2026-08-22T08:34:34.844+02:00 level=INFO msg="microfono aperto" device="Microphone Array (AMD Audio Device)" formato="48000 Hz, 2 canali, 32 bit float" modo=raw "senza effetti OEM"=true
+time=2026-08-22T08:34:34.901+02:00 level=INFO msg="cattura avviata" encoder=AMDh264Encoder video=1280x720@30 bitrate=2500
+     1s  video     0 frame (0 key)       0 kbit/s  qp   -  audio     0 pkt  livello    0.0 dBFS
+time=2026-08-22T08:34:35.084+02:00 level=INFO msg="audio attivo"
+     2s  video    18 frame (1 key)    2364 kbit/s  qp  26  audio    42 pkt  livello  -40.4 dBFS
+     3s  video    48 frame (1 key)    1808 kbit/s  qp  23  audio    92 pkt  livello  -40.3 dBFS
+     4s  video    79 frame (2 key)    2412 kbit/s  qp  23  audio   142 pkt  livello  -41.6 dBFS
+     5s  video   109 frame (2 key)    2447 kbit/s  qp  23  audio   192 pkt  livello  -41.3 dBFS
+     6s  video   138 frame (3 key)    2408 kbit/s  qp  23  audio   242 pkt  livello  -41.8 dBFS
+     7s  video   168 frame (3 key)    2505 kbit/s  qp  23  audio   292 pkt  livello  -41.3 dBFS
+     8s  video   198 frame (4 key)    2586 kbit/s  qp  23  audio   342 pkt  livello  -41.0 dBFS
+     9s  video   228 frame (4 key)    1383 kbit/s  qp  23  audio   392 pkt  livello  -41.0 dBFS
+    10s  video   258 frame (5 key)    1680 kbit/s  qp  23  audio   442 pkt  livello  -41.4 dBFS
+    11s  video   287 frame (5 key)     887 kbit/s  qp  23  audio   492 pkt  livello  -40.5 dBFS
+time=2026-08-22T08:34:45.902+02:00 level=INFO msg="il comando di bitrate ha presa su questo encoder" chiesto_kbps=1250 prima_kbps=2474 dopo_kbps=1422
+    12s  video   318 frame (6 key)    1575 kbit/s  qp  23  audio   542 pkt  livello  -41.5 dBFS
+    13s  video   348 frame (6 key)    2498 kbit/s  qp  23  audio   592 pkt  livello  -40.6 dBFS
+    14s  video   377 frame (7 key)    2446 kbit/s  qp  23  audio   642 pkt  livello  -41.1 dBFS
+    15s  video   409 frame (7 key)    2630 kbit/s  qp  23  audio   692 pkt  livello  -40.9 dBFS
+    16s  video   438 frame (8 key)    2425 kbit/s  qp  23  audio   742 pkt  livello  -41.5 dBFS
+    17s  video   469 frame (8 key)    2581 kbit/s  qp  23  audio   792 pkt  livello  -40.9 dBFS
+    18s  video   498 frame (9 key)    2420 kbit/s  qp  23  audio   842 pkt  livello  -40.6 dBFS
+    19s  video   529 frame (9 key)    2586 kbit/s  qp  23  audio   892 pkt  livello  -40.8 dBFS
+    20s  video   559 frame (10 key)    2518 kbit/s  qp  23  audio   942 pkt  livello  -40.7 dBFS
+    21s  video   588 frame (10 key)    2393 kbit/s  qp  23  audio   992 pkt  livello  -41.1 dBFS
+    22s  video   618 frame (11 key)    2524 kbit/s  qp  23  audio  1042 pkt  livello  -40.2 dBFS
+    23s  video   649 frame (11 key)    2560 kbit/s  qp  23  audio  1092 pkt  livello  -40.5 dBFS
+    24s  video   679 frame (12 key)    2552 kbit/s  qp  23  audio  1142 pkt  livello  -40.0 dBFS
+    25s  video   707 frame (12 key)    2291 kbit/s  qp  23  audio  1192 pkt  livello  -39.8 dBFS
+    26s  video   738 frame (13 key)    2632 kbit/s  qp  23  audio  1242 pkt  livello  -40.6 dBFS
+    27s  video   768 frame (13 key)    2460 kbit/s  qp  23  audio  1292 pkt  livello  -40.4 dBFS
+    28s  video   797 frame (14 key)    2571 kbit/s  qp  23  audio  1342 pkt  livello  -41.1 dBFS
+    29s  video   828 frame (14 key)    2430 kbit/s  qp  23  audio  1392 pkt  livello  -40.5 dBFS
+    30s  video   858 frame (15 key)    2515 kbit/s  qp  23  audio  1442 pkt  livello  -41.1 dBFS
+    31s  video   888 frame (15 key)    2487 kbit/s  qp  23  audio  1492 pkt  livello  -41.0 dBFS
+    32s  video   918 frame (16 key)    2519 kbit/s  qp  23  audio  1542 pkt  livello  -41.2 dBFS
+    33s  video   948 frame (16 key)    2484 kbit/s  qp  23  audio  1592 pkt  livello  -40.7 dBFS
+    34s  video   979 frame (17 key)    2631 kbit/s  qp  23  audio  1642 pkt  livello  -40.5 dBFS
+    35s  video  1009 frame (17 key)    2446 kbit/s  qp  23  audio  1692 pkt  livello  -40.9 dBFS
+    36s  video  1038 frame (18 key)    2426 kbit/s  qp  23  audio  1742 pkt  livello  -40.1 dBFS
+    37s  video  1068 frame (18 key)    2494 kbit/s  qp  23  audio  1792 pkt  livello  -41.2 dBFS
+    38s  video  1099 frame (19 key)    2633 kbit/s  qp  23  audio  1842 pkt  livello  -39.4 dBFS
+    39s  video  1127 frame (19 key)    2295 kbit/s  qp  23  audio  1892 pkt  livello  -39.5 dBFS
+
+============================================================================
+  ESITO — 40.4s effettivi
+============================================================================
+  [OK  ] video: 1158 frame, 28.6 fps, 2278 kbit/s
+  [OK  ] keyframe: 20 (attesi ~20 con GOP di 2s)
+  [OK  ] parameter set nel flusso: SPS=true PPS=true, profile-level-id=42e01f
+  [    ] quantizzatore: media 21.7, p95 23, max 26, su 1150 frame (da flusso)
+  [    ] nessuna controprova: su 1158 frame l'encoder mette 17 attributi e il quantizzatore non e' fra questi — l'assenza e' sua, si usa il flusso
+  [OK  ] audio: 1943 pacchetti Opus, 62 kbit/s
+  [OK  ] motion: 193 frame gray, differenza max fra frame 5.74
+  [OK  ] analisi audio: 38.8s, RMS -40.6 dBFS, picco -17.0 dBFS (4642 LSB), zeri esatti 1.0%, fondo 304.76 LSB -> funzionante
+
+  Consegna video (Annex-B) (nominale 33ms, 1157 intervalli):
+    intervalli   min 0s   mediana 31.2ms   p95 80.7ms   max 116.3ms
+    a raffica    376 su 1157 (32%)
+    raffiche     364, da 2 a 3 elementi (p95 2)
+    media per raffica   p95 67ms   max 100ms
+
+  Consegna audio (Opus in Ogg) (nominale 20ms, 1942 intervalli):
+    intervalli   min 8.2ms   mediana 20ms   p95 20.5ms   max 32.5ms
+    a raffica    0 su 1942 (0%)
+    raffiche     nessuna: consegna regolare
+
+  Consegna audio (PCM grezzo) (nominale 100ms, 387 intervalli):
+    intervalli   min 97.9ms   mediana 100ms   p95 100.5ms   max 103.1ms
+    a raffica    0 su 387 (0%)
+    raffiche     nessuna: consegna regolare
+
+  Consegna callback WASAPI (sotto carico) (nominale 10ms, 3885 intervalli):
+    intervalli   min 500µs   mediana 10ms   p95 11ms   max 22.6ms
+    a raffica    1 su 3885 (0%)
+    raffiche     1, da 2 a 2 elementi (p95 2)
+    media per raffica   p95 20ms   max 20ms
+
+  Consegna pacchetti Opus in uscita dall'encoder (nominale 20ms, 1942 intervalli):
+    intervalli   min 8.2ms   mediana 20ms   p95 20.5ms   max 32.5ms
+    a raffica    0 su 1942 (0%)
+    raffiche     nessuna: consegna regolare
+
+  [OK  ] audio in modalita' WASAPI raw (bypass effetti OEM): true
+----------------------------------------------------------------------------
+  Pipeline funzionante: i quattro flussi arrivano con dati validi.
+
+
+===== esecuzione 2 =====
+============================================================================
+  webcam:   ACER HD User Facing
+  richiesto: 1280x720@30, 2500 kbit/s
+  durata:   40s
+============================================================================
+time=2026-08-22T08:35:16.644+02:00 level=INFO msg="microfono aperto" device="Microphone Array (AMD Audio Device)" formato="48000 Hz, 2 canali, 32 bit float" modo=raw "senza effetti OEM"=true
+time=2026-08-22T08:35:16.880+02:00 level=INFO msg="telecamera aperta" formato="NV12 1280x720@30"
+time=2026-08-22T08:35:16.987+02:00 level=INFO msg="audio attivo"
+time=2026-08-22T08:35:17.377+02:00 level=INFO msg="cattura avviata" encoder=AMDh264Encoder video=1280x720@30 bitrate=2500
+     1s  video     0 frame (0 key)       0 kbit/s  qp   -  audio    22 pkt  livello  -38.9 dBFS
+     2s  video    19 frame (1 key)    1826 kbit/s  qp  23  audio    72 pkt  livello  -39.5 dBFS
+     3s  video    49 frame (1 key)    2213 kbit/s  qp  23  audio   122 pkt  livello  -40.2 dBFS
+     4s  video    79 frame (2 key)    2661 kbit/s  qp  23  audio   172 pkt  livello  -40.6 dBFS
+     5s  video   108 frame (2 key)    2248 kbit/s  qp  23  audio   222 pkt  livello  -40.8 dBFS
+     6s  video   140 frame (3 key)    2699 kbit/s  qp  23  audio   272 pkt  livello  -38.8 dBFS
+     7s  video   168 frame (3 key)    2291 kbit/s  qp  23  audio   322 pkt  livello  -38.6 dBFS
+     8s  video   199 frame (4 key)    2590 kbit/s  qp  23  audio   372 pkt  livello  -38.7 dBFS
+     9s  video   228 frame (4 key)    1281 kbit/s  qp  23  audio   422 pkt  livello  -36.3 dBFS
+    10s  video   258 frame (5 key)    1652 kbit/s  qp  23  audio   472 pkt  livello  -41.0 dBFS
+    11s  video   288 frame (5 key)     783 kbit/s  qp  23  audio   522 pkt  livello  -40.8 dBFS
+time=2026-08-22T08:35:28.378+02:00 level=INFO msg="il comando di bitrate ha presa su questo encoder" chiesto_kbps=1250 prima_kbps=2489 dopo_kbps=1348
+    12s  video   319 frame (6 key)    1689 kbit/s  qp  23  audio   572 pkt  livello  -39.5 dBFS
+    13s  video   349 frame (6 key)    2495 kbit/s  qp  23  audio   622 pkt  livello  -40.3 dBFS
+    14s  video   378 frame (7 key)    2645 kbit/s  qp  23  audio   672 pkt  livello  -37.8 dBFS
+    15s  video   409 frame (7 key)    2358 kbit/s  qp  23  audio   722 pkt  livello  -37.4 dBFS
+    16s  video   440 frame (8 key)    2593 kbit/s  qp  23  audio   772 pkt  livello  -38.8 dBFS
+    17s  video   468 frame (8 key)    2327 kbit/s  qp  23  audio   822 pkt  livello  -37.2 dBFS
+    18s  video   500 frame (9 key)    2712 kbit/s  qp  23  audio   872 pkt  livello  -37.6 dBFS
+    19s  video   528 frame (9 key)    2290 kbit/s  qp  23  audio   922 pkt  livello  -38.1 dBFS
+    20s  video   560 frame (10 key)    2691 kbit/s  qp  23  audio   972 pkt  livello  -31.4 dBFS
+    21s  video   588 frame (10 key)    2303 kbit/s  qp  23  audio  1022 pkt  livello  -38.6 dBFS
+    22s  video   618 frame (11 key)    2506 kbit/s  qp  23  audio  1072 pkt  livello  -37.7 dBFS
+    23s  video   648 frame (11 key)    2498 kbit/s  qp  23  audio  1122 pkt  livello  -36.8 dBFS
+    24s  video   679 frame (12 key)    2632 kbit/s  qp  23  audio  1172 pkt  livello  -39.7 dBFS
+    25s  video   709 frame (12 key)    2463 kbit/s  qp  23  audio  1222 pkt  livello  -35.5 dBFS
+    26s  video   739 frame (13 key)    2523 kbit/s  qp  23  audio  1272 pkt  livello  -29.1 dBFS
+    27s  video   769 frame (13 key)    2491 kbit/s  qp  23  audio  1322 pkt  livello  -38.3 dBFS
+    28s  video   798 frame (14 key)    2413 kbit/s  qp  23  audio  1372 pkt  livello  -39.9 dBFS
+    29s  video   829 frame (14 key)    2583 kbit/s  qp  23  audio  1422 pkt  livello  -40.9 dBFS
+    30s  video   859 frame (15 key)    2648 kbit/s  qp  23  audio  1472 pkt  livello  -32.4 dBFS
+    31s  video   889 frame (15 key)    2355 kbit/s  qp  23  audio  1522 pkt  livello  -30.9 dBFS
+    32s  video   919 frame (16 key)    2671 kbit/s  qp  23  audio  1572 pkt  livello  -40.0 dBFS
+    33s  video   949 frame (16 key)    2330 kbit/s  qp  23  audio  1622 pkt  livello  -37.1 dBFS
+    34s  video   979 frame (17 key)    2520 kbit/s  qp  23  audio  1672 pkt  livello  -35.1 dBFS
+    35s  video  1008 frame (17 key)    2392 kbit/s  qp  23  audio  1722 pkt  livello  -40.1 dBFS
+    36s  video  1038 frame (18 key)    2557 kbit/s  qp  23  audio  1772 pkt  livello  -31.3 dBFS
+    37s  video  1068 frame (18 key)    2444 kbit/s  qp  23  audio  1822 pkt  livello  -39.3 dBFS
+    38s  video  1099 frame (19 key)    2630 kbit/s  qp  23  audio  1872 pkt  livello  -39.4 dBFS
+    39s  video  1128 frame (19 key)    2378 kbit/s  qp  23  audio  1922 pkt  livello  -40.2 dBFS
+
+============================================================================
+  ESITO — 40.4s effettivi
+============================================================================
+  [OK  ] video: 1160 frame, 28.7 fps, 2279 kbit/s
+  [OK  ] keyframe: 20 (attesi ~20 con GOP di 2s)
+  [OK  ] parameter set nel flusso: SPS=true PPS=true, profile-level-id=42e01f
+  [    ] quantizzatore: media 21.6, p95 23, max 25, su 1153 frame (da flusso)
+  [    ] nessuna controprova: su 1160 frame l'encoder mette 17 attributi e il quantizzatore non e' fra questi — l'assenza e' sua, si usa il flusso
+  [OK  ] audio: 1973 pacchetti Opus, 63 kbit/s
+  [OK  ] motion: 193 frame gray, differenza max fra frame 0.32
+  [OK  ] analisi audio: 39.4s, RMS -35.2 dBFS, picco -5.1 dBFS (18284 LSB), zeri esatti 0.9%, fondo 567.97 LSB -> funzionante
+
+  Consegna video (Annex-B) (nominale 33ms, 1159 intervalli):
+    intervalli   min 0s   mediana 31.2ms   p95 81.4ms   max 114.6ms
+    a raffica    397 su 1159 (34%)
+    raffiche     385, da 2 a 3 elementi (p95 2)
+    media per raffica   p95 67ms   max 100ms
+
+  Consegna audio (Opus in Ogg) (nominale 20ms, 1972 intervalli):
+    intervalli   min 12.5ms   mediana 20ms   p95 20.6ms   max 27.5ms
+    a raffica    0 su 1972 (0%)
+    raffiche     nessuna: consegna regolare
+
+  Consegna audio (PCM grezzo) (nominale 100ms, 393 intervalli):
+    intervalli   min 92.7ms   mediana 100ms   p95 100.6ms   max 106.9ms
+    a raffica    0 su 393 (0%)
+    raffiche     nessuna: consegna regolare
+
+  Consegna callback WASAPI (sotto carico) (nominale 10ms, 3945 intervalli):
+    intervalli   min 6.1ms   mediana 10ms   p95 10.9ms   max 15.2ms
+    a raffica    0 su 3945 (0%)
+    raffiche     nessuna: consegna regolare
+
+  Consegna pacchetti Opus in uscita dall'encoder (nominale 20ms, 1972 intervalli):
+    intervalli   min 12.5ms   mediana 20ms   p95 20.6ms   max 27.5ms
+    a raffica    0 su 1972 (0%)
+    raffiche     nessuna: consegna regolare
+
+  [OK  ] audio in modalita' WASAPI raw (bypass effetti OEM): true
+----------------------------------------------------------------------------
+  Pipeline funzionante: i quattro flussi arrivano con dati validi.
+
+
+===== esecuzione 3 =====
+============================================================================
+  webcam:   ACER HD User Facing
+  richiesto: 1280x720@30, 2500 kbit/s
+  durata:   40s
+============================================================================
+time=2026-08-22T08:35:59.095+02:00 level=INFO msg="microfono aperto" device="Microphone Array (AMD Audio Device)" formato="48000 Hz, 2 canali, 32 bit float" modo=raw "senza effetti OEM"=true
+time=2026-08-22T08:35:59.330+02:00 level=INFO msg="telecamera aperta" formato="NV12 1280x720@30"
+time=2026-08-22T08:35:59.394+02:00 level=INFO msg="audio attivo"
+time=2026-08-22T08:35:59.768+02:00 level=INFO msg="cattura avviata" encoder=AMDh264Encoder video=1280x720@30 bitrate=2500
+     1s  video     0 frame (0 key)       0 kbit/s  qp   -  audio    25 pkt  livello  -40.4 dBFS
+     2s  video    22 frame (1 key)    2032 kbit/s  qp  23  audio    75 pkt  livello  -39.1 dBFS
+     3s  video    53 frame (1 key)    2335 kbit/s  qp  23  audio   125 pkt  livello  -40.4 dBFS
+     4s  video    83 frame (2 key)    2492 kbit/s  qp  23  audio   175 pkt  livello  -40.3 dBFS
+     5s  video   113 frame (2 key)    2496 kbit/s  qp  23  audio   225 pkt  livello  -40.6 dBFS
+     6s  video   143 frame (3 key)    2505 kbit/s  qp  23  audio   275 pkt  livello  -38.7 dBFS
+     7s  video   172 frame (3 key)    2428 kbit/s  qp  23  audio   325 pkt  livello  -40.5 dBFS
+     8s  video   202 frame (4 key)    2678 kbit/s  qp  23  audio   375 pkt  livello  -39.6 dBFS
+     9s  video   232 frame (4 key)    1097 kbit/s  qp  23  audio   425 pkt  livello  -41.3 dBFS
+    10s  video   262 frame (5 key)    1602 kbit/s  qp  23  audio   475 pkt  livello  -39.6 dBFS
+    11s  video   292 frame (5 key)     852 kbit/s  qp  23  audio   525 pkt  livello  -40.0 dBFS
+time=2026-08-22T08:36:10.769+02:00 level=INFO msg="il comando di bitrate ha presa su questo encoder" chiesto_kbps=1250 prima_kbps=2458 dopo_kbps=1383
+    12s  video   322 frame (6 key)    1920 kbit/s  qp  23  audio   575 pkt  livello  -40.2 dBFS
+    13s  video   352 frame (6 key)    2293 kbit/s  qp  23  audio   625 pkt  livello  -39.5 dBFS
+    14s  video   382 frame (7 key)    2525 kbit/s  qp  23  audio   675 pkt  livello  -40.3 dBFS
+    15s  video   412 frame (7 key)    2474 kbit/s  qp  23  audio   725 pkt  livello  -39.2 dBFS
+    16s  video   442 frame (8 key)    2524 kbit/s  qp  23  audio   775 pkt  livello  -40.2 dBFS
+    17s  video   472 frame (8 key)    2478 kbit/s  qp  23  audio   825 pkt  livello  -41.2 dBFS
+    18s  video   502 frame (9 key)    2521 kbit/s  qp  23  audio   875 pkt  livello  -39.9 dBFS
+    19s  video   532 frame (9 key)    2497 kbit/s  qp  23  audio   925 pkt  livello  -31.8 dBFS
+    20s  video   562 frame (10 key)    2505 kbit/s  qp  23  audio   975 pkt  livello  -38.0 dBFS
+    21s  video   592 frame (10 key)    2492 kbit/s  qp  23  audio  1025 pkt  livello  -39.3 dBFS
+    22s  video   622 frame (11 key)    2502 kbit/s  qp  23  audio  1075 pkt  livello  -35.4 dBFS
+    23s  video   652 frame (11 key)    2546 kbit/s  qp  23  audio  1124 pkt  livello  -38.2 dBFS
+    24s  video   682 frame (12 key)    2464 kbit/s  qp  23  audio  1174 pkt  livello  -35.9 dBFS
+    25s  video   712 frame (12 key)    2487 kbit/s  qp  23  audio  1224 pkt  livello  -37.0 dBFS
+    26s  video   742 frame (13 key)    2520 kbit/s  qp  23  audio  1274 pkt  livello  -39.0 dBFS
+    27s  video   772 frame (13 key)    2483 kbit/s  qp  23  audio  1324 pkt  livello  -32.1 dBFS
+    28s  video   802 frame (14 key)    2527 kbit/s  qp  23  audio  1374 pkt  livello  -35.6 dBFS
+    29s  video   832 frame (14 key)    2475 kbit/s  qp  23  audio  1424 pkt  livello  -40.3 dBFS
+    30s  video   862 frame (15 key)    2529 kbit/s  qp  23  audio  1474 pkt  livello  -40.4 dBFS
+    31s  video   892 frame (15 key)    2474 kbit/s  qp  23  audio  1524 pkt  livello  -39.9 dBFS
+    32s  video   922 frame (16 key)    2529 kbit/s  qp  23  audio  1574 pkt  livello  -38.8 dBFS
+    33s  video   953 frame (16 key)    2614 kbit/s  qp  23  audio  1624 pkt  livello  -40.2 dBFS
+    34s  video   984 frame (17 key)    2546 kbit/s  qp  23  audio  1674 pkt  livello  -40.5 dBFS
+    35s  video  1012 frame (17 key)    2332 kbit/s  qp  23  audio  1724 pkt  livello  -37.5 dBFS
+    36s  video  1042 frame (18 key)    2529 kbit/s  qp  23  audio  1774 pkt  livello  -36.2 dBFS
+    37s  video  1072 frame (18 key)    2472 kbit/s  qp  23  audio  1824 pkt  livello  -38.5 dBFS
+    38s  video  1102 frame (19 key)    2517 kbit/s  qp  23  audio  1874 pkt  livello  -37.9 dBFS
+    39s  video  1132 frame (19 key)    2477 kbit/s  qp  23  audio  1924 pkt  livello  -26.9 dBFS
+
+============================================================================
+  ESITO — 41.2s effettivi
+============================================================================
+  [OK  ] video: 1162 frame, 28.2 fps, 2240 kbit/s
+  [OK  ] keyframe: 20 (attesi ~21 con GOP di 2s)
+  [OK  ] parameter set nel flusso: SPS=true PPS=true, profile-level-id=42e01f
+  [    ] quantizzatore: media 21.6, p95 23, max 25, su 1154 frame (da flusso)
+  [    ] nessuna controprova: su 1162 frame l'encoder mette 17 attributi e il quantizzatore non e' fra questi — l'assenza e' sua, si usa il flusso
+  [OK  ] audio: 1975 pacchetti Opus, 61 kbit/s
+  [OK  ] motion: 194 frame gray, differenza max fra frame 0.34
+  [OK  ] analisi audio: 39.5s, RMS -35.4 dBFS, picco -5.5 dBFS (17352 LSB), zeri esatti 0.9%, fondo 556.24 LSB -> funzionante
+
+  Consegna video (Annex-B) (nominale 33ms, 1161 intervalli):
+    intervalli   min 0s   mediana 31ms   p95 81.8ms   max 132.1ms
+    a raffica    418 su 1161 (36%)
+    raffiche     405, da 2 a 3 elementi (p95 2)
+    media per raffica   p95 67ms   max 100ms
+
+  Consegna audio (Opus in Ogg) (nominale 20ms, 1974 intervalli):
+    intervalli   min 11.7ms   mediana 20ms   p95 20.6ms   max 48.5ms
+    a raffica    0 su 1974 (0%)
+    raffiche     nessuna: consegna regolare
+
+  Consegna audio (PCM grezzo) (nominale 100ms, 394 intervalli):
+    intervalli   min 95.6ms   mediana 100ms   p95 100.6ms   max 117.3ms
+    a raffica    0 su 394 (0%)
+    raffiche     nessuna: consegna regolare
+
+  Consegna callback WASAPI (sotto carico) (nominale 10ms, 3950 intervalli):
+    intervalli   min 0s   mediana 10ms   p95 10.9ms   max 27.3ms
+    a raffica    1 su 3950 (0%)
+    raffiche     1, da 2 a 2 elementi (p95 2)
+    media per raffica   p95 20ms   max 20ms
+
+  Consegna pacchetti Opus in uscita dall'encoder (nominale 20ms, 1974 intervalli):
+    intervalli   min 11.7ms   mediana 20ms   p95 20.6ms   max 48.5ms
+    a raffica    0 su 1974 (0%)
+    raffiche     nessuna: consegna regolare
+
+  [OK  ] audio in modalita' WASAPI raw (bypass effetti OEM): true
+----------------------------------------------------------------------------
+  Pipeline funzionante: i quattro flussi arrivano con dati validi.
+

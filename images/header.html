@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<!-- The repository header at the top of README.md: 1400x300, and the source of
+     the header.png beside it.
+
+     Rounded at the top, square at the bottom, because in the README the strip
+     sits against the text that follows: the bottom edge is where the page
+     continues, and there is nothing there to round away from.
+
+     **The corners must stay transparent, and that is what the export has to get
+     right.** A rounded corner does not paint its four corner pixels -- it leaves
+     whatever is behind the box -- so an export over a coloured ground bakes that
+     colour in, and the first version of this file did exactly that: two dark
+     notches in a README that GitHub renders on white. Hence `background:
+     transparent` on the body here, and an export that keeps the alpha channel:
+     `--default-background-color=00000000` in headless Edge. Empty corners are
+     right on both of GitHub's themes; white ones are right on one.
+
+     Self-contained -- no script, no external sheet, every value inline. Open it
+     in a browser and export the 1400x300 box.
+
+     Same tokens as the card: ground #E5DFD3, ink #2E2A24, teal #17706E,
+     monospace #6E6659. The icon is the transcription of internal/icon/drawing.go,
+     the same `0 0 130 100` viewBox and the same 0.72 of the side, so it is not a
+     colour or a shape chosen here: if the drawing moves, this file is what goes
+     stale with nobody saying so. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PAT Monitor — repository header</title>
+</head>
+<body style="margin:0;background:transparent;display:grid;place-items:center;min-height:100vh">
+<div style="width:1400px;height:300px;background:#E5DFD3;border-radius:24px 24px 0 0;overflow:hidden;box-sizing:border-box;padding:0 64px;display:flex;align-items:center;gap:40px;font:400 16px/1.6 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',sans-serif;color:#2E2A24">
+  <div style="flex:none;width:164px;height:164px">
+    <svg viewBox="0 0 100 100" width="164" height="164" aria-label="PAT Monitor icon">
+      <circle cx="50" cy="50" r="48" fill="#17706E"></circle>
+      <g transform="translate(-3.57,0.48) scale(1.353)">
+        <ellipse cx="45" cy="36" rx="20" ry="18" fill="#CFA46C"></ellipse>
+        <path d="M52 25c9-1 15 8 14 19c-1 8-6 12-12 11z" fill="#9E7038"></path>
+        <ellipse cx="28" cy="43" rx="13" ry="10" fill="#E7CFA5"></ellipse>
+        <ellipse cx="18" cy="40" rx="5" ry="4" fill="#443628"></ellipse>
+        <path d="M22 47c0 4 3 6 6 6" fill="none" stroke="#443628" stroke-width="2" stroke-linecap="round"></path>
+        <circle cx="40" cy="32" r="3.4" fill="#33291D"></circle>
+        <circle cx="41.3" cy="30.8" r="1.1" fill="#FBF8F2"></circle>
+      </g>
+    </svg>
+  </div>
+  <div style="flex:1;min-width:0">
+    <p style="margin:0 0 10px;display:inline-flex;align-items:center;gap:9px;font-weight:600;font-size:16px;line-height:1;letter-spacing:.14em;text-transform:uppercase;color:#17706E"><span style="width:10px;height:10px;border-radius:50%;background:#17706E"></span>Nenco79 / PAT-Monitor</p>
+    <h1 style="margin:0;font-weight:600;font-size:72px;line-height:1;letter-spacing:-.035em;color:#2E2A24">PAT Monitor</h1>
+  </div>
+  <p style="flex:none;margin:0;align-self:flex-end;padding-bottom:98px;font-weight:400;font-size:22px;line-height:1.5;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;color:#6E6659">Go · WebRTC · Tailscale · CED-tiny</p>
+</div>
+</body>
+</html>

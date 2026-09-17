@@ -1,0 +1,1165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="/icon-32.png">
+<!-- iOS reads neither the manifest's display nor its icons on every version, so
+     these two say the same thing in Apple's own words: saved to the Home Screen
+     the monitor opens with no browser chrome, and it opens with the drawing
+     rather than with a screenshot of whatever room was on screen. -->
+<link rel="apple-touch-icon" href="/icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<!-- `black` and not `black-translucent`: translucent puts the page under the
+     clock, and the top of the viewer is where the alert banner and the state
+     line live. -->
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<!-- No `theme-color`: this page is the cream one, and the night ground
+     would be the wrong colour while a second literal copied out of the
+     palette would be the wrong idea. The browser's own default is
+     right here. -->
+<title data-i18n="onb.page-title"></title>
+<link rel="stylesheet" href="/onboarding.css">
+<link rel="stylesheet" href="/icons.css">
+<link rel="stylesheet" href="/i18n.css">
+</head>
+<!--
+  The first-configuration path.
+
+  **Light palette, unlike the viewer, and that is not an inconsistency.** The
+  monitor is watched at night on a phone, and there a dark background is a
+  necessity; this page is opened once, in daylight, in front of a computer, and
+  it is the first contact with the product. The full explanation is at the top of
+  onboarding.css.
+
+  **Every section is there from load and the current one is shown.** A path made
+  of separate pages would have addresses of its own, but every step would cost a
+  full network round precisely while Tailscale is being waited for. Where one has
+  got to lives in the anchor, so the path resumes all the same: it is the
+  valuable half of multi-page, without its cost.
+
+  **No inline script.** The CSP declares `script-src 'self'`: a <script> block in
+  here would not be executed, and the password form would fall back to native
+  submission, putting the password in the URL.
+-->
+<body>
+
+<!-- ==================== backdrop ==================== -->
+<div class="sky" aria-hidden="true">
+  <!-- One SVG per corner, with the little stars in local coordinates: this way
+       each cluster keeps its proportions and no star is deformed. -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs><path id="st" d="M12 1c.9 5.6 4.5 9.2 10.1 10.1C16.5 12 12.9 15.6 12 21.2 11.1 15.6 7.5 12 1.9 11.1 7.5 10.2 11.1 6.6 12 1z"/></defs>
+  </svg>
+
+  <svg class="corner c-tl" viewBox="0 0 268 268">
+    <g transform="translate(4 16) scale(1.05)"><use href="#st" class="star pulse" fill="var(--star-1)"/></g>
+    <g transform="translate(60 30) scale(.62)"><use href="#st" class="star pulse" style="animation-delay:-1.3s" fill="var(--star-2)"/></g>
+    <g transform="translate(22 78) scale(.8)"><use href="#st" class="star pulse" style="animation-delay:-2.7s" fill="var(--star-4)"/></g>
+    <g transform="translate(98 8) scale(.5)"><use href="#st" class="star pulse" style="animation-delay:-3.8s" fill="var(--star-3)"/></g>
+    <g transform="translate(50 120) scale(.44)"><use href="#st" class="star" fill="var(--star-2)"/></g>
+    <g transform="translate(126 68) scale(.36)"><use href="#st" class="star" fill="var(--star-1)"/></g>
+    <g transform="translate(86 94) scale(.55)"><use href="#st" class="star pulse" style="animation-delay:-2.0s" fill="var(--star-3)"/></g>
+    <g transform="translate(12 144) scale(.5)"><use href="#st" class="star pulse" style="animation-delay:-3.2s" fill="var(--star-1)"/></g>
+    <g transform="translate(152 26) scale(.42)"><use href="#st" class="star" fill="var(--star-4)"/></g>
+    <g transform="translate(110 150) scale(.34)"><use href="#st" class="star" fill="var(--star-2)"/></g>
+    <g transform="translate(170 104) scale(.3)"><use href="#st" class="star" fill="var(--star-3)"/></g>
+    <g transform="translate(36 52) scale(.38)"><use href="#st" class="star" fill="var(--star-2)"/></g>
+    <g transform="translate(70 10) scale(.34)"><use href="#st" class="star" fill="var(--star-4)"/></g>
+    <g transform="translate(144 136) scale(.28)"><use href="#st" class="star" fill="var(--star-1)"/></g>
+    <g transform="translate(196 52) scale(.32)"><use href="#st" class="star" fill="var(--star-3)"/></g>
+    <g transform="translate(26 190) scale(.3)"><use href="#st" class="star" fill="var(--star-2)"/></g>
+    <g transform="translate(88 178) scale(.28)"><use href="#st" class="star" fill="var(--star-4)"/></g>
+    <g transform="translate(182 166) scale(.26)"><use href="#st" class="star" fill="var(--star-1)"/></g>
+    <g transform="translate(214 14) scale(.3)"><use href="#st" class="star" fill="var(--star-2)"/></g>
+    <g transform="translate(62 222) scale(.24)"><use href="#st" class="star" fill="var(--star-3)"/></g>
+    <g transform="translate(132 204) scale(.24)"><use href="#st" class="star" fill="var(--star-4)"/></g>
+    <g transform="translate(220 124) scale(.24)"><use href="#st" class="star" fill="var(--star-1)"/></g>
+  </svg>
+
+  <svg class="corner c-tr" viewBox="0 0 268 268">
+    <g transform="translate(236 18) scale(1)"><use href="#st" class="star pulse" style="animation-delay:-2.1s" fill="var(--star-3)"/></g>
+    <g transform="translate(178 36) scale(.66)"><use href="#st" class="star pulse" style="animation-delay:-.4s" fill="var(--star-2)"/></g>
+    <g transform="translate(220 80) scale(.78)"><use href="#st" class="star pulse" style="animation-delay:-3.3s" fill="var(--star-1)"/></g>
+    <g transform="translate(124 10) scale(.48)"><use href="#st" class="star" fill="var(--star-4)"/></g>
+    <g transform="translate(186 128) scale(.42)"><use href="#st" class="star" fill="var(--star-3)"/></g>
+    <g transform="translate(100 70) scale(.34)"><use href="#st" class="star" fill="var(--star-2)"/></g>
+    <g transform="translate(150 94) scale(.55)"><use href="#st" class="star pulse" style="animation-delay:-3.5s" fill="var(--star-1)"/></g>
+    <g transform="translate(244 138) scale(.5)"><use href="#st" class="star pulse" style="animation-delay:-.9s" fill="var(--star-4)"/></g>
+    <g transform="translate(70 32) scale(.4)"><use href="#st" class="star" fill="var(--star-3)"/></g>
+    <g transform="translate(210 172) scale(.32)"><use href="#st" class="star" fill="var(--star-2)"/></g>
+    <g transform="translate(136 164) scale(.3)"><use href="#st" class="star" fill="var(--star-1)"/></g>
+    <g transform="translate(254 58) scale(.36)"><use href="#st" class="star" fill="var(--star-2)"/></g>
+    <g transform="translate(98 124) scale(.3)"><use href="#st" class="star" fill="var(--star-4)"/></g>
+    <g transform="translate(54 90) scale(.28)"><use href="#st" class="star" fill="var(--star-3)"/></g>
+    <g transform="translate(172 204) scale(.26)"><use href="#st" class="star" fill="var(--star-1)"/></g>
+    <g transform="translate(26 18) scale(.3)"><use href="#st" class="star" fill="var(--star-2)"/></g>
+    <g transform="translate(228 214) scale(.24)"><use href="#st" class="star" fill="var(--star-4)"/></g>
+    <g transform="translate(110 204) scale(.24)"><use href="#st" class="star" fill="var(--star-3)"/></g>
+    <g transform="translate(38 146) scale(.26)"><use href="#st" class="star" fill="var(--star-1)"/></g>
+    <g transform="translate(256 100) scale(.26)"><use href="#st" class="star" fill="var(--star-2)"/></g>
+    <g transform="translate(78 174) scale(.22)"><use href="#st" class="star" fill="var(--star-4)"/></g>
+    <g transform="translate(156 52) scale(.3)"><use href="#st" class="star" fill="var(--star-1)"/></g>
+  </svg>
+
+  <svg class="corner c-bl" viewBox="0 0 268 268">
+    <g transform="translate(8 214) scale(.98)"><use href="#st" class="star pulse" style="animation-delay:-1.1s" fill="var(--star-2)"/></g>
+    <g transform="translate(66 236) scale(.6)"><use href="#st" class="star pulse" style="animation-delay:-3.6s" fill="var(--star-1)"/></g>
+    <g transform="translate(26 166) scale(.74)"><use href="#st" class="star pulse" style="animation-delay:-2.2s" fill="var(--star-3)"/></g>
+    <g transform="translate(108 188) scale(.46)"><use href="#st" class="star" fill="var(--star-4)"/></g>
+    <g transform="translate(72 136) scale(.38)"><use href="#st" class="star" fill="var(--star-2)"/></g>
+    <g transform="translate(132 228) scale(.42)"><use href="#st" class="star" fill="var(--star-1)"/></g>
+    <g transform="translate(14 120) scale(.5)"><use href="#st" class="star pulse" style="animation-delay:-3.9s" fill="var(--star-4)"/></g>
+    <g transform="translate(112 128) scale(.34)"><use href="#st" class="star" fill="var(--star-3)"/></g>
+    <g transform="translate(46 190) scale(.44)"><use href="#st" class="star" fill="var(--star-2)"/></g>
+    <g transform="translate(158 172) scale(.3)"><use href="#st" class="star" fill="var(--star-1)"/></g>
+    <g transform="translate(94 88) scale(.3)"><use href="#st" class="star" fill="var(--star-3)"/></g>
+    <g transform="translate(36 66) scale(.32)"><use href="#st" class="star" fill="var(--star-2)"/></g>
+    <g transform="translate(176 228) scale(.28)"><use href="#st" class="star" fill="var(--star-4)"/></g>
+    <g transform="translate(190 146) scale(.26)"><use href="#st" class="star" fill="var(--star-1)"/></g>
+    <g transform="translate(80 58) scale(.26)"><use href="#st" class="star" fill="var(--star-3)"/></g>
+    <g transform="translate(144 100) scale(.28)"><use href="#st" class="star" fill="var(--star-2)"/></g>
+    <g transform="translate(212 198) scale(.24)"><use href="#st" class="star" fill="var(--star-4)"/></g>
+    <g transform="translate(118 52) scale(.24)"><use href="#st" class="star" fill="var(--star-1)"/></g>
+    <g transform="translate(58 100) scale(.3)"><use href="#st" class="star" fill="var(--star-3)"/></g>
+    <g transform="translate(202 250) scale(.24)"><use href="#st" class="star" fill="var(--star-2)"/></g>
+    <g transform="translate(154 248) scale(.26)"><use href="#st" class="star" fill="var(--star-4)"/></g>
+    <g transform="translate(14 30) scale(.28)"><use href="#st" class="star" fill="var(--star-1)"/></g>
+  </svg>
+
+  <svg class="corner c-br" viewBox="0 0 268 268">
+    <g transform="translate(232 212) scale(.94)"><use href="#st" class="star pulse" style="animation-delay:-2.6s" fill="var(--star-4)"/></g>
+    <g transform="translate(176 236) scale(.56)"><use href="#st" class="star pulse" style="animation-delay:-.3s" fill="var(--star-3)"/></g>
+    <g transform="translate(224 164) scale(.72)"><use href="#st" class="star pulse" style="animation-delay:-3.9s" fill="var(--star-1)"/></g>
+    <g transform="translate(158 180) scale(.44)"><use href="#st" class="star" fill="var(--star-2)"/></g>
+    <g transform="translate(192 124) scale(.36)"><use href="#st" class="star" fill="var(--star-3)"/></g>
+    <g transform="translate(124 214) scale(.44)"><use href="#st" class="star" fill="var(--star-1)"/></g>
+    <g transform="translate(242 116) scale(.4)"><use href="#st" class="star" fill="var(--star-2)"/></g>
+    <g transform="translate(128 164) scale(.32)"><use href="#st" class="star" fill="var(--star-4)"/></g>
+    <g transform="translate(198 86) scale(.3)"><use href="#st" class="star" fill="var(--star-1)"/></g>
+    <g transform="translate(92 192) scale(.34)"><use href="#st" class="star" fill="var(--star-3)"/></g>
+    <g transform="translate(160 116) scale(.28)"><use href="#st" class="star" fill="var(--star-2)"/></g>
+    <g transform="translate(254 62) scale(.3)"><use href="#st" class="star" fill="var(--star-4)"/></g>
+    <g transform="translate(86 240) scale(.28)"><use href="#st" class="star" fill="var(--star-1)"/></g>
+    <g transform="translate(112 120) scale(.26)"><use href="#st" class="star" fill="var(--star-3)"/></g>
+    <g transform="translate(220 44) scale(.26)"><use href="#st" class="star" fill="var(--star-2)"/></g>
+    <g transform="translate(60 212) scale(.24)"><use href="#st" class="star" fill="var(--star-4)"/></g>
+    <g transform="translate(150 72) scale(.24)"><use href="#st" class="star" fill="var(--star-1)"/></g>
+    <g transform="translate(200 24) scale(.24)"><use href="#st" class="star" fill="var(--star-3)"/></g>
+    <g transform="translate(66 156) scale(.26)"><use href="#st" class="star" fill="var(--star-2)"/></g>
+    <g transform="translate(256 246) scale(.26)"><use href="#st" class="star" fill="var(--star-4)"/></g>
+    <g transform="translate(34 244) scale(.22)"><use href="#st" class="star" fill="var(--star-1)"/></g>
+    <g transform="translate(100 82) scale(.22)"><use href="#st" class="star" fill="var(--star-3)"/></g>
+  </svg>
+
+  <!-- Little stars scattered over the rest of the background, not only in the
+       corners: small and in percentages of the viewport, so that they spread at
+       any window size. The ones behind the card stay covered. -->
+  <svg class="loose" style="top:18%; left:46%" viewBox="0 0 24 22" width="8" height="7"><use href="#st" class="star pulse" style="animation-delay:-.5s" fill="var(--star-2)"/></svg>
+  <svg class="loose" style="top:34%; left:6%"  viewBox="0 0 24 22" width="10" height="9"><use href="#st" class="star pulse" style="animation-delay:-2.2s" fill="var(--star-1)"/></svg>
+  <svg class="loose" style="top:42%; left:92%" viewBox="0 0 24 22" width="9" height="8"><use href="#st" class="star pulse" style="animation-delay:-3.6s" fill="var(--star-3)"/></svg>
+  <svg class="loose" style="top:58%; left:4%"  viewBox="0 0 24 22" width="7" height="6"><use href="#st" class="star" fill="var(--star-4)"/></svg>
+  <svg class="loose" style="top:63%; left:95%" viewBox="0 0 24 22" width="8" height="7"><use href="#st" class="star pulse" style="animation-delay:-4.0s" fill="var(--star-2)"/></svg>
+  <svg class="loose" style="top:12%; left:62%" viewBox="0 0 24 22" width="6" height="5"><use href="#st" class="star" fill="var(--star-3)"/></svg>
+  <svg class="loose" style="top:26%; left:82%" viewBox="0 0 24 22" width="7" height="6"><use href="#st" class="star" fill="var(--star-1)"/></svg>
+  <svg class="loose" style="top:48%; left:14%" viewBox="0 0 24 22" width="6" height="5"><use href="#st" class="star" fill="var(--star-2)"/></svg>
+  <svg class="loose" style="top:70%; left:30%" viewBox="0 0 24 22" width="8" height="7"><use href="#st" class="star pulse" style="animation-delay:-1.7s" fill="var(--star-4)"/></svg>
+  <svg class="loose" style="top:76%; left:70%" viewBox="0 0 24 22" width="7" height="6"><use href="#st" class="star" fill="var(--star-1)"/></svg>
+  <svg class="loose" style="top:6%;  left:20%" viewBox="0 0 24 22" width="9" height="8"><use href="#st" class="star pulse" style="animation-delay:-2.4s" fill="var(--star-4)"/></svg>
+  <svg class="loose" style="top:88%; left:18%" viewBox="0 0 24 22" width="6" height="5"><use href="#st" class="star" fill="var(--star-3)"/></svg>
+  <svg class="loose" style="top:92%; left:60%" viewBox="0 0 24 22" width="8" height="7"><use href="#st" class="star pulse" style="animation-delay:-3.0s" fill="var(--star-2)"/></svg>
+  <svg class="loose" style="top:20%; left:8%"  viewBox="0 0 24 22" width="6" height="5"><use href="#st" class="star" fill="var(--star-1)"/></svg>
+  <svg class="loose" style="top:82%; left:42%" viewBox="0 0 24 22" width="7" height="6"><use href="#st" class="star" fill="var(--star-3)"/></svg>
+  <svg class="loose" style="top:10%; left:88%" viewBox="0 0 24 22" width="6" height="5"><use href="#st" class="star" fill="var(--star-2)"/></svg>
+  <svg class="loose" style="top:66%; left:22%" viewBox="0 0 24 22" width="6" height="5"><use href="#st" class="star" fill="var(--star-1)"/></svg>
+</div>
+
+<div class="meadow" aria-hidden="true">
+  <!-- xMidYMax slice: uniform scale, cropped at the sides. With
+       preserveAspectRatio="none" the horizontal stretch would turn every
+       rotation into a lean, and that is the second half of grass that flies.
+       The viewBox is 1600 wide because with "slice" the scale follows the
+       window's width: any narrower and on a large screen the blades would become
+       enormous and their tips would end up outside the crop.
+
+       Two planes, and that is what takes away the look of a fence: short, pale,
+       thin blades behind, tall dark ones in front.
+
+       **The spacings are genuinely irregular.** Blades at exactly 68 pixels from
+       one another, with height and lean repeating every two, read from a
+       distance as a printed pattern. Step, height, curvature and direction are
+       therefore drawn once and engraved here — not computed on every load, which
+       would mean different grass at every opening.
+
+       **And the same holds for the wind.** An oscillation assigned with
+       :nth-child(4n) is a second periodic pattern laid over the first: four
+       blades move in unison. Duration and phase now sit on each blade. -->
+  <svg viewBox="0 0 1600 108" preserveAspectRatio="xMidYMax slice">
+    <path d="M0 82c200-9 340 7 540 4s310-14 520-11 340 14 540 11V108H0Z" fill="#C5BCA4" opacity=".45"/>
+    <path d="M0 96c260 6 420-6 660-3s420 8 640 5 300-4 300-4V108H0Z" fill="#B3A88E" opacity=".4"/>
+
+    <!-- back plane -->
+    <g fill="none" stroke="#8CAA72" stroke-width="2.2" stroke-linecap="round" opacity=".75">
+      <path d="M34 101c-3 -11 2 -20 6 -25"/>
+      <path d="M105 101c2 -10 -2 -18 -5 -23"/>
+      <path d="M193 95c-3 -12 2 -20 7 -26"/>
+      <path d="M285 101c-4 -15 2 -26 7 -33"/>
+      <path d="M342 100c-3 -13 2 -22 6 -28"/>
+      <path d="M403 95c-4 -13 2 -23 6 -29"/>
+      <path d="M463 95c-4 -13 2 -22 5 -28"/>
+      <path d="M538 96c-4 -14 2 -24 8 -31"/>
+      <path d="M620 97c-3 -12 2 -20 5 -26"/>
+      <path d="M697 94c2 -9 -1 -16 -4 -20"/>
+      <path d="M773 100c3 -12 -2 -20 -7 -26"/>
+      <path d="M838 96c3 -14 -2 -23 -6 -30"/>
+      <path d="M885 97c-3 -12 2 -21 7 -27"/>
+      <path d="M975 95c-3 -10 1 -17 4 -22"/>
+      <path d="M1021 96c3 -13 -1 -22 -5 -28"/>
+      <path d="M1082 101c3 -9 -2 -16 -5 -21"/>
+      <path d="M1142 94c-3 -13 2 -22 5 -28"/>
+      <path d="M1213 94c3 -13 -2 -22 -5 -28"/>
+      <path d="M1280 100c2 -9 -2 -16 -5 -21"/>
+      <path d="M1362 101c-3 -9 2 -16 5 -20"/>
+      <path d="M1446 97c-3 -14 2 -25 6 -32"/>
+      <path d="M1503 98c3 -10 -2 -17 -4 -22"/>
+      <path d="M1569 100c-3 -10 2 -18 5 -23"/>
+    </g>
+
+    <!-- front plane -->
+    <g fill="none" stroke="#5E874C" stroke-width="3.1" stroke-linecap="round" opacity=".9">
+      <path d="M18 104c4 -17 -4 -30 -7 -38"/>
+      <path class="blade" style="animation-duration:6.7s;animation-delay:-1.2s" d="M81 102c-5 -20 4 -35 8 -45"/>
+      <path d="M181 103c-5 -20 3 -34 8 -44"/>
+      <path d="M259 103c3 -16 -2 -27 -8 -35"/>
+      <path class="blade" style="animation-duration:3.7s;animation-delay:-5.5s" d="M311 101c-5 -15 2 -27 7 -34"/>
+      <path d="M393 101c5 -16 -3 -28 -7 -36"/>
+      <path class="blade" style="animation-duration:6.1s;animation-delay:-0.1s" d="M494 106c5 -20 -3 -34 -8 -44"/>
+      <path d="M544 100c-5 -19 4 -34 9 -43"/>
+      <path d="M628 107c-4 -13 2 -23 5 -29"/>
+      <path class="blade" style="animation-duration:6.0s;animation-delay:-0.2s" d="M707 105c-4 -18 3 -32 10 -41"/>
+      <path d="M755 103c-3 -14 3 -23 8 -30"/>
+      <path d="M818 104c-3 -15 2 -27 6 -34"/>
+      <path class="blade" style="animation-duration:5.5s;animation-delay:-2.1s" d="M898 106c4 -18 -4 -32 -7 -41"/>
+      <path d="M963 104c-4 -19 3 -33 7 -42"/>
+      <path class="blade" style="animation-duration:5.7s;animation-delay:-2.0s" d="M1053 101c4 -20 -3 -34 -8 -44"/>
+      <path d="M1157 107c-6 -20 3 -35 11 -45"/>
+      <path d="M1260 101c6 -20 -4 -34 -11 -44"/>
+      <path class="blade" style="animation-duration:5.9s;animation-delay:-3.9s" d="M1338 108c-4 -18 4 -31 8 -40"/>
+      <path d="M1431 104c3 -14 -2 -23 -8 -30"/>
+      <path class="blade" style="animation-duration:5.8s;animation-delay:-0.9s" d="M1531 108c-4 -13 3 -23 5 -29"/>
+    </g>
+  </svg>
+
+  <!-- The little dog, sitting in profile facing the text.
+       No outlines: at this size they stiffen the shapes and reveal how simple
+       they are. The masses are separated by tone and by the fold of the hip.
+       The thigh is deliberately smaller than the chest: when it was as big, the
+       two read as one block and the leg disappeared.
+       Rotation origins: tail 99,78 · ear 52,25 -->
+  <svg viewBox="0 0 130 100" width="126" height="97"
+       style="position:absolute; right:5%; bottom:0; width:126px; height:97px">
+    <!-- tail, behind everything, attached to the thigh at 99,78 -->
+    <g class="tail">
+      <path d="M99 78c11-1 18-8 20-18" fill="none" stroke="#A97C46"
+            stroke-width="9" stroke-linecap="round"/>
+    </g>
+
+    <!-- hind thigh, tucked in: a third smaller than the chest -->
+    <path d="M100 91C104 82 102 66 94 60 86 54 76 56 73 66c-3 9-2 19 3 24z" fill="#BC8D53"/>
+    <!-- fold of the hip: it is what separates the thigh from the body, in place of an outline -->
+    <path d="M77 64c-5 7-6 16-3 23" fill="none" stroke="#A97C46" stroke-width="1.8"
+          stroke-linecap="round" opacity=".65"/>
+
+    <!-- hind foot: it comes forward from under the thigh and shares its colour —
+         it is the same leg, and the darker tone keeps it distinct from the front
+         one even when the two come close. The toes therefore go one tone darker,
+         otherwise they would vanish into the foot. -->
+    <path d="M86 92H70c-6 0-9-2-9-5s3-5 9-5h16z" fill="#BC8D53"/>
+    <g stroke="#9E7038" stroke-width="1.6" stroke-linecap="round">
+      <line x1="65" y1="85" x2="65" y2="90"/>
+      <line x1="71" y1="84" x2="71" y2="90"/>
+      <line x1="77" y1="84" x2="77" y2="90"/>
+    </g>
+
+    <!-- chest -->
+    <path d="M48 88c-5-11-5-25 1-33 6-8 19-10 27-3 8 8 8 27 3 36z" fill="#CFA46C"/>
+
+    <!-- front leg, with a clean gap from the hind foot -->
+    <rect x="41" y="58" width="13" height="30" rx="6.5" fill="#DCB47C"/>
+    <path d="M54 92H38c-5 0-8-2-8-5s3-5 8-5h16z" fill="#DCB47C"/>
+    <g stroke="#B08653" stroke-width="1.6" stroke-linecap="round">
+      <line x1="34" y1="85" x2="34" y2="90"/>
+      <line x1="40" y1="84" x2="40" y2="90"/>
+      <line x1="46" y1="84" x2="46" y2="90"/>
+    </g>
+
+    <!-- head -->
+    <ellipse cx="45" cy="36" rx="20" ry="18" fill="#CFA46C"/>
+    <!-- hanging ear, attached at 52,25 -->
+    <g class="ear">
+      <path d="M52 25c9-1 15 8 14 19-1 8-6 12-12 11z" fill="#9E7038"/>
+    </g>
+    <!-- muzzle -->
+    <ellipse cx="28" cy="43" rx="13" ry="10" fill="#E7CFA5"/>
+    <ellipse cx="18" cy="40" rx="5" ry="4" fill="#443628"/>
+    <path d="M22 47c0 4 3 6 6 6" fill="none" stroke="#443628" stroke-width="2" stroke-linecap="round"/>
+    <!-- eye -->
+    <circle cx="40" cy="32" r="3.4" fill="#33291D"/>
+    <circle cx="41.3" cy="30.8" r="1.1" fill="#FBF8F2"/>
+  </svg>
+</div>
+
+<!-- The language chooser: `i18n.js` fills it, and without JavaScript it stays
+     empty — `.lang:empty` hides it, because a menu that does not reload the page
+     would do nothing. -->
+<div class="lang" data-lang></div>
+
+<div class="wrap">
+  <div class="progress" id="progress">
+    <div class="progress-head">
+      <span class="progress-now" id="p-now"></span>
+      <span class="progress-count" id="p-count"></span>
+    </div>
+    <div class="rail" id="rail" aria-hidden="true"></div>
+  </div>
+
+  <!-- ============ 0 · password ============ -->
+  <section class="step home" data-step="0">
+    <p class="eyebrow" data-i18n="onb.s0.eyebrow"></p>
+    <h1 data-i18n="onb.s0.title"></h1>
+    <p class="lead" data-i18n="onb.s0.lead"></p>
+
+    <figure class="art">
+      <!-- **Same layout as the next step, with the padlock in place of the
+           microphone.** Two consecutive screens with two different compositions
+           read as a change of book when they are leafed through. The frame is
+           therefore identical (34,32 · 176x104, lens at 122,84) and the second
+           object sits where the microphone sits, centred on 380: the same two
+           positions, with different things inside.
+           The labels are there for the same reason they are there. -->
+      <svg viewBox="0 0 520 166" role="img"
+           data-i18n-attr="aria-label:onb.s0.art">
+        <rect x="34" y="32" width="176" height="104" rx="14" fill="#F1ECE2" stroke="#D3C9B6" stroke-width="2"/>
+        <circle cx="122" cy="84" r="30" fill="#E5DFD3" stroke="#D3C9B6" stroke-width="2"/>
+        <circle cx="122" cy="84" r="13" fill="#17706E" class="breathe"/>
+        <circle cx="114" cy="76" r="4" fill="#FBF8F2" opacity=".7"/>
+        <text x="122" y="158" text-anchor="middle" font-size="13"
+              data-i18n="onb.art.monitor"></text>
+
+        <path d="M355 76v-13a25 25 0 0 1 50 0v13" fill="none" stroke="#17706E" stroke-width="7" stroke-linecap="round"/>
+        <rect x="345" y="76" width="70" height="54" rx="12" fill="#17706E"/>
+        <circle cx="380" cy="99" r="6" fill="#FBF8F2"/>
+        <rect x="377" y="101" width="6" height="14" rx="3" fill="#FBF8F2"/>
+        <text x="380" y="158" text-anchor="middle" font-size="13"
+              data-i18n="onb.art.password"></text>
+      </svg>
+      <figcaption data-i18n="onb.s0.caption"></figcaption>
+    </figure>
+
+    <div class="note" data-i18n="onb.s0.note"></div>
+
+    <!-- An explicit method and action are the safety net: if the script were not
+         executed, the browser still submits by POST and the password does not
+         end up in the address bar. -->
+    <form id="pw-form" method="post" action="/api/setup" autocomplete="on">
+      <label for="password" data-i18n="onb.s0.password"></label>
+      <input type="password" id="password" name="password"
+             autocomplete="new-password" minlength="8" required>
+
+      <label for="confirm" data-i18n="onb.s0.confirm"></label>
+      <input type="password" id="confirm" name="confirm"
+             autocomplete="new-password" minlength="8" required>
+
+      <p class="field-msg" id="pw-msg" role="status" aria-live="polite"></p>
+
+      <div class="actions">
+        <button class="btn" type="submit" id="pw-submit" data-i18n="onb.s0.submit"></button>
+      </div>
+    </form>
+
+    <!-- Third state of the step: the password exists but this browser has no
+         session. It is not a rare case — reopening the path from the tray after
+         the cookie has expired is enough — and without this branch the page
+         showed the first-configuration form, which the server refuses. Every
+         later step needs the session, so this is where one signs in. -->
+    <form id="pw-signin" method="post" action="/api/login" autocomplete="on" hidden>
+      <ul class="results">
+        <li><span class="badge ok">&#10003;</span><div><b data-i18n="onb.s0.have"></b>
+          <small data-i18n="onb.s0.have-enter"></small></div></li>
+      </ul>
+
+      <label for="signin-password" data-i18n="onb.s0.password-plain"></label>
+      <input type="password" id="signin-password" name="password"
+             autocomplete="current-password" required>
+
+      <p class="field-msg" id="pw-signin-msg" role="status" aria-live="polite"></p>
+
+      <div class="actions">
+        <button class="btn" type="submit" id="pw-signin-submit" data-i18n="onb.s0.enter"></button>
+      </div>
+    </form>
+
+    <!-- Whoever reopens the path with the password already set must not face a
+         form that will refuse their request: the step declares itself done and
+         lets them through. -->
+    <div id="pw-done" hidden>
+      <ul class="results">
+        <li><span class="badge ok">&#10003;</span><div><b data-i18n="onb.s0.have"></b>
+          <small data-i18n="onb.s0.have-keep"></small></div></li>
+      </ul>
+
+      <div class="actions">
+        <button class="btn" data-go="1" data-i18n="onb.s0.keep"></button>
+        <button class="btn ghost" type="button" id="pw-change" data-i18n="onb.s0.change"></button>
+      </div>
+      <form id="pw-change-form" method="post" action="/api/password" autocomplete="on" hidden>
+        <!-- The current password is asked even of somebody who already has a
+             session: a cookie says "somebody signed in from this browser", not
+             "it is you". See apiPassword. -->
+        <label for="current" data-i18n="onb.s0.current"></label>
+        <input type="password" id="current" name="current"
+               autocomplete="current-password" required>
+
+        <label for="new-password" data-i18n="onb.s0.new"></label>
+        <input type="password" id="new-password" name="password"
+               autocomplete="new-password" minlength="8" required>
+
+        <label for="new-confirm" data-i18n="onb.s0.new-confirm"></label>
+        <input type="password" id="new-confirm" name="confirm"
+               autocomplete="new-password" minlength="8" required>
+
+        <p class="small" data-i18n="onb.s0.change-note"></p>
+
+        <p class="field-msg" id="pw-change-msg" role="status" aria-live="polite"></p>
+
+        <div class="actions">
+          <button class="btn" type="submit" id="pw-change-submit" data-i18n="onb.s0.change"></button>
+          <button class="btn ghost" type="button" id="pw-change-cancel" data-i18n="onb.cancel"></button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- ============ 1 · check ============ -->
+  <section class="step home" data-step="1">
+    <p class="eyebrow" data-i18n="onb.s1.eyebrow"></p>
+    <h1 data-i18n="onb.s1.title"></h1>
+    <p class="lead" data-i18n="onb.s1.lead"></p>
+
+    <figure class="art">
+      <svg viewBox="0 0 520 166" role="img"
+           data-i18n-attr="aria-label:onb.s1.art">
+        <rect x="34" y="32" width="176" height="104" rx="14" fill="#F1ECE2" stroke="#D3C9B6" stroke-width="2"/>
+        <circle cx="122" cy="84" r="30" fill="#E5DFD3" stroke="#D3C9B6" stroke-width="2"/>
+        <circle cx="122" cy="84" r="13" fill="#17706E"/>
+        <circle cx="114" cy="76" r="4" fill="#FBF8F2" opacity=".7"/>
+        <circle cx="194" cy="46" r="5" fill="#4F7F31" class="blink"/>
+        <text x="122" y="158" text-anchor="middle" font-size="13"
+              data-i18n="onb.art.camera"></text>
+
+        <rect x="330" y="28" width="34" height="58" rx="17" fill="#F1ECE2" stroke="#D3C9B6" stroke-width="2"/>
+        <path d="M316 72a31 31 0 0 0 62 0" fill="none" stroke="#8C8474" stroke-width="3" stroke-linecap="round"/>
+        <line x1="347" y1="103" x2="347" y2="118" stroke="#8C8474" stroke-width="3" stroke-linecap="round"/>
+        <g class="lvl">
+          <rect x="398" y="44" width="10" height="62" rx="5" fill="#4F7F31" class="bar-a"/>
+          <rect x="416" y="44" width="10" height="62" rx="5" fill="#4F7F31" class="bar-b"/>
+          <rect x="434" y="44" width="10" height="62" rx="5" fill="#4F7F31" class="bar-c"/>
+        </g>
+        <text x="380" y="158" text-anchor="middle" font-size="13"
+              data-i18n="onb.art.mic"></text>
+      </svg>
+      <figcaption data-i18n="onb.s1.caption"></figcaption>
+    </figure>
+
+    <!-- The preview is the real stream, not a thumbnail: it is the one proof the
+         user can read without taking our word for it. Mute on purpose — here it
+         has to be seen, the audio is proved by the meter below, and mute avoids the
+         autoplay block, that is, one tap fewer inside a path. -->
+    <div class="preview">
+      <video id="ob-video" autoplay playsinline muted></video>
+      <div class="preview-foot">
+        <p class="preview-state" id="ob-video-state"></p>
+
+        <!-- The meter is the other half of the proof: the video proves the
+             camera, this proves the microphone. It has an ARIA role because an
+             indicator that moves says nothing to whoever cannot see it: the dBFS
+             value beside it makes it readable all the same. -->
+        <div class="vu" id="ob-vu" role="meter"
+             data-i18n-attr="aria-label:onb.s1.vu"
+             aria-valuemin="-60" aria-valuemax="0" aria-valuenow="-60">
+          <div class="vu-track">
+            <i class="vu-fill" id="ob-vu-fill"></i>
+            <i class="vu-peak" id="ob-vu-peak"></i>
+          </div>
+        </div>
+        <span class="vu-read" id="ob-vu-read">&mdash;</span>
+      </div>
+    </div>
+
+    <ul class="results">
+      <li id="r-cam"><span class="badge wait">&hellip;</span><div><b data-i18n="onb.s1.cam"></b>
+        <small data-i18n="onb.s1.checking"></small></div></li>
+      <li id="r-mic"><span class="badge wait">&hellip;</span><div><b data-i18n="onb.s1.mic"></b>
+        <small data-i18n="onb.s1.checking"></small></div></li>
+    </ul>
+
+    <div class="note warn" data-i18n-html="onb.s1.warn"></div>
+
+    <div class="actions">
+      <button class="btn" data-go="2" data-i18n="onb.s1.ok"></button>
+      <button class="btn ghost" type="button" id="ob-recheck" data-i18n="onb.s1.again"></button>
+    </div>
+  </section>
+
+  <!-- ============ 2 · the fork ============ -->
+  <section class="step choice" data-step="2">
+    <p class="eyebrow" data-i18n="onb.s2.eyebrow"></p>
+    <h1 data-i18n="onb.s2.title"></h1>
+    <p class="lead" data-i18n="onb.s2.lead"></p>
+
+    <figure class="art">
+      <svg viewBox="0 0 520 176" role="img"
+           data-i18n-attr="aria-label:onb.s2.art">
+        <rect x="10" y="14" width="234" height="148" rx="14" fill="#F1ECE2" stroke="#D3C9B6" stroke-width="2"/>
+        <g transform="translate(91 62)">
+          <path d="M0 27L36 0L72 27" fill="none" stroke="#17706E" stroke-width="3" stroke-linejoin="round"/>
+          <rect x="9" y="27" width="54" height="41" rx="5" fill="#FBF8F2" stroke="#17706E" stroke-width="3"/>
+          <circle cx="36" cy="47" r="9" fill="#E5DFD3" stroke="#17706E" stroke-width="2.5"/>
+          <circle cx="36" cy="47" r="3.5" fill="#17706E" class="breathe"/>
+        </g>
+        <text x="127" y="154" text-anchor="middle" font-size="13"
+              data-i18n="onb.s2.art-home"></text>
+
+        <rect x="276" y="14" width="234" height="148" rx="14" fill="#F1ECE2" stroke="#D3C9B6" stroke-width="2"/>
+        <g transform="translate(292 62)">
+          <path d="M0 27L36 0L72 27" fill="none" stroke="#8C8474" stroke-width="3" stroke-linejoin="round"/>
+          <rect x="9" y="27" width="54" height="41" rx="5" fill="#FBF8F2" stroke="#8C8474" stroke-width="3"/>
+          <circle cx="36" cy="47" r="9" fill="#E5DFD3" stroke="#8C8474" stroke-width="2.5"/>
+          <circle cx="36" cy="47" r="3.5" fill="#8C8474" class="breathe"/>
+        </g>
+        <path d="M374 100h54" stroke="#3C5CA8" stroke-width="3.2" stroke-linecap="round" opacity=".4"/>
+        <circle cx="374" cy="100" r="3.8" fill="#3C5CA8" class="glide" style="--d:54px"/>
+        <rect x="444" y="70" width="36" height="60" rx="9" fill="#FBF8F2" stroke="#3C5CA8" stroke-width="3.2"/>
+        <rect x="457" y="77" width="10" height="3" rx="1.5" fill="#3C5CA8"/>
+        <circle cx="462" cy="122" r="3" fill="#3C5CA8"/>
+        <text x="393" y="154" text-anchor="middle" font-size="13"
+              data-i18n="onb.s2.art-out"></text>
+      </svg>
+    </figure>
+
+    <!-- **The three objections are here, the explanation is not.** Whoever
+         chooses here does not need to know how it works: they need to know that
+         it does not cost them a new password, money, or a change to the router.
+         Those are the three questions that stop people, and they fit in two
+         lines. The rest — the meeting point, the direct path, who sees what — is
+         behind "how it works": it interests few, and those few really care. -->
+    <p class="lead" data-i18n-html="onb.s2.objections"></p>
+
+    <div class="actions">
+      <button class="btn" type="button" id="enable-outside" data-i18n="onb.s2.yes"></button>
+      <button class="btn ghost" type="button" id="home-only" data-i18n="onb.s2.no"></button>
+    </div>
+    <!-- The link to the explainer and the note are marked up separately: the
+         button is looked up by `onboarding.js`, and a catalogue entry that
+         rewrote it would put it out. See `data-i18n-html` in `i18n.js`. -->
+    <p class="escape"><button type="button" data-explainer data-i18n="onb.how"></button>
+      &nbsp;&middot;&nbsp; <span data-i18n="onb.s2.change-mind"></span></p>
+  </section>
+
+  <!-- ============ 3 · authorise ============ -->
+  <section class="step away" data-step="3">
+    <p class="eyebrow" data-i18n="onb.s3.eyebrow"></p>
+    <h1 data-i18n="onb.s3.title"></h1>
+    <p class="lead" data-i18n="onb.s3.lead"></p>
+
+    <figure class="art">
+      <svg viewBox="0 0 520 196" role="img"
+           data-i18n-attr="aria-label:onb.s3.art">
+        <rect x="66" y="22" width="388" height="150" rx="13" fill="#F1ECE2" stroke="#D3C9B6" stroke-width="2"/>
+        <path d="M66 35a13 13 0 0 1 13-13h362a13 13 0 0 1 13 13v18H66z" fill="#E3DACA"/>
+        <circle cx="86" cy="38" r="4" fill="#B7AC96"/>
+        <circle cx="100" cy="38" r="4" fill="#B7AC96"/>
+        <circle cx="114" cy="38" r="4" fill="#B7AC96"/>
+        <rect x="130" y="31" width="166" height="15" rx="7.5" fill="#FBF8F2"/>
+          <!-- Literal, and not an oversight: this does not annotate the drawing,
+               it **depicts** a browser's address bar. Making it follow our
+               palette would mean repainting somebody else's interface. -->
+        <text x="139" y="42" fill="#7A7264" font-size="11" class="mono">login.tailscale.com</text>
+
+        <rect x="96" y="74" width="328" height="72" rx="12" fill="#FBF8F2" stroke="#D3C9B6" stroke-width="2"/>
+        <rect x="114" y="92" width="36" height="36" rx="8" fill="#E5DFD3" stroke="#3C5CA8" stroke-width="2"/>
+        <circle cx="132" cy="110" r="6" fill="#3C5CA8" class="breathe"/>
+        <text x="166" y="104" fill="#2E2A24" font-size="13" font-weight="600">patmon</text>
+          <!-- As above: it is the device's row inside Tailscale's panel, not a
+               label of ours. -->
+        <text x="166" y="123" fill="#7A7264" font-size="12"
+              data-i18n="onb.s3.art-this"></text>
+        <rect x="332" y="94" width="76" height="32" rx="16" fill="#4F7F31"/>
+        <path d="M355 110l7 7 13-14" fill="none" stroke="#FBF8F2" stroke-width="3"
+              stroke-linecap="round" stroke-linejoin="round"/>
+        <text x="260" y="190" text-anchor="middle" font-size="13"
+              data-i18n="onb.s3.art-one"></text>
+      </svg>
+    </figure>
+
+    <div class="addr with-qr">
+      <div class="addr-text">
+        <span class="lbl" data-i18n="onb.s3.addr"></span>
+        <!-- **Not a dash.** The address arrives from Tailscale a couple of
+             seconds after the phase, sometimes more, and a dash next to the
+             label "address to open" reads as "there is none" rather than "it is
+             on its way".
+             The waiting sentence sits **outside** the code's box and not inside:
+             there it is monospaced and wraps inside words, because that box is
+             made for addresses. A sentence in a code box reads as a value, and
+             that value would be false. The two swap, and the wait is the one
+             that starts: so there is no instant in which the page says the wrong
+             thing. -->
+        <code class="block" id="auth-url" hidden></code>
+        <p class="pending" id="auth-pending" data-i18n="onb.s3.addr-waiting"></p>
+        <div class="addr-actions">
+          <a class="btn" id="auth-open" href="#" target="_blank" rel="noopener noreferrer">
+            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 6h-6a2 2 0 0 0 -2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-6" />
+              <path d="M11 13l9 -9" />
+              <path d="M15 4h5v5" />
+            </svg><span data-i18n="onb.s3.open"></span></a>
+          <button class="btn ghost" type="button" data-copy="auth-url">
+            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M7 9.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667l0 -8.666" />
+              <path d="M4.012 16.737a2.005 2.005 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1" />
+            </svg><span data-i18n="onb.copy"></span></button>
+        </div>
+        <p data-i18n-html="onb.s3.qr-hint"></p>
+      </div>
+      <img class="qr" id="auth-qr" width="240" height="240" hidden
+           data-i18n-attr="alt:onb.s3.qr-alt">
+      <!-- It turns in place of the code until there is nothing to scan.
+           `role="status"` because whoever cannot see the spinner has to know all
+           the same that something is being waited for, and the text beside it
+           says so. -->
+      <div class="qr-waiting" id="auth-qr-waiting" role="status"
+           data-i18n-attr="aria-label:onb.s3.addr-waiting"><span></span></div>
+    </div>
+
+    <!-- **The sentence missing here costs an hour to whoever looks for it
+         alone.** The device appears in Tailscale's list as soon as the address
+         is opened, and stays switched off until the authorisation has gone
+         through: seeing it there looks like confirmation that it is done, and it
+         is not. -->
+    <div class="note" data-i18n-html="onb.s3.note"></div>
+
+    <p class="small" id="auth-waiting" data-i18n="onb.s3.waiting"></p>
+
+    <!-- The device has been created but the tailnet wants an administrator to
+         admit it. It has a screen of its own and not another "authorise" line:
+         whoever gets here has **already** authorised, and repeating the same
+         instruction sends them looking for the fault in the program. -->
+    <div id="auth-approve" hidden>
+      <div class="note warn">
+        <strong data-i18n="onb.s3.not-admitted"></strong>
+        <span id="approve-msg"></span>
+      </div>
+      <div class="addr">
+        <span class="lbl" data-i18n="onb.s3.devices"></span>
+        <code class="block" id="approve-url">&mdash;</code>
+        <div class="addr-actions">
+          <a class="btn" id="approve-open" href="#" target="_blank" rel="noopener noreferrer">
+            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 6h-6a2 2 0 0 0 -2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-6" />
+              <path d="M11 13l9 -9" />
+              <path d="M15 4h5v5" />
+            </svg><span data-i18n="onb.s3.open-list"></span></a>
+          <button class="btn ghost" type="button" data-copy="approve-url">
+            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M7 9.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667l0 -8.666" />
+              <path d="M4.012 16.737a2.005 2.005 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1" />
+            </svg><span data-i18n="onb.copy"></span></button>
+        </div>
+      </div>
+      <p class="small" data-i18n="onb.s3.will-be-off"></p>
+    </div>
+
+    <div class="actions">
+      <button class="btn ghost" data-go="2" data-i18n="onb.back"></button>
+    </div>
+    <p class="escape"><button type="button" data-explainer data-i18n="onb.how"></button></p>
+  </section>
+
+  <!-- ============ 4 · permission ============ -->
+  <section class="step away" data-step="4">
+    <p class="eyebrow" data-i18n="onb.s4.eyebrow"></p>
+    <!-- The title is rewritten by `onboarding.js`: administrator and member read
+         two different sentences, and it is the service that knows which, not us. -->
+    <h1 id="funnel-title" data-i18n="onb.s4.title-admin"></h1>
+    <p class="lead" data-i18n="onb.s4.lead"></p>
+
+    <figure class="art">
+      <svg viewBox="0 0 520 186" role="img"
+           data-i18n-attr="aria-label:onb.s4.art">
+        <rect x="34" y="70" width="88" height="46" rx="23" fill="#E3DACA" stroke="#D3C9B6" stroke-width="2"/>
+        <circle cx="58" cy="93" r="17" fill="#3C5CA8" class="lift"/>
+        <text x="78" y="146" text-anchor="middle" font-size="13"
+              data-i18n="onb.s4.art-permission"></text>
+
+        <path d="M142 93h78" stroke="#3C5CA8" stroke-width="2.5" stroke-linecap="round" opacity=".4"/>
+        <circle cx="142" cy="93" r="3.6" fill="#3C5CA8" class="glide" style="--d:78px"/>
+
+        <path d="M252 66a30 30 0 0 1 58-10 25 25 0 0 1 33 23 21 21 0 0 1-5 41H259a26 26 0 0 1-7-54z"
+              fill="#F1ECE2" stroke="#3C5CA8" stroke-width="2.5"/>
+        <g class="gate-open">
+          <rect x="276" y="78" width="52" height="34" rx="5" fill="#E5DFD3" stroke="#8C8474" stroke-width="2"/>
+          <line x1="286" y1="78" x2="286" y2="112" stroke="#8C8474" stroke-width="2"/>
+          <line x1="302" y1="78" x2="302" y2="112" stroke="#8C8474" stroke-width="2"/>
+          <line x1="318" y1="78" x2="318" y2="112" stroke="#8C8474" stroke-width="2"/>
+        </g>
+
+        <path d="M370 93h66" stroke="#4F7F31" stroke-width="2.5" stroke-linecap="round" opacity=".4"/>
+        <circle cx="370" cy="93" r="3.6" fill="#4F7F31" class="glide d2" style="--d:66px"/>
+        <rect x="448" y="65" width="38" height="60" rx="9" fill="#FBF8F2" stroke="#4F7F31" stroke-width="2.5"/>
+        <text x="467" y="146" text-anchor="middle" font-size="13"
+              data-i18n="onb.s4.art-you"></text>
+      </svg>
+    </figure>
+
+    <div class="addr">
+      <span class="lbl" data-i18n="onb.s4.message"></span>
+      <p id="funnel-msg">&mdash;</p>
+      <code class="block" id="funnel-url" hidden>&mdash;</code>
+      <div class="addr-actions" id="funnel-actions" hidden>
+        <a class="btn" id="funnel-open" href="#" target="_blank" rel="noopener noreferrer">
+          <svg class="ico" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 6h-6a2 2 0 0 0 -2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-6" />
+            <path d="M11 13l9 -9" />
+            <path d="M15 4h5v5" />
+          </svg><span data-i18n="onb.s4.open-panel"></span></a>
+        <button class="btn ghost" type="button" data-copy="funnel-url">
+          <svg class="ico" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M7 9.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667l0 -8.666" />
+            <path d="M4.012 16.737a2.005 2.005 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1" />
+          </svg><span data-i18n="onb.copy"></span></button>
+      </div>
+    </div>
+    <p class="small" data-i18n="onb.s4.from-tailscale"></p>
+
+    <div id="funnel-admin">
+      <p data-i18n="onb.s4.admin"></p>
+    </div>
+
+    <div id="funnel-member" hidden>
+      <div class="note warn" data-i18n-html="onb.s4.member"></div>
+    </div>
+
+    <p class="small" id="funnel-waiting" data-i18n="onb.s4.waiting"></p>
+    <!-- `onboarding.js` looks the button up by id: it marks itself, and the text
+         around it lives in two fragments of its own. -->
+    <p class="escape"><span data-i18n="onb.s4.or"></span>
+      <button type="button" id="skip-funnel" data-i18n="onb.s4.skip"></button>
+      <span data-i18n="onb.s4.skip-tail"></span></p>
+  </section>
+
+  <!-- ============ 5 · secure connection ============ -->
+  <section class="step away" data-step="5">
+    <p class="eyebrow" data-i18n="onb.s5.eyebrow"></p>
+    <h1 data-i18n="onb.s5.title"></h1>
+    <p class="lead" data-i18n="onb.s5.lead"></p>
+
+    <figure class="art">
+      <svg viewBox="0 0 520 166" role="img"
+           data-i18n-attr="aria-label:onb.s5.art">
+        <circle cx="260" cy="80" r="52" fill="none" stroke="#DBD2C0" stroke-width="7"/>
+        <circle cx="260" cy="80" r="34" fill="none" stroke="#3C5CA8" stroke-width="7"
+                stroke-linecap="round" stroke-dasharray="214" transform="rotate(-90 260 80)" class="fill"/>
+        <path d="M246 76v-9a14 14 0 0 1 28 0v9" fill="none" stroke="#3C5CA8" stroke-width="4" stroke-linecap="round"/>
+        <rect x="242" y="76" width="36" height="28" rx="7" fill="#3C5CA8"/>
+        <text x="260" y="156" text-anchor="middle" font-size="13"
+              data-i18n="onb.s5.art-wait"></text>
+      </svg>
+    </figure>
+
+    <div class="note" data-i18n="onb.s5.why"></div>
+
+    <p class="small" data-i18n="onb.s5.nothing"></p>
+  </section>
+
+  <!-- ============ 6 · ready ============ -->
+  <section class="step ready" data-step="6">
+    <p class="eyebrow" data-i18n="onb.s6.eyebrow"></p>
+    <h1 data-i18n="onb.s6.title"></h1>
+
+    <!-- **The arrival is declared, not merely reached.** Below there is
+         everything one needs — addresses, code, warnings — and no line saying
+         what has just happened. Whoever walked the long route has just put up a
+         private network and a certificate without knowing they were doing it:
+         telling them in one sentence is the only moment when it does not sound
+         like boasting, because the credit is theirs. The line is composed by
+         `composeFinal`, which knows which of the two routes was walked. -->
+    <p class="lead" id="final-line"></p>
+
+    <!-- **There is no illustration here, and that is a choice.** A drawing of a
+         code to scan, an example address and a phone, sitting right **above**
+         the two boxes that carry the real codes and the real addresses, has
+         three defects in one: two addresses on the same screen, one of them
+         false; a drawn code somebody can actually scan and that leads nowhere —
+         an invitation to do exactly the gesture the step teaches, ending in
+         nothing; and a caption the two real boxes already say, in bold, both of
+         them.
+         It is the camera step's rule — "the preview is the real stream, not a
+         picture" — one rung further: **where the real thing is already on the
+         page, its drawing does not explain it, it imitates it.** A drawing earns
+         its place when it shows what cannot be seen there, like Tailscale's
+         window at the authorisation step. -->
+
+    <!-- **The code here is not a luxury, it is the only humane way.** The home
+         address is a number with dots and a port: copying is no use, the phone
+         is another device, and typing it by hand gets it wrong. -->
+    <div class="addr with-qr">
+      <div class="addr-text">
+        <span class="lbl" data-i18n="onb.home"></span>
+        <code class="block" id="url-home">&mdash;</code>
+        <div class="addr-actions">
+          <button class="btn ghost" type="button" data-copy="url-home">
+            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M7 9.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667l0 -8.666" />
+              <path d="M4.012 16.737a2.005 2.005 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1" />
+            </svg><span data-i18n="onb.copy"></span></button>
+        </div>
+        <p data-i18n-html="onb.s6.qr-home"></p>
+      </div>
+      <img class="qr" id="home-qr" width="240" height="240"
+           data-i18n-attr="alt:onb.s6.qr-home-alt">
+    </div>
+
+    <div class="addr with-qr" id="outside-block" hidden>
+      <div class="addr-text">
+        <span class="lbl" data-i18n="onb.away"></span>
+        <code class="block" id="url-outside">&mdash;</code>
+        <div class="addr-actions">
+          <button class="btn ghost" type="button" data-copy="url-outside">
+            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M7 9.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667l0 -8.666" />
+              <path d="M4.012 16.737a2.005 2.005 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1" />
+            </svg><span data-i18n="onb.copy"></span></button>
+        </div>
+        <p data-i18n-html="onb.s6.qr-away"></p>
+      </div>
+      <img class="qr" id="outside-qr" width="240" height="240"
+           data-i18n-attr="alt:onb.s6.qr-away-alt">
+    </div>
+
+    <!-- **The wait is declared before it is charged.** It is the announced-cost
+         principle applied to the last screen: the address's name has to be
+         registered on the Internet, and for a few minutes it does not open from
+         the phone — the first time, and every time the monitor has been off for
+         a while. Whoever does not know tries, it does not work, and they
+         conclude that the configuration they have just finished went wrong. -->
+    <div class="note" id="wait-note" hidden data-i18n-html="onb.s6.first-wait"></div>
+
+    <div class="note warn" id="outside-warning" hidden></div>
+
+    <ul class="results">
+      <li><span class="badge ok">&#10003;</span><div><b data-i18n="onb.home"></b>
+        <small data-i18n="onb.s6.home-note"></small></div></li>
+      <li id="outside-outcome" hidden><span class="badge ok">&#10003;</span><div><b data-i18n="onb.away"></b>
+        <small data-i18n="onb.s6.away-note"></small></div></li>
+    </ul>
+
+    <h2 data-i18n="onb.s6.tray-title"></h2>
+    <p data-i18n="onb.s6.tray-body"></p>
+
+    <figure class="art life-size">
+      <svg viewBox="0 0 340 540" role="img"
+           data-i18n-attr="aria-label:onb.s6.tray-art">
+        <!-- **The icon here is the real one.** The program draws a waning moon,
+             and a disc with a dot in the middle would teach whoever reaches the
+             end of the path to look next to the clock for something that does
+             not exist. The proportions are the same as
+             internal/tray/icon_windows.go, derived from rMoon as they are there
+             — disc 12, moon 8.16 shifted half a unit to the left, bite 7.34 top
+             right — on a 24-unit box that scales where needed. -->
+        <defs>
+          <mask id="crescent-tray" maskUnits="userSpaceOnUse" x="0" y="0" width="24" height="24">
+            <circle cx="11.45" cy="12" r="8.16" fill="#fff"/>
+            <circle cx="14.99" cy="9.28" r="7.34" fill="#000"/>
+          </mask>
+          <g id="ico-tray">
+            <circle cx="12" cy="12" r="12"/>
+            <circle cx="12" cy="12" r="12" fill="#FBF8F2" mask="url(#crescent-tray)"/>
+          </g>
+        </defs>
+
+        <!-- **This is the panel the right button opens, in its own colours and
+             at its own size.** They are palLight, read from the source and not
+             guessed from a photograph: the ground is what `fillRect` paints the
+             whole panel with, and the buttons are that **same** ground with a
+             hairline of `line` around them — which is why only their border
+             tells them apart. Two earlier drawings had it the other way round,
+             the panel in `card` and the buttons in `ground`, and then the panel
+             came out the same shade as the figure holding it.
+
+             The measurements are the panel's: 260 wide, padding 12, status
+             lines of 20, a code of 150, buttons 40 tall with 6 between them and
+             a radius of half the height, the two folders sharing one row.
+             **Everything is centred**, as it is there and for the reason
+             written there: two left-aligned lines above a column of centred
+             things read as a piece of another page. -->
+        <g transform="translate(40 6)">
+          <rect x="0" y="0" width="260" height="490" rx="14"
+                fill="#E5DFD3" stroke="#D3C9B6" stroke-width="1"/>
+
+          <!-- First how it is, then what can be done: it is the panel's order,
+               and the lines are its own sentences with example numbers. They are
+               **not** taken from the status: a drawing that follows the
+               measurement is a second instrument in disguise. -->
+          <text id="tray-line-1" x="130" y="26" text-anchor="middle" font-size="14" fill="#6E6659"></text>
+          <text id="tray-line-2" x="130" y="46" text-anchor="middle" font-size="14" fill="#6E6659"></text>
+
+          <!-- **The code is a motif and carries no data.** Twenty-one modules,
+               three finders and a fixed scatter, on the paper the panel really
+               engraves. That is the condition for drawing one at all: a code
+               that scans, on the screen that teaches the gesture, would lead
+               nowhere.
+
+               **And it is the one thing here drawn in a colour the real one
+               never uses.** The panel engraves in `ink`, near-black at 13.4:1
+               on that paper; this is `--tray-wash` at **1.66:1**. Everything
+               else in this figure is faithful; the one element somebody might
+               point a camera at is deliberately not.
+
+               **The low contrast is the property, not a compromise**, and the
+               modules are 6 wide to carry it: what has to read is the shape of a
+               code, not its data, and there is no data. A ratio meant for text
+               says this is illegible and is measuring the wrong thing — it was
+               drawn and looked at.
+
+               **And the colour is the panel's own**, which is what an earlier
+               draft's `--star-1` was not: that is the night page's star teal,
+               faint enough at 1.96 and still a visitor, because the tint
+               belonged to another page. This is the wash that fills the command
+               with the focus two blocks below — the same mixture, so the same
+               token. -->
+          <rect x="55" y="62" width="150" height="150" rx="8" fill="#FBF8F2"/>
+          <path fill="var(--tray-wash)" transform="translate(55 62)" d="M12 12h6v6h-6zM18 12h6v6h-6zM24 12h6v6h-6zM30 12h6v6h-6zM36 12h6v6h-6zM42 12h6v6h-6zM48 12h6v6h-6zM66 12h6v6h-6zM96 12h6v6h-6zM102 12h6v6h-6zM108 12h6v6h-6zM114 12h6v6h-6zM120 12h6v6h-6zM126 12h6v6h-6zM132 12h6v6h-6zM12 18h6v6h-6zM48 18h6v6h-6zM78 18h6v6h-6zM96 18h6v6h-6zM132 18h6v6h-6zM12 24h6v6h-6zM24 24h6v6h-6zM30 24h6v6h-6zM36 24h6v6h-6zM48 24h6v6h-6zM60 24h6v6h-6zM66 24h6v6h-6zM78 24h6v6h-6zM84 24h6v6h-6zM96 24h6v6h-6zM108 24h6v6h-6zM114 24h6v6h-6zM120 24h6v6h-6zM132 24h6v6h-6zM12 30h6v6h-6zM24 30h6v6h-6zM30 30h6v6h-6zM36 30h6v6h-6zM48 30h6v6h-6zM60 30h6v6h-6zM66 30h6v6h-6zM96 30h6v6h-6zM108 30h6v6h-6zM114 30h6v6h-6zM120 30h6v6h-6zM132 30h6v6h-6zM12 36h6v6h-6zM24 36h6v6h-6zM30 36h6v6h-6zM36 36h6v6h-6zM48 36h6v6h-6zM66 36h6v6h-6zM84 36h6v6h-6zM96 36h6v6h-6zM108 36h6v6h-6zM114 36h6v6h-6zM120 36h6v6h-6zM132 36h6v6h-6zM12 42h6v6h-6zM48 42h6v6h-6zM66 42h6v6h-6zM78 42h6v6h-6zM84 42h6v6h-6zM96 42h6v6h-6zM132 42h6v6h-6zM12 48h6v6h-6zM18 48h6v6h-6zM24 48h6v6h-6zM30 48h6v6h-6zM36 48h6v6h-6zM42 48h6v6h-6zM48 48h6v6h-6zM60 48h6v6h-6zM72 48h6v6h-6zM84 48h6v6h-6zM96 48h6v6h-6zM102 48h6v6h-6zM108 48h6v6h-6zM114 48h6v6h-6zM120 48h6v6h-6zM126 48h6v6h-6zM132 48h6v6h-6zM18 60h6v6h-6zM24 60h6v6h-6zM30 60h6v6h-6zM42 60h6v6h-6zM48 60h6v6h-6zM54 60h6v6h-6zM66 60h6v6h-6zM84 60h6v6h-6zM90 60h6v6h-6zM102 60h6v6h-6zM108 60h6v6h-6zM126 60h6v6h-6zM18 66h6v6h-6zM30 66h6v6h-6zM36 66h6v6h-6zM60 66h6v6h-6zM66 66h6v6h-6zM72 66h6v6h-6zM78 66h6v6h-6zM90 66h6v6h-6zM96 66h6v6h-6zM126 66h6v6h-6zM12 72h6v6h-6zM30 72h6v6h-6zM36 72h6v6h-6zM48 72h6v6h-6zM54 72h6v6h-6zM60 72h6v6h-6zM78 72h6v6h-6zM84 72h6v6h-6zM96 72h6v6h-6zM102 72h6v6h-6zM114 72h6v6h-6zM126 72h6v6h-6zM18 78h6v6h-6zM24 78h6v6h-6zM36 78h6v6h-6zM42 78h6v6h-6zM54 78h6v6h-6zM66 78h6v6h-6zM72 78h6v6h-6zM78 78h6v6h-6zM84 78h6v6h-6zM96 78h6v6h-6zM132 78h6v6h-6zM12 84h6v6h-6zM24 84h6v6h-6zM48 84h6v6h-6zM72 84h6v6h-6zM90 84h6v6h-6zM96 84h6v6h-6zM120 84h6v6h-6zM126 84h6v6h-6zM132 84h6v6h-6zM60 90h6v6h-6zM66 90h6v6h-6zM84 90h6v6h-6zM96 90h6v6h-6zM102 90h6v6h-6zM132 90h6v6h-6zM12 96h6v6h-6zM18 96h6v6h-6zM24 96h6v6h-6zM30 96h6v6h-6zM36 96h6v6h-6zM42 96h6v6h-6zM48 96h6v6h-6zM66 96h6v6h-6zM78 96h6v6h-6zM84 96h6v6h-6zM96 96h6v6h-6zM108 96h6v6h-6zM114 96h6v6h-6zM12 102h6v6h-6zM48 102h6v6h-6zM66 102h6v6h-6zM78 102h6v6h-6zM96 102h6v6h-6zM120 102h6v6h-6zM12 108h6v6h-6zM24 108h6v6h-6zM30 108h6v6h-6zM36 108h6v6h-6zM48 108h6v6h-6zM60 108h6v6h-6zM78 108h6v6h-6zM90 108h6v6h-6zM96 108h6v6h-6zM102 108h6v6h-6zM108 108h6v6h-6zM132 108h6v6h-6zM12 114h6v6h-6zM24 114h6v6h-6zM30 114h6v6h-6zM36 114h6v6h-6zM48 114h6v6h-6zM60 114h6v6h-6zM72 114h6v6h-6zM78 114h6v6h-6zM84 114h6v6h-6zM90 114h6v6h-6zM108 114h6v6h-6zM120 114h6v6h-6zM132 114h6v6h-6zM12 120h6v6h-6zM24 120h6v6h-6zM30 120h6v6h-6zM36 120h6v6h-6zM48 120h6v6h-6zM66 120h6v6h-6zM72 120h6v6h-6zM78 120h6v6h-6zM90 120h6v6h-6zM102 120h6v6h-6zM108 120h6v6h-6zM114 120h6v6h-6zM120 120h6v6h-6zM132 120h6v6h-6zM12 126h6v6h-6zM48 126h6v6h-6zM66 126h6v6h-6zM72 126h6v6h-6zM78 126h6v6h-6zM84 126h6v6h-6zM90 126h6v6h-6zM120 126h6v6h-6zM126 126h6v6h-6zM12 132h6v6h-6zM18 132h6v6h-6zM24 132h6v6h-6zM30 132h6v6h-6zM36 132h6v6h-6zM42 132h6v6h-6zM48 132h6v6h-6zM72 132h6v6h-6zM90 132h6v6h-6zM96 132h6v6h-6zM102 132h6v6h-6zM108 132h6v6h-6zM114 132h6v6h-6z"/>
+
+          <!-- **The address is text and not a box**: in the panel it is a
+               control with neither background nor border — it is pressed to
+               copy, and what says so is that it is there at all.
+
+               **And it is a placeholder, not a plausible name.** The examples in
+               the documentation use a tailnet that does not exist, which is the
+               right shape there and the wrong one here: on a screen where the
+               real address sits a few lines above, a name that looks real is
+               read as one. The half that is ours stays concrete — `patmon-`
+               and six hex digits of machine fingerprint, which is what the
+               monitor really generates — and the half that is theirs says so.
+               It goes through the catalogue because it is a word somebody
+               reads, and the path has taught them "Tailscale" and never
+               "tailnet". -->
+          <text x="130" y="240" text-anchor="middle" font-size="13"
+                fill="#6E6659" data-i18n="onb.s6.tray-address"></text>
+
+          <!-- The first command has the focus, because the panel gives it at
+               opening: accent at 22% on the ground, its border at 60%, ink text.
+               The values are computed from palLight, not chosen by eye. The fill
+               carries a name because the code above uses it too; the border
+               stays a number, having one user. -->
+          <rect x="12" y="254" width="236" height="40" rx="20"
+                fill="var(--tray-wash)" stroke="#699C96" stroke-width="1"/>
+          <text x="130" y="279" text-anchor="middle" font-size="14" font-weight="500"
+                fill="#2E2A24" data-i18n-plain="tray.menu.setup"></text>
+
+          <rect x="12" y="300" width="236" height="40" rx="20"
+                fill="#E5DFD3" stroke="#D3C9B6" stroke-width="1"/>
+          <text x="130" y="325" text-anchor="middle" font-size="14" font-weight="500"
+                fill="#6E6659" data-i18n-plain="tray.menu.reset"></text>
+
+          <rect x="12" y="346" width="236" height="40" rx="20"
+                fill="#E5DFD3" stroke="#D3C9B6" stroke-width="1"/>
+          <text x="130" y="371" text-anchor="middle" font-size="14" font-weight="500"
+                fill="#6E6659" data-i18n-plain="tray.menu.revoke"></text>
+
+          <!-- **Two folders are two glyphs, and the word stays on the control.**
+               In the panel these two carry no label: they are the same set's
+               `video` and `file-text`, and what tells them apart is what is
+               inside the folder, not the word "folder" written twice. The `d`
+               strings are the ones in internal/tray/glyph_windows.go, and the
+               glyph is 20 in a button of 40. -->
+          <g fill="none" stroke="#6E6659" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round">
+            <rect x="12" y="392" width="115" height="40" rx="20"
+                  fill="#E5DFD3" stroke="#D3C9B6" stroke-width="1"/>
+            <g transform="translate(59.5 402) scale(.8333)">
+              <path d="M15 10l4.553 -2.276a1 1 0 0 1 1.447 .894v6.764a1 1 0 0 1 -1.447 .894l-4.553 -2.276v-4z"/>
+              <path d="M3 6m0 2a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2z"/>
+            </g>
+            <rect x="133" y="392" width="115" height="40" rx="20"
+                  fill="#E5DFD3" stroke="#D3C9B6" stroke-width="1"/>
+            <g transform="translate(180.5 402) scale(.8333)">
+              <path d="M14 3v4a1 1 0 0 0 1 1h4"/>
+              <path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z"/>
+              <path d="M9 9l1 0"/>
+              <path d="M9 13l6 0"/>
+              <path d="M9 17l6 0"/>
+            </g>
+          </g>
+
+          <rect x="12" y="438" width="236" height="40" rx="20"
+                fill="#E5DFD3" stroke="#D3C9B6" stroke-width="1"/>
+          <text x="130" y="463" text-anchor="middle" font-size="14" font-weight="500"
+                fill="#6E6659" data-i18n-plain="tray.menu.quit"></text>
+        </g>
+
+        <!-- Windows' taskbar, and its colours are its own: this is somebody
+             else's interface, and making it follow our palette would mean
+             repainting it. The panel above sits over the icon, which is where
+             the right button opens it. -->
+        <rect x="0" y="502" width="340" height="34" rx="7" fill="#E3DACA" stroke="#D3C9B6" stroke-width="1"/>
+        <circle cx="210" cy="519" r="7" fill="#8C8474" opacity=".4"/>
+        <circle cx="238" cy="519" r="7" fill="#8C8474" opacity=".4"/>
+        <use href="#ico-tray" transform="translate(266 508) scale(.9167)" fill="#4F7F31"/>
+        <!-- As above: the clock in Windows' taskbar. -->
+        <text x="330" y="524" text-anchor="end" fill="#7A7264" font-size="12">14:32</text>
+      </svg>
+      <figcaption data-i18n="onb.s6.tray-caption"></figcaption>
+    </figure>
+
+    <div class="note warn" data-i18n-html="onb.s6.who-enters"></div>
+
+    <div class="actions">
+      <a class="btn" id="go-to-monitor" href="/" data-i18n="onb.s6.open"></a>
+    </div>
+  </section>
+
+  <!-- ============ E · failure ============ -->
+  <section class="step stop" data-step="7">
+    <p class="eyebrow" data-i18n="onb.s7.eyebrow"></p>
+    <h1 data-i18n="onb.s7.title"></h1>
+
+    <figure class="art">
+      <svg viewBox="0 0 520 152" role="img"
+           data-i18n-attr="aria-label:onb.s7.art">
+        <g transform="translate(22 61)">
+          <path d="M0 27L36 0L72 27" fill="none" stroke="#8C8474" stroke-width="3" stroke-linejoin="round"/>
+          <rect x="9" y="27" width="54" height="41" rx="5" fill="#FBF8F2" stroke="#8C8474" stroke-width="3"/>
+          <circle cx="36" cy="47" r="9" fill="#E5DFD3" stroke="#4F7F31" stroke-width="2.5"/>
+          <circle cx="36" cy="47" r="3.5" fill="#4F7F31" class="breathe"/>
+        </g>
+        <text x="58" y="148" text-anchor="middle" fill="#4F7F31" font-size="12"
+              data-i18n="onb.s7.art-works"></text>
+
+        <path d="M108 102h108" stroke="#B3452F" stroke-width="3" stroke-linecap="round" stroke-dasharray="7 9"/>
+        <line x1="150" y1="86" x2="174" y2="118" stroke="#B3452F" stroke-width="3" stroke-linecap="round"/>
+        <line x1="174" y1="86" x2="150" y2="118" stroke="#B3452F" stroke-width="3" stroke-linecap="round"/>
+
+        <path d="M266 74a28 28 0 0 1 54-9 23 23 0 0 1 31 21 20 20 0 0 1-5 38H273a24 24 0 0 1-7-50z"
+              fill="#F1ECE2" stroke="#C2B9A5" stroke-width="2.5"/>
+        <text x="434" y="108" text-anchor="middle" font-size="13"
+              data-i18n="onb.s7.art-unreachable"></text>
+      </svg>
+    </figure>
+
+    <div class="note bad" data-i18n-html="onb.s7.home-ok"></div>
+
+    <p id="failed-what" data-i18n="onb.s7.retry-hint"></p>
+
+    <details class="tech">
+      <summary data-i18n="onb.s7.tech"></summary>
+      <div class="body">
+        <span data-i18n="onb.s7.tech-why"></span>
+        <code class="block" id="failed-detail">&mdash;</code>
+      </div>
+    </details>
+
+    <div class="actions">
+      <button class="btn" type="button" id="failed-retry" data-i18n="onb.s7.retry"></button>
+      <button class="btn ghost" type="button" id="failed-home-only" data-i18n="onb.s7.home-only"></button>
+    </div>
+  </section>
+</div>
+
+<!-- ============ the explainer, for whoever looks for it ============
+     Explaining the meeting point to everybody costs everybody a screen to serve
+     the few per cent who want it; the three things that actually decide — free,
+     no new password, router untouched — stay in the clear on the fork.
+     It is a `<dialog>` and not a ninth section on purpose: opening it does not
+     move the path, so there is no extra state to come back from, and the bar at
+     the top goes on telling the truth. -->
+<dialog id="explainer" aria-labelledby="explainer-h">
+  <div class="explainer-body">
+    <h2 id="explainer-h" data-i18n="onb.how-full"></h2>
+    <p data-i18n-html="onb.exp.vpn"></p>
+
+    <figure class="art">
+      <svg viewBox="0 20 520 236" role="img"
+           data-i18n-attr="aria-label:onb.exp.art">
+        <!-- The house is always the same in every illustration: 72x68, roof with
+             9 of eave each side, indicator centred at 36,47. Here it is in its
+             reference position, with the local origin at 40,145. -->
+        <g transform="translate(40 145)">
+          <path d="M0 27L36 0L72 27" fill="none" stroke="#8C8474" stroke-width="3" stroke-linejoin="round"/>
+          <rect x="9" y="27" width="54" height="41" rx="5" fill="#FBF8F2" stroke="#8C8474" stroke-width="3"/>
+          <circle cx="36" cy="47" r="9" fill="#E5DFD3" stroke="#17706E" stroke-width="2.5"/>
+          <circle cx="36" cy="47" r="3.5" fill="#17706E" class="breathe"/>
+        </g>
+        <text x="76" y="236" text-anchor="middle" font-size="13"
+              data-i18n="onb.exp.art-monitor"></text>
+
+        <rect x="418" y="158" width="42" height="70" rx="9" fill="#FBF8F2" stroke="#8C8474" stroke-width="3"/>
+        <rect x="432" y="165" width="14" height="3" rx="1.5" fill="#8C8474"/>
+        <circle cx="439" cy="218" r="3.5" fill="#8C8474"/>
+        <text x="439" y="244" text-anchor="middle" font-size="13"
+              data-i18n="onb.exp.art-viewer"></text>
+
+        <!-- The two arcs go inside the cloud instead of stopping at its edge,
+             and the cloud is drawn afterwards: so it covers them, and the
+             traffic disappears behind the meeting point instead of arriving
+             beside it. For the same reason the moving dots are up here too. -->
+        <path d="M118 162C152 128 186 96 244 76" fill="none" stroke="#3C5CA8" stroke-width="2.5"
+              stroke-linecap="round" opacity=".4"/>
+        <path d="M414 154C378 118 330 88 276 76" fill="none" stroke="#3C5CA8" stroke-width="2.5"
+              stroke-linecap="round" opacity=".4"/>
+        <circle r="4" fill="#3C5CA8" class="travel"
+                style="offset-path: path('M118 162C152 128 186 96 244 76')"/>
+        <circle r="4" fill="#3C5CA8" class="travel d2"
+                style="offset-path: path('M414 154C378 118 330 88 276 76')"/>
+
+        <path d="M206 60a34 34 0 0 1 66-11 28 28 0 0 1 38 26 24 24 0 0 1-6 47H214a30 30 0 0 1-8-62z"
+              fill="#F1ECE2" stroke="#3C5CA8" stroke-width="2.5"/>
+        <!-- **253 and not 262, nor 260.** The cloud is not symmetrical and is
+             not centred in the frame: sampling the outline, at the caption's
+             height it runs from 179.0 to 327.2, so the middle is 253.1. By eye
+             one is nine units out to the right, which on this drawing is ten
+             pixels. The height 96 is right, though: it is below the geometric
+             centre, but the left hump falls and the right one rises, and the eye
+             follows the mass. -->
+        <text x="253" y="96" text-anchor="middle" fill="#3C5CA8" font-size="13"
+              data-i18n="onb.exp.art-meeting"></text>
+
+        <path d="M124 204h276" fill="none" stroke="#4F7F31" stroke-width="6.5"
+              stroke-linecap="round" opacity=".5"/>
+        <circle cx="124" cy="204" r="4.5" fill="#4F7F31" class="glide" style="--d:276px"/>
+        <circle cx="124" cy="204" r="4.5" fill="#4F7F31" class="glide d2" style="--d:276px"/>
+        <text x="262" y="192" text-anchor="middle" fill="#4F7F31" font-size="13"
+              data-i18n="onb.exp.art-direct"></text>
+      </svg>
+      <figcaption data-i18n="onb.exp.caption"></figcaption>
+    </figure>
+
+    <p data-i18n-html="onb.exp.short-road"></p>
+
+    <h3 data-i18n="onb.exp.also-title"></h3>
+    <p data-i18n="onb.exp.also-body"></p>
+  </div>
+  <form method="dialog" class="explainer-close">
+    <button class="btn ghost" data-i18n="onb.exp.got-it"></button>
+  </form>
+</dialog>
+
+<script src="/dictionary.js"></script>
+<script src="/i18n.js"></script>
+<script src="/onboarding.js"></script>
+</body>
+</html>

@@ -1,0 +1,195 @@
+# A tag builds the archive and leaves a draft. It does not sign, and it does not
+# publish.
+#
+# **The signature cannot be made here, and that is the point of it.** The key
+# exists to survive this GitHub account being taken: a key in Secrets is a key
+# that account reaches, so signing here would prove exactly the thing the
+# signature is there to disprove. It is made on the machine that holds the
+# private half, over the bytes this workflow produced, and the release stays a
+# draft until the .sig is beside the zip.
+#
+# What the workflow buys by building the archive anyway is not convenience: the
+# zip comes from a clean checkout of the tag rather than from somebody's working
+# tree, which is the class of error `-Release` otherwise has to refuse.
+#
+# **It is two jobs because only the second one may write.** The first runs the
+# repository's own code — the suite, the build, the module graph — and a job
+# that runs code does not need a token that can create releases. The second
+# holds nothing but the archive and `gh`.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+# **One release at a time.** The draft job asks whether a release already exists
+# for the tag and then creates one, which is a check followed by an act: two runs
+# overlapping would both find nothing and both create a draft, that is, exactly
+# the pair of archives that guard exists to prevent. Queued rather than
+# cancelled, because a half-finished release is worse than a slow one.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    outputs:
+      # Asked of internal/version through pat-icon, and carried across to the
+      # job that needs it: the second job has no checkout and no Go, which is
+      # the whole point of it.
+      prerelease: ${{ steps.version.outputs.prerelease }}
+    env:
+      CGO_ENABLED: "0"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # See check.yml: a shallow clone makes `r` say 1 without an error.
+          fetch-depth: 0
+          # Nothing here pushes, and a credential left in the runner's git
+          # config is reachable by every step that follows.
+          persist-credentials: false
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # First, because everything after it is wasted if the two disagree, and
+      # because nothing else compares them: the tag is typed at the terminal and
+      # the constant is edited by hand, months apart.
+      #
+      # **The number is asked of whoever holds it**, exactly as build.ps1 asks
+      # it and for the reason written there: `version.Number` decides its own
+      # format, and a regular expression written here would be a second reader
+      # that breaks in silence at a change like `1.0.0` to `1.1.0-beta.1`.
+      - name: the tag and version.go must say the same thing
+        id: version
+        shell: pwsh
+        # The ref arrives through the environment rather than being interpolated
+        # into the script: a ref is attacker-controlled text in the general case,
+        # and text pasted into a shell is a shell injection.
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          $num = (& go run ./cmd/pat-icon -print-version).Trim()
+          if ($LASTEXITCODE -ne 0) { throw "version lookup failed" }
+          $tag = $env:TAG -replace '^v', ''
+          if ($tag -ne $num) { throw "the tag says $tag and version.go says $num" }
+
+          $pre = (& go run ./cmd/pat-icon -print-prerelease).Trim()
+          if ($LASTEXITCODE -ne 0) { throw "pre-release lookup failed" }
+          "prerelease=$pre" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "tag and version.go agree on $num; pre-release: $pre"
+
+      # check.yml runs on pushes to main, and nothing requires a tag to point at
+      # a commit that ever went there. A release is the one build that reaches
+      # somebody else's house, so it is checked at least as hard as a push
+      # rather than on the assumption that it already was.
+      - name: gofmt
+        shell: pwsh
+        run: |
+          $bad = gofmt -l .
+          if ($bad) { $bad; throw "the files above are not gofmt'd" }
+
+      - name: vet
+        run: go vet ./...
+
+      - name: test
+        run: go test ./...
+
+      # **`powershell` and not `pwsh`, deliberately.** They are two parsers:
+      # `pwsh` is PowerShell 7 and reads a BOM-less file as UTF-8, Windows
+      # PowerShell 5.1 reads it as ANSI — and build.ps1 has no BOM, so a
+      # multi-byte character inside one of its strings breaks 5.1 and not 7.
+      # The machine that cuts releases runs 5.1, so a workflow on 7 would stay
+      # green over a script the maintainer cannot run.
+      #
+      # -Unsigned is a word somebody wrote, not a key somebody forgot: without
+      # it this step would refuse, which is what keeps an unsigned archive from
+      # being made by omission on the machine that does have the key.
+      - name: build the archive
+        shell: powershell
+        run: .\build.ps1 -Release -Unsigned
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: archive
+          path: dist/*.zip
+          if-no-files-found: error
+
+  draft:
+    needs: build
+    runs-on: windows-latest
+    permissions:
+      # The one job that writes, and it holds no repository code to write with.
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: archive
+          path: archive
+
+      - name: leave it as a draft
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          # **`gh` works out which repository it is talking to from the git
+          # remote, and this job deliberately has no checkout.** That absence
+          # is the point of the job — it holds the archive and nothing that
+          # could write — so the repository is handed over by name instead.
+          # `GITHUB_REPOSITORY` is set by Actions and gh does not read it.
+          # Without this the very first command fails, and the error accuses
+          # the listing rather than the missing context.
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+          PRERELEASE: ${{ needs.build.outputs.prerelease }}
+        run: |
+          $zip = @(Get-ChildItem archive\*.zip)
+          if ($zip.Count -eq 0) { throw "the build left no zip" }
+          if ($zip.Count -gt 1) { throw "more than one zip: $($zip.Name -join ', ')" }
+
+          # **A second draft for the same tag is the failure this guards.**
+          # GitHub allows several, so a re-run of this workflow would leave two
+          # archives built from the same commit but not the same bytes — and the
+          # one that gets signed and the one that gets published could then be
+          # different files, with the signature refusing a download that is
+          # otherwise ours. `gh release list` includes drafts.
+          $existing = gh release list --json tagName --jq '.[].tagName'
+          if ($LASTEXITCODE -ne 0) { throw "could not list the releases" }
+          if ($existing -contains $env:TAG) {
+            throw "a release already exists for $env:TAG: publish it or delete it, rather than leaving two"
+          }
+
+          # The body is written as lines and joined, rather than as a here-string:
+          # a here-string's closing marker has to sit at column zero, which inside
+          # an indented YAML block is a trap with no error message.
+          $notes = @(
+            '**Draft. Not to be published as it stands: the archive below is unsigned.**'
+            ''
+            '- [ ] download the zip'
+            '- [ ] sign it where the private key is: `go run ./cmd/pat-sign -key <path> <zip>`'
+            '- [ ] check it: `go run ./cmd/pat-sign -verify <zip>`'
+            '- [ ] upload the `.sig` to this release'
+            '- [ ] replace these notes with what changed'
+          ) -join "`n"
+          Set-Content -Path release-notes.md -Value $notes -Encoding utf8
+
+          # **The pre-release checkbox is set from the version, not by hand.**
+          # `/releases/latest` is the whole of the pre-release policy, and it
+          # excludes what GitHub marks; a beta published without that mark
+          # becomes the latest release and is offered to every installation as a
+          # stable update. The tag already carries the "-" of semver and
+          # version.Prerelease() already reads it, so nobody has to remember.
+          $argv = @($env:TAG, '--draft', '--title', $env:TAG, '--notes-file', 'release-notes.md')
+          if ($env:PRERELEASE -eq 'yes') { $argv += '--prerelease' }
+          $argv += $zip[0].FullName
+
+          gh release create @argv
+          if ($LASTEXITCODE -ne 0) { throw "gh release create failed" }
+          "draft created for $env:TAG (pre-release: $env:PRERELEASE)"

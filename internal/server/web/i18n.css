@@ -1,0 +1,142 @@
+/* The language selector.
+ *
+ * **It lives in a sheet of its own because two pages with two palettes read
+ * it.** The configuration path is light, the login is dark, and they have no
+ * sheet in common: written twice these rules would diverge at the first touch —
+ * it has already happened with `--t-h1`, 28 in one sheet and 24 in the other.
+ * No literal colour is needed here, because the two sheets declare the same
+ * token names: `--card`, `--line`, `--muted`, `--ink-2`, `--t-ui`, `--phase`
+ * and the spacing scale exist in both and mean different things. The same rule
+ * dresses itself.
+ *
+ * **But "exists in both" has to be checked name by name**, and it was not:
+ * `--radius-s` lives only in `style.css`, so below here its line was invalid and
+ * the selector had sharp corners in the guided path. A missing token does not
+ * protest — it is the family of the hand-written GUID.
+ *
+ * It is the same reason `icons.css` exists.
+ *
+ * **And this sheet declares no palette token** — that is the decision, not an
+ * accident. A colour declared here would be a third copy, and one that on top of
+ * that could not differ between the two palettes, since both pages read this
+ * same file: it would be the same value on the cream and on the almost-black.
+ * What it can declare is what **does not depend on the palette**: the shape of
+ * the arrow below, and the radius, which is geometry and not hue. What makes the
+ * consumption safe is two tests, and both are needed —
+ * `TestBothPaletteSheetsDeclareTheSameNames`, so that a name exists in both
+ * palette sheets, and `TestEveryTokenAPageUsesIsDeclaredSomewhereItLoads`, so
+ * that the name is really declared on every page this sheet ends up on. Without
+ * the first, a new token on one side alone would put this sheet back in the
+ * position of rewriting by hand, which is how `10px` got here. */
+
+
+.lang {
+  position: fixed;
+  top: var(--s4);
+  right: var(--s4);
+  /* Above the guided path's two decorative layers (sky and grass, which sit at
+     0) and above the content, which sits at 1. */
+  z-index: 3;
+}
+
+/* The native `<select>` and not a menu of ours: it brings with it the keyboard,
+   the screen reader and — on the phone — the system wheel, which is how one
+   chooses an entry from a list on that device. Redoing it by hand would mean
+   rewriting those three things worse. */
+.lang select {
+  /* The separate properties and not the `font` shorthand. The typeface is
+     inherited from the page rather than naming `--sans`: that token is in both
+     sheets today, but it is the only one in this block that must not be there —
+     the day it were missing, the `font` shorthand would be **invalid entirely**
+     and would take the weight and the size with it, in silence. Inheriting
+     cannot break. */
+  font-family: inherit;
+  font-size: var(--t-ui);
+  font-weight: 500;
+  /* **Not `1`.** In a closed `<select>` the line height *is* the height of the
+     text's box, and at a line height of 1 the box is as tall as the type's
+     body: the tail of the "g" in "English" comes out below and gets cut. It
+     does not show in Italian, because "Italiano" has no descenders — that is,
+     the defect appears **only in the language we were not looking at**. */
+  line-height: 1.35;
+  color: var(--ink-2);
+  background: var(--card);
+  border: 1px solid var(--line);
+  /* **It is the token now, and for a while it was the value.** `--radius-s`
+     existed only in `style.css`: it was not in the guided path, the declaration
+     was invalid and the selector came out **with sharp corners** on one page
+     alone, so `10px` was written here by hand. It is the example the rule at the
+     top comes from — a name missing on one side forces whoever is downstream to
+     rewrite — and now the scale is declared whole in both sheets, with
+     `TestBothPaletteSheetsDeclareTheSameNames` keeping them level. */
+  border-radius: var(--radius-s);
+  /* The space on the right is for the arrow drawn below. */
+  padding: 5px 30px 5px 11px;
+  appearance: none;
+  cursor: pointer;
+  /* The palette chooses the shadow, like everything else in here. It used to be
+     a fixed `#00000014`, that is, black on the cream too, where every other
+     shadow is warm ink: the one place where this colour was really wrong, and
+     it showed only by putting the selector beside a card. */
+  box-shadow: var(--shadow-s);
+}
+
+/* The arrow is drawn by us, otherwise every system puts one of its own in and
+   the control looks foreign to the page.
+
+   **The colour is not inside the image, and it used to be.** The comment here
+   said `currentColor` kept it in hue, and that is something a `data:` URI
+   **cannot do**: that document is an image in itself, it inherits nothing from
+   the page showing it. Inside it was `#948B7C`, that is, the **night's**
+   `--muted`, so on the cream the arrow came out the grey of the dark page —
+   3.17:1 on the card instead of the right token's 5.34. Nobody protested: it is
+   an image that draws itself correctly, only in another page's colour.
+
+   So the image carries the **shape** and nothing else, and the colour is put in
+   by the mask: `background` is the token, and the arrow is the cut-out. The
+   glyph is the same as `icons.css`'s — the down arrow of "Details" — with the
+   same stroke weight. */
+.lang {
+  --arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' \
+viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' \
+stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6l6 -6'/%3E%3C/svg%3E");
+}
+/* On a pseudo-element and not on the `<select>`: a mask on the control would cut
+   the control out. `pointer-events: none` because the click has to reach the
+   menu, which is underneath. */
+.lang::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 9px;
+  width: 14px;
+  height: 14px;
+  transform: translateY(-50%);
+  background: var(--muted);
+  -webkit-mask: var(--arrow) no-repeat center / 14px 14px;
+  mask: var(--arrow) no-repeat center / 14px 14px;
+  pointer-events: none;
+}
+
+@media (hover: hover) { .lang select:hover { border-color: var(--muted); } }
+/* The ring is everybody's: 2px/2px used to be written here by hand, that is, a
+   third value for a component that has one. Both palettes declare the two
+   names, which is the condition for this sheet — which is downstream and
+   declares nothing — to be able to consume them. */
+.lang select:focus-visible {
+  outline: var(--focus-w) solid var(--phase, var(--ink-2));
+  outline-offset: var(--focus-gap);
+}
+
+/* On the phone the guided path has little margin at the top and the selector
+   would land on top of the step count. It tightens and rises. */
+@media (max-width: 560px) {
+  .lang { top: var(--s2); right: var(--s2); }
+  .lang select { padding: 5px 26px 5px 9px; font-size: var(--t-small); }
+  .lang::after { right: 7px; width: 12px; height: 12px; -webkit-mask-size: 12px 12px; mask-size: 12px 12px; }
+}
+
+/* Whoever has no JavaScript has no pages either: the selector reloads them, and
+   without a script it would do nothing. Better not to show it at all than to
+   show it inert — `i18n.js` fills it, and until it does it is not there. */
+.lang:empty { display: none; }

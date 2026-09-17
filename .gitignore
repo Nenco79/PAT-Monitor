@@ -1,0 +1,116 @@
+# --- build products ---
+#
+# bin\ is generated entirely by build.ps1 and holds nothing written by hand: the
+# binaries are ~43 MB each and change at every build.
+bin/
+
+# Outside bin\ too, because a "go build" without -o leaves the executable in the
+# project folder and that has happened. The .exe~ is created by Windows when
+# rebuilding over a running process: it renames the old one instead of deleting
+# it.
+*.exe
+*.exe~
+*.dll
+*.pdb
+
+# The .syso is the resource holding the executable's icon. build.ps1 regenerates
+# it at every build with `go run ./cmd/pat-icon`: it derives entirely from the
+# drawing, which is code instead, and it is deterministic. Versioning it would
+# mean keeping two copies of the same thing aligned.
+*.syso
+
+# --- test outputs ---
+#
+# Raw streams from the spikes, muxer clips, audio recordings, and the monitor's
+# logs when it is started by hand.
+*.h264
+*.264
+*.mp4
+*.ogg
+*.wav
+*.pcm
+*.log
+*.err
+*.pid
+
+# Go test binaries and reports.
+*.test
+*.out
+*.prof
+
+# --- configuration and state ---
+#
+# The configuration file holds the password hash and, if it has been set, the
+# Tailscale auth key. In service it lives in %APPDATA%\PAT Monitor\ and not here,
+# but one -config pointed inside the project is enough to leave one behind.
+config.yaml
+config.yaml.tmp
+config.local.yaml
+
+# The Tailscale node's state: node keys and TLS certificate. Copying it
+# elsewhere means cloning the monitor's identity.
+tsnet/
+*.state
+
+# --- local environment ---
+go.work
+go.work.sum
+.claude/settings.local.json
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# The raw webrtc-internals dump: it holds the real addresses of the home network
+# — the public IPv4 and the IPv6 of the individual devices — because ICE
+# candidates are addresses. On a public repository they would be permanent.
+#
+# Nothing useful is lost: the measurement that matters is already distilled into
+# baselines/latency.txt, which is versioned. The dump is the rough sheet.
+webrtc_internals_dump.txt
+
+# --- deliberately NOT ignored ---
+#
+# baselines/capture-*.txt and baselines/latency.txt look like leftovers and are
+# not: they are the regularity of the capture and the latency measured when
+# everything was working, that is, the only way of answering "has it got worse?".
+# A measurement taken later, when the suspicion has already arisen, has nothing
+# to compare itself with.
+
+# Service logs. In service they live in %APPDATA%\PAT Monitor\log\; they end up
+# here only if the monitor was started with -config pointed into the project.
+# They hold the viewers' IP addresses, so they must not be published, and they
+# are not a reference measurement: they are the chronicle of one night, useful
+# while the fault is fresh.
+log/
+
+# The workbench: what is needed **in order to redo** the measurements in
+# baselines/, not the measurements. Two kinds of thing, and neither of them
+# belongs in a repository.
+#
+#   ced-tiny-f16.gguf     the unquantised weights, somebody else's work — CED,
+#                         Apache-2.0, © Xiaomi. They are what parity with the
+#                         oracle is measured against, and the fingerprint is in
+#                         baselines/ced.txt, because git does not reach here.
+#   config.json           how the upstream model declares its front-end.
+#   sweep/                the scores of the sweep over the three public
+#                         datasets: one row per clip, one column per class. Six
+#                         megabytes holding fifty minutes of work, and
+#                         `pat-sounds judge` reads them back without the twelve
+#                         gigabytes.
+#
+# What gets shipped is not here: it is internal/ced/ced-tiny-q8_0.gguf, embedded
+# with go:embed like libopus.wasm, and its notice is in licenses/.
+workbench/
+
+# The release signing key. The public half is a constant in
+# internal/update/pubkey.go; this is the private one, and it exists on one
+# machine. Committed, it would be worthless: the whole point is that whoever
+# takes the GitHub account cannot sign a release.
+*.key
+
+# The assembled release: the staged folder, the zip and its signature. Built by
+# build.ps1 -Release from what is already in the repository, and uploaded to a
+# GitHub release rather than committed.
+dist/
