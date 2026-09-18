@@ -67,9 +67,9 @@ name stands for *Pet And Toddler*.
 - **Diagnostics**: rotating log file, per-session viewer log with ICE path and
   packet loss, and standalone measurement tools.
 
-The interface takes its language from the browser — English or Italian, English
-being what everything else falls back to — with a selector in the top right
-corner for when the browser gets it wrong.
+The interface takes its language from the browser — English, Italian, German,
+French or Spanish, English being what everything else falls back to — with a
+selector in the top right corner for when the browser gets it wrong.
 
 <p align="center">
   <img src="images/recordings.png" width="100%"
@@ -285,8 +285,8 @@ signs an archive with it, which `build.ps1 -Release` calls.
 | `internal/doc` | no code: the guard on what this file and `CLAUDE.md` claim about the tree |
 
 The source, its comments and the log are in English. The interface is not: it
-lives in per-language catalogues under `internal/i18n/catalogs/`, and Italian is
-one of them.
+lives in per-language catalogues under `internal/i18n/catalogs/`, one file per
+language and English as the base the others overlay.
 
 `CLAUDE.md` carries the index of every rule the program was built on, and the
 chapters are in `.claude/rules/`, one slice per area, each declaring the

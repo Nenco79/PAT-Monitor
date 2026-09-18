@@ -159,6 +159,9 @@ a heading to its file, `grep -rn` the heading.
   - Codes cross the API, words stay at the edges
     - The tunnel phases are codes, and the pages hold the dictionary
     - The catalogue: English is the base, the others overlay it
+      - German: the decisions, because nobody here can check the sentences
+      - French: the decisions, and two guards that had been written by hand
+      - Spanish: the decisions, and the bar's threshold moving
   - Alerts are the set of what is wrong now, not a list of events
   - Motion is measured on the merged frame, with the camera's breathing removed
   - Crying and barking are recognised by shape, and the floor is measured by the

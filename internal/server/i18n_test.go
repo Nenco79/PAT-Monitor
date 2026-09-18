@@ -560,6 +560,25 @@ func TestTheDictionaryIsAlwaysServableJavaScript(t *testing.T) {
 func TestTheChosenLanguageBeatsTheBrowser(t *testing.T) {
 	s := serverWithoutPassword(t)
 
+	// **The unknown tag is derived and not written.** `fr` stood in this case,
+	// and the day French arrived it stopped being a language we do not have:
+	// the case then kept its other assertion and lost the one it exists for.
+	// `es` walked into the same case a language later, which is the same lesson
+	// twice, and the derivation is what makes the second time cost nothing. The
+	// candidates are the languages most likely to arrive next, so this list
+	// maintains itself for a while, and the `t.Fatal` says so on the day it
+	// stops.
+	unknown := ""
+	for _, tag := range []string{"nl", "pl", "pt", "ja"} {
+		if !i18n.Languages()[tag] {
+			unknown = tag
+			break
+		}
+	}
+	if unknown == "" {
+		t.Fatal("every candidate tag has a catalogue now: this test needs one that does not")
+	}
+
 	cases := []struct {
 		cookie, accept, inside, why string
 	}{
@@ -569,7 +588,7 @@ func TestTheChosenLanguageBeatsTheBrowser(t *testing.T) {
 			"and the other way round, which is the case the selector exists for"},
 		{"", "it-IT", `"login.submit":"Accedi"`,
 			"with no cookie the browser decides"},
-		{"fr", "it-IT", `"login.submit":"Accedi"`,
+		{unknown, "it-IT", `"login.submit":"Accedi"`,
 			"a cookie for a language we do not have does not count"},
 		{"../../go.mod", "it-IT", `"login.submit":"Accedi"`,
 			"and a path is not a language"},
@@ -599,10 +618,20 @@ func TestTheChosenLanguageBeatsTheBrowser(t *testing.T) {
 // The selector needs the list of languages, with each one's name written in that
 // language: it is the only word whoever is looking for their own can recognise
 // when the page is speaking another.
+//
+// **The list is read from the catalogues and not written here.** It named
+// English and Italian, so German and then French arrived without it — the guard
+// covering less than it claimed, and in the direction that looks green.
 func TestTheDictionaryCarriesTheLanguageNames(t *testing.T) {
 	s := serverWithoutPassword(t)
 	body := askDictionary(t, s, "en").Body.String()
-	for _, want := range []string{`"en":"English"`, `"it":"Italiano"`} {
+	for language, cat := range cataloguesOnDisk(t, s) {
+		name, _ := cat["lang.name"].(string)
+		if name == "" {
+			t.Errorf("%s: no `lang.name`, so the selector cannot offer it", language)
+			continue
+		}
+		want := `"` + language + `":"` + name + `"`
 		if !strings.Contains(body, want) {
 			t.Errorf("the list of languages does not contain %s:\n%s", want, body)
 		}

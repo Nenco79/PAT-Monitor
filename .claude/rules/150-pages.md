@@ -475,7 +475,7 @@ picture without either giving anything up.
 
 Seven commands in a row wrapped wherever they happened to. A bar that changes
 shape at every width is rechecked every time, one that has a single shape is
-learned. It is now **two fixed rows** below 980 px — the three detections above,
+learned. It is now **two fixed rows** below 1020 px — the three detections above,
 the commands below — and one row beyond, with the three detections **in the
 centre**.
 
@@ -519,7 +519,25 @@ centre**.
 - **The threshold is measured, not chosen**, and it must be re-measured if a
   label changes: it is the only number in that sheet that depends on the text,
   and **it is measured in every language**, not in the writer's — English asks
-  for 809 px, Italian 918, and the threshold is dictated by the widest.
+  for 809 px, Italian 918, German 953, and the threshold is dictated by the
+  widest. **Adding a language is a label change**, and German is what proved the
+  rule was load-bearing: at the 980 the first two had settled on, the middle
+  group slid 10.6 px the instant `Sprechen` appeared, so the threshold went to
+  **1010**. The cost is borne by every language, because a stylesheet does not
+  know which one it is dressing, and that is the trade the rule already made.
+  The re-measurement reproduced the two recorded figures before moving anything
+  — 807 and 921 against the 809 and 918 above — which is how a probe earns the
+  right to contradict a number. **Spanish found the rule again**: the boundary —
+  the width below which the middle group moves when "Talk" appears — comes out
+  at 1015 in Spanish against 1005 in German, 975 in Italian and 970 in French,
+  so the widest is Spanish's and the threshold is **1020**. What moved it is
+  **one word**: `Silenciar` for the mute command, where French has `Muet` and
+  German `Stumm`. Measured, `Mudo` in its place takes the boundary to 985, which
+  would have kept the old number — and it was not taken, because `Silenciar` is
+  the word the Spanish Windows uses. **The label that looks guilty is not**: the
+  widest in the bar, `Cerrar sesión`, moves this boundary not at all when
+  shortened, because the boundary is about the left side and the log-out is on
+  the right.
 - **The two sides exist only on the single row**, and below they are `display:
   contents`: the box disappears, the buttons go back to being direct children of
   the bar, and the two-row shape is the usual one — verified pixel by pixel
@@ -806,6 +824,13 @@ the history of this bar is that number being bought back twice, by shortening
 | in the bar, word clipped | 221 | 980 | 153 |
 | **on the picture** | **173** | **980** | **105** |
 
+**The middle column is the threshold as it stood when Italian was the widest
+language** — 980 then, 1010 for the chosen arrangement since German, and 1020
+since Spanish — and the
+third column is what those three arrangements measured at the time. The
+comparison between the three rows is unaffected: it is the same bar measured
+three ways, and all three would move together.
+
 Clipping the word bought the threshold back and **not the phone** — 153 px at 390
 is a third row, against the 105 the bar is documented to have. Only taking it out
 of the bar gives both, and it is also where every player has already taught
@@ -827,8 +852,12 @@ used in the dark.
 no words so every button needs a glyph; in the bar this command has always been a
 word, and giving it the glyph there too widened the left side by 24 px — which
 with two equal tracks is 48, and it moved the width below which the group starts
-sliding from about 956 px to 1004, that is, inside the single row. Measured: 9 px
-of shift at 1000 and 19 at 980.
+sliding from about 956 px to 1004, that is, inside the single row **as it stood
+at the 980 of then**. Measured then: 9 px of shift at 1000 and 19 at 980. **The
+threshold stands at 1020 — 980 then, 1010 with German, 1020 with Spanish — and
+the argument does not depend on the number**: the glyph costs the boundary the
+same 48 px, so it lands above whatever the threshold is, and that is why it is
+not drawn here.
 
 **The word is clipped and not removed**, which is the defect that looks identical
 on screen: `display: none` takes the accessible name with it and leaves a column

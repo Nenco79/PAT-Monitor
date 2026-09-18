@@ -1061,9 +1061,13 @@ video {
    command has always been a word and nothing else, and giving it the glyph there
    too widened the left side by 24 px — which is not 24: with `1fr auto 1fr` both
    tracks take the wider side, so it is 48, and it moved the width below which
-   the middle group starts sliding from about 956 px to 1004. The threshold is
-   980. That is, the defect the 980 was measured to prevent came back **inside**
-   the single row: measured, the group shifted 9 px at 1000 and 19 at 980.
+   the middle group starts sliding from about 956 px to 1004. The threshold was
+   980 then. That is, the defect the threshold was measured to prevent came back
+   **inside** the single row: measured, the group shifted 9 px at 1000 and 19 at
+   980. German took the threshold to 1010 and Spanish to 1020, and the argument
+   is the one it was: the glyph costs the boundary the same 48 px, so it lands
+   above whatever the threshold is, and the reason it is not drawn here is
+   unchanged.
 
    So the glyph is drawn where it is needed and nowhere else. The bar is left
    exactly as it was measured — this number has been bought back twice already,
@@ -2014,22 +2018,69 @@ body.day .stats .pick option:focus {
   .remote-body { flex-direction: column; align-items: flex-start; }
 }
 
-/* **980 px, and the threshold is not where the buttons fit: it is where the group
-   stays put.**
+/* **1020 px, and the threshold is not where the buttons fit: it is where the
+   group stays put.**
 
    The number is measured, not chosen, by driving a browser over the real markup
    with the bar complete. They are two different measurements:
 
      they fit        890 px in Italian, 820 in English — below that the buttons
                      start to tighten
-     they stay put   980 px, and below that the middle group **moves when "Talk"
-                     appears**: 3 px at 970, 28 at 920
+     they stay put   1020 px, and below that the middle group **moves when
+                     "Talk" appears**: in Italian 3 px at 970 and 28 at 920, in
+                     German 10.6 px at 980 and 40.6 at 920
 
    The second one commands. With `1fr auto 1fr` the two columns have a floor —
-   their content — and below 980 the left one, which has one button more, breaks
-   out of its track and pushes the centre: that is, exactly the control sliding
-   under the finger that this grid exists to avoid. Ninety pixels of margin over
-   the 890 are not caution, they are the property that is wanted.
+   their content — and below the threshold the left one, which has one button
+   more, breaks out of its track and pushes the centre: that is, exactly the
+   control sliding under the finger that this grid exists to avoid. The margin it
+   keeps over "they fit" is not caution, it is the property that is wanted.
+
+   **German took it from 980 to 1010, and that is this rule working rather than a
+   regression.** `Sprechen` is four letters more than `Talk`, and the side it
+   sits on is the one with a button more, so it costs twice over in two equal
+   tracks: the wider side measures 289 px against Italian's 264 and English's
+   244. The boundary came out at 1001 and the threshold is the round number above
+   it, the same rounding 980 kept over Italian's 971.
+
+   **Spanish took it from 1010 to 1020, and it is the same rule doing the work.**
+   The boundary — the width below which the middle group **moves when "Talk"
+   appears** — comes out at **1015** in Spanish, against 1005 in German, 975 in
+   Italian and 970 in French, so the widest dictates it and the round number
+   above 1015 is 1020. The re-measurement reproduced the record before anything
+   moved: 1005 against the 1001 above and 975 against Italian's 971, and the
+   samples underneath — 39.4 px of shift in German at 925, 1.8 at 1000 —
+   against the 40.6 at 920 and the 10.6 at 980 written above.
+
+   **What moved it is one word, and it is named here so that nobody looks for it
+   elsewhere.** `Silenciar` is nine letters where French has `Muet` and German
+   `Stumm`: measured, putting `Mudo` there instead takes the boundary from 1015
+   to **985**, which would have kept the threshold at 1010. **The word was kept
+   anyway**, because `Silenciar` is the one Windows says in Spanish and `Mudo`
+   is not — the same reason `Muet` was taken in French, where the platform's
+   word is the short one. A word is not shortened for a number.
+
+   **And the label that looks guilty is not.** `Cerrar sesión` is the widest
+   label in the bar, and shortening it to `Salir` moves this boundary **not at
+   all**: 1015 before and 1015 after. The number is about the left side, where
+   "Talk" appears, and the log-out sits on the right — and `Salir` is already
+   this program's word for switching the monitor off, in the tray.
+
+   **What this instrument does not see is that right side.** Spanish is the first
+   language whose right-hand labels are the wider pair (`Cerrar sesión` and
+   `Detalles` measure 167 px against the left side's 116), and what that costs is
+   not described by the number above: the bar has not been seen to break, and
+   nobody has measured it.
+
+   **The instrument was checked against this record before the number was
+   moved.** The same probe re-measured Italian at 920 and got 24.6 px where the
+   line above says 28, and at 970 it got 0 where that line says 3 — a boundary in
+   the same place, within the difference two browser versions make. The two
+   Chromium browsers on this machine, Edge 153 and Brave, which reports itself as
+   Chrome 153, gave figures identical to the pixel. **What it could not be
+   checked against is the Chrome the original numbers were taken with**, which is
+   not installed here: the English and Italian numbers above are left as they
+   were taken rather than overwritten with these.
 
    The measurement is taken with "Talk" **visible**, which is the widest state the
    bar reaches: tuning it on the other would give a bar that changes shape the
@@ -2043,7 +2094,7 @@ body.day .stats .pick option:focus {
    brought it back to 980, forty above the 940 it had before that command. On a
    phone those two short words bought more: the five commands are back on a single
    row, 106 px at 390, the same height with and without "Talk". */
-@media (min-width: 980px) {
+@media (min-width: 1020px) {
   /* **Three columns, and the centre is the centre.**
 
      The three detections say *what the monitor is watching for*, that is, they

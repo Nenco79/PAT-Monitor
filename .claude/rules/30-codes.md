@@ -143,6 +143,30 @@ thing: `né Tailscale né noi possiamo vederlo` is an assertion only the authors
 can make. What went with the "I" is a clause that promised a support nobody
 gives — `mentre sistemiamo questo`, when nobody is sorting anything out.
 
+**And the rule is about the program, not about one family.** The error family
+was fixed first; the **eight status messages** had kept the persona — `Riprovo`,
+`Sto aspettando`, `Sto preparando il collegamento sicuro`, `Controllo che
+risponda` — and there the remedy is a different shape, because the sentence is:
+a failure denies (`Non è stato possibile …`) while a state names itself —
+`Nuovo tentativo`, `In attesa`, `Preparazione del collegamento sicuro`,
+`Verifica della raggiungibilità da fuori casa`. English and German were
+impersonal in all eight (`Trying again`, `Waiting`, `Preparing the secure
+connection`, `Checking that it answers`), so the persona was one language
+against two.
+
+**And the plural of the guide stays, because the base has it**: `Proviamo se si
+vede e si sente` is English's `Let's see whether it sees and hears` and German's
+`Sehen wir, ob …`, which is not the "we" of the authors but the reader and the
+page walking together. `Ho capito`, on the button that closes the explainer, is
+the reader's own voice for the same reason.
+
+**No guard is added, and it is the argument the alerts chapter already makes**:
+what would catch a persona is a list of first-person conjugations, and that is
+the guard that absolves every sentence built with a verb it has never met — a
+passive and a nominal form are not distinguishable from an impersonal one by
+any parser. What found the eight was translating against English, which is an
+act and not a check.
+
 **One apostrophe, and it is `’`.** The catalogues held both marks — forty
 Italian values with the straight one against nineteen with the typographic —
 and nobody had chosen that: it is whichever keyboard was in front of whoever
@@ -220,12 +244,149 @@ answer to "does this concern me?" and the wrong one to "does it work on the
 thing I own?"**
 
 **Lengthening a term is a layout change**, and in an illustration nothing clips
-it: the fork's two captions were measured against their cards in both languages
-— 309-477 inside 276-510 — because that is the lesson the tray address already
-taught. And the probe declared itself first: it searched forward from an anchor
+it: the fork's two captions were measured against their cards in every language
+— 309-477 inside 276-510 in Italian, 302-484 in German, which is 26 px of room —
+because that is the lesson the tray address already taught. And the probe declared itself first: it searched forward from an anchor
 that sits **inside** the figure, so it measured the next one and reported
 somebody else's words. **A tool that names what it measured is a tool that can
 be caught.**
+
+##### German: the decisions, because nobody here can check the sentences
+
+The third language arrived into a mechanism that needed nothing: adding a
+language is adding a file, the guards all read the catalogues from the directory
+rather than from a list, and `de.json` passed every one of them on the first run.
+**What it did need is decisions, and they are written here because the author
+does not read German** — twenty decisions somebody can check are worth more than
+411 strings nobody will.
+
+- **`du`, not `Sie`**, and it is not a choice about tone: it is grammar, it
+  changes every sentence that asks the reader anything, and it was **already
+  made** — Italian gives the *tu* throughout, English does not distinguish and so
+  says nothing. `du` is also shorter, which the tooltip notices.
+- **`zu Hause` / `von außerhalb`, the short form**, for English's reason and not
+  Italian's: German has the anchoring pair, so the bare term is not the bare
+  adverb *fuori* was. Twenty-five of the thirty occurrences are `von außerhalb`;
+  the five that are not are three sentence openings and **the two captions of one
+  drawing**, where the pair is `der Monitor, zu Hause` against `du, außerhalb` and
+  repeating the preposition is what would read wrong.
+- **`der Monitor` stays, ambiguity and all.** In German *Monitor* is first of all
+  a screen. It is kept because it is the product's name shortened, and because
+  Italian carries exactly the same ambiguity and has carried it fine.
+- **`Kamera` on the guided path, `Webcam` in the statistics**, which is the split
+  English already has and not an inconsistency. Likewise `WLAN` and never *wifi*,
+  because that is the word the reader has.
+- **`Handy` names a gesture, `Gerät` names scope** — the same distinction this
+  chapter already draws for *phone* against *device*, applied to a language that
+  has a colloquial word for one and not the other.
+- **The certificate is not named**, and the guided path's own rule says why: it
+  says *secure connection*, not *TLS certificate*. Where the sentence needs the
+  party that provides it, it names the party — `Sie kommt von einer externen
+  Stelle` — and not the thing, which is also what keeps `Zertifikat` out of a
+  page read by a parent.
+- **The program does not say `ich`**, and German has the passive for it: `Es wird
+  geprüft, ob …`, `Speichern war nicht möglich`. There is no `ich` in the
+  catalogue and the one `Sie ` in it is the pronoun *sie*, capitalised at the
+  start of a sentence, with a third-person verb after it.
+- **`ß` where the spelling wants it, and no apostrophes at all**, which costs
+  nothing: the guard that forbids the straight mark had nothing to say.
+
+**The trap German has and the other two do not is the dangling pronoun**, and it
+is the one thing here that found real defects. German pronouns agree in gender,
+so *er* attaches to the nearest masculine noun rather than to the one meant:
+`der Balken, ob er hört` reads as the bar listening. Five entries were written
+that way from the English and all five were remade — the impersonal
+`ob etwas zu hören ist`, or the subject named outright. **It is the same defect
+as a doc comment on the wrong declaration**, in a language where the mistake is
+grammatical rather than typographic, and what finds it is reading the sentence
+rather than checking the key.
+
+**The menu accelerators are per language and German needed its own eight.** They
+are `E L V Z T B N U`, and the one that had to move is *Zu tun*, whose obvious `Z`
+belongs to *zurücksetzen*: it carries `Z&u`. The guard catches this, and it
+catches it because it reads the catalogue.
+
+**What it cost in layout is one number.** The tooltip's worst case is 105
+characters of the 127 against English's 100; the tray panel drawing has 21 px of
+room, which is Italian's figure to the pixel; the pages add no overflow English
+does not already have, at 360, 390, 768 and 1400. The one thing that moved is the
+viewer bar's single-row threshold, from 980 to 1010, and that is its own chapter.
+
+##### French: the decisions, and two guards that had been written by hand
+
+The fourth language arrived the way the third did — a file, and every guard green
+on the first run — and what it found was two lists somebody had written by hand.
+
+- **`tu`, not `vous`**, which is not a new decision: Italian gives the *tu* and
+  German followed it, so a French saying *vous* would have been the odd one out
+  of four.
+- **Nothing agrees with the reader.** French inflects participles and adjectives,
+  and `tu es prêt` presumes the reader's gender: the sentences are turned instead
+  — `Ça me va`, `Compris`, `Tout est prêt`. It is the German trap in a language
+  where the mistake is agreement rather than a pronoun.
+- **`le moniteur`, ambiguity and all**, for the German's reason: it is the
+  product's name shortened.
+- **`à la maison` / `de l'extérieur`, the short form**, for English's reason and
+  not Italian's: French has the anchoring pair.
+- **The certificate is not named** — `Il est fourni par un organisme extérieur` —
+  and the German decision was reached again from the other side, because the
+  guided path says *secure connection*.
+- **The program does not say `je`**: `Nouvelle tentative`, `En attente`,
+  `Préparation du lien sécurisé`, `Vérification de l'accessibilité depuis
+  l'extérieur`.
+- **`accessibilité` for the outside check**, so that `viewer.remote.reachable`
+  says `Accessible depuis n'importe quel réseau` in the same family of words.
+- **`Mo` and not `MB`**: the one place where a unit in a catalogue is a
+  translation and not a copy.
+- **Eight accelerators, distinct**: `j` journaux, `q` Quitter, `r` Réinitialiser,
+  `e` Déconnecter, `g` guidée, `f` faire, `n` Nouvelle, `v` vidéos.
+- **`Muet` for the mute command**, the word Windows uses and the shorter of the
+  two candidates: one label's length in the bar is a number, and `Silence` is two
+  characters more.
+- **The space before `:` `;` `?` `!` is written non-breaking** — `\u00a0` in the
+  file rather than the character, so that whoever reads a diff can see it, since
+  on screen the two spaces are the same width. French asks for it, and **57
+  values had an ordinary one there**: a breakable space is worse than no space,
+  because the line ends between the word and the mark and the mark begins the
+  next line. **No other catalogue of the four has one** — German, Italian and
+  English write no space at all before those marks.
+- **The labels are infinitives, and the prose is not.** The French state's design
+  system says it in one line — *commencer les textes des boutons avec un verbe
+  d'action à l'infinitif* — with *ne pas utiliser « Je »* beside it, which is our
+  own rule about the program not saying "I", reached from the other side: `Se
+  déconnecter` is that infinitive and not a person. The *tu* of the sentences
+  around them is another thing, and not a convention anybody prescribes: it is
+  the voice, decided once with Italian's *tu* and German's *du*.
+
+**And the two guards that had been written by hand went wrong the same way.**
+`TestTheChosenLanguageBeatsTheBrowser` used `fr` as its example of *a language we
+do not have*, which stopped being true the day French arrived — and the case kept
+its other assertion and lost the one it exists for.
+`TestTheDictionaryCarriesTheLanguageNames` named English and Italian, so German
+had already arrived outside it. Both now derive their list from the thing itself:
+the unknown tag from the candidates, the names from the catalogues.
+
+**The typography has a guard, and the persona rule deliberately has none, and
+they are not the same kind of claim.** `TestASpaceBeforePunctuationIsNotBreakable`
+walks every value of every catalogue from the embedded files — one walk, shared
+with the apostrophe guard, because the count that says the walk saw something is
+the part two copies would diverge on — and fails on any space a line could break
+before those four marks. It was shown to fail, naming the file, the key and the
+value, with one value put back the way it had been. What a sentence conjugates is
+a matter of reading; a space is a byte. **What it cannot see is a French `:`
+written with no space at all**, and that is argued rather than overlooked: a URL
+carries one, a clock carries one, and a rule that excepted them would be a rule
+made of its exceptions.
+
+**What it cost in layout is nothing.** The tooltip's worst case is **111**
+characters of the 127 — French is the widest of the four, against German's 104,
+English's 100 and Italian's 96 — and the bar's single-row boundary, measured with
+a probe that lowers the media query so the widths below the threshold can be
+swept, is **≈959 px**: below Italian's 971 and German's 1001, so **1010 held then —
+Spanish has since taken it to 1020**, and this measurement is one of the ones
+holding the number up. The instrument declared itself
+first, which is what the rule asks of it: it reproduces the German record — 39.4
+px of shift at 920 against the 40.6 written down, and 9.3 at 980 against 10.6.
 
 **Every prefix has its guard where its reader is.** The page keys are checked by
 `internal/server` looking at the markup; the `tray.` ones by `internal/tray`,
@@ -234,6 +395,77 @@ which is the only place that can **expand the codes** — `tray.fault.` plus a
 code is added in Go, the catalogue lags, and the key appears in the menu. The
 127-character tooltip ceiling is tested from there too, **across every
 language**.
+
+##### Spanish: the decisions, and the bar's threshold moving
+
+The fifth language arrived the way the fourth did, and this time every guard was
+green on the first run **for a reason that can be checked**: the two lists that
+had broken under French were the ones now derived, and Spanish was the first
+language to walk through them with nothing to fix.
+
+- **`tú`, not `usted`**, the decision the other three had already made, and for
+  a home product the right one: `usted` is how an administration addresses a
+  citizen, and this program speaks to whoever lives in the house.
+- **Nothing agrees with the reader**, which is the French trap in a language
+  where agreement is in every adjective. `Welcome` is not `Bienvenido`, which
+  presumes the reader's gender down to its last vowel: the first screen's eyebrow
+  is `Para empezar`. `Got it` is `Entendido`, which agrees with the thing
+  understood and with nobody in particular.
+- **`el monitor`**, ambiguity and all, for the German's and the French's reason.
+- **`en casa` / `desde fuera`**, the short pair, as in French and not as in
+  Italian.
+- **The certificate is not named** — `Lo emite una entidad externa` — reached
+  from the third side, because the guided path says *secure connection* and not
+  *TLS certificate*.
+- **The program does not say `yo`**, and Spanish is where that breaks most
+  easily: `Nuevo intento`, `Comprobando si responde desde fuera`, `Es mejor
+  pagarla ahora`.
+- **The opening marks are there**: `¿Eliminar esta grabación?` and not `Eliminar
+  esta grabación?`. Spanish is the only one of the five that marks where a
+  question begins, and it is the one thing a Spanish reader notices at once when
+  it is missing — the mirror of the French non-breaking space, and for the same
+  reason: a rule that is invisible to whoever does not read the language. **It
+  has no guard, and that is argued**: telling which `?` opens a question means
+  reading sentences, and a check built on the sentence would either accuse an
+  address or absolve the string that needs it.
+- **No space before `:` `;` `?` `!`**, which is the same RAE rule the French
+  section had to fight from the other side: *«se escribe pegado a la palabra o el
+  signo antecedente»* (DPD, *dos puntos*) — the exact opposite of the French
+  convention, so the typographic guard passes here by finding no space at all.
+- **`MB` and not `Mo`**: the unit is a copy from English and Italian, and French
+  is the only catalogue where it is a translation.
+- **`router` and not `enrutador`**: the word whoever owns the house uses, which
+  is the reason the German section gives for its own choices — the alternative
+  is the one in the dictionary and the one nobody has in the living room.
+- **Eight accelerators, distinct**: `r` registros, `s` Salir, `c` contraseña,
+  `d` Desconectar, `g` guiada, `p` Pendientes, `n` Nueva, `v` vídeos.
+
+**And the bar's number moved, which had not happened since German.** The
+boundary — the width below which the middle group **moves when "Talk"
+appears** — comes out at **1015 in Spanish** against 1005 in German, 975 in
+Italian and 970 in French, so the widest is Spanish's and **the threshold went
+from 1010 to 1020**, the round number above it, which is the rounding German's
+1001 had already got. **The instrument was checked against the record before
+anything moved**: it reproduced 1005 against the 1001 written down and 975
+against Italian's 971, and with them the samples underneath — 39.4 px of shift
+in German at 925 against the 40.6 at 920.
+
+**What moved it is one word, and the language's own word was kept.** `Silenciar`
+is nine letters where French has `Muet` and German `Stumm`: measured, `Mudo` in
+its place takes the boundary to 985, which would have kept 1010. It was not
+taken, because `Silenciar` is what the Spanish Windows says — the same reason
+`Muet` *was* taken in French, where the platform's word is the short one. **And
+the label that looks guilty is not**: `Cerrar sesión` is the widest in the bar,
+and shortening it to `Salir` moves the boundary not at all, because the number is
+about the left side, where "Talk" appears, while the log-out sits on the right —
+besides being a word this program already uses for switching the monitor off.
+What the number *means*, and why it is where the group stops moving rather than
+where the buttons fit, is in `150-pages.md` and nowhere else; what belongs here
+is the fact that **a language moved it, and not a label somebody edited** — the
+rule that chapter states, met by a language instead of by a designer. **And this
+instrument sees one side**: Spanish is the first language whose right-hand labels
+are the wider pair, and what that costs is neither described by this number nor
+measured by anybody.
 
 ### Alerts are the set of what is wrong now, not a list of events
 

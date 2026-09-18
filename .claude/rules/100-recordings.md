@@ -171,12 +171,13 @@ attribution for a geometry anybody would draw the same.
 **One more command is one more label, and the single-row threshold is
 re-measured.** The threshold is not where the buttons fit: it is **where the
 middle group stops moving**. With `1fr auto 1fr` the two columns have a floor —
-their content — and below 980 px the left one, which has one button more, breaks
-out of its track and pushes the centre: measured **3 px of offset at 970 and 28
-at 920**, and the offset appears **when "Talk" appears**, that is, it is exactly
-the control that slides under the finger. The media query therefore sits at 980.
-Short labels bought the rest: **on a phone the five commands fit on one row** —
-106 px at 390, the same height with and without "Talk".
+their content — and below it the left one, which has one button more, breaks out
+of its track and pushes the centre: the offset appears **when "Talk" appears**,
+that is, it is exactly the control that slides under the finger. **The number and
+the measurements that bought it are written in `150-pages.md` and nowhere else**
+— it stands at 1020 since Spanish, and this paragraph had stayed at 980 while the
+other moved. Short labels bought the rest: **on a phone the five commands fit on
+one row** — 106 px at 390, the same height with and without "Talk".
 
 ### A test that asks the system writes on the disk of whoever runs it
 

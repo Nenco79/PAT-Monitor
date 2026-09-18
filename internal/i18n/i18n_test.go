@@ -3,6 +3,7 @@ package i18n
 import (
 	"encoding/json"
 	"io/fs"
+	"sort"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -154,6 +155,127 @@ func TestALanguageWithoutItsOwnNameIsNotOffered(t *testing.T) {
 // It reads the embedded catalogues instead of a list of languages, so one
 // added tomorrow is covered with nothing to remember.
 func TestTheInterfaceHasOneApostrophe(t *testing.T) {
+	eachCatalogueValue(t, func(file, where, s string) {
+		if strings.Contains(s, "'") {
+			t.Errorf("%s: %s carries a straight apostrophe: %q — the interface "+
+				"uses ’ (U+2019), and where it stands in for an accent the fix "+
+				"is the accented letter", file, where, s)
+		}
+	})
+}
+
+// **French puts a space before `:` `;` `?` and `!`, and that space must not be
+// breakable.** A breakable one is worse than none: a line break lands between
+// the word and the mark, and the mark begins the next line, which is the one
+// thing the language will not have. Nothing else here can see it — the
+// catalogue parses either way, the page renders, and the difference shows only
+// the day a line happens to break there. Fifty-seven values were written with
+// an ordinary space before one of those four marks, in a file whose apostrophes
+// say the typography was a decision and not an accident.
+//
+// The space is written `\u00a0` in the file rather than as the character, so
+// that whoever reads a diff can see it: on screen and in a patch a
+// non-breaking space and an ordinary one look the same.
+//
+// It reads the embedded catalogues instead of a list of languages, so one
+// added tomorrow is covered with nothing to remember.
+//
+// **What it cannot see is a French `:` written with no space at all**, and that
+// is argued rather than overlooked: a URL carries one, a clock carries one, and
+// a rule that special-cased them would be a rule made of its exceptions. That
+// one is left to a reader of French, and this half is not.
+func TestASpaceBeforePunctuationIsNotBreakable(t *testing.T) {
+	eachCatalogueValue(t, func(file, where, s string) {
+		// Byte-wise is safe here: a space and the four marks are ASCII, so none
+		// of them can be a continuation byte of something else.
+		for i := 0; i+1 < len(s); i++ {
+			if s[i] == ' ' && strings.IndexByte(";:?!", s[i+1]) >= 0 {
+				t.Errorf("%s: %s has a breakable space before %q: %q — French "+
+					"writes that space as a non-breaking one (U+00A0, `\\u00a0` in "+
+					"the file) and the other languages write no space at all",
+					file, where, string(s[i+1]), s)
+			}
+		}
+	})
+}
+
+// **A lost placeholder is a sentence with a hole in it, and nothing else looks
+// at it.** The key exists, the entry exists, the page renders — and the reader
+// is shown `{n}` where a number should be. It is the family of the code with no
+// word in the catalogue: the shape is right and the content is not, so every
+// guard that compares shapes is green.
+//
+// It compares the placeholders and not the text, because that is the freedom a
+// translation has: a language may say it in another order, or with another verb,
+// and may not lose a hole or invent one. The comparison is key by key and form
+// by form — `clips.note#one` against `clips.note#one` — because a plural form is
+// a sentence of its own: the English `about a minute` has no hole at all while
+// its `other` has one, and that difference is the base's, not a translation's.
+//
+// The holes are sorted before being compared, since the order they are written
+// in is the sentence's business, and counted, since losing one of two is the
+// same defect as losing the only one.
+//
+// It reads the embedded catalogues instead of a list of languages, so one added
+// tomorrow is covered with nothing to remember.
+func TestEveryTranslationKeepsThePlaceholdersOfTheBase(t *testing.T) {
+	english := map[string]string{}
+	eachCatalogueValue(t, func(file, where, s string) {
+		if file == Fallback+".json" {
+			english[where] = s
+		}
+	})
+
+	compared := 0
+	eachCatalogueValue(t, func(file, where, s string) {
+		if file == Fallback+".json" {
+			return
+		}
+		base, there := english[where]
+		if !there {
+			return // an entry the base does not have: that is the orphan guard's question
+		}
+		compared++
+		want, got := placeholders(base), placeholders(s)
+		if want != got {
+			t.Errorf("%s: %s has the placeholders %v where the base has %v: %q against %q",
+				file, where, got, want, s, base)
+		}
+	})
+	// A guard that compared no translation would pass in silence.
+	if compared < 2 {
+		t.Fatalf("%d entries compared: the test is not looking at them", compared)
+	}
+}
+
+// placeholders is the holes a sentence has, in a comparable shape: sorted and
+// joined, because the order they are written in is the sentence's business and
+// two of them are still two.
+func placeholders(s string) string {
+	var out []string
+	for i := 0; i < len(s); i++ {
+		if s[i] != '{' {
+			continue
+		}
+		if end := strings.IndexByte(s[i:], '}'); end > 1 {
+			out = append(out, s[i:i+end+1])
+			i += end
+		}
+	}
+	sort.Strings(out)
+	return strings.Join(out, " ")
+}
+
+// eachCatalogueValue walks every value of every embedded catalogue, whatever
+// shape it is written in: a plain string, or a map of plural forms.
+//
+// It is one walk and not two because the guards that read the catalogues
+// disagree only in what they ask of a value, **and the part they would
+// otherwise write twice is the count at the end** — the one that says the walk
+// saw something. A guard that examined nothing passes in silence, which is the
+// failure it can least afford.
+func eachCatalogueValue(t *testing.T, visit func(file, where, value string)) {
+	t.Helper()
 	entries, err := fs.ReadDir(FS, ".")
 	if err != nil {
 		t.Fatal(err)
@@ -172,27 +294,19 @@ func TestTheInterfaceHasOneApostrophe(t *testing.T) {
 			t.Fatalf("%s: %v", e.Name(), err)
 		}
 		seen++
-		check := func(where, s string) {
-			if strings.Contains(s, "'") {
-				t.Errorf("%s: %s carries a straight apostrophe: %q — the interface "+
-					"uses ’ (U+2019), and where it stands in for an accent the fix "+
-					"is the accented letter", e.Name(), where, s)
-			}
-		}
 		for key, value := range cat {
 			switch v := value.(type) {
 			case string:
-				check(key, v)
+				visit(e.Name(), key, v)
 			case map[string]any:
 				for form, s := range v {
 					if text, ok := s.(string); ok {
-						check(key+"#"+form, text)
+						visit(e.Name(), key+"#"+form, text)
 					}
 				}
 			}
 		}
 	}
-	// A guard that examined no catalogue would pass in silence.
 	if seen < 2 {
 		t.Fatalf("%d catalogues read: the test is not looking at them", seen)
 	}
