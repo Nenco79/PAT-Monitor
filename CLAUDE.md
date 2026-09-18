@@ -303,6 +303,7 @@ a heading to its file, `grep -rn` the heading.
   - A meter that cannot measure does not draw silence
     - The line that explained it was a prediction, and the case was not rare
   - The codec warning was a prediction, and predictions err both ways
+  - A property of the stream is not stated when there is no stream
 - **Editing this codebase**
   - A doc comment on the wrong declaration does not complain
   - A text substitution is not a rename

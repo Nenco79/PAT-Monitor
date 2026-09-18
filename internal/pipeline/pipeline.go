@@ -590,6 +590,25 @@ func New(cfg Config) *Pipeline {
 }
 
 // RawAudioMode says whether the audio is bypassing the OEM's effects.
+//
+// **It describes the last open, not this instant**, the same way Microphone
+// does and for the same reason: it is written where the capture opens and is
+// not cleared when the capture stops, because the road obtained is the road
+// that will be obtained again. A boolean has two values and the question has
+// three — raw, filtered, no capture at all — so `false` on a machine that has
+// never opened a microphone is indistinguishable from raw being refused, and
+// `true` outlives the device being unplugged.
+//
+// **Whoever shows this to somebody must ask whether there is audio first**,
+// which is the different question. Both directions have been shown on the
+// page: "audio filtered by the system" over a microphone that was not there,
+// and "unfiltered audio: yes" over one that had gone. The guard lives at the
+// four edges that say it in words — the tray's case order, the guided path's
+// `micOk`, the viewer's `rawAudioState`, and `pat-capture`, which asks its own
+// measurement because by the time it reports, `Run` has returned and
+// `AudioActive` is already false. **Only the two in the browser are held by a
+// test**; the two in Go are a rule written down, and the chapter says why no
+// guard was added for them.
 func (p *Pipeline) RawAudioMode() bool { return p.rawMode.Load() }
 
 // AudioActive says whether the microphone is capturing right now.

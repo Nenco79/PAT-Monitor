@@ -1743,3 +1743,78 @@ and stickily at that. The field is read by the monitor **from the file**
 is the only place that knows: a separate list would diverge, and that is why
 there is no state file beside the clips.
 
+### A property of the stream is not stated when there is no stream
+
+With no microphone at all the viewer announced, at the top of the page, "audio
+filtered by the system: raw mode is not active" — a sentence about a stream that
+did not exist, which sends whoever reads it hunting through Windows for a filter
+to switch off. It is the prediction of the chapter above in a third guise, and
+the cause is one field answering a question it was never asked.
+
+**`rawAudio` says what the last open obtained, and the page read it as a
+property of now.** It is written in one place, inside the capture callback, and
+is deliberately not cleared when the capture stops — the road obtained is the
+road that will be obtained again, the same choice `Pipeline.Microphone` makes
+about the device name. So a boolean with two values carries a question with
+three: `false` means both "raw was refused" and "nothing has ever been opened",
+and `true` outlives the microphone being unplugged. **Both directions showed**:
+"filtered" over an absence, and "unfiltered audio: yes" over a microphone that
+had gone.
+
+**The fix is not to clear the field.** What is missing is not a write, it is the
+second question — `microphoneActive` — and the other two consumers were already
+asking it: the guided path computes `micOk` before choosing between `mic-raw`
+and `mic-filtered`, and the tray puts `mic-missing` in a `case` above
+`mic-filtered` for the reason written beside it, that a colour can say one thing
+and it has to say the worst. **A third reader forgot, which is what makes this a
+rule and not a line.** The viewer now asks through `rawAudioState`, whose three
+answers are `raw`, `filtered` and `unknown`, and the details row writes the
+panel's dash for the third: the absence is stated once, by the microphone's box
+and by the `mic-missing` alert.
+
+**And nothing covered it, because the box's priority list is about somebody
+else.** In `warningOrder` the source above `raw` is called `microphone` and is
+the **viewer's** microphone, the one talk-back uses: the monitor's absent
+microphone writes in the details box and in the alert bar, neither of which
+competes for the warnings box. So `raw` was the only warning switched on and won
+by default — a priority list protects nothing against a wrong entry, only
+against two right ones at once.
+
+**The guard reads the readers, not the line that was wrong.**
+`TestNothingSaysWhetherTheAudioIsFilteredWithoutAskingIfThereIsAudio` takes
+every script a page loads, finds each read of `rawAudio`, and demands that the
+enclosing top-level function also read `microphoneActive`. It counts them too:
+renaming the field would silence every match, and the test says so rather than
+going green. **Its limit is written into it**: it looks in the function, not in
+the expression, so a second unguarded read added to a function that asks
+elsewhere would pass. It was checked by putting the defect back — the old line,
+then the guard deleted from the helper, then the guided path's `micOk` opened up
+— and it failed on each, naming the file.
+
+**And it reaches the browser only, which a review found out the hard way.**
+`rawAudio` is the JSON field, so the test walks the scripts and nothing else,
+while the same claim is made in Go: `pat-capture` printed `[FAIL] audio in
+WASAPI raw mode (OEM effects bypassed): false` on a machine where no microphone
+had ever opened — the identical sentence over an absence, on the instrument
+whose transcripts go into `baselines/`, where it reads as an OEM filter to go
+and disable. It now states it only if the run captured samples.
+
+**The sensor there is the run's own measurement and not `AudioActive`**, and
+this is the part that cannot be read off the diff: by the time `pat-capture`
+reports, `Pipeline.Run` has returned, and its deferred `audioOK.Store(false)`
+has already put the flag down. Gating that line on "is it capturing?" would
+answer no after a perfect run — deleting the check rather than guarding it, and
+greenly. `total.Samples` is a fact about the run and cannot go stale.
+
+**No `go/ast` guard is added for the Go readers, and that is argued.** The two
+that are right do not ask in the words a test could look for: the tray asks
+through `micMissing(s)`, `pat-capture` through its sample count. A test
+demanding `MicrophoneActive` or `AudioActive` in the caller would accuse both,
+and a guard that has to be taught its own exceptions is protecting the list of
+exceptions rather than the rule — which is the second failure the guards chapter
+lists. It is written down instead, here and in `RawAudioMode`'s doc comment.
+
+**The function boundaries are found by column zero and not by counting braces**,
+which is the same convention `topLevelDeclaration` rests on in the same package:
+a brace in these files can sit inside a string, a template or a regular
+expression, and all three are there.

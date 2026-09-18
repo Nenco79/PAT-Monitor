@@ -169,6 +169,18 @@ func TestEveryStateWorthTellingHasACode(t *testing.T) {
 	noMic := healthyStatus()
 	noMic.MicrophoneActive = false
 
+	// **The case that actually happens**, and the one the pair of fields makes
+	// easy to miss: a machine with no microphone has never opened one, so
+	// `RawAudio` is its zero value and reads exactly like raw refused. Above,
+	// `noMic` leaves it true, which is the state after a microphone that was
+	// working is unplugged — the two roads into the same absence, and the case
+	// order has to send both to `mic-missing`. The viewer had the same pair and
+	// answered "audio filtered by the system" over a microphone that was not
+	// there.
+	noMicEver := healthyStatus()
+	noMicEver.MicrophoneActive = false
+	noMicEver.RawAudio = false
+
 	filtered := healthyStatus()
 	filtered.RawAudio = false
 
@@ -182,14 +194,15 @@ func TestEveryStateWorthTellingHasACode(t *testing.T) {
 		fault tray.Fault
 		note  tray.Note
 	}{
-		"healthy":         {healthyStatus(), withPassword(), time.Hour, tray.FaultNone, tray.NoteNone},
-		"away from home":  {remote, withPassword(), time.Hour, tray.FaultNone, tray.NoteNone},
-		"no password":     {healthyStatus(), config.Default(), time.Hour, tray.FaultNoPassword, tray.NoteNoPassword},
-		"silence":         {silent, withPassword(), time.Hour, tray.FaultMicSilent, tray.NoteNone},
-		"microphone gone": {noMic, withPassword(), time.Hour, tray.FaultMicMissing, tray.NoteNone},
-		"filtered audio":  {filtered, withPassword(), time.Hour, tray.FaultMicFiltered, tray.NoteNone},
-		"starting up":     {starting, withPassword(), time.Second, tray.FaultNone, tray.NoteStarting},
-		"capture stalled": {starting, withPassword(), time.Hour, tray.FaultCaptureStopped, tray.NoteNone},
+		"healthy":            {healthyStatus(), withPassword(), time.Hour, tray.FaultNone, tray.NoteNone},
+		"away from home":     {remote, withPassword(), time.Hour, tray.FaultNone, tray.NoteNone},
+		"no password":        {healthyStatus(), config.Default(), time.Hour, tray.FaultNoPassword, tray.NoteNoPassword},
+		"silence":            {silent, withPassword(), time.Hour, tray.FaultMicSilent, tray.NoteNone},
+		"microphone gone":    {noMic, withPassword(), time.Hour, tray.FaultMicMissing, tray.NoteNone},
+		"never a microphone": {noMicEver, withPassword(), time.Hour, tray.FaultMicMissing, tray.NoteNone},
+		"filtered audio":     {filtered, withPassword(), time.Hour, tray.FaultMicFiltered, tray.NoteNone},
+		"starting up":        {starting, withPassword(), time.Second, tray.FaultNone, tray.NoteStarting},
+		"capture stalled":    {starting, withPassword(), time.Hour, tray.FaultCaptureStopped, tray.NoteNone},
 	}
 	for name, c := range cases {
 		out := trayStatus(c.st, c.cfg, time.Now().Add(-c.since), trayDict(t), update.State{})

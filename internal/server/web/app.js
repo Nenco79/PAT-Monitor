@@ -815,6 +815,32 @@ el('logout').addEventListener('click', async () => {
 // speaking.
 const micHealth = (c) => TOr('viewer.mic.health.' + c, 'viewer.mic.health.unknown');
 
+// Whether the audio is going through the OEM's filters. **It has three answers
+// and `rawAudio` is a boolean**, which is the whole reason this function exists:
+// the field says whether the *last open* obtained raw mode, so its `false` means
+// both "raw was refused" and "nothing has ever been opened", and its `true`
+// survives the microphone being unplugged. `microphoneActive` is what separates
+// the three, and it is the same guard the guided path makes at `micOk` and the
+// tray makes by putting `mic-missing` in a case above `mic-filtered`.
+//
+// With no microphone there is no answer to give: a page that says "audio
+// filtered by the system" over an absence describes a stream that does not
+// exist, and sends whoever reads it looking for a filter to switch off. Here it
+// was the only warning switched on, so it also won the box by default — see
+// warningOrder, where `microphone` is the *viewer's* microphone and not this
+// one.
+function rawAudioState(s) {
+  if (!s.microphoneActive) return 'unknown';
+  return s.rawAudio ? 'raw' : 'filtered';
+}
+
+// What the details row says for each of the three. **The third has no sentence
+// and that is the point**: "unfiltered audio: no" is a claim about a stream, so
+// where there is no stream the row writes the dash this panel writes wherever
+// there is nothing to say. The absence is stated once, by the box above and by
+// the `mic-missing` alert.
+const rawSays = {raw: 'viewer.yes', filtered: 'viewer.no', unknown: ''};
+
 // ---------- which microphone, which camera ----------
 //
 // **A box says which device is capturing, not which one is written in the
@@ -1641,7 +1667,8 @@ async function pollStatus() {
       : '—';
     micPick.paint(s);
     camPick.paint(s);
-    el('s-raw').textContent = T(s.rawAudio ? 'viewer.yes' : 'viewer.no');
+    const raw = rawAudioState(s);
+    el('s-raw').textContent = rawSays[raw] ? T(rawSays[raw]) : '—';
     el('s-lvl').textContent = `${s.audioLevelDbfs.toFixed(1)} dBFS (${micHealth(s.micHealth)})`;
     setViewers(s.viewers);
     el('s-key').textContent = s.keyframes;
@@ -1668,8 +1695,7 @@ async function pollStatus() {
     // Digital silence is not said **here as well**: the bar at the top announces
     // it, with the sound. Saying it twice on the same page with different words
     // makes one fault look like two.
-    showWarning('raw', s.rawAudio ? null
-      : T('viewer.raw.filtered'));
+    showWarning('raw', raw === 'filtered' ? T('viewer.raw.filtered') : null);
   } catch (err) {
     // A status error must not touch the streaming.
   }

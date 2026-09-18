@@ -840,7 +840,24 @@ func main() {
 
 	// Bypassing the OEM effects is the reason the audio is captured from WASAPI
 	// instead of with the rest of the pipeline.
-	check(p.RawAudioMode(), "audio in WASAPI raw mode (OEM effects bypassed): %v", p.RawAudioMode())
+	//
+	// **It is a claim about a stream, so it is made only if there was one.**
+	// `RawAudioMode` describes the last open and is not cleared when the
+	// capture stops, so on a machine where no microphone ever opened its
+	// `false` reads exactly like raw refused — a FAIL line accusing an OEM
+	// filter over an absence, in a transcript that goes into `baselines/`.
+	//
+	// **And the sensor is this run's measurement, not `AudioActive`.** By the
+	// time this prints, `Run` has returned, and its deferred store has already
+	// put the flag down: asking the pipeline whether it is capturing would
+	// answer no after a perfect run, that is, it would delete the check
+	// instead of guarding it. `total.Samples` is a fact about the run and
+	// cannot go stale.
+	if total.Samples > 0 {
+		check(p.RawAudioMode(), "audio in WASAPI raw mode (OEM effects bypassed): %v", p.RawAudioMode())
+	} else {
+		fmt.Println("  [    ] raw mode: not stated, no audio was captured")
+	}
 
 	if r := p.Stats.Restarts.Load(); r > 0 {
 		check(false, "pipeline restarts: %d (expected 0)", r)
