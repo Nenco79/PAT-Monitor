@@ -19,7 +19,6 @@ import (
 	_ "net/http/pprof"
 	"net/url"
 	"os"
-	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"strings"
@@ -2024,10 +2023,9 @@ func promptAndSetPassword(cfg *config.Config) error {
 // contact with the product becomes an error page, and whoever sees it does not
 // reload, they close.
 //
-// On Windows and without cgo the clean road is `rundll32
-// url.dll,FileProtocolHandler` and not `cmd /c start`, which flashes a console
-// window — with -H=windowsgui that would be the only window the program shows in
-// its whole life, and it would show a black console that vanishes.
+// The page is handed to the shell through `tray.Open`, the road the icon's click
+// and the panel's two folders take: **the monitor asks the shell and starts no
+// program of its own**.
 //
 // An opening that fails **stops nothing**: the address is written in the log and
 // things go on. Refusing to watch over a child because a browser could not be
@@ -2039,7 +2037,7 @@ func openSetup(ctx context.Context, log *slog.Logger, url string) {
 		return
 	}
 	log.Info("first run: opening the guided setup in the browser", "address", url)
-	if err := exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start(); err != nil {
+	if err := tray.Open(url); err != nil {
 		log.Warn("browser not opened: open the address by hand",
 			"address", url, "error", err)
 	}

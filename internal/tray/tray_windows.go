@@ -27,6 +27,7 @@ package tray
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"math"
@@ -934,23 +935,57 @@ func (t *Tray) drainBalloons() {
 
 // ---------- actions ----------
 
-// open opens an address or a folder with the default program.
-func (t *Tray) open(target string) {
+// Open opens an address or a folder with the default program.
+//
+// **It is exported because two packages want the same act, and it is the one
+// road out to the shell**: the panel's commands and the icon's click, here, and
+// the guided setup, which `cmd/pat-monitor` opens at the first start. The tray
+// is only where the other caller happens to live — what is kept here is the act,
+// not the icon.
+//
+// An opening that fails **stops nothing**: the failure is returned, and each
+// caller decides whether it is worth a line of its log — the guided setup is
+// not refused because a browser did not open.
+func Open(target string) error {
 	if target == "" {
-		return
+		return errors.New("nothing to open")
 	}
-	verb, _ := windows.UTF16PtrFromString("open")
+	verb, err := windows.UTF16PtrFromString("open")
+	if err != nil {
+		return fmt.Errorf(`the "open" verb cannot be given to the shell: %w`, err)
+	}
 	p, err := windows.UTF16PtrFromString(target)
 	if err != nil {
-		return
+		return fmt.Errorf("%q cannot be given to the shell: %w", target, err)
 	}
 	const swShowNormal = 1
-	r, _, _ := procShellExecuteW.Call(0,
+	code, _, _ := procShellExecuteW.Call(0,
 		uintptr(unsafe.Pointer(verb)), uintptr(unsafe.Pointer(p)), 0, 0, swShowNormal)
-	// ShellExecute returns a code <= 32 on error, and it is not an HRESULT: it
-	// is a value of its own.
-	if r <= 32 {
-		t.cfg.Log.Warn("open failed", "what", target, "code", r)
+	return shellResult(code)
+}
+
+// shellResult reads what ShellExecute returned.
+//
+// **The documentation has it compared to 32, and says not to read it as
+// anything else**: the return is an HINSTANCE only for backward compatibility
+// with 16-bit Windows, and what it really carries is "greater than 32" for a
+// success and one of the SE_ERR_* codes — access denied, no association, and the
+// rest — for a failure. It is a reading of its own, and it is written down
+// because a tidy-up that replaced it with `if err != nil` would report a browser
+// that opened as a failure: `Proc.Call` returns what `syscall.SyscallN` gave it,
+// an `Errno` that is non-nil even when it is zero.
+func shellResult(code uintptr) error {
+	if code <= 32 {
+		return fmt.Errorf("the shell returned %d, which is its failure range", code)
+	}
+	return nil
+}
+
+// open opens an address or a folder with the default program, and writes the
+// failure down.
+func (t *Tray) open(target string) {
+	if err := Open(target); err != nil {
+		t.cfg.Log.Warn("open failed", "what", target, "error", err)
 	}
 }
 
