@@ -3,7 +3,7 @@ module patmonitor
 go 1.26.8
 
 require (
-	github.com/bluenviron/mediacommon/v2 v2.9.3
+	github.com/bluenviron/mediacommon/v2 v2.9.4
 	github.com/coder/websocket v1.8.15
 	github.com/go-ole/go-ole v1.3.0
 	github.com/moutend/go-wca v0.3.0
@@ -13,11 +13,11 @@ require (
 	github.com/pion/rtp v1.10.5
 	github.com/pion/webrtc/v4 v4.2.18
 	github.com/tetratelabs/wazero v1.9.0
-	golang.org/x/crypto v0.55.0
-	golang.org/x/net v0.57.0
-	golang.org/x/sync v0.22.0
-	golang.org/x/sys v0.47.0
-	golang.org/x/term v0.45.0
+	golang.org/x/crypto v0.57.0
+	golang.org/x/net v0.59.0
+	golang.org/x/sync v0.23.0
+	golang.org/x/sys v0.48.0
+	golang.org/x/term v0.46.0
 	gopkg.in/yaml.v3 v3.0.1
 	tailscale.com v1.102.3
 )
@@ -70,7 +70,7 @@ require (
 	go4.org/netipx v0.0.0-20231129151722-fdeea329fbba // indirect
 	golang.org/x/exp v0.0.0-20260410095643-746e56fc9e2f // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
-	golang.org/x/text v0.41.0 // indirect
+	golang.org/x/text v0.42.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
 	golang.zx2c4.com/wintun v0.0.0-20230126152724-0fa3db229ce2 // indirect
 	golang.zx2c4.com/wireguard/windows v0.5.3 // indirect
