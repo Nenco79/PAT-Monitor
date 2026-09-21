@@ -42,17 +42,16 @@ is a fallback and not the first choice. But the alternative is a mute baby
 monitor.
 
 **Whether raw is granted is a state of the endpoint, and it moves under Windows
-Update.** This laptop gave `modo=raw` in `baselines/capture-intel.txt` on 20
-August 2026 and refused it on 17 September, with the **same** Intel driver
-(20.42.11748.0, dated 13 January 2025) and the **same** Elevoc APO build
-(5.0.5.318, installed 13 August): what happened in between is that the endpoint
-and the four APO components carry `LastArrivalDate` 15 September 03:32, the
-night KB5129195 went in. And the condition written above did not hold either —
-on 17 September raw was refused while the shared path measured RMS -38.7 dBFS
-with a floor of 380 LSB, that is, no zeroing at all. So neither the machine nor
-the zeroing is the premise: **the premise is the refusal, whenever it comes**,
-and a comment saying "on this machine raw is refused" ages into a false sentence
-without anybody touching a line.
+Update.** The same laptop gave `modo=raw` in `baselines/capture-intel.txt` and
+refused it later with the **same** Intel driver and the **same** Elevoc APO
+build: what changed in between is that the endpoint and the four APO components
+were re-installed by a Windows update, which their `LastArrivalDate` shows and
+nothing else does. And the condition written above did not hold either — raw has
+been refused while the shared path measured RMS -38.7 dBFS with a floor of 380
+LSB, that is, no zeroing at all. So neither the machine nor the zeroing is the
+premise: **the premise is the refusal, whenever it comes**, and a comment saying
+"on this machine raw is refused" ages into a false sentence without anybody
+touching a line.
 
 **The road is therefore announced even when it worked**, and the line that says
 so was missing for as long as the fallback existed. Raw refused plus exclusive
@@ -1298,80 +1297,81 @@ the half with no evidence under it.
 
 ### A permission Windows is still asking about is not an absence
 
-The chapter above is about a refusal, and a refusal **comes back**: measured
-under an MSIX package too, `E_ACCESSDENIED` arrives from
+The chapter above is about a refusal, and a refusal **comes back**. Packaged as
+MSIX it comes back the same way: `E_ACCESSDENIED` from
 `IMFActivate::ActivateObject` for the camera and from `IAudioClient::Initialize`
 for the microphone, `camDenied` and `micDenied` go up, and the two codes with
-their button reach the page exactly as designed. That half needed nothing.
+their button reach the page. That half needs nothing.
 
-**What had no name was the state before any answer exists.** Packaged, Windows
-asks the person in front of the machine for the camera and for the microphone —
-one consent per package, at the first use, and it appears in the consent store
-under the package family name rather than under *let desktop apps access your
-camera*. While that dialogue is on the screen the open call simply **waits**.
+**What had no name is the state before any answer exists.** Packaged, the
+consent is asked **per package and at the first use** — it appears in the
+consent store under the package family name rather than under *let desktop apps
+access your camera* — and while that dialogue is on the screen the open call
+simply **waits**.
 
-**Measured, 21 September 2026, same machine, same binary:**
+Unpackaged the camera opens in about half a second, well inside `startupGrace`,
+so that window is invisible. Packaged it outlasts the grace by as much as the
+person takes, and past the grace `!Ready` meant broken: what went out was
+`capture-stopped` and `mic-missing`, the second of which **asserts there is no
+microphone** at the one moment when the whole question is whether this program
+may use the one that is there. It is the same defect either way; packaging only
+makes it long enough to read.
 
-| | unpackaged | packaged |
-|---|---|---|
-| start to `camera opened` | **0.5 s** | as long as the person takes — 40 s here |
-| what it said meanwhile | nothing | at +30 s, `capture-stopped` and `mic-missing`, both *fault* |
+**The remedy is a state and not a longer timeout.** `camOpening` and
+`micOpening` say a call into the device is in flight and has not come back: set
+before the call, cleared the moment it returns or the endpoint opens.
+`micMissing`, `micSilent` and the "never started" half of `captureStopped` stand
+down while one is up, and the icon falls through to `PhaseStarting`, which
+already existed and was only ever kept out by `mic-missing` taking precedence
+over it.
 
-Thirty seconds is `startupGrace`, and past it `!Ready` meant broken. So the
-monitor declared two faults while Windows was asking, and the second of them,
-`mic-missing`, **asserts there is no microphone** at the one moment when the
-whole question is whether this program may use the one that is there.
+**A predicate waived in a chain does not disappear: it hands over.**
+`activeFaults` walks denied, missing, silent as an `else if`, so waiving
+`micMissing` alone drops the chain one branch further down — a microphone that
+never opened has no level, the health reads as digital silence, and out goes
+*the microphone delivers zeros*, **the worst fault this product has**, in place
+of one that was merely wrong. `micSilent` is in the list for that reason.
 
-Unpackaged nobody had ever seen that window, because half a second does not
-outlast a thirty-second grace. It is the same defect the whole time; packaging
-only made it long enough to read.
+**A test that hands the predicate a value the real state cannot have proves
+nothing.** `MicHealth: MicCodeOK` is exactly what a microphone that has not
+opened does not have, and `CameraOpenedUnix: 0` is exactly what a camera that
+has just reopened does not have: both left a subtest green over a defect it was
+written to catch. Where a status field is being waived, the case has to carry
+the values that field really takes.
 
-**The fix is a state and not a longer timeout.** `camOpening` and `micOpening`
-say a call into the device is in flight and has not come back: set before the
-call, cleared the moment it returns or the endpoint opens. `micMissing`,
-`micSilent` and the "never started" half of `captureStopped` stand down while
-one is up, and the icon falls through to `PhaseStarting`, which already existed
-and was only ever kept out by `mic-missing` taking precedence over it.
-
-**`micSilent` is in that list because the first version of this fix forgot it,
-and the machine found it where the tests could not.** `activeFaults` walks
-denied, missing, silent as an `else if` chain. Waiving `micMissing` alone drops
-the chain one branch further down: a microphone that never opened has no level,
-the health reads as digital silence, and what reached the page while Windows was
-asking was *the microphone delivers zeros* — **the worst fault this product
-has**, in place of one that was merely wrong. The unit tests were green, and
-they were green because each of them set `MicHealth: MicCodeOK`, which is
-exactly the value a microphone that has not opened does not have. **A predicate
-waived in a chain does not disappear: it hands over.**
-
-Three things it deliberately does not do:
+Four things this deliberately does not do:
 
 - **It invents no deadline for a human.** A grace with a number in it would be
   the same mistake one size larger, and there is nothing to measure: how long
   somebody takes to read a dialogue is not a property of this program. While the
   answer is pending the monitor says it is starting, which is true, and Windows'
   own window is on the screen saying why.
-- **It does not cover the stall.** Only the `!Ready` half is waived. A capture
-  that had started and stopped goes on being announced even while the camera is
-  being opened again — that is the 17 September fault, and a rebuild is exactly
-  when a reopen is in flight.
+- **It does not cover the stall, and the anchor belongs to one branch.** The
+  grace is counted a second time from the last successful open, because by the
+  time a waited-for device comes open the first grace is spent and the second
+  the first keyframe takes would read as a capture that had stopped. Applied to
+  the whole predicate that anchor **hides the stall**: a picture stopped minutes
+  ago with the camera reopened a moment ago answers *nothing is wrong*, and a
+  reopen loop whose backoff starts at a second keeps answering it. It lives
+  inside the `!Ready` branch and nowhere else.
 - **It does not swallow the answer.** The flag is cleared before the error is
   wrapped, so a refusal that came back is the denied pair's business from that
   instant. It is the distinction `internal/update` already makes: *"I could not
   ask" must never be rendered as an answer.*
+- **It does not stop at the alert set.** The icon had a case of its own —
+  `!s.RawAudio` sits below `!s.Ready`, so with the camera consented to first the
+  picture goes ready while the microphone's dialogue is still up and the audio
+  was announced as **filtered** before anybody had said whether it may be
+  captured. The pages had two more: the viewer's microphone row and the guided
+  path's check row went on shouting while the banner had learnt to keep quiet —
+  and the guided path is the screen the person is standing at while Windows asks
+  them. Every surface that reads the device's state is part of the same claim.
 
-**And the grace itself was anchored to the wrong instant, which only the answer
-made visible.** The second the person clicks *Allow*, the device comes open and
-the first keyframe is about a second behind it — and by then the thirty seconds
-from process start are long spent, so that second was announced as a capture
-that had stopped: measured, `capture-stopped` up at 23:23:33.307 and off at
-23:23:34.306. Unpackaged the camera opens half a second in, well inside the
-grace, and the window cannot occur at all, which is why an evening of running it
-had never shown this. The repair is not a second number: `camOpenedAt` records
-when the attempt succeeded, and the same thirty seconds are counted **from when
-trying began** rather than from when the process did. It is written after the
-error is ruled out, so a refusal hands no fresh silence to the retry that
-follows.
+**The flags are cleared by a `defer` as well as by the store that marks the
+right instant.** `runVideo` and `runAudio` run under `guard.Run` precisely
+because that stretch goes into COM, Media Foundation and WASAPI: a recovered
+panic between the set and the clear leaves the flag standing, and a flag standing
+is the alert waived for ever.
 
 **What is not known is what happens if nobody ever answers.** The monitor then
 says *starting* for as long as the dialogue stands. That is written here rather
@@ -1382,8 +1382,8 @@ already on their screen.
 ### The picture stopping is a fault, and `Ready` cannot say so
 
 A monitor that has stopped showing anything is the one thing this program exists
-to notice, and until 17 September 2026 it was the one thing it could not: the
-predicate behind `capture-stopped` was `!s.Ready`, and `Ready` is a **latch** —
+to notice, and for a while it was the one thing it could not: the predicate
+behind `capture-stopped` was `!s.Ready`, and `Ready` is a **latch** —
 a channel closed by the first keyframe and never opened again. It answers "did
 it ever start". It was read by three consumers as "is it working now".
 

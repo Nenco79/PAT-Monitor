@@ -13,24 +13,23 @@ import (
 	"patmonitor/internal/update"
 )
 
-// **"Not yet" is not "not there", and under a package the difference is as long
-// as a person takes to answer.**
+// **"Not yet" is not "not there", and packaged the difference is as long as a
+// person takes to answer.**
 //
-// Measured on 21 September 2026 with the monitor packaged as MSIX: Windows asks
-// for the camera and the microphone, one consent per package, at the first use,
-// and the open call waits. Unpackaged that window is 0.5 s and nobody sees it;
-// packaged it lasted forty seconds, and the monitor spent thirty of them
-// announcing `capture-stopped` and `mic-missing` — the second of which asserts
-// there is no microphone while the person is being asked whether this program
-// may use one.
+// Windows asks for the camera and the microphone one consent per package, at
+// the first use, and the open call waits. Unpackaged that window is half a
+// second and nobody sees it; packaged it outlasts the start-up grace, and past
+// the grace what went out was `capture-stopped` and `mic-missing` — the second
+// of which asserts there is no microphone while the person is being asked
+// whether this program may use one.
 //
 // **Verified to catch**: with `!s.CameraOpening` and `!s.MicrophoneOpening`
 // taken back out of the two predicates, both subtests fail with the codes they
 // refuse.
 func TestWhileWindowsIsAskingNothingIsBroken(t *testing.T) {
 	started := time.Date(2026, 9, 21, 22, 0, 0, 0, time.UTC)
-	// Well past the start-up grace: the thirty seconds are exactly what ran out
-	// while the dialogue was on the screen.
+	// Well past the start-up grace: the thirty seconds are exactly what runs out
+	// while the dialogue is on the screen.
 	now := started.Add(5 * time.Minute)
 
 	t.Run("the camera", func(t *testing.T) {
@@ -81,9 +80,9 @@ func TestWhileWindowsIsAskingNothingIsBroken(t *testing.T) {
 	})
 }
 
-// **The wait must not swallow the answer.** A refusal comes back — measured
-// under the package too, `E_ACCESSDENIED` from `ActivateObject` and from
-// `IAudioClient.Initialize` — and from that moment the opening is over and the
+// **The wait must not swallow the answer.** A refusal comes back —
+// `E_ACCESSDENIED` from `ActivateObject` and from `IAudioClient.Initialize`,
+// under a package too — and from that moment the opening is over and the
 // denied pair is what speaks. A flag left standing would turn the one state the
 // program can do something about into silence.
 func TestAnAnsweredRefusalIsStillAnnounced(t *testing.T) {
@@ -101,11 +100,10 @@ func TestAnAnsweredRefusalIsStillAnnounced(t *testing.T) {
 	}
 }
 
-// **The picture that stopped stays reachable.** On 17 September 2026 the
-// encoder's rebuild did not come back and nothing complained for three and a
-// half minutes; the stall half of `captureStopped` is what was written for it.
-// Waiving the "never started" half must not waive that one, and a rebuild is
-// precisely a moment when the camera is being opened again.
+// **The picture that stopped stays reachable.** The stall half of
+// `captureStopped` is what answers a rebuild that does not come back, and
+// waiving the "never started" half must not waive it — a rebuild is precisely a
+// moment when the camera is being opened again.
 func TestACaptureThatStoppedIsAnnouncedEvenWhileReopening(t *testing.T) {
 	started := time.Date(2026, 9, 21, 22, 0, 0, 0, time.UTC)
 	now := started.Add(5 * time.Minute)
@@ -121,15 +119,31 @@ func TestACaptureThatStoppedIsAnnouncedEvenWhileReopening(t *testing.T) {
 	if !has(got, alerts.CaptureStopped) {
 		t.Errorf("%v: the picture stopped two minutes ago and reopening hides it", got)
 	}
+
+	// **And with the reopen having succeeded a moment ago.** The anchor applied
+	// to the whole predicate hides the stall: a picture stopped minutes ago with
+	// the camera open again a moment ago answers *nothing is wrong*, and a
+	// reopen loop whose backoff starts at a second goes on answering it.
+	// Leaving `CameraOpenedUnix` at zero, as the half above does, is precisely
+	// the value the real state cannot have here.
+	got = activeFaults(server.Status{
+		Ready:            true,
+		LastFrameUnix:    now.Add(-2 * time.Minute).Unix(),
+		CameraOpenedUnix: now.Add(-3 * time.Second).Unix(),
+		MicrophoneActive: true,
+		MicHealth:        detect.MicCodeOK,
+	}, started, now)
+
+	if !has(got, alerts.CaptureStopped) {
+		t.Errorf("%v: the camera reopened and the stall went quiet with it", got)
+	}
 }
 
 // **The second between the device opening and the picture starting is not a
-// capture that stopped**, and it only exists once the open has waited: measured
-// under the package, `capture-stopped` up at 23:23:33.307 and off at
-// 23:23:34.306, in the second between `camOpening` going down and the first
-// keyframe arriving. Unpackaged the camera opens half a second in, well inside
-// the grace, and the window cannot occur at all — which is why a whole evening
-// of running it had never shown this.
+// capture that stopped**, and it only exists once the open has waited: it is the
+// gap between `camOpening` going down and the first keyframe arriving.
+// Unpackaged the camera opens half a second in, well inside the grace, so the
+// window cannot occur at all.
 //
 // **Verified to catch**: with the anchor taken back out of `captureStopped`,
 // the first subtest fails carrying `capture-stopped`.
@@ -185,5 +199,34 @@ func TestTheIconSaysStartingWhileTheDeviceIsBeingOpened(t *testing.T) {
 	}
 	if st.Phase != tray.PhaseStarting {
 		t.Errorf("the icon is %q, wanted %q", st.Phase, tray.PhaseStarting)
+	}
+}
+
+// **The case the two above do not catch**, and the one the first version of
+// this let through: with the camera consented to first, the picture goes ready
+// while the microphone's dialogue is still up. `Ready` is true, so the starting
+// case does not fire; `RawAudio` is false because nothing has opened; and the
+// icon announced the audio as filtered before anybody had said whether it may
+// be captured at all.
+//
+// The first tray test misses it because it passes `RawAudio: true` and
+// `CameraOpening: true` — the same "a value the real state cannot have" trap
+// this file names about `MicHealth`.
+func TestTheIconDoesNotCallTheAudioFilteredBeforeItIsOpen(t *testing.T) {
+	cfg := config.Default()
+	cfg.PasswordHash = "$argon2id$v=19$m=65536,t=3,p=4$c2FsdA$aGFzaA"
+	dict := i18n.Open([]string{"en"})
+	started := time.Now().Add(-5 * time.Minute)
+
+	st := trayStatus(server.Status{
+		Ready:             true,
+		LastFrameUnix:     time.Now().Unix(),
+		MicrophoneOpening: true,
+		MicHealth:         detect.MicCodeOK,
+		RawAudio:          false,
+	}, cfg, started, dict, update.State{})
+
+	if st.Fault == tray.FaultMicFiltered {
+		t.Error("the icon calls the audio filtered while the microphone is being opened")
 	}
 }

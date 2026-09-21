@@ -353,13 +353,12 @@ func audclntName(code uint32) string {
 // machine**, and this comment used to say "measured on this machine, where raw
 // mode is refused" — a sentence that was true when it was written and stopped
 // being true without anybody touching a line. The same laptop gave mode=raw in
-// baselines/capture-intel.txt on 20 August 2026 and refused it again on 17
-// September, with the same Intel driver and the same Elevoc APO build: what
-// happened in between is that the endpoint and the four APO components
-// re-arrived on 15 September, the night KB5129195 went in. So this route is not
-// a remedy for one laptop, and the shared path delivering zeroes is not part of
-// the condition either — on 17 September raw was refused while shared measured
-// RMS -38.7 dBFS. What holds is the refusal, whenever it comes.
+// baselines/capture-intel.txt and refused it later with the same Intel driver
+// and the same Elevoc APO build: what happened in between is that a Windows
+// update re-installed the endpoint and the four APO components. So this route
+// is not a remedy for one laptop, and the shared path delivering zeroes is not
+// part of the condition either — raw has been refused with shared measuring RMS
+// -38.7 dBFS. What holds is the refusal, whenever it comes.
 //
 // The format is dictated by the device, not by the engine: the mix format is
 // the engine's own result and in exclusive mode it is refused with

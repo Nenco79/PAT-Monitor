@@ -233,9 +233,9 @@ type Stats struct {
 	// on every frame and every packet from the day they were added, and no
 	// consumer in the tree loaded either: what the status page, the
 	// notification area and the alerts all watched instead was `Ready`, a latch
-	// that closes on the first keyframe. A monitor whose picture stopped after
-	// an hour therefore went on declaring itself ready — measured, three and a
-	// half minutes of it, on 17 September 2026. `LastVideoUnix` now reaches
+	// that closes on the first keyframe. A monitor whose picture stops after an
+	// hour therefore goes on declaring itself ready, for minutes together, with
+	// the evidence sitting unread. `LastVideoUnix` now reaches
 	// `server.Status.LastFrameUnix` and is what `captureStopped` decides on.
 	LastVideoUnix atomic.Int64
 	LastAudioUnix atomic.Int64
@@ -284,20 +284,19 @@ type Pipeline struct {
 	// camOpening and micOpening say a call into the device is in flight right
 	// now and has not come back.
 	//
-	// **They exist because "not yet" and "not there" had one name**, and under
-	// a package they stop being the same length. Measured on 21 September 2026
-	// with the monitor packaged as MSIX: Windows asks the person in front of
-	// the machine for the camera and the microphone, one consent per package,
-	// at the first use — and the open call simply waits, for as long as a human
-	// takes to read a dialogue. Unpackaged the camera opens in 0.5 s and nobody
-	// ever sees that window; packaged it lasted forty seconds, and the monitor
-	// spent thirty of them declaring `capture-stopped` and `mic-missing`, the
-	// second of which asserts there is no microphone while the person is being
-	// asked whether this program may use it.
+	// **They exist because "not yet" and "not there" had one name**, and
+	// packaged they are not the same length. Windows asks for the camera and
+	// the microphone one consent per package, at the first use, and the open
+	// call waits for as long as the person takes. Unpackaged it answers in
+	// about half a second, inside the start-up grace, so the window is
+	// invisible; packaged it outlasts the grace, and what went out was
+	// `capture-stopped` and `mic-missing` — the second of which asserts there
+	// is no microphone while the person is being asked whether this program may
+	// use it.
 	//
 	// **They are not the denied flags with another name.** A refusal comes back
-	// — `E_ACCESSDENIED`, measured under the package too, and the pair above
-	// names it correctly. This is the state before any answer exists, and the
+	// as `E_ACCESSDENIED`, under a package too, and the pair above names it
+	// correctly. This is the state before any answer exists, and the
 	// distinction is the one this program already makes in `internal/update`:
 	// "I could not ask" must never be rendered as an answer.
 	//
@@ -315,10 +314,8 @@ type Pipeline struct {
 	// instant.** Thirty seconds from the process starting is right when the
 	// camera opens half a second in; it is wrong the moment the open waits for
 	// a person, because by the time the device answers the grace is long gone
-	// and the second it takes the first keyframe to arrive is announced as a
-	// capture that stopped. Measured under the package: the alert went up at
-	// 23:23:33.307 and came off at 23:23:34.306, a one-second fault between the
-	// device opening and the picture starting.
+	// and the second the first keyframe takes to arrive is announced as a
+	// capture that stopped.
 	//
 	// The remedy is not a second grace with a number in it: it is the same
 	// thirty seconds counted from when trying actually began.
@@ -2552,6 +2549,14 @@ func (p *Pipeline) runVideo(ctx context.Context, sinks Sinks) error {
 	// reading the formats and opening all go through the same consent, so the
 	// flag covers the three of them and not only the last.
 	p.camOpening.Store(true)
+	// **And cleared again on the way out, because this stretch can panic.**
+	// `runVideo` runs under `guard.Run` precisely because enumerating, reading
+	// the formats and opening go into COM and Media Foundation; a recovered
+	// panic between here and the store below would leave the flag standing, and
+	// a flag standing is `capture-stopped` waived for ever. The straight-line
+	// clear is what marks the right instant; this one is what makes it true on
+	// every road out.
+	defer p.camOpening.Store(false)
 	cam, fellBack := resolveCamera(wanted, devices.ListCameras, p.cfg.Log)
 	link := cam.Link()
 
@@ -3048,12 +3053,12 @@ func (p *Pipeline) runVideo(ctx context.Context, sinks Sinks) error {
 		// Between the line the governor writes — "video format changed", with
 		// the cadence it wants — and the one at the bottom of this function
 		// there are two calls into Media Foundation and nothing else: building
-		// the new transform and releasing the old one. On 17 September 2026 one
-		// of the two did not return, and what the file showed was a pair of
-		// lines with the second missing, three more requests nobody answered,
-		// and then a monitor with the camera lit and no picture until somebody
-		// killed it. Which of the two it was is still unknown, and that is the
-		// whole cost: a log that says "we went in" and not "we came out".
+		// the new transform and releasing the old one. When one of the two does
+		// not return, the file shows a pair of lines with the second missing,
+		// further requests nobody answers, and a monitor with the camera lit and
+		// no picture. Which of the two it was cannot be recovered afterwards,
+		// and that is the whole cost: a log that says "we went in" and not "we
+		// came out".
 		//
 		// **A duration is not a cure and is not meant as one.** A call that
 		// never returns writes no line however well it is timed — for that
@@ -3417,6 +3422,10 @@ func (p *Pipeline) runAudio(ctx context.Context, sinks Sinks) error {
 	// to return.** What marks the end of the opening is the callback running —
 	// the endpoint is open — or the call answering with an error. Both clear it.
 	p.micOpening.Store(true)
+	// The same belt as the camera's, for the same reason: a panic inside the
+	// WASAPI open would skip both of the clears below, and a microphone stuck
+	// at "being opened" is `mic-missing` and `mic-silent` waived for ever.
+	defer p.micOpening.Store(false)
 	err := capture(runCtx,
 		audio.Options{DeviceID: wanted, Raw: true, FallbackOnRawFailure: true},
 		func(s audio.Stream) error {
@@ -3463,12 +3472,12 @@ func (p *Pipeline) runAudio(ctx context.Context, sinks Sinks) error {
 			} else {
 				p.cfg.Log.Debug("microphone reopened", "mode", s.Mode)
 			}
-			// **The road is declared even when it worked**, and this is the
-			// line whose absence cost an evening. On 17 September 2026 this
-			// endpoint began refusing raw mode — the same driver and the same
-			// APO build as the baseline of 20 August, with a Windows update
-			// between them — and the log said `mode=exclusive` and nothing
-			// else: the only reader of RawError is the warning below, guarded
+			// **The road is declared even when it worked**, and the absence of
+			// this line costs an evening. An endpoint can begin refusing raw
+			// mode with the same driver and the same APO build as the baseline
+			// and a Windows update in between — nothing local changed — and the
+			// log then said `mode=exclusive` and nothing else: the only reader
+			// of RawError is the warning below, guarded
 			// by `!s.RawMode`, which the exclusive road makes false. The
 			// refusal's own code, AUDCLNT_E_RAW_MODE_UNSUPPORTED, was in
 			// memory and reached no file, and answering "why" took a throwaway

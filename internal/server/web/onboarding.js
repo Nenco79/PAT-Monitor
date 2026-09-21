@@ -541,6 +541,27 @@ const onTheMonitorsMachine = () =>
 // checkRow draws one of the two checks: the badge, the name, the detail, and —
 // when there is something to grant and somebody who can grant it — the command
 // that opens the Windows page.
+// waitRow puts a row back to the state its markup is born in: the neutral badge
+// and "checking".
+//
+// **It exists because the two the rows can show are both claims.** A device
+// being opened is neither good nor bad, and packaged that wait is Windows
+// asking the person standing at this very screen whether the program may use
+// the camera and the microphone — so a row shouting `!` at them is the page
+// answering a question that is still on their screen. The state was already
+// designed and already in the markup; what was missing was going back to it.
+function waitRow(id, title) {
+  const li = el(id);
+  if (!li) return;
+  const badge = li.querySelector('.badge');
+  badge.className = 'badge wait';
+  badge.innerHTML = '&hellip;';
+  li.querySelector('b').textContent = title;
+  li.querySelector('small').textContent = T('onb.s1.checking');
+  const go = li.querySelector('.btn');
+  if (go) go.hidden = true;
+}
+
 function checkRow(id, good, title, detail, settings) {
   const li = el(id);
   if (!li) return;
@@ -999,7 +1020,10 @@ async function heartbeat() {
     // for the window to run down — and it is also the only one of the two that
     // says *why*.
     const camOk = !s.cameraDenied && s.measuredFps > 0 && s.resolution !== '';
-    checkRow('r-cam', camOk,
+    // The device is being opened: see waitRow. The refusal is not covered by
+    // this — it is an answer, and it comes back with the flag already down.
+    if (s.cameraOpening) waitRow('r-cam', T('onb.s1.cam'));
+    else checkRow('r-cam', camOk,
           T(camOk ? 'onb.s1.cam-ok' : 'onb.s1.cam-bad'),
           camOk
             // **Two sentences and not a hole.** Some languages inflect the
@@ -1031,7 +1055,8 @@ async function heartbeat() {
     // reopen is two seconds wide, and it is the one that carries a cause.
     const micOk = !s.microphoneDenied && s.microphoneActive &&
       s.micHealth !== 'digital-silence';
-    checkRow('r-mic', micOk,
+    if (s.microphoneOpening) waitRow('r-mic', T('onb.s1.mic'));
+    else checkRow('r-mic', micOk,
           T(micOk ? 'onb.s1.mic-ok' : 'onb.s1.mic-bad'),
           T(micOk ? (s.rawAudio ? 'onb.s1.mic-raw' : 'onb.s1.mic-filtered')
                   : s.microphoneDenied ? 'onb.s1.mic-denied-detail'

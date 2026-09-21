@@ -38,8 +38,8 @@ package update
 // real backup is honest; two keys with one backup is theatre, and the second one
 // would sit unused for years and be lost in exactly the same way.
 //
-// Generated with `pat-sign -generate` on 15 September 2026, before the first
-// public release, which is the only moment at which putting it here is free.
+// Generated with `pat-sign -generate` before the first public release, which is
+// the only moment at which putting it here is free.
 // Replace both halves together or neither: a public half that does not match the
 // private one refuses every signature, and from outside that is indistinguishable
 // from a tampered download.

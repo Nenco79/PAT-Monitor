@@ -67,11 +67,10 @@ func TestAStillRoomAddsNoEvent(t *testing.T) {
 
 // **The defect this predicate was written with, and the test that would have
 // found it.** `captureStopped` was `!s.Ready`, and `Ready` closes on the first
-// keyframe and never opens again: a monitor whose picture stopped after an hour
-// satisfied it for ever. Measured on 17 September 2026 — frames stopped at
-// 14:58 inside a rebuild of the encoder, the page stayed green, the
-// notification area stayed green, and no alert was written in the three and a
-// half minutes until the program was restarted by hand.
+// keyframe and never opens again: a monitor whose picture stops after an hour
+// satisfies it for ever. Frames stop inside a rebuild of the encoder, the page
+// stays green, the notification area stays green, and no alert is written for
+// as long as it lasts.
 //
 // **The defect was put back to watch this fail**: with `return !s.Ready && ...`
 // in place, the case below reports no fault at all.

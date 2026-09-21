@@ -104,8 +104,8 @@ type Status struct {
 	// person in front of the machine there is no answer at all, and everything
 	// downstream used to read that as the device being absent — which reaches
 	// the page as *there is no microphone* at the one moment when what is
-	// happening is that somebody is being asked about it. Measured under an
-	// MSIX package, where the consent is per package and arrives at first use.
+	// happening is that somebody is being asked about it. Packaged, the consent
+	// is asked per package and at the first use, so the wait is ordinary.
 	//
 	// They are published rather than deduced for `CameraDenied`'s reason: no
 	// other field can tell "not yet" from "not there".

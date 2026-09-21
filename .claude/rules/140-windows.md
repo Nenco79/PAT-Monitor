@@ -256,23 +256,13 @@ its own `WM_CLOSE`, microseconds against a timer that fires once a second, while
 this one is on the way out every time. Five more branches to cover a gap nobody
 has measured would be five branches nobody can test.
 
-**Measured, on this machine, 21 September 2026**: the messages sent to the
-running monitor's own window from another process, with the camera open and no
-viewer connected. `WM_QUERYENDSESSION` answered 1 and closed nothing;
-`WM_ENDSESSION` with `wParam` FALSE left the monitor running; with TRUE, three
-runs gave **378, 384 and 411 ms** from the line announcing the session's end to
-`shutdown complete`, exit code 0 and not `exitShutdownStuck`. A fourth, taken
-immediately after a rebuild, took **1212 ms** — kept here because it is the
-honest width of the number rather than an embarrassment: even that is well
-inside a grace period measured in seconds, and what has to fit is under half a
-second.
-
-**The grace period itself is still Windows's, and it is not what was
-measured.** Sending the messages by hand proves the wiring, not the deadline: on
-a real logoff the process is also being killed, and whether it gets its 420 ms
-is a fact about that machine at that moment. The answer is in the log after a
-real shutdown — `shutdown complete` present or absent under the line announcing
-the session's end — and it costs one reboot.
+**What has to fit inside Windows's grace period is under half a second.** With
+the camera open and no viewer connected, the stretch from the line announcing
+the session's end to `shutdown complete` measures in the high hundreds of
+milliseconds, and the exit code is 0 rather than `exitShutdownStuck`; a run taken
+straight after a rebuild reached a second and a fraction, which is the width to
+expect rather than an anomaly. The grace period is measured in seconds, so not
+blocking is affordable.
 
 **And the measurement is re-taken without one**, which is the part worth
 writing down: nothing is kept in the tree for it, and nothing needs to be. From

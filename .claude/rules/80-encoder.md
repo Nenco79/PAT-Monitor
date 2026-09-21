@@ -212,11 +212,11 @@ it is the only thing that says whether commands take effect on this machine.
 
 ### A code we have met is named, and the number stays first
 
-`ReadSample: HRESULT 0xC00D3704` is what the log carried for eight consecutive
-restarts on 17 September 2026, and the hour it cost went on establishing that
-the code means "the hardware pipeline could not start", which is nearly always
-another program holding the camera — in that case an older copy of this one,
-stuck in its own shutdown.
+`ReadSample: HRESULT 0xC00D3704` is what the log carries for one consecutive
+restart after another, and establishing that the code means "the hardware
+pipeline could not start" costs an hour every time it is not written down. It is
+nearly always another program holding the camera — typically an older copy of
+this one, stuck in its own shutdown.
 
 The names come from `mferror.h` and not from memory, and `mfName` carries
 **only the codes this repository has actually met**: every one of them is

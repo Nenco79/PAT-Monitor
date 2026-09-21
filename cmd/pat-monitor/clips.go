@@ -106,7 +106,7 @@ func clipsFolder(videos, cfgPath string, prove func(string) (string, error), log
 	return real
 }
 
-// oldClipsDir is where the clips lived before 3 September 2026.
+// oldClipsDir is where the clips lived before they moved to the videos folder.
 //
 // **Nothing is migrated and nothing is deleted**, but neither is anything left
 // unsaid: whoever upgrades would find `/clips` empty with their recordings still

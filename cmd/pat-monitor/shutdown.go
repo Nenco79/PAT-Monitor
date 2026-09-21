@@ -34,16 +34,16 @@ const shutdownLimit = 10 * time.Second
 // waitOrLeave waits for the monitor's parts, and once stopping has been asked
 // for it gives them a deadline.
 //
-// **It exists because a shutdown that never ends keeps the camera.** On 17
-// September 2026 the capture blocked inside Media Foundation while rebuilding
-// the encoder; the quit closed the tunnel, revoked the sessions and released
-// the port, and then `g.Wait()` sat on a goroutine that was never coming back.
-// The process stayed alive for seven minutes with the webcam lit and no
-// picture, ended by a kill and not by itself, `shutdown complete` never
-// written — and it would have stayed that way all night. Because the port was
-// already free, the second copy somebody started to fix it came up, found the
-// camera held by the first, and answered `0xC00D3704` every thirty seconds.
-// One stuck call had cost two monitors instead of one.
+// **It exists because a shutdown that never ends keeps the camera.** The
+// capture can block inside Media Foundation while rebuilding the encoder: the
+// quit then closes the tunnel, revokes the sessions and releases the port, and
+// `g.Wait()` sits on a goroutine that is never coming back. The process stays
+// alive with the webcam lit and no picture, ended by a kill and not by itself,
+// `shutdown complete` never written.
+//
+// **And the cost is two monitors, not one.** The port has already been given
+// up, so a second copy started to put things right comes up cleanly, finds the
+// camera held by the first, and answers `0xC00D3704` at every retry.
 //
 // **What it does is stop waiting, not unblock anything.** The thread is inside
 // a driver call and nothing in this program can reach it; what the operating

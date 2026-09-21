@@ -1154,6 +1154,12 @@ const micPick = makePicker({
   // Three states and one line: nobody is capturing, another one is capturing,
   // or there is nothing to say.
   say: (s) => {
+    // **Nothing is said while the endpoint is being opened.** "Absent" is a
+    // claim, and until the open answers there is nothing to claim: packaged,
+    // that wait is Windows asking the person at the machine whether this
+    // program may capture at all, and the viewer would be reading *no
+    // microphone* about a device nobody has decided on yet.
+    if (s.microphoneOpening) return {text: '', tone: ''};
     if (!s.microphoneActive) {
       return {text: T('viewer.stats.microphone-absent'), tone: 'fault'};
     }

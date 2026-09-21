@@ -12,10 +12,9 @@ import (
 // is refused and exclusive answers, nothing is wrong: no warning fires, and the
 // only line the log carries is "microphone opened … mode=exclusive". The reason
 // for the refusal travels in Stream.RawError and its one reader was guarded by
-// `!s.RawMode` — which the exclusive road makes false. On 17 September 2026
-// this endpoint began refusing raw, and finding out that the code was
-// AUDCLNT_E_RAW_MODE_UNSUPPORTED took a program written for the purpose,
-// because it reached no file.
+// `!s.RawMode` — which the exclusive road makes false. When an endpoint begins
+// refusing raw, finding out that the code is AUDCLNT_E_RAW_MODE_UNSUPPORTED
+// takes a program written for the purpose, because it reaches no file.
 //
 // The predicate is tested rather than the log line, for the reason the shape
 // tests beside this one give: runAudio wants WASAPI. **The defect was put back

@@ -300,12 +300,11 @@ silently. Verified to catch, on the very site that produced the line above.
 #### Two instances write one file, and the line says which
 
 The log follows the configuration, so a second copy started from the same folder
-appends to the same `monitor.log`. On 17 September 2026 that is exactly what
-happened — one instance stuck in its shutdown with the camera open, a second one
-retrying the capture every thirty seconds — and the two streams of lines were
-interleaved and **indistinguishable**. Half the time spent reading that file
-went on deciding which of the two had written each line, and the answer was
-never in it.
+appends to the same `monitor.log`. The case that costs is one instance stuck in
+its shutdown with the camera open and a second retrying the capture every thirty
+seconds: the two streams of lines interleave and are **indistinguishable**, half
+of reading such a file goes on deciding which of the two wrote each line, and the
+answer is not otherwise in it.
 
 Every line now carries `pid`, which costs nine characters. It goes on the
 handler and not on the `version` line, because the question is not "was there a

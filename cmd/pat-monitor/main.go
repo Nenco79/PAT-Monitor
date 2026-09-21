@@ -201,11 +201,11 @@ func main() {
 	//
 	// Two instances of the monitor write into the same file — the log follows
 	// the configuration, so a second copy started from the same folder appends
-	// to the same `monitor.log` — and on 17 September 2026 that is exactly what
-	// happened: one instance stuck with the camera open and a second one
-	// retrying the capture every thirty seconds, their lines interleaved and
-	// indistinguishable. Half the time spent reading that file went on deciding
-	// which of the two had written each line, and the answer was never in it.
+	// to the same `monitor.log`. The case that costs is one instance stuck with
+	// the camera open and a second retrying the capture every thirty seconds:
+	// the lines interleave, they are indistinguishable, and half of reading such
+	// a file goes on deciding which of the two wrote each line — an answer the
+	// file does not otherwise carry.
 	//
 	// It goes on the handler rather than on the `version` line, because the
 	// question is not "was there a second instance" — two `version` lines an
@@ -1355,11 +1355,10 @@ const videoStall = 30 * time.Second
 // **It is a freshness and not a latch, and that is the repair.** The predicate
 // used to be `!s.Ready`, that is, "the first keyframe has not arrived yet" —
 // which answers "did it ever start" and was read by three consumers as "is it
-// working now". On 17 September 2026 the encoder's rebuild did not come back:
-// frames stopped at 14:58, the page went on saying ready, the notification area
-// stayed green, and the log carried no alert for the three and a half minutes
-// until somebody restarted the program by hand. The fault had every instrument
-// it needed — `Stats.LastVideoUnix` was being written on every frame — and
+// working now". An encoder rebuild that does not come back stops the frames and
+// leaves all three saying yes: the page ready, the notification area green, and
+// no alert for as long as it lasts. The fault has every instrument it needs —
+// `Stats.LastVideoUnix` is written on every frame — and
 // nobody loading it.
 //
 // The two halves are both kept, because they are two faults with one name and
@@ -1367,24 +1366,25 @@ const videoStall = 30 * time.Second
 // grace) and one that has stopped (`videoStall` with no frame). What must not
 // happen is the second being invisible because the first is false.
 func captureStopped(s server.Status, startedAt, now time.Time) bool {
-	// **The grace is counted from when trying began, not from when the process
-	// did**, and the two are the same instant only when nothing waits in
-	// between. Under a package the camera's open waits for a person to answer a
-	// consent dialogue: by the time the device comes open the thirty seconds
-	// are long spent, and the second the first keyframe takes to arrive was
-	// announced as a capture that had stopped — measured, one second of fault
-	// between the two. Anchoring it to the last open costs no new number.
-	if t := time.Unix(s.CameraOpenedUnix, 0); s.CameraOpenedUnix != 0 && t.After(startedAt) {
-		startedAt = t
-	}
 	if now.Sub(startedAt) <= startupGrace {
 		return false
 	}
 	if !s.Ready {
-		// **Only the half that means "it never started" is waived**, and only
-		// while the camera is actually being opened: a capture that had started
-		// and stopped goes through the stall below, which is the fault this
-		// predicate was rewritten for and must stay reachable.
+		// **The grace is counted a second time from when trying began**, and
+		// only inside this branch. Packaged, the camera's open waits for a
+		// person to answer a consent dialogue: by the time the device comes
+		// open the thirty seconds from start-up are spent, and the second the
+		// first keyframe takes to arrive reads as a capture that had stopped.
+		//
+		// **Applied to the whole predicate it hides the stall**, which is the
+		// fault this predicate was rewritten for: a picture stopped minutes ago
+		// with the camera reopened a moment ago answers *nothing is wrong*, and
+		// a reopen loop whose backoff starts at a second keeps answering it.
+		// The anchor belongs to "it never started" and to nothing else.
+		if s.CameraOpenedUnix != 0 && now.Sub(time.Unix(s.CameraOpenedUnix, 0)) <= startupGrace {
+			return false
+		}
+		// Past that, only an open still in flight excuses it.
 		return !s.CameraOpening
 	}
 	// A stream declared ready and no frame ever produced is not a state this
@@ -1416,14 +1416,12 @@ func stalledAfterStarting(s server.Status, startedAt, now time.Time) bool {
 
 // micSilent: the path delivers zeros. The microphone is there and cannot be heard.
 //
-// **`MicrophoneOpening` guards this one too, and that was found by running it
-// rather than by reading it.** Waiving only `micMissing` moved the false claim
-// one branch down instead of removing it: `activeFaults` walks denied, missing,
-// silent as an `else if` chain, so a microphone that has never opened has no
-// level, the health reads as digital silence, and what reached the page while
-// Windows was asking was *the microphone delivers zeros* — the worst fault this
-// product has, and as untrue as the one before it. Measured under the package
-// on 21 September 2026, with the unit tests green.
+// **`MicrophoneOpening` guards this one too**, because a predicate waived in a
+// chain does not disappear: it hands over. `activeFaults` walks denied, missing,
+// silent as an `else if`, so waiving `micMissing` alone drops the chain one
+// branch further down — a microphone that has never opened has no level, the
+// health reads as digital silence, and out goes *the microphone delivers zeros*,
+// the worst fault this product has, in place of one that was merely wrong.
 func micSilent(s server.Status) bool {
 	return s.MicHealth == detect.MicCodeDigitalSilence && !s.MicrophoneOpening
 }
@@ -1434,8 +1432,8 @@ func micSilent(s server.Status) bool {
 // **An endpoint being opened is not an endpoint that is missing**, and that
 // distinction is the whole of `MicrophoneOpening`. Without it the predicate
 // reads "not capturing" and answers *there is no microphone* while Windows has
-// a dialogue on the screen asking whether this program may use one — measured
-// under a package, where the wait is as long as a person takes.
+// a dialogue on the screen asking whether this program may use one — packaged,
+// that wait is as long as the person takes.
 func micMissing(s server.Status) bool { return !s.MicrophoneActive && !s.MicrophoneOpening }
 
 // cameraDenied and micDenied: Windows is refusing the device because the
@@ -1700,7 +1698,14 @@ func trayStatus(s server.Status, cfg config.Config, startedAt time.Time, dict *i
 		out.Phase = tray.PhaseStarting
 		out.Note = tray.NoteStarting
 
-	case !s.RawAudio:
+	// **And not while the microphone is still being opened**, which is a case
+	// the two above no longer catch: with the camera consented to first, the
+	// picture goes ready while the microphone's dialogue is still up, `Ready`
+	// is true, and `RawAudio` is false because nothing has opened — so the icon
+	// announced the audio as filtered before anybody had said whether it may be
+	// captured at all. It is the same family as `mic-missing`: a property of a
+	// stream there is no stream for.
+	case !s.RawAudio && !s.MicrophoneOpening:
 		out.Phase = tray.PhaseCheck
 		out.Fault = tray.FaultMicFiltered
 

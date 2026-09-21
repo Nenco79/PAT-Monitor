@@ -66,9 +66,8 @@ levels of maximum: the floor is zero, so the threshold of 0.006 is cautious.
 **And the measurement in the dark says the floor is zero there too**, which was
 the fear this paragraph carried for months: auto-exposure raises the gain at
 night, so the floor was expected to lift off zero and take the threshold with
-it. Measured over one night, 12 September 2026, on an ACER HD User Facing in an
-unlit room, three hours between 03:00 and 06:00 and **2083 samples** of the
-`-v` line:
+it. Measured over one night on an ACER HD User Facing in an unlit room, three
+hours in the middle of it and **2083 samples** of the `-v` line:
 
 | fraction of changed pixels | worst per-pixel difference | samples |
 |---|---|---|

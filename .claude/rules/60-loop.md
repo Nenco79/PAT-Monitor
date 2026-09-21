@@ -277,8 +277,8 @@ capture at every bitrate change.
 it **does not change the `level_idc`** — the worse of the two, because the SDP
 declares one level, fixed at the offer, and a transform that emitted another
 would stop matching the decoder the browser has already set up, silently.
-Measured again on 12 September on all three vendors, forcing the road against
-the command road in the same session:
+Measured again on all three vendors, forcing the road against the command road
+in the same session:
 
 | | keyframes, command → reconfigure | levels seen |
 |---|---|---|
@@ -630,9 +630,9 @@ the right answer is not to rediscover one step at a time that bandwidth is
 needed — it is to repay the loan.
 
 **And it was watched for a whole night, which is the test this loop was written
-for.** 12 September 2026, a viewer connected from 02:32 to 09:10 — six and a
-half hours, because the loop runs only while somebody is watching and two
-earlier nights measured nothing for want of that:
+for.** A viewer connected for six and a half hours — the loop runs only while
+somebody is watching, and two earlier nights measured nothing for want of
+that:
 
 | | |
 |---|---|

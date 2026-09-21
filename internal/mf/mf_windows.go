@@ -92,12 +92,12 @@ func (h hresult) err(op string) error {
 func mfName(code uint32) string {
 	switch code {
 	case 0xC00D3704:
-		// Measured on 17 September 2026: an older copy of the monitor was stuck
-		// in its shutdown with the camera still open, and this is what every
-		// capture of the copy started after it died with — eight times, always
-		// about 900 ms after `camera opened`, so the open succeeds and the
-		// streaming does not. The note is the diagnosis that cost an hour, so
-		// it travels with the code.
+		// The case it names: an older copy of the monitor stuck in its shutdown
+		// with the camera still open, and every capture of the copy started
+		// after it dying with this — about 900 ms after `camera opened`, so the
+		// open succeeds and the streaming does not. The note is the diagnosis,
+		// and it travels with the code because the code alone sends the reader
+		// to the wrong place.
 		return "MF_E_HW_MFT_FAILED_START_STREAMING: the hardware pipeline could not start; " +
 			"another program — or another copy of this one — may be holding the camera"
 	case 0xC00D36B3:
