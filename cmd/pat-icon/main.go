@@ -30,6 +30,15 @@ var (
 	arch    = flag.String("arch", "amd64", "target architecture")
 	icoFile = flag.String("ico", "", "also write the .ico file here (optional)")
 
+	// The logos a package manifest names, drawn at the sizes it names them at.
+	//
+	// **They are drawn here and not scaled from the .ico**, which is the whole
+	// reason this flag exists rather than three lines of image resizing in
+	// whoever packages: the drawing simplifies as it shrinks, so a small logo
+	// scaled down from a large one carries the detail that was meant to
+	// disappear. See icon.PackageLogos.
+	pngDir = flag.String("png", "", "also write the package logos as PNG into this folder (optional)")
+
 	// Revision, commit and tree state cannot be read from here: at run time the
 	// linker stamps them, and this program runs **before**. build.ps1 passes
 	// them, having already computed them for the stamps.
@@ -77,6 +86,19 @@ func main() {
 	}
 
 	im := icon.Images()
+
+	if *pngDir != "" {
+		if err := os.MkdirAll(*pngDir, 0o755); err != nil {
+			fail(err)
+		}
+		for _, l := range icon.PackageLogos {
+			name := filepath.Join(*pngDir, l.Name+".png")
+			if err := os.WriteFile(name, icon.PNG(l.Side), 0o644); err != nil {
+				fail(err)
+			}
+		}
+		fmt.Printf("%s  (%d package logos)\n", *pngDir, len(icon.PackageLogos))
+	}
 
 	if *icoFile != "" {
 		if err := os.WriteFile(*icoFile, icon.ICO(im), 0o644); err != nil {

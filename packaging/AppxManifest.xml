@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The package manifest, as a template: `{VERSION}` is substituted at build time
+  and nothing else is.
+
+  **The token is deliberately not a valid version.** A placeholder like 0.0.0.0
+  would build, install and ship a package claiming to be older than every other,
+  and the Store would refuse the one after it for not going up - all without an
+  error anywhere. An unsubstituted `{VERSION}` fails at MakeAppx, which is the
+  moment somebody is standing there.
+
+  **Identity is a placeholder and cannot be guessed.** Name and Publisher come
+  from Partner Center and have to match the account exactly, character for
+  character; what is here builds a package that installs for testing and is not
+  the one that gets submitted. Changing it is a step of the submission, not of
+  the build.
+
+  **The logos are not listed twice.** The three files named below are what
+  `icon.PackageLogos` draws, and a test holds the two together: a name changed
+  on one side and not the other is a package the shell draws its fallback for,
+  with no error from anywhere.
+-->
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  IgnorableNamespaces="uap rescap">
+
+  <Identity Name="Nenco79.PATMonitor"
+            Publisher="CN=PAT Monitor Test"
+            Version="{VERSION}"
+            ProcessorArchitecture="x64" />
+
+  <Properties>
+    <DisplayName>PAT Monitor</DisplayName>
+    <PublisherDisplayName>Nenco79</PublisherDisplayName>
+    <Logo>Assets\StoreLogo.png</Logo>
+  </Properties>
+
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.19041.0" MaxVersionTested="10.0.26100.0" />
+  </Dependencies>
+
+  <!--
+    Every language the catalogues carry. A package declaring only one is a
+    package the Store lists in one, whatever the program speaks.
+  -->
+  <Resources>
+    <Resource Language="en-us" />
+    <Resource Language="it-it" />
+    <Resource Language="de-de" />
+    <Resource Language="fr-fr" />
+    <Resource Language="es-es" />
+  </Resources>
+
+  <!--
+    `runFullTrust` is what keeps this a desktop program rather than an
+    AppContainer one: the loopback listener, WASAPI in exclusive mode and the
+    hardware encoders all depend on it. The two device capabilities are what
+    make the camera and the microphone grantable per package - without them the
+    consent the program asks for does not exist to be given.
+  -->
+  <Capabilities>
+    <rescap:Capability Name="runFullTrust" />
+    <DeviceCapability Name="webcam" />
+    <DeviceCapability Name="microphone" />
+  </Capabilities>
+
+  <Applications>
+    <Application Id="PATMonitor" Executable="pat-monitor.exe" EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements
+        DisplayName="PAT Monitor"
+        Description="Pet and toddler monitor: webcam and microphone over WebRTC"
+        BackgroundColor="transparent"
+        Square150x150Logo="Assets\Square150x150Logo.png"
+        Square44x44Logo="Assets\Square44x44Logo.png" />
+    </Application>
+  </Applications>
+</Package>
