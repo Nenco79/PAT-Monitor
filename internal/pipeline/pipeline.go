@@ -281,6 +281,49 @@ type Pipeline struct {
 	// second.
 	camDenied, micDenied atomic.Bool
 
+	// camOpening and micOpening say a call into the device is in flight right
+	// now and has not come back.
+	//
+	// **They exist because "not yet" and "not there" had one name**, and under
+	// a package they stop being the same length. Measured on 21 September 2026
+	// with the monitor packaged as MSIX: Windows asks the person in front of
+	// the machine for the camera and the microphone, one consent per package,
+	// at the first use — and the open call simply waits, for as long as a human
+	// takes to read a dialogue. Unpackaged the camera opens in 0.5 s and nobody
+	// ever sees that window; packaged it lasted forty seconds, and the monitor
+	// spent thirty of them declaring `capture-stopped` and `mic-missing`, the
+	// second of which asserts there is no microphone while the person is being
+	// asked whether this program may use it.
+	//
+	// **They are not the denied flags with another name.** A refusal comes back
+	// — `E_ACCESSDENIED`, measured under the package too, and the pair above
+	// names it correctly. This is the state before any answer exists, and the
+	// distinction is the one this program already makes in `internal/update`:
+	// "I could not ask" must never be rendered as an answer.
+	//
+	// They hold no history and are not a grace: set before the call, cleared
+	// the moment it returns or the device opens. Nothing here invents a
+	// deadline for somebody reading a dialogue — while the answer is pending
+	// the monitor says it is starting, which is true, and Windows' own window
+	// is on the screen saying why.
+	camOpening, micOpening atomic.Bool
+
+	// camOpenedAt is when the camera last came open, in Unix seconds, zero
+	// before the first time.
+	//
+	// **It exists because the start-up grace was anchored to the wrong
+	// instant.** Thirty seconds from the process starting is right when the
+	// camera opens half a second in; it is wrong the moment the open waits for
+	// a person, because by the time the device answers the grace is long gone
+	// and the second it takes the first keyframe to arrive is announced as a
+	// capture that stopped. Measured under the package: the alert went up at
+	// 23:23:33.307 and came off at 23:23:34.306, a one-second fault between the
+	// device opening and the picture starting.
+	//
+	// The remedy is not a second grace with a number in it: it is the same
+	// thirty seconds counted from when trying actually began.
+	camOpenedAt atomic.Int64
+
 	// micGraceUntil is until when a closed microphone must **not** be reported
 	// as absent: the window of a reopen we decided on. See micRecheckGrace.
 	micGraceUntil atomic.Int64
@@ -697,6 +740,17 @@ func (p *Pipeline) CameraDenied() bool { return p.camDenied.Load() }
 
 // MicrophoneDenied says Windows is refusing the microphone. See CameraDenied.
 func (p *Pipeline) MicrophoneDenied() bool { return p.micDenied.Load() }
+
+// CameraOpening and MicrophoneOpening say the device is being opened right now
+// and the call has not answered. See camOpening.
+func (p *Pipeline) CameraOpening() bool { return p.camOpening.Load() }
+
+// MicrophoneOpening says the microphone is being opened. See CameraOpening.
+func (p *Pipeline) MicrophoneOpening() bool { return p.micOpening.Load() }
+
+// CameraOpenedUnix is when the camera last came open, zero before the first
+// time. See camOpenedAt.
+func (p *Pipeline) CameraOpenedUnix() int64 { return p.camOpenedAt.Load() }
 
 // camWantedLink is the link of the camera we want to open.
 func (p *Pipeline) camWantedLink() string {
@@ -2493,6 +2547,11 @@ func (p *Pipeline) runVideo(ctx context.Context, sinks Sinks) error {
 	p.camCancel.Store(cancel)
 	wanted := p.camWantedLink()
 
+	// **From here to the open the device is being touched**, and under a
+	// package that is where Windows stops everything to ask. Enumerating,
+	// reading the formats and opening all go through the same consent, so the
+	// flag covers the three of them and not only the last.
+	p.camOpening.Store(true)
 	cam, fellBack := resolveCamera(wanted, devices.ListCameras, p.cfg.Log)
 	link := cam.Link()
 
@@ -2520,9 +2579,18 @@ func (p *Pipeline) runVideo(ctx context.Context, sinks Sinks) error {
 	p.wantFormat.Store(nil)
 
 	reader, err := mf.OpenCamera(link, wantW, wantH, wantF, nil)
+	// **Cleared on both roads, and before the error is wrapped**: an attempt
+	// that came back with a refusal is answered, not pending, and it is the
+	// denied flag's business from here on.
+	p.camOpening.Store(false)
 	if err != nil {
 		return fmt.Errorf("camera open: %w", err)
 	}
+	// **The instant the attempt succeeded**, which is where the start-up grace
+	// is counted from. Written after the error is ruled out: a refusal is not
+	// an open, and anchoring the grace to it would hand a fresh thirty seconds
+	// of silence to every retry.
+	p.camOpenedAt.Store(time.Now().Unix())
 	// **The refusal is cleared here and not when the session ends**, which is
 	// the whole difference between a state and a latch: a permission granted
 	// back at two in the morning must take the banner off the phone at the next
@@ -3345,9 +3413,14 @@ func (p *Pipeline) runAudio(ctx context.Context, sinks Sinks) error {
 		capture = audio.CaptureTone
 	}
 
+	// **The call blocks for the whole session, so the flag cannot wait for it
+	// to return.** What marks the end of the opening is the callback running —
+	// the endpoint is open — or the call answering with an error. Both clear it.
+	p.micOpening.Store(true)
 	err := capture(runCtx,
 		audio.Options{DeviceID: wanted, Raw: true, FallbackOnRawFailure: true},
 		func(s audio.Stream) error {
+			p.micOpening.Store(false)
 			p.rawMode.Store(s.RawMode)
 			// The endpoint opened, so whatever Windows was refusing it is not
 			// refusing now. See camDenied for why this is cleared at the open
@@ -3644,6 +3717,11 @@ func (p *Pipeline) runAudio(ctx context.Context, sinks Sinks) error {
 			return nil
 		},
 	)
+	// **The opening is over whichever way this came back.** The callback clears
+	// it when the endpoint opens; this covers the road where it never did, so
+	// that a refusal is answered by the denied flag rather than staying pending
+	// for ever. Storing false twice costs nothing.
+	p.micOpening.Store(false)
 	// The flag is cleared by the supervisor: clearing it here first would leave
 	// it with no way of knowing whether the audio was there.
 	//

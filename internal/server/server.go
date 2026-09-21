@@ -96,6 +96,26 @@ type Status struct {
 	// and find out which.
 	CameraDenied     bool `json:"cameraDenied"`
 	MicrophoneDenied bool `json:"microphoneDenied"`
+	// CameraOpening and MicrophoneOpening say the device is being opened right
+	// now and the call has not answered.
+	//
+	// **They are the state before the pair above has anything to say.** A
+	// refusal comes back and names itself; while Windows is still asking the
+	// person in front of the machine there is no answer at all, and everything
+	// downstream used to read that as the device being absent — which reaches
+	// the page as *there is no microphone* at the one moment when what is
+	// happening is that somebody is being asked about it. Measured under an
+	// MSIX package, where the consent is per package and arrives at first use.
+	//
+	// They are published rather than deduced for `CameraDenied`'s reason: no
+	// other field can tell "not yet" from "not there".
+	CameraOpening     bool `json:"cameraOpening"`
+	MicrophoneOpening bool `json:"microphoneOpening"`
+	// CameraOpenedUnix is when the camera last came open, zero before the first
+	// time. It is what the start-up grace is counted from, because counting it
+	// from the process starting says nothing useful once the open has waited
+	// for somebody to answer a dialogue.
+	CameraOpenedUnix int64 `json:"cameraOpenedUnix"`
 	// Microphone is the device's **name**, and MicrophoneActive says whether it
 	// is really capturing. They are two fields and not one because they used to
 	// be one: the name was replaced by the word "absent", which whoever read the

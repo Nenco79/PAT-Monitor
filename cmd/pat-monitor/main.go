@@ -732,28 +732,31 @@ func run(log *slog.Logger, path string) error {
 		// the chosen one was not there.
 		mic := p.Microphone()
 		st := server.Status{
-			Ready:            hub.Ready(),
-			Encoder:          p.EncoderName(),
-			EncoderVendor:    encoderVendor(p.HardwareEncoder()),
-			Resolution:       videoResolution(p, settings),
-			FPS:              declaredFPS(p, settings),
-			MeasuredFPS:      hub.MeasuredFPS(),
-			DeliveredFPS:     p.DeliveredFPS(),
-			VideoDropped:     p.Stats.VideoDropped.Load(),
-			LastFrameUnix:    p.Stats.LastVideoUnix.Load(),
-			VideoKbps:        videoKbps(hub),
-			Camera:           p.Camera().Name,
-			CameraFallback:   p.CameraIsFallback(),
-			CameraDenied:     p.CameraDenied(),
-			MicrophoneDenied: p.MicrophoneDenied(),
-			Microphone:       mic.Name,
-			MicrophoneID:     mic.ID,
-			MicrophoneActive: p.AudioActive(),
-			RawAudio:         p.RawAudioMode(),
-			AudioLevelDBFS:   lvl.RMSdBFS,
-			MicHealth:        lvl.Health().Code(),
-			Viewers:          hub.Stats.ViewersNow.Load(),
-			TalkbackBusy:     hub.TalkbackActive(),
+			Ready:             hub.Ready(),
+			Encoder:           p.EncoderName(),
+			EncoderVendor:     encoderVendor(p.HardwareEncoder()),
+			Resolution:        videoResolution(p, settings),
+			FPS:               declaredFPS(p, settings),
+			MeasuredFPS:       hub.MeasuredFPS(),
+			DeliveredFPS:      p.DeliveredFPS(),
+			VideoDropped:      p.Stats.VideoDropped.Load(),
+			LastFrameUnix:     p.Stats.LastVideoUnix.Load(),
+			VideoKbps:         videoKbps(hub),
+			Camera:            p.Camera().Name,
+			CameraFallback:    p.CameraIsFallback(),
+			CameraDenied:      p.CameraDenied(),
+			MicrophoneDenied:  p.MicrophoneDenied(),
+			CameraOpening:     p.CameraOpening(),
+			MicrophoneOpening: p.MicrophoneOpening(),
+			CameraOpenedUnix:  p.CameraOpenedUnix(),
+			Microphone:        mic.Name,
+			MicrophoneID:      mic.ID,
+			MicrophoneActive:  p.AudioActive(),
+			RawAudio:          p.RawAudioMode(),
+			AudioLevelDBFS:    lvl.RMSdBFS,
+			MicHealth:         lvl.Health().Code(),
+			Viewers:           hub.Stats.ViewersNow.Load(),
+			TalkbackBusy:      hub.TalkbackActive(),
 			// If a clip is in progress the recorder knows, and it is the only
 			// one: the bar's button does not colour on being pressed, it waits
 			// for this answer. See `Status.Recording`.
@@ -1364,11 +1367,25 @@ const videoStall = 30 * time.Second
 // grace) and one that has stopped (`videoStall` with no frame). What must not
 // happen is the second being invisible because the first is false.
 func captureStopped(s server.Status, startedAt, now time.Time) bool {
+	// **The grace is counted from when trying began, not from when the process
+	// did**, and the two are the same instant only when nothing waits in
+	// between. Under a package the camera's open waits for a person to answer a
+	// consent dialogue: by the time the device comes open the thirty seconds
+	// are long spent, and the second the first keyframe takes to arrive was
+	// announced as a capture that had stopped — measured, one second of fault
+	// between the two. Anchoring it to the last open costs no new number.
+	if t := time.Unix(s.CameraOpenedUnix, 0); s.CameraOpenedUnix != 0 && t.After(startedAt) {
+		startedAt = t
+	}
 	if now.Sub(startedAt) <= startupGrace {
 		return false
 	}
 	if !s.Ready {
-		return true
+		// **Only the half that means "it never started" is waived**, and only
+		// while the camera is actually being opened: a capture that had started
+		// and stopped goes through the stall below, which is the fault this
+		// predicate was rewritten for and must stay reachable.
+		return !s.CameraOpening
 	}
 	// A stream declared ready and no frame ever produced is not a state this
 	// program can reach — the latch closes on a frame — so it is read as the
@@ -1398,13 +1415,28 @@ func stalledAfterStarting(s server.Status, startedAt, now time.Time) bool {
 }
 
 // micSilent: the path delivers zeros. The microphone is there and cannot be heard.
+//
+// **`MicrophoneOpening` guards this one too, and that was found by running it
+// rather than by reading it.** Waiving only `micMissing` moved the false claim
+// one branch down instead of removing it: `activeFaults` walks denied, missing,
+// silent as an `else if` chain, so a microphone that has never opened has no
+// level, the health reads as digital silence, and what reached the page while
+// Windows was asking was *the microphone delivers zeros* — the worst fault this
+// product has, and as untrue as the one before it. Measured under the package
+// on 21 September 2026, with the unit tests green.
 func micSilent(s server.Status) bool {
-	return s.MicHealth == detect.MicCodeDigitalSilence
+	return s.MicHealth == detect.MicCodeDigitalSilence && !s.MicrophoneOpening
 }
 
 // micMissing: there is no audio at all. It happens on laptops with the lid
 // closed, and it must not switch off the video.
-func micMissing(s server.Status) bool { return !s.MicrophoneActive }
+//
+// **An endpoint being opened is not an endpoint that is missing**, and that
+// distinction is the whole of `MicrophoneOpening`. Without it the predicate
+// reads "not capturing" and answers *there is no microphone* while Windows has
+// a dialogue on the screen asking whether this program may use one — measured
+// under a package, where the wait is as long as a person takes.
+func micMissing(s server.Status) bool { return !s.MicrophoneActive && !s.MicrophoneOpening }
 
 // cameraDenied and micDenied: Windows is refusing the device because the
 // permission is off.

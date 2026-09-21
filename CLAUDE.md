@@ -155,6 +155,7 @@ a heading to its file, `grep -rn` the heading.
   - The camera is chosen while the monitor watches, and choosing is reopening
   - A chosen camera that is gone does not stop the monitor
   - A permission Windows has taken away is a state, not a fault
+  - A permission Windows is still asking about is not an absence
   - The picture stopping is a fault, and `Ready` cannot say so
   - A shutdown that does not finish keeps the camera
   - Codes cross the API, words stay at the edges

@@ -1296,6 +1296,89 @@ MSIX, where camera and microphone are declared capabilities and `%APPDATA%` is
 redirected — which is the other half of `provenDir`'s reason for existing, and
 the half with no evidence under it.
 
+### A permission Windows is still asking about is not an absence
+
+The chapter above is about a refusal, and a refusal **comes back**: measured
+under an MSIX package too, `E_ACCESSDENIED` arrives from
+`IMFActivate::ActivateObject` for the camera and from `IAudioClient::Initialize`
+for the microphone, `camDenied` and `micDenied` go up, and the two codes with
+their button reach the page exactly as designed. That half needed nothing.
+
+**What had no name was the state before any answer exists.** Packaged, Windows
+asks the person in front of the machine for the camera and for the microphone —
+one consent per package, at the first use, and it appears in the consent store
+under the package family name rather than under *let desktop apps access your
+camera*. While that dialogue is on the screen the open call simply **waits**.
+
+**Measured, 21 September 2026, same machine, same binary:**
+
+| | unpackaged | packaged |
+|---|---|---|
+| start to `camera opened` | **0.5 s** | as long as the person takes — 40 s here |
+| what it said meanwhile | nothing | at +30 s, `capture-stopped` and `mic-missing`, both *fault* |
+
+Thirty seconds is `startupGrace`, and past it `!Ready` meant broken. So the
+monitor declared two faults while Windows was asking, and the second of them,
+`mic-missing`, **asserts there is no microphone** at the one moment when the
+whole question is whether this program may use the one that is there.
+
+Unpackaged nobody had ever seen that window, because half a second does not
+outlast a thirty-second grace. It is the same defect the whole time; packaging
+only made it long enough to read.
+
+**The fix is a state and not a longer timeout.** `camOpening` and `micOpening`
+say a call into the device is in flight and has not come back: set before the
+call, cleared the moment it returns or the endpoint opens. `micMissing`,
+`micSilent` and the "never started" half of `captureStopped` stand down while
+one is up, and the icon falls through to `PhaseStarting`, which already existed
+and was only ever kept out by `mic-missing` taking precedence over it.
+
+**`micSilent` is in that list because the first version of this fix forgot it,
+and the machine found it where the tests could not.** `activeFaults` walks
+denied, missing, silent as an `else if` chain. Waiving `micMissing` alone drops
+the chain one branch further down: a microphone that never opened has no level,
+the health reads as digital silence, and what reached the page while Windows was
+asking was *the microphone delivers zeros* — **the worst fault this product
+has**, in place of one that was merely wrong. The unit tests were green, and
+they were green because each of them set `MicHealth: MicCodeOK`, which is
+exactly the value a microphone that has not opened does not have. **A predicate
+waived in a chain does not disappear: it hands over.**
+
+Three things it deliberately does not do:
+
+- **It invents no deadline for a human.** A grace with a number in it would be
+  the same mistake one size larger, and there is nothing to measure: how long
+  somebody takes to read a dialogue is not a property of this program. While the
+  answer is pending the monitor says it is starting, which is true, and Windows'
+  own window is on the screen saying why.
+- **It does not cover the stall.** Only the `!Ready` half is waived. A capture
+  that had started and stopped goes on being announced even while the camera is
+  being opened again — that is the 17 September fault, and a rebuild is exactly
+  when a reopen is in flight.
+- **It does not swallow the answer.** The flag is cleared before the error is
+  wrapped, so a refusal that came back is the denied pair's business from that
+  instant. It is the distinction `internal/update` already makes: *"I could not
+  ask" must never be rendered as an answer.*
+
+**And the grace itself was anchored to the wrong instant, which only the answer
+made visible.** The second the person clicks *Allow*, the device comes open and
+the first keyframe is about a second behind it — and by then the thirty seconds
+from process start are long spent, so that second was announced as a capture
+that had stopped: measured, `capture-stopped` up at 23:23:33.307 and off at
+23:23:34.306. Unpackaged the camera opens half a second in, well inside the
+grace, and the window cannot occur at all, which is why an evening of running it
+had never shown this. The repair is not a second number: `camOpenedAt` records
+when the attempt succeeded, and the same thirty seconds are counted **from when
+trying began** rather than from when the process did. It is written after the
+error is ruled out, so a refusal hands no fresh silence to the retry that
+follows.
+
+**What is not known is what happens if nobody ever answers.** The monitor then
+says *starting* for as long as the dialogue stands. That is written here rather
+than guarded against, because the guard would need the number this chapter has
+just refused to invent, and because the thing that would tell the watcher is
+already on their screen.
+
 ### The picture stopping is a fault, and `Ready` cannot say so
 
 A monitor that has stopped showing anything is the one thing this program exists
