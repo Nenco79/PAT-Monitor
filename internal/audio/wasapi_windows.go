@@ -304,6 +304,15 @@ func describeAudclnt(err error) error {
 		return err
 	}
 	code := uint32(oe.Code())
+	// **E_ACCESSDENIED leaves here as a value, not as a sentence.** It is the
+	// one code in this function that whoever is upstream has to be able to
+	// *decide* on rather than merely print: a microphone the user has taken
+	// away is not a microphone that has broken, and the two want different
+	// words on the page and different remedies. The hexadecimal stays first
+	// all the same, by this function's own rule.
+	if wincom.DeniedHRESULT(uintptr(code)) {
+		return fmt.Errorf("HRESULT 0x%08X: %w", code, wincom.ErrDenied)
+	}
 	if name := audclntName(code); name != "" {
 		return fmt.Errorf("%s (0x%08X)", name, code)
 	}

@@ -242,3 +242,53 @@ func TestEveryPhaseHasAVerdictInEveryLanguage(t *testing.T) {
 		}
 	}
 }
+
+// **The panel's status block is sentence case, and that is now checkable.**
+//
+// It used not to be. The rule was *no forced capital* — a readout, `thing:
+// state`, opening lower case — and it could not be guarded, because whether a
+// word takes a capital is the language's business: German's eight fault lines
+// were all upper case, correctly, since every one of them opens on a noun. A
+// check on the first letter would have accused them, and one carrying a list of
+// languages that capitalise nouns is the guard that absolves everything it has
+// never met.
+//
+// Made sentence case, the same rule stops depending on the word and starts
+// depending only on the position, so a test can hold it. **The lesson is the
+// one worth keeping: a convention became guardable by becoming stricter**, and
+// the forty entries that had been following the old one unwritten are the
+// reason it was worth doing.
+//
+// **Verified to catch**: with any one entry put back to lower case it fails
+// naming the language, the key and the value.
+func TestEveryStatusLineOpensWithACapital(t *testing.T) {
+	checked := 0
+	for language, cat := range catalogues(t) {
+		for key, raw := range cat {
+			// `tray.viewers.` is deliberately not here, and it is the boundary
+			// somebody will otherwise "fix" next: those are **fragments**, not
+			// lines — `summary` joins one onto the end of `tray.where.` — so a
+			// capital there would put "· 1 Viewer" in the middle of a sentence.
+			if !strings.HasPrefix(key, "tray.fault.") && !strings.HasPrefix(key, "tray.line.") {
+				continue
+			}
+			v, _ := raw.(string)
+			if v == "" {
+				t.Errorf("%s: %q is empty", language, key)
+				continue
+			}
+			checked++
+			first := []rune(v)[0]
+			if unicode.IsLower(first) {
+				t.Errorf("%s: %q opens on %q: the panel's status block is sentence "+
+					"case, and a block that changes register in the middle reads "+
+					"worse than either form", language, key, string(first))
+			}
+		}
+	}
+	// A guard that matched nothing would pass in silence, which is how a
+	// prefix that has been renamed goes on looking protected.
+	if checked < 40 {
+		t.Fatalf("%d status lines checked: the guard has stopped finding them", checked)
+	}
+}

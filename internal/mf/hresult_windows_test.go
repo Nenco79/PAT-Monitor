@@ -3,8 +3,11 @@
 package mf
 
 import (
+	"errors"
 	"strings"
 	"testing"
+
+	"patmonitor/internal/wincom"
 )
 
 // **The hexadecimal is the part that must never go away.** The name is a
@@ -91,5 +94,43 @@ func TestEveryNameOpensWithTheIdentifier(t *testing.T) {
 	}
 	if named < len(codes) {
 		t.Fatalf("%d codes of %d were named: this test is no longer reading the table", named, len(codes))
+	}
+}
+
+// **E_ACCESSDENIED leaves this package as a value, and keeps its hexadecimal.**
+//
+// It is the one code here that whoever is upstream has to *decide* on rather
+// than print: a camera Windows is refusing is not a camera that has broken, and
+// the two want different words on the page and different remedies — one of them
+// a click in the notification-area panel. The funnel wraps the sentinel and adds
+// no diagnosis, which is the division `mfName`'s own comment argues for E_FAIL:
+// a note belongs where the code was met, and this function is met by every call
+// in the package.
+//
+// **Verified to catch**: with the wrap removed, the first assertion fails and
+// says the refusal has stopped being distinguishable — which is the alert going
+// back to "no images from the camera" on a permission somebody switched off.
+func TestTheRefusalOfPermissionLeavesAsAValue(t *testing.T) {
+	err := check("ActivateObject", 0x80070005)
+	if err == nil {
+		t.Fatal("E_ACCESSDENIED answered nil")
+	}
+	if !errors.Is(err, wincom.ErrDenied) {
+		t.Errorf("the refusal does not carry wincom.ErrDenied: %v", err)
+	}
+	// The rule the whole table follows: whoever reads the log at seven in the
+	// morning types the code into a search box, and a sentence of ours in its
+	// place removes the one thing that travels outside this repository.
+	got := err.Error()
+	for _, want := range []string{"ActivateObject", "0x80070005"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("the error %q does not carry %q", got, want)
+		}
+	}
+
+	// And nothing else is: a predicate that answered yes to every failure would
+	// file an unplugged camera as a revoked permission.
+	if errors.Is(check("ReadSample", 0xC00D3704), wincom.ErrDenied) {
+		t.Error("an ordinary Media Foundation failure reads as a refusal of permission")
 	}
 }

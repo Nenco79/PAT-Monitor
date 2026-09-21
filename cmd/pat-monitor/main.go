@@ -580,14 +580,19 @@ func run(log *slog.Logger, path string) error {
 	// `detect_bark` and `detect_motion`. A second switch would say the same thing
 	// in another place, and the two would diverge.
 	rec := record.NewRecorder(record.RecorderConfig{Log: log})
-	clips := clipStore(cfg, videosDir(log), log)
+	clips := clipStore(cfg, clipsFolder(videosDir(log), cfg.Path(), provenDir, log), log)
 	guard.Go(log, "the recordings", func() { serveClips(ctx, clips, rec.Clips(), log) })
 	// The folder is declared **always**, not only with a detector on: since the
 	// "Clip" button exists a clip can be had with the three switches off too, and
 	// then "where has it put it?" is a question somebody will ask anyway.
 	log.Info("clips folder", "dir", clips.Dir(), "post_roll", record.DefaultPostRoll,
 		"max_mb", cfg.ClipsMaxMB, "max_days", cfg.ClipsMaxDays)
-	tellAboutOldClips(oldClipsDir(cfg.Path()), clips, log)
+	// **The old folder is resolved before being compared**, and without that the
+	// comparison inside says "two different folders" about one: the current one
+	// comes back from `provenDir` as the path Windows really wrote to, and a
+	// packaged program's `%APPDATA%` is not where it says it is. The line would
+	// then announce the clips as left behind while serving them.
+	tellAboutOldClips(resolvedDir(oldClipsDir(cfg.Path())), clips, log)
 
 	sinks := pipeline.Sinks{
 		// **The hub first, then the ring**: the media has priority, the pre-roll
@@ -730,6 +735,8 @@ func run(log *slog.Logger, path string) error {
 			VideoKbps:        videoKbps(hub),
 			Camera:           p.Camera().Name,
 			CameraFallback:   p.CameraIsFallback(),
+			CameraDenied:     p.CameraDenied(),
+			MicrophoneDenied: p.MicrophoneDenied(),
 			Microphone:       mic.Name,
 			MicrophoneID:     mic.ID,
 			MicrophoneActive: p.AudioActive(),
@@ -986,11 +993,16 @@ func run(log *slog.Logger, path string) error {
 		OnQuit:          quit,
 		OnRevoke:        srv.RevokeAllSessions,
 		OnResetPassword: srv.ResetPassword,
-		LogDir:          logDir(cfg.Path()),
-		VideoDir:        clips.Dir(),
-		SetupURL:        localURL(cfg.ListenAddr, "/onboarding"),
-		Log:             log,
-		Dictionary:      dict,
+		// **Resolved, because this one is opened in Explorer and not by us.**
+		// The log is written through this program, so any redirection is
+		// invisible to it; the panel's command hands the path to the shell,
+		// which is not in our package and opens the folder the name really
+		// says. See `resolvedDir`.
+		LogDir:     resolvedDir(logDir(cfg.Path())),
+		VideoDir:   clips.Dir(),
+		SetupURL:   localURL(cfg.ListenAddr, "/onboarding"),
+		Log:        log,
+		Dictionary: dict,
 	})
 
 	g, gctx := errgroup.WithContext(ctx)
@@ -1385,6 +1397,20 @@ func micSilent(s server.Status) bool {
 // closed, and it must not switch off the video.
 func micMissing(s server.Status) bool { return !s.MicrophoneActive }
 
+// cameraDenied and micDenied: Windows is refusing the device because the
+// permission is off.
+//
+// **They are read and not deduced**, and that is the point of the two fields:
+// deduced from the absence of frames or of a level, a withdrawn consent looks
+// exactly like a camera that will not open — see `pipeline.CameraDenied`.
+//
+// They are functions rather than the field read at the call site so that they
+// sit beside the predicates they take precedence over: whoever adds a case to
+// `activeFaults` sees the whole family in one place.
+func cameraDenied(s server.Status) bool { return s.CameraDenied }
+
+func micDenied(s server.Status) bool { return s.MicrophoneDenied }
+
 // cameraOther: the camera being watched is not the one that was chosen.
 //
 // **It is read and not recomputed.** The obvious form — chosen != open — is
@@ -1459,10 +1485,20 @@ func presentAlerts(s server.Status, moving, cry, bark bool, startedAt, now time.
 // together with the ordering. Here one merely observes.
 func activeFaults(s server.Status, startedAt, now time.Time) []alerts.Code {
 	var out []alerts.Code
-	if captureStopped(s, startedAt, now) {
+	// **The refusal wins over the consequence**, which is the rule the
+	// microphone's pair below already states: with the permission off there are
+	// no frames, so both are true and they are the same fault seen from two
+	// points — and of the two only one says what to do about it. Announcing
+	// both would put *no images from the camera* beside *the camera permission
+	// is off*, in a product that shows one banner.
+	if cameraDenied(s) {
+		out = append(out, alerts.CameraDenied)
+	} else if captureStopped(s, startedAt, now) {
 		out = append(out, alerts.CaptureStopped)
 	}
-	if micMissing(s) {
+	if micDenied(s) {
+		out = append(out, alerts.MicDenied)
+	} else if micMissing(s) {
 		out = append(out, alerts.MicMissing)
 	} else if micSilent(s) {
 		// If the microphone is not there, saying it also delivers zeros is
@@ -1566,6 +1602,22 @@ func trayStatus(s server.Status, cfg config.Config, startedAt time.Time, dict *i
 		out.Fault = tray.FaultNoPassword
 		out.Note = tray.NoteNoPassword
 
+	// **Windows is refusing the camera**, and that comes before the camera having
+	// stopped: both are true — a refused device delivers nothing — and only one
+	// of the two says what to do about it. It is the alerts' own precedence,
+	// which is where the argument is written; here it also decides the colour,
+	// and brick is right, because there is no picture at all.
+	//
+	// **It sits above the microphone's cases for the reason the case below
+	// states**: a colour says one thing and it has to say the worst, and no
+	// picture beats a filtered microphone. The two refusals are two switches in
+	// Windows and the camera's is the graver, so it is first — with both off,
+	// the panel offers the camera's page and the microphone's alert is still on
+	// the phone.
+	case cameraDenied(s):
+		out.Phase = tray.PhaseFault
+		out.Fault = tray.FaultCameraDenied
+
 	// No stream after half a minute is no longer slowness: the camera opens in a
 	// few seconds. It sits **before** the microphone, and the live test is what
 	// imposed that: on a machine with the webcam held by another process and no
@@ -1575,6 +1627,14 @@ func trayStatus(s server.Status, cfg config.Config, startedAt time.Time, dict *i
 	case captureStopped(s, startedAt, time.Now()):
 		out.Phase = tray.PhaseFault
 		out.Fault = tray.FaultCaptureStopped
+
+	// The microphone's half of the refusal above, and it takes precedence over
+	// the case below for the same reason: a microphone the user has taken away
+	// is not a microphone that has broken, and only this says where the switch
+	// is.
+	case micDenied(s):
+		out.Phase = tray.PhaseCheck
+		out.Fault = tray.FaultMicDenied
 
 	// Digital silence is the most insidious fault of a baby monitor: green page,
 	// still meter, and the child crying without anybody hearing.

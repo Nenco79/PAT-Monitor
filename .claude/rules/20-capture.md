@@ -1141,6 +1141,161 @@ recorded where the two boxes are argued against each other: "The camera is chose
 while the monitor watches, and choosing is reopening", under what Windows names
 and what it does not.
 
+### A permission Windows has taken away is a state, not a fault
+
+Camera and microphone are **consented to** on Windows 11, and the consent can be
+withdrawn while the monitor runs: from Settings, by whoever administers the
+machine, or by an update putting *"let desktop apps access your camera"* back to
+off. There is a switch per device and a second one for desktop programs, so a
+machine can grant the camera and refuse the microphone — a monitor showing a
+room it cannot hear.
+
+**The state existed and nothing in here could name it.** `grep` over
+`internal/mf`, `internal/audio` and `internal/devices` found no `0x80070005`
+anywhere: a revoked camera arrived as *the capture is not starting*, retried
+every thirty seconds for as long as the monitor ran, and reached the page as
+`capture-stopped` — *No images from the camera*, which is **true, says nothing
+about why, and sends whoever reads it to look at a cable.** The remedy is two
+clicks and nothing could say so.
+
+**It is a defect now and not only under packaging**, which is the part worth
+writing down: Windows 11 has the desktop-app switch on every installation, so
+this is reachable today, on an unpackaged binary, by one toggle in Settings.
+What MSIX changes is the frequency — there camera and microphone are
+**capabilities**, declared in the manifest and revocable per package from the
+same page — not whether the case exists.
+
+The shape is the one this file uses everywhere else, and each piece is at the
+layer that can answer for it:
+
+- **The number lives once, in `internal/wincom`.** Video capture meets the
+  refusal coming out of `IMFActivate::ActivateObject` and audio capture coming
+  out of `IMMDevice::Activate` — two calls into two unrelated subsystems
+  answering the same `E_ACCESSDENIED` — and a constant spelled at both sites is
+  a constant that can be wrong at one of them. `wincom.Denied` answers for the
+  HRESULT as go-ole hands it over **and** for the wrapped sentinel, because
+  between the call and the loop that decides sit two or three `fmt.Errorf` and
+  nothing enforces that every one of them uses `%w`.
+- **The two HRESULT funnels wrap and do not diagnose.** `mf.check` and
+  `describeAudclnt` attach `wincom.ErrDenied` and keep the hexadecimal first, by
+  their own rule; what the refusal *means for a baby monitor* is said by
+  `internal/pipeline`, which is the one layer that knows there is a microphone
+  in the same refusal. It is `mfName`'s own argument about `E_FAIL` — **a
+  generic code cannot be given a meaning by the place one of its instances was
+  met** — and the reason the note is not written at the call site in
+  `internal/audio` is narrower and worth knowing: the guard that refuses a COM
+  error wrapped without `describeAudclnt` reads `%w` wraps and bare returns, so
+  a branch that calls a helper instead is a branch it judges **not at all**.
+  Putting the sentence there would have walked through a hole rather than found
+  one.
+- **The flag follows the evidence and holds no history.** `camDenied` and
+  `micDenied` are stored from the error the last attempt ended with — stored
+  even when it is false — and cleared **at the open** and not at the end of a
+  session: a latch would leave the banner on the phone all night over a
+  permission granted back in a second.
+- **The line comes out when the state changes, not on every retry.** A refused
+  camera is retried every thirty seconds for as long as the monitor runs, and a
+  sentence repeated all night is a log in which nothing that happened once can
+  be found. It is the rule the camera's own open and the microphone's fallback
+  already follow.
+- **The refusal is announced instead of its consequence.** With the camera off
+  there are no frames, so `capture-stopped` is true as well, and the page has
+  one banner: `camera-denied` takes its place, exactly as `mic-missing` already
+  takes `mic-silent`'s. Both are `Fault` and not `Notice`, unlike
+  `camera-other`: there is no picture at all, and that it is somebody's decision
+  rather than a breakage does not change what the room gets.
+
+**And the remedy is in the notification area, because that is the only place it
+exists.** Whoever watches from a phone can be told the camera permission is off
+and can do nothing whatever about it; the switch is in this machine's Settings.
+`tray.privacySetting` answers with the address — `ms-settings:privacy-webcam`
+or `ms-settings:privacy-microphone` — and the word is not there, because there
+is one word for both.
+
+**The first version of that panel was wrong in three ways at once, and all
+three were about the panel and not about the permission.** They are worth
+listing, because the shape they share is *a piece added to a composition
+designed as a whole*:
+
+- **The command carried the device's name**, `Microphone permission`, sitting
+  directly under a line that already says *microphone: permission is off* — the
+  same word twice on two adjacent rows. The line names the device and the
+  command says what pressing does, which is the division the recordings page's
+  lock already makes; so there is one entry, and it is shorter.
+- **It wore the filled pill.** The selected command already wears the accent,
+  and the focus falls on the first command, which is this one: a pill on top of
+  that is **two marks for one thing**, which is the rule the panel states in as
+  many words. It is drawn like every other command, and what makes it stand out
+  is the selection it already had. The pill stays on the tunnel's step, which is
+  a different question.
+- **It sat in the column at the bottom**, four rows from the sentence it
+  answers, with the QR code and the address in between — where it reads as
+  belonging to the address. `flyCmd.lead` gives it the one row between the
+  status lines and the code, which is where an answer to a line goes.
+
+**And the line above it was cut at both ends, which was the panel's defect and
+not this chapter's** — eight existing sentences were already being truncated,
+silently, the worst of them the question asked before disconnecting everybody.
+The measurement and the rule that came out of it are in `140-windows.md`, where
+the panel is: the status lines wrap now, into as many rows as they need.
+
+What belongs here is that **these two sentences were shortened anyway**. As
+first written they were 241 to 288 px against 236 of room, and they are 180 to
+200 now — one row, in all five languages. A notice that fits its row is worth
+more than one that is allowed to take two: the rows above the QR code are the
+first thing read, and the second row is there for the sentences that cannot do
+without it. It is why the notice says *microphone: permission is off* and not
+where the switch is. **The button under it says that.**
+
+**The guided path tells the two apart too**, and that is the screen where it
+matters most: whoever is there is setting the monitor up for the first time, in
+front of this machine. `onb.s1.cam-denied-detail` names the page in words —
+Settings › Privacy & security › Camera — **and offers the link beside it, but
+only where the link can work**: `ms-settings:` is a Windows shell address, so
+from a phone it leads nowhere at all, and a dead affordance on the screen that
+is diagnosing a fault is worse than none — the reader cannot tell a link that
+does nothing from a permission that did not take. The test is the origin, and
+it is sound because this page is served by the monitor: a loopback host means
+the browser is on the machine the permission belongs to. Whoever opened the path
+by its home address gets the sentence, which is true everywhere; and that is why
+the sentence **names** the page instead of leaving the address to carry it.
+
+**What is not covered, and it is not an oversight.** When the machine-wide
+camera switch is off, Windows can hide the devices from the enumeration
+altogether, and then what arrives here is *no usable webcam* — which is what
+this program already says, and which is honest: nothing in that answer
+distinguishes a revoked machine from one with no camera in it. The per-program
+switch is the case that produces `E_ACCESSDENIED`, and it is the case this
+chapter covers.
+
+**It was tried on a revoked machine, and that is where three of its defects came
+from.** The switch was thrown on a running monitor and thrown back: the refusal
+reached the notification area and the guided path, and granting the permission
+again cleared it. What that half hour found, none of which any test had:
+
+- **the notice was cut at both ends.** `microfono: permesso disattivato in
+  Windows` is 271 px against the 236 a row has, and centred with no ellipsis a
+  line loses its first word and its last. It led to the measurement that found
+  three of the *existing* sentences doing the same in four languages.
+- **the command was in the wrong place and wore the wrong mark**, between the QR
+  code and the address, in a filled pill on top of the focus it already had.
+- **the check row stayed green.** The button appeared under it and the detail
+  beside it said why, while the badge went on saying the camera worked, because
+  it was reading `ready` — a latch. Pressing *Check again* could not help.
+
+**The lesson is the one this file keeps relearning.** Every piece of the chain
+was covered by a guard that passed: the sentinel, the precedence, the catalogue,
+the alert. All four were true, and none of them is about what a person sees —
+the width of a row, where a command sits, whether a badge is telling the truth.
+**Putting a defect back and watching a guard fail proves the guard, not the
+feature**, and the only thing that proved the feature was a permission actually
+switched off with the monitor watching.
+
+**What is still not demonstrated is the package.** Nobody has run this inside an
+MSIX, where camera and microphone are declared capabilities and `%APPDATA%` is
+redirected — which is the other half of `provenDir`'s reason for existing, and
+the half with no evidence under it.
+
 ### The picture stopping is a fault, and `Ready` cannot say so
 
 A monitor that has stopped showing anything is the one thing this program exists
@@ -1187,6 +1342,36 @@ on the page and by the alert written to the log. A second test written beside it
 for the stall would have been a second list of what "not working" means — the
 failure this file already names — and the three surfaces would have diverged at
 the first touch.
+
+**There were four, and the fourth was in JavaScript.** The sentence above counts
+the consumers of `captureStopped` — the tray, the banner, the log — and every one
+of them is in Go, which is why repairing the predicate reached them all. The
+guided path's check row is the fourth, it asks the same question, and it asked it
+of `ready` **directly**: `!!s.ready && s.resolution !== ''`. A repair made in Go
+cannot reach a fourth copy written on a page, and nothing counted it, because the
+count was taken by reading the callers of a Go function.
+
+What it cost is the shape the latch always costs: **the row went green at the
+first frame and stayed green.** Reported from in front of the machine — grant the
+permission and it goes green, revoke it and *the button appears and it stays
+green, even pressing "Check again"*. That last clause is the diagnosis: the
+button and the detail line beside it were reading `cameraDenied`, live and
+correct, while the badge two centimetres away was reading a field whose whole
+meaning is *it started once*. Re-checking could not help, because re-reading a
+latch gives the latch.
+
+It reads `measuredFps` now, which is the live half and needed no new state — its
+window is charged against **real time**, so with the frames stopped it decays to
+zero on its own — and `cameraDenied`, which is the immediate half and the only
+one of the two that says why. `TestTheCheckRowDoesNotDecideOnALatch` refuses
+`ready` in that condition, reading the declaration rather than the prose around
+it and **stripping the comments first**, because the paragraph explaining the
+repair says `ready` four times.
+
+**The rule the count should have followed is the one this file states
+elsewhere**: at every change of shape the question is not who writes a field but
+**who reads it** — and `ready` is read by whoever can fetch `/api/status`, which
+is three Go call sites and two pages.
 
 **The fault raises a goroutine dump, once.** A picture that has stopped after
 having started is the only fault here that can leave nothing else to read: no

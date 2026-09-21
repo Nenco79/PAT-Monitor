@@ -741,6 +741,10 @@ code.block {
 .results .badge.no { background: var(--c-stop); }
 .results b { font-weight: 600; }
 .results small { display: block; margin-top: 2px; font-size: var(--t-small); color: var(--muted); }
+/* The command that answers a row sits under it, with the air the detail line
+   does not have: `small` is 2 px from its title because it continues it, and a
+   button that continues nothing needs to be told apart from the row below. */
+.results .btn { margin-top: var(--s3); }
 
 /* ==========================================================================
    Animations of the illustrations

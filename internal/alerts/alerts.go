@@ -39,6 +39,29 @@ const (
 	// MicMissing: there is no microphone at all. It happens on laptops with the
 	// lid closed.
 	MicMissing Code = "mic-missing"
+	// CameraDenied and MicDenied: Windows is refusing the device because the
+	// permission is off.
+	//
+	// **They are a state of the machine and not a failure of the monitor**, and
+	// without them both fell into CaptureStopped and MicMissing — that is, into
+	// *no images from the camera*, which is true, says nothing about why, and
+	// sends whoever reads it to look at the cable. Camera and microphone are
+	// consented to on Windows 11 and the consent can be withdrawn at any
+	// moment: from Settings, by whoever administers the machine, or by an
+	// update putting *"let desktop apps access your camera"* back to off. The
+	// remedy is two clicks, and the whole value of these two codes is that
+	// something can name it.
+	//
+	// They are two and not one because the two permissions are two switches: a
+	// machine can refuse the microphone and grant the camera, which is a
+	// monitor showing a room it cannot hear.
+	//
+	// **They are Faults and not Notices**, unlike CameraOther: there is no
+	// picture at all, or no sound at all. The boundary is the level's own
+	// definition — the monitor is not doing its job — and that it is somebody's
+	// decision rather than a breakage does not change what the room gets.
+	CameraDenied Code = "camera-denied"
+	MicDenied    Code = "mic-denied"
 	// CameraOther: the chosen camera is not connected, so another one is being
 	// watched.
 	//
@@ -87,6 +110,8 @@ var levels = map[Code]Level{
 	CaptureStopped: Fault,
 	MicSilent:      Fault,
 	MicMissing:     Fault,
+	CameraDenied:   Fault,
+	MicDenied:      Fault,
 	// **A Notice and not a Fault**, and the boundary is the level's own
 	// definition: the monitor is doing its job — there is a live picture — and
 	// there is something to know about it. A Fault would also turn the tray icon

@@ -80,6 +80,22 @@ type Status struct {
 	Camera         string `json:"camera"`
 	CameraChosen   string `json:"cameraChosen"`
 	CameraFallback bool   `json:"cameraFallback"`
+	// CameraDenied says Windows is refusing the camera because the permission
+	// is off, and MicrophoneDenied the same for the microphone.
+	//
+	// **They are here because no other field can say it.** A refused camera
+	// produces no frames and a refused microphone no level, so from
+	// `LastFrameUnix` and `MicrophoneActive` a withdrawn consent is
+	// indistinguishable from a cable out — and the two want different words and
+	// different remedies. It is the same argument as `CameraFallback`: a fact
+	// the capture already knows, published rather than left to be guessed at by
+	// whoever draws the page.
+	//
+	// They are two and not one because the two permissions are two switches in
+	// Windows, and a state that said only "denied" would leave the reader to go
+	// and find out which.
+	CameraDenied     bool `json:"cameraDenied"`
+	MicrophoneDenied bool `json:"microphoneDenied"`
 	// Microphone is the device's **name**, and MicrophoneActive says whether it
 	// is really capturing. They are two fields and not one because they used to
 	// be one: the name was replaced by the word "absent", which whoever read the

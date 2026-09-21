@@ -2,6 +2,7 @@
 paths:
   - "internal/record/**"
   - "internal/server/**"
+  - "cmd/pat-monitor/**"
 ---
 
 Part of PAT Monitor's engineering record; the index that carries every
@@ -42,6 +43,77 @@ folders at night with nobody having asked is worse than a log line.
 beside the configuration, which we know is writable. And there the line about
 remaining clips does **not** come out: the old folder is the current one, and
 announcing them as lost would be a lie about files that are being served.
+
+### The folder is proved by writing in it, and the panel is told where it really is
+
+**Asking Windows for a folder is not being able to write in it.**
+`SHGetKnownFolderPath` answers with the videos folder for a program that has no
+right to touch it, and the refusal then arrives **at the first clip** — that is,
+at three in the morning, into a log nobody is reading, about a recording that is
+gone. So the folder is chosen by writing in it, at start-up, where the answer
+can still change which folder is used: `provenDir` makes it, writes a probe and
+takes the probe back, and `clipsFolder` falls back to the old folder beside the
+configuration when that fails.
+
+Packaged as an MSIX the case stops being hypothetical: the videos library is a
+**capability**, and a package that has not declared it gets exactly that pair, a
+path that exists and a write that fails. But the pair is reachable today on an
+unpackaged binary too, on a profile where that folder has been redirected to a
+place the program may not write.
+
+**And where the folder really is, is not always where it was asked for.** A
+packaged desktop program has its writes under `%APPDATA%` redirected into the
+package's own store, silently and by design: the program reads and writes
+happily, and **Explorer, which is not in the package, opens the path it was
+given and shows an empty folder.** That is the one place packaging changes what
+the code *does* rather than what is around it, and what it breaks is the two
+folder glyphs in the notification-area panel — a command that opens a real path
+with nothing in it, about recordings that exist.
+
+`GetFinalPathNameByHandle` answers with the name of the file that was really
+opened, redirection included. It is **ask the system instead of deducing**
+applied to a question nobody thinks of asking — *where did what I just wrote
+actually go?* — and both folders go through it, because the panel opens both:
+`provenDir` for the clips, which we choose, and `resolvedDir` for the log, which
+is already open and which we do not.
+
+Six things that are not visible from the code:
+
+- **The probe is a file and not the directory handle**, because writability is
+  what is being proved and a directory that opens is not a directory one can
+  write in. It is unique per call: two copies of the monitor starting together
+  would otherwise take each other's probe away, and the loser would demote a
+  folder that is perfectly good.
+- **A resolution that fails is not a failure.** The folder has been proved
+  writable, which is what the caller needs, and the unresolved path is what the
+  program used before anybody thought about packaging. Returning an error there
+  would send the clips into the fallback because a name could not be spelled.
+- **The fallback is proved too, and it is still taken when the proof fails.**
+  What the second attempt buys is the resolution, not the permission — the log
+  and the node's identity already live down there. **Refusing to record because
+  a folder could not be proved would be the one answer worse than recording into
+  a folder that turns out to be read-only**: a baby monitor that will not watch
+  because there is nowhere to put the films.
+- **The prefix is taken off.** `VOLUME_NAME_DOS` answers `\?\C:\…`, which is a
+  legal path and is **not** one `ShellExecute` does anything with: left on, the
+  two folder commands would silently do nothing. The UNC form is taken off the
+  way the documentation spells it.
+- **The old clips folder is resolved before being compared.** `tellAboutOldClips`
+  asks whether it is the current one, and with the current one resolved and the
+  old one not, that comparison says *two different folders* about one: the line
+  would announce the clips as left behind while serving them.
+- **`prove` is handed in.** It interrogates the operating system, so called by
+  name it would run on the disk of whoever runs the tests — which this file has
+  already paid for once, with four megabytes of fake clips written into the
+  developer's real Videos folder by a green test. Both of its directions decide
+  where somebody's recordings go.
+
+**It is wiring, and it is measured as wiring**: the resolution is exercised by
+the tests themselves, where the temporary folder arrives as a short name and
+comes back expanded — `C:\Users\SOMEBO~1.DOM\…` against
+`C:\Users\somebody.domain\…`, the 8.3 name against the real one — which is
+the same mechanism a package redirection travels by. **Nobody has run this
+inside an MSIX package**, and that is the open half.
 
 ### A clip asked for by hand is born kept, and the lock works both ways
 

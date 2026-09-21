@@ -522,7 +522,26 @@ function openPreview() {
 el('ob-recheck').addEventListener('click', openPreview);
 
 // checkRow updates one of step 1's check lines.
-function checkRow(id, good, title, detail) {
+// **The link is offered only where it can work.** `ms-settings:` is a Windows
+// shell address: on the machine the browser hands it to the Settings app, and
+// from a phone it leads nowhere at all. A dead affordance is worse than none
+// **on this screen in particular**, because the screen is diagnosing a fault and
+// the reader has no way to tell a link that does nothing from a permission that
+// did not take.
+//
+// The test is the origin, and it is sound because this page is served by the
+// monitor itself: a loopback host means the browser is running on the machine
+// the permission belongs to. Opening the path by its home address from that same
+// machine answers no, which costs the button and keeps the sentence — the
+// sentence names the page in words and is true everywhere, which is why it says
+// where the switch is rather than leaving that to the link.
+const onTheMonitorsMachine = () =>
+  ['localhost', '127.0.0.1', '[::1]', '::1'].includes(location.hostname);
+
+// checkRow draws one of the two checks: the badge, the name, the detail, and —
+// when there is something to grant and somebody who can grant it — the command
+// that opens the Windows page.
+function checkRow(id, good, title, detail, settings) {
   const li = el(id);
   if (!li) return;
   const badge = li.querySelector('.badge');
@@ -530,6 +549,15 @@ function checkRow(id, good, title, detail) {
   badge.innerHTML = good ? '&#10003;' : '!';
   li.querySelector('b').textContent = title;
   li.querySelector('small').textContent = detail;
+
+  const go = li.querySelector('.btn');
+  if (!go) return;
+  const show = !!settings && onTheMonitorsMachine();
+  // **The address is written before the button is shown**, never after: a
+  // button revealed with `href="#"` for one frame is a button that can be
+  // pressed and do nothing.
+  if (show) go.href = settings;
+  go.hidden = !show;
 }
 
 // fromDbfs brings the level into 0..1 on a scale that makes sense to the eye.
@@ -955,9 +983,25 @@ async function heartbeat() {
   }
 
   if (step === 1) {
-    checkRow('r-cam', !!s.ready && s.resolution !== '',
-          T(s.ready ? 'onb.s1.cam-ok' : 'onb.s1.cam-bad'),
-          s.ready
+    // **`ready` is a latch and cannot say whether it works now**, which is the
+    // defect this repository has already paid for once, in the alert that was
+    // built on the same field: it closes on the first keyframe and never opens
+    // again. So this row went green at the first frame and **stayed** green —
+    // with the permission revoked under it, with the cable pulled out of it,
+    // with the detail line beside it saying so and the button to Windows
+    // offered underneath. Pressing "Check again" could not help: it re-reads a
+    // field whose whole meaning is *it started once*.
+    //
+    // `measuredFps` is the live half, and it needs no new state: it is counted
+    // over a five-second window that is charged against **real time**, so with
+    // the frames stopped it decays towards zero on its own. `cameraDenied` is
+    // the immediate half — it goes true at the refused open, without waiting
+    // for the window to run down — and it is also the only one of the two that
+    // says *why*.
+    const camOk = !s.cameraDenied && s.measuredFps > 0 && s.resolution !== '';
+    checkRow('r-cam', camOk,
+          T(camOk ? 'onb.s1.cam-ok' : 'onb.s1.cam-bad'),
+          camOk
             // **Two sentences and not a hole.** Some languages inflect the
             // preposition before the encoder's name, and they cannot do it on a
             // substituted value: the case with no name therefore has a sentence
@@ -972,13 +1016,27 @@ async function heartbeat() {
                     res: s.resolution,
                     fps: Math.round(s.measuredFps),
                   }))
-            : T('onb.s1.cam-bad-detail'));
+            // **A refused permission is told apart from a camera that will
+            // not open**, and this is the screen where it matters most:
+            // whoever is here is setting the monitor up for the first time,
+            // in front of this machine, so it is the one moment when the
+            // remedy is two clicks away. The generic line would send them to
+            // check a cable.
+            : T(s.cameraDenied ? 'onb.s1.cam-denied-detail' : 'onb.s1.cam-bad-detail'),
+          s.cameraDenied ? 'ms-settings:privacy-webcam' : '');
 
-    const micOk = s.microphoneActive && s.micHealth !== 'digital-silence';
+    // The microphone's half is already live — `microphoneActive` is the
+    // capture's own answer — and the refusal is added for the reason it is
+    // added above: it is immediate, where the grace that covers a planned
+    // reopen is two seconds wide, and it is the one that carries a cause.
+    const micOk = !s.microphoneDenied && s.microphoneActive &&
+      s.micHealth !== 'digital-silence';
     checkRow('r-mic', micOk,
           T(micOk ? 'onb.s1.mic-ok' : 'onb.s1.mic-bad'),
           T(micOk ? (s.rawAudio ? 'onb.s1.mic-raw' : 'onb.s1.mic-filtered')
-                  : 'onb.s1.mic-bad-detail'));
+                  : s.microphoneDenied ? 'onb.s1.mic-denied-detail'
+                  : 'onb.s1.mic-bad-detail'),
+          s.microphoneDenied ? 'ms-settings:privacy-microphone' : '');
 
     // **The illustration's bars follow nothing any more**: they are a drawing,
     // and the reason sits next to `@keyframes wave`. The server's measurement is

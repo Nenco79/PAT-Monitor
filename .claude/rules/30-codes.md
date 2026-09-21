@@ -179,6 +179,51 @@ apocope of *poco*, and it really does take an apostrophe.
 `TestTheInterfaceHasOneApostrophe` reads the embedded catalogues rather than a
 list of languages, so one added tomorrow is covered with nothing to remember.
 
+**The tray's status block is sentence case, and getting there is the point.**
+The lines in the notification area's panel open with a capital — `Telecamera:
+nessuna immagine`, `Microfono: permesso disattivato`, `Spettatori: 1 ·
+dispositivi registrati: 2`, `Attivo da 2h14m` — and so does everything else the
+tray says: `tray.note.`, `tray.verdict.`, `tray.where.`.
+
+**They did not, and nobody had decided that either.** They were a **readout** —
+`thing: state`, the shape of a gauge — opening lower case, in forty entries
+across five languages, following a convention **nobody had written down**. It is
+defensible on its own: the same fact is a sentence in the page's banner,
+`Nessuna immagine dalla telecamera`, and a reading under the pointer. What is
+not defensible is that it had never been chosen.
+
+**German is the control, and it reads the same way in both directions.** Under
+the old rule its eight fault lines were the only capitalised ones — correctly,
+because every one of them opens on a noun — while its one line beginning on an
+adverb, `aktiv seit`, was lower case like everyone else's. Under the new one
+German needed **one change of ten**, and the other four languages needed ten of
+ten: the language that looked like the exception turns out to have been there
+already.
+
+**And the change made the rule guardable, which the old one could not be.** *No
+forced capital* depends on whether that word in that language takes one, which
+is not decidable from a string — a check on the first letter would have accused
+eight correct German entries, and one carrying a list of languages that
+capitalise nouns is the guard that absolves everything it has never met. Sentence
+case depends on **position** and nothing else, so
+`TestEveryStatusLineOpensWithACapital` holds it in every language.
+**A convention became checkable by becoming stricter**, which is the reverse of
+how these usually go, and it is the reason it was worth doing rather than
+merely writing the old one down.
+
+**`tray.viewers.` stays lower case, and it is the boundary somebody will
+otherwise "fix" next.** Those three are **fragments**, not lines: `summary`
+joins one onto the end of a `tray.where.`, so a capital there would put
+`· 1 Spettatore` in the middle of a sentence. The guard skips that prefix by
+name, with this argument beside it.
+
+**And it settled a thing that had been left open.** The tooltip shows either a
+`tray.note.` — a sentence, with a full stop — or, when there is none, a
+`tray.fault.`; under the same pointer, in the same pixel. They used to disagree
+about their first letter, which is the one thing a reader notices there. They no
+longer do. **What still differs is the full stop**, and that is right: a
+sentence ends and a reading does not.
+
 **And where the two languages disagree on a tense, one of them is wrong — it is
 the future one.** It found three: `viewer.mic.insecure` promised in English that
 the browser *will not* grant the microphone while the Italian said it *does

@@ -584,6 +584,107 @@ characters `internal/qr` does not engrave, and then not even the code's space is
 kept: a gap in the middle of the panel reads as an image that has not finished
 loading.
 
+#### A notice gets the rows it needs, and an answer sits under its question
+
+Everything in this panel is centred, which is argued where the drawing of it is;
+the price is that **a line too long for its rectangle loses its first word and
+its last**, and reads as a line. That is the worst way to be truncated — one
+cannot even tell something is missing — and the panel knew it in one place only:
+the note beside the icon buttons' fallback says exactly that, about a label
+almost nobody ever sees.
+
+**Measured at 96 dpi against the 236 px of a full-width row**, in all five
+catalogues, it was reachable in eight places:
+
+| | |
+|---|---|
+| `tray.fault.remote-no-ingress` | **447** px in German, 434 in English, 408 in French |
+| `tray.fault.no-password` | over in **all five** languages, 259 to 351 px |
+| `tray.fault.mic-filtered` | over in English (251) and Spanish (247) |
+| the confirmation titles | over in Spanish, French and Italian |
+| the widest command label | `Beenden und Monitor ausschalten`, **210** — 26 px of room |
+
+**That last row said 236 — *exactly* the room — and it was wrong**, which is
+worth more than the row. The guard that produced it built `fontGhost` at
+`tBody`, two points above the `tUI` the panel draws it with, so it measured a
+label nobody sees; and it is the very trap the guard beside it names in its own
+comment, *measuring them with the lines' font would say they fit when they do
+not*. It errs strict, so it never went green over a defect — **what it did was
+publish a number**, and a number taken with the wrong instrument is the one kind
+of error this file cannot absorb. The fonts are `create`'s now, and the same fix
+found a second half: `tray.confirm.yes` is the panel's one pill with a word of
+ours on it, so it is drawn two points *larger* than its neighbour "No" and was
+being measured two points small — that half erred lax. Found by a review, not by
+a test: **a guard cannot check the instrument it is made of.**
+
+**The one that matters is the fourth row.** `tray.confirm.revoke.title` is the
+question asked before cutting off everybody who is watching — *¿Desconectar
+todos los aparatos?* — and on one row, in three of the five languages, it was
+cut at both ends. A destructive command was asking its question in a sentence
+nobody could read.
+
+**An ellipsis was put there first, and it was the wrong repair.** It makes the
+cut visible, and what was wanted was the sentence: these lines are the answer to
+the question the panel is opened for, and half an answer is not one. So the
+status lines **wrap**, into as many rows as `measureLines` measures for them,
+and the ellipsis stays underneath as the floor for whatever does not fit even
+there.
+
+**`maxStatusRows` is three, and it is measured rather than chosen.** Two was the
+guess, and it was made by dividing a width by a width — which is not how text
+wraps. English's `remote-no-ingress` is *narrower* than German's and needs one
+row more, because it breaks into *access from outside: open, but / nothing gets
+through from the / Internet* while the German happens to break in two. The three
+confirmation titles need the third row for a different reason: they are drawn in
+the pill's font, 16 at weight 600. **A cap derived from an arithmetic that does
+not model the mechanism is a cap that is wrong in the cases nobody predicted**,
+and here the guard found all four within a second of being written.
+
+What the cap is for is the panel and not the sentence: these lines sit above the
+QR code, so every row they take pushes the code, the address and every command
+down, and a notice free to grow makes a panel that no longer fits beside the
+icon. `TestEveryStatusLineFitsTheRowsItIsGiven` keeps the two in step, in every
+language, because **what overflows is a translation and not the base.**
+
+**And wrapping brought a defect of its own, in the one line that is not a
+sentence.** The counters are a pair of facts joined by a middot, and the wrap
+broke *aparatos registrados:* from its *3*, leaving a row carrying a lone digit
+— which reads as a fault rather than as a number. The space before each
+placeholder is non-breaking now, in all five catalogues: **a figure is not
+separable from the label that names it**, and that is a typographic fact rather
+than a change of wording, so not one sentence moved.
+
+**The commands do not wrap and must fit**, because a button has one height and a
+taller one among the others is a crooked column. The ellipsis is there
+underneath — it has to be, since `tray.menu.todo` carries Tailscale's own
+sentence and **a line is not a width**: `firstLine` takes one line of it and it
+had been drawing `ve this machine in the Tailscale` for as long as it had
+existed. But **an ellipsis on a word somebody chose is a word chosen badly**, so
+`TestEveryCommandLabelFitsThePanel` measures the ones that are ours.
+
+**And a command that answers a line goes under that line.** `flyCmd.lead` is the
+one row between the status and the code, and there is exactly one user: the
+Windows settings page for a permission the notice has just declared off. In the
+column at the bottom it sat four rows from the sentence it belongs to, with the
+code and the address in between, where it reads as belonging to the address. It
+is deliberately not a general slot — a second one would be a second main answer,
+and the panel has one.
+
+**It wears no pill**, and that is *One mark for one thing* met from the other
+side: the focus falls on the first command, which is this one, and the selected
+command already wears the accent. A filled pill on top of that is two marks for
+the same thing. The pill stays with the tunnel's step, which is a different
+question and is the one thing the monitor is waiting on somebody for.
+
+**Every one of these was found by looking**, and most of them only by looking:
+the arithmetic in `layout` is right in every one of those panels, and
+`TestEveryTrayKeyIsInEveryCatalogue` is green over a line missing its first
+word. `TestLookAtThePanel` is the instrument — `PATMON_LOOK=<folder>`,
+`PATMON_LOOK_LANG=<tag>`, one PNG per state — and it is kept for the reason the
+pulse's is: **what a photograph answers, no assertion about the same panel
+does.** The guards came after it, and each one is what the photograph taught
+written down so that nobody has to take it again.
+
 #### Two folders are two glyphs, and the word stays on the control
 
 The two commands that open the clips folder and the log folder are **two glyphs

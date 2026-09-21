@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/go-ole/go-ole"
+
+	"patmonitor/internal/wincom"
 )
 
 // TestTheCodeOfAVanishedDeviceIsNamed is the one this file was written for.
@@ -80,5 +82,40 @@ func TestANonCOMErrorPassesThrough(t *testing.T) {
 	}
 	if !errors.Is(got, sentinel) {
 		t.Error("the chain was broken, so errors.Is no longer reaches the cause")
+	}
+}
+
+// **The refusal of a permission leaves this package as a value.**
+//
+// It is the one HRESULT here that whoever is upstream has to *decide* on rather
+// than print: a microphone the user has taken away is not a microphone that has
+// broken, and the two want different words on the page and different remedies.
+// The reading of the number lives in `internal/wincom`, because the video path
+// meets the same refusal through an unrelated call and a constant spelled at
+// both sites is a constant that can be wrong at one of them.
+//
+// **Verified to catch**: with the branch removed from `describeAudclnt`, the
+// first assertion fails — and what that failure describes is the monitor
+// announcing "the microphone is missing" about a microphone that is plugged in
+// and working.
+func TestTheRefusalOfPermissionLeavesAsAValue(t *testing.T) {
+	err := describeAudclnt(ole.NewError(0x80070005))
+	if !wincom.Denied(err) {
+		t.Errorf("E_ACCESSDENIED does not come out as a refusal: %v", err)
+	}
+	// This function's own rule, which the refusal does not get to break: the
+	// hexadecimal is what whoever reads the log at night types into a search
+	// box.
+	if got := err.Error(); !strings.Contains(got, "0x80070005") {
+		t.Errorf("the message %q has lost the code", got)
+	}
+
+	// And the codes this package meets every day are not refusals of anything:
+	// a predicate that said yes to all of them would file an unplugged
+	// microphone as a revoked permission.
+	for _, code := range []uintptr{0x88890004, 0x88890027, 0x88890019} {
+		if wincom.Denied(describeAudclnt(ole.NewError(code))) {
+			t.Errorf("0x%08X reads as a refusal of permission", code)
+		}
 	}
 }

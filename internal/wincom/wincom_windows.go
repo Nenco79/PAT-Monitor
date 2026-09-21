@@ -1,6 +1,7 @@
 //go:build windows
 
-// Package wincom holds the one reading of what CoInitializeEx returned.
+// Package wincom holds the readings of COM's answers that must not be made
+// twice, starting with what CoInitializeEx returned.
 //
 // **A non-zero HRESULT is not automatically a fault**, and go-ole reports an
 // error for every HRESULT that is not zero. Three outcomes come back and they
@@ -8,6 +9,11 @@
 // its own: written in several places it drifts, and it drifts silently. The
 // count is kept by TestNobodyReadsTheOutcomeOnTheirOwn, which reads the syntax
 // tree rather than trusting a sentence written here.
+//
+// **The second reading is E_ACCESSDENIED**, and it is here for the same reason
+// rather than out of any kinship with the first: video capture and audio
+// capture meet that refusal through two unrelated calls, and a number spelled
+// at both sites is a number that can be wrong at one of them. See ErrDenied.
 package wincom
 
 import (
@@ -219,3 +225,47 @@ func Code(err error) uintptr {
 	}
 	return 0
 }
+
+// eAccessDenied is E_ACCESSDENIED, the HRESULT Windows answers with when a
+// capability is switched off.
+//
+// **The number lives here once**, and the two capture paths ask rather than
+// spell it: internal/mf meets it coming out of IMFActivate::ActivateObject and
+// internal/audio coming out of IMMDevice::Activate, which are two calls into
+// two different subsystems answering the same refusal. Written at both sites it
+// would be one constant with two spellings, and the day one of them is wrong
+// the symptom is a monitor that reports a broken camera instead of a revoked
+// permission.
+const eAccessDenied = 0x80070005
+
+// ErrDenied is Windows refusing the device because permission is off.
+//
+// **It is a state, not a fault**, and that is the whole reason it exists as a
+// value one can test for rather than as a sentence in a log. Camera and
+// microphone are consented to and the consent can be withdrawn at any moment —
+// from Settings, by whoever administers the machine, or by a Windows update
+// resetting *"let desktop apps access your camera"* — so the refusal is
+// something the monitor has to be able to say out loud and point at a remedy
+// for. Everything downstream of it hangs off this: the alert code, the word in
+// the catalogues, and the one command in the notification area that opens the
+// page where the switch is.
+//
+// Whoever produces it wraps it, so the HRESULT and the call that met it stay in
+// the message: the sentinel says what kind of refusal it is, not where it came
+// from.
+var ErrDenied = errors.New("Windows refused access to the device (E_ACCESSDENIED)")
+
+// Denied reports whether an error is that refusal.
+//
+// It answers for both shapes, and it has to: the HRESULT as go-ole hands it
+// over, and the wrapped sentinel, which is what travels once a capture path has
+// turned the COM error into one of its own. A caller that tested only the first
+// would stop recognising the refusal the moment somebody added an fmt.Errorf in
+// between — that is, it would go green and blind on the same edit.
+func Denied(err error) bool {
+	return errors.Is(err, ErrDenied) || DeniedHRESULT(Code(err))
+}
+
+// DeniedHRESULT reports whether a bare return code is that refusal. It is for
+// whoever holds the HRESULT itself and has not made an error out of it yet.
+func DeniedHRESULT(code uintptr) bool { return uint32(code) == eAccessDenied }

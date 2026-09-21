@@ -154,6 +154,7 @@ a heading to its file, `grep -rn` the heading.
   - The microphone is chosen, and the box says what is being captured
   - The camera is chosen while the monitor watches, and choosing is reopening
   - A chosen camera that is gone does not stop the monitor
+  - A permission Windows has taken away is a state, not a fault
   - The picture stopping is a fault, and `Ready` cannot say so
   - A shutdown that does not finish keeps the camera
   - Codes cross the API, words stay at the edges
@@ -239,6 +240,8 @@ a heading to its file, `grep -rn` the heading.
   - A ceiling the next packet can get round is not a ceiling
   - "Written into the buffer" is not "it was heard"
 - **Recordings are the watcher's files, not the application's data**
+  - The folder is proved by writing in it, and the panel is told where it
+    really is
   - A clip asked for by hand is born kept, and the lock works both ways
   - The red that means something is in the glyph, not in the pill
   - A row of the list is one area
@@ -276,6 +279,7 @@ a heading to its file, `grep -rn` the heading.
     - A shape is composed once, and the centre is not sampled
     - One mark for one thing
     - What is shown is not what is used
+    - A notice gets the rows it needs, and an answer sits under its question
     - Two folders are two glyphs, and the word stays on the control
     - How to look at a panel that closes when you look at it
 - **The pages state what is not normal, and their drawings promise nothing**
@@ -293,6 +297,7 @@ a heading to its file, `grep -rn` the heading.
     - "At home" is not localhost, and the interface is chosen by the system
     - Arrival is declared, not merely reached
     - The explainer is a box, not a step
+    - The box promises, the row beside it explains
     - `hidden` hides nothing if a sheet writes a `display`
     - A class nobody looks up any more does not complain
     - Where the real thing is on the page, its drawing does not explain: it

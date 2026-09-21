@@ -23,6 +23,8 @@ import (
 
 	"github.com/go-ole/go-ole"
 	"golang.org/x/sys/windows"
+
+	"patmonitor/internal/wincom"
 )
 
 var (
@@ -57,6 +59,15 @@ func (h hresult) failed() bool { return h&0x80000000 != 0 }
 func (h hresult) err(op string) error {
 	if !h.failed() {
 		return nil
+	}
+	// **E_ACCESSDENIED is not described here, it is wrapped**, and the
+	// difference is the one mfName's own comment argues for E_FAIL: a note
+	// belongs where the code was met, because this function is the single
+	// funnel for every HRESULT in the package. What travels from here is the
+	// bare fact that Windows refused — which that code means wherever it comes
+	// from — and the diagnosis is added by whoever was opening a camera.
+	if wincom.DeniedHRESULT(uintptr(h)) {
+		return fmt.Errorf("%s: HRESULT 0x%08X: %w", op, uint32(h), wincom.ErrDenied)
 	}
 	if name := mfName(uint32(h)); name != "" {
 		return fmt.Errorf("%s: HRESULT 0x%08X (%s)", op, uint32(h), name)

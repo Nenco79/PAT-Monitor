@@ -500,10 +500,32 @@
     </div>
 
     <ul class="results">
+      <!-- The command sits **inside the row it answers**, which is the tray
+           panel's rule met on a page: a permission is refused about the camera
+           or about the microphone, and an affordance three elements away from
+           the sentence that says which reads as belonging to something else.
+           It is the page's own way of saying "go and do this elsewhere" — the
+           same `a.btn` and the same glyph as the three that open Tailscale —
+           because `ms-settings:` really is elsewhere.
+
+           `hidden` is the switch and it works here only because `[hidden] {
+           display: none !important }` sits at the bottom of the sheet: `.btn`
+           writes a `display`, and without that rule the button would be
+           permanently visible with `href="#"`. See the chapter on `hidden`. -->
       <li id="r-cam"><span class="badge wait">&hellip;</span><div><b data-i18n="onb.s1.cam"></b>
-        <small data-i18n="onb.s1.checking"></small></div></li>
+        <small data-i18n="onb.s1.checking"></small>
+        <a class="btn ghost" id="cam-settings" href="#" hidden><svg class="ico" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 6h-6a2 2 0 0 0 -2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-6" />
+            <path d="M11 13l9 -9" />
+            <path d="M15 4h5v5" />
+          </svg><span data-i18n="onb.s1.settings"></span></a></div></li>
       <li id="r-mic"><span class="badge wait">&hellip;</span><div><b data-i18n="onb.s1.mic"></b>
-        <small data-i18n="onb.s1.checking"></small></div></li>
+        <small data-i18n="onb.s1.checking"></small>
+        <a class="btn ghost" id="mic-settings" href="#" hidden><svg class="ico" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 6h-6a2 2 0 0 0 -2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-6" />
+            <path d="M11 13l9 -9" />
+            <path d="M15 4h5v5" />
+          </svg><span data-i18n="onb.s1.settings"></span></a></div></li>
     </ul>
 
     <div class="note warn" data-i18n-html="onb.s1.warn"></div>

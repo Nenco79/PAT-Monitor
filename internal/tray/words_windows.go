@@ -31,7 +31,45 @@ const (
 	FaultMicSilent       Fault = "mic-silent"
 	FaultMicFiltered     Fault = "mic-filtered"
 	FaultRemoteNoIngress Fault = "remote-no-ingress"
+	// FaultCameraDenied and FaultMicDenied: Windows is refusing the device
+	// because the permission is off.
+	//
+	// **They are in the tray before they are anywhere else, because this is the
+	// only place the remedy exists.** Whoever watches from a phone can be told
+	// the camera permission is off and can do nothing whatever about it; the
+	// switch is in the Settings of this machine, and whoever is in front of it
+	// is one click away — see privacySetting, which is what turns this code
+	// into that click. It is the argument NoteCameraOther and NoteUpdate
+	// already carry.
+	FaultCameraDenied Fault = "camera-denied"
+	FaultMicDenied    Fault = "mic-denied"
 )
+
+// privacySetting is the Windows page where a refused capability is granted.
+//
+// **The address belongs here and not to whoever composes the state**: it is a
+// Windows shell address, this package is the monitor's Windows presence, and
+// `cmd/pat-monitor` already hands over a code — which is the direction
+// everything else in this file goes.
+//
+// **The word is one and it is not here**, and that is a correction: the command
+// used to carry the device's name, which put *Microphone permission* on a
+// button sitting directly under a line that already says *microphone: permission
+// is off*. The line names the device and the button says what pressing does —
+// the same division the recordings page's lock already makes — so there is one
+// entry, `tray.menu.permission`, and it is shorter, which the panel notices.
+//
+// An empty answer means there is nothing to grant, and then there is no command:
+// a panel entry that does nothing is worse than a shorter panel.
+func privacySetting(f Fault) string {
+	switch f {
+	case FaultCameraDenied:
+		return "ms-settings:privacy-webcam"
+	case FaultMicDenied:
+		return "ms-settings:privacy-microphone"
+	}
+	return ""
+}
 
 // Note is a condition worth saying that is not a fault.
 type Note string
@@ -84,6 +122,7 @@ func AllFaults() []Fault {
 	return []Fault{
 		FaultNoPassword, FaultCaptureStopped, FaultMicMissing,
 		FaultMicSilent, FaultMicFiltered, FaultRemoteNoIngress,
+		FaultCameraDenied, FaultMicDenied,
 	}
 }
 

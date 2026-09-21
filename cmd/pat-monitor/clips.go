@@ -42,11 +42,14 @@ const pruneInterval = time.Hour
 // instead of deducing.
 //
 // An empty `videos` means "the system did not answer", and then the clips go
-// back next to the configuration. **The fallback is a folder we know is
-// writable**: the log and the Tailscale node's identity already live down there,
-// so if it could not be written the monitor would have bigger problems than a
-// clip. The parameter exists so that the choice can be tested both ways without
-// a rigged machine — the question to the system, from here, always answers.
+// back next to the configuration. **The fallback is the folder we used to
+// use**: the log and the Tailscale node's identity already live down there. The
+// parameter exists so that the choice can be tested both ways without a rigged
+// machine — the question to the system, from here, always answers.
+//
+// **This composes a name and asserts nothing about it.** Whether that folder
+// can be written to is a different question and is asked by `clipsFolder`, by
+// writing.
 func clipsDir(videos, cfgPath string) string {
 	if videos == "" {
 		return filepath.Join(filepath.Dir(cfgPath), "video")
@@ -56,6 +59,51 @@ func clipsDir(videos, cfgPath string) string {
 	// folder with somebody's films inside it** — that is, the kind of name that
 	// cannot be changed without leaving files behind.
 	return filepath.Join(videos, version.Product)
+}
+
+// clipsFolder is the folder the clips really go into.
+//
+// **The videos folder is chosen by writing in it, not by being told about it.**
+// `SHGetKnownFolderPath` answers with a path for a program that has no right to
+// touch it — under MSIX the videos library is a capability, and a package that
+// has not declared it gets exactly that: a folder that exists and a write that
+// fails. Asked here, at start-up, the refusal still changes which folder is
+// used; asked by the first clip, it is a recording lost at three in the
+// morning. The proof itself is `provenDir`'s, and this is the one caller of it
+// that has a second folder to fall back on.
+//
+// **The fallback is proved too, and it is still taken when the proof fails.**
+// It is where the log and the node's identity already live, so a machine that
+// cannot write there has troubles a clip is not going to reveal; what the
+// second attempt buys is the **resolution** — the path Explorer has to be given
+// — which is the part packaging changes. Refusing to record because a folder
+// could not be proved would be the one answer worse than recording into a
+// folder that turns out to be read-only: a baby monitor that will not watch
+// because there is nowhere to put the films.
+//
+// `prove` is handed in rather than called by name for the reason that governs
+// every function here that touches the disk: it interrogates the operating
+// system, so inside this one it would run on the disk of whoever runs the
+// tests — and both of its directions are branches that decide where somebody's
+// recordings go.
+func clipsFolder(videos, cfgPath string, prove func(string) (string, error), log *slog.Logger) string {
+	if videos != "" {
+		want := clipsDir(videos, cfgPath)
+		real, err := prove(want)
+		if err == nil {
+			return real
+		}
+		log.Warn("the videos folder cannot be written to, the recordings will "+
+			"stay next to the configuration", "dir", want, "error", err)
+	}
+	fallback := clipsDir("", cfgPath)
+	real, err := prove(fallback)
+	if err != nil {
+		log.Warn("the recordings folder cannot be written to and is used anyway: "+
+			"a clip will say so when it fails", "dir", fallback, "error", err)
+		return fallback
+	}
+	return real
 }
 
 // oldClipsDir is where the clips lived before 3 September 2026.
@@ -102,15 +150,18 @@ func tellAboutOldClips(dir string, now *record.Store, log *slog.Logger) {
 // of whoever applies the rule, and translating twice is the way to translate
 // once badly.
 //
-// **The videos folder arrives from outside, and whoever starts up asks the
-// system for it.** Asked from in here, `videosDir` answers the **tests** too:
+// **The folder arrives already decided, and whoever starts up decides it.**
+// Asked from in here, the question would reach the **tests** too:
 // `TestTheRetentionKeysReachTheStore` wrote four megabytes of fake clips into
 // the developer's real Videos folder, and passed green. A test that touches the
 // disk of whoever runs it is not a matter of style — and this one put files
 // there with the right names, that is, things the monitor would then have listed
 // as recordings. **Looking at the folder** found it, not the code nor the tests.
-func clipStore(cfg config.Config, videos string, log *slog.Logger) *record.Store {
-	return record.NewStore(clipsDir(videos, cfg.Path()), record.StoreConfig{
+// It used to take the videos folder and compose the rest; it takes the whole
+// folder now, because choosing it stopped being a join and became a proof — see
+// `clipsFolder`.
+func clipStore(cfg config.Config, dir string, log *slog.Logger) *record.Store {
+	return record.NewStore(dir, record.StoreConfig{
 		MaxBytes: int64(cfg.ClipsMaxMB) << 20,
 		MaxAge:   time.Duration(cfg.ClipsMaxDays) * 24 * time.Hour,
 		Log:      log,

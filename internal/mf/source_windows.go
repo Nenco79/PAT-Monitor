@@ -167,6 +167,12 @@ func newSourceReader(link string, dev *D3DDevice) (*SourceReader, error) {
 
 	src, err := act.activateObject(iidIMFMediaSource)
 	if err != nil {
+		// **A refusal comes out of here and not out of the enumeration**: the
+		// device was in the list a line above, and the object behind it will
+		// not be built. What that means for a baby monitor is said by
+		// internal/pipeline, which is the one place that knows there is a
+		// microphone in the same refusal — see deniedNote there. Here the fact
+		// travels, wrapped by the HRESULT funnel.
 		return nil, fmt.Errorf("camera open: %w", err)
 	}
 	defer src.Release()

@@ -1256,6 +1256,77 @@ drawn four times with different proportions, leafing through the steps it read
 as four houses instead of as **the** house. No animation carries information,
 and `prefers-reduced-motion` switches them all off with no loss.
 
+#### The box promises, the row beside it explains
+
+The check screen has two rows — camera, microphone — each with a detail that
+appears only when that row is bad, and under them a `note warn` box that is
+always there. **They are two jobs and the screen had them muddled.**
+
+The box carried an example: *on a laptop it happens when you close the lid: the
+microphones go, the camera does not.* That sentence was **already on the same
+screen, word for word**, as `onb.s1.mic-bad-detail` — which is where it belongs,
+because that is the row it explains and it appears exactly when it applies.
+Nothing said so: a duplicate reads perfectly well in a diff of one file, and the
+only thing that finds it is reading the screen from the top as its reader does.
+
+**And the box asserted its invariant in one direction only.** *If the microphone
+turned out to be missing, the monitor would carry on showing the picture* — true,
+and half of what the code guarantees: the two lives do not switch each other off
+either way round, and `runVideo` failing must not silence the microphone any
+more than the reverse. The lid is why the half was never noticed: it is a cause
+that can only go one way, taking the microphones and leaving the camera, so an
+example chosen from it cannot state the rule it is an example of.
+
+**What made the missing half reachable is the chapter above this one.** A
+revoked permission is two separate switches in Windows, so the camera can go
+while the microphone stays — the direction no lid produces. The rule had been
+half-written since before there was a way to reach the other half.
+
+So the division is: **the box states the promise, in both directions and with no
+example; the rows state the causes, each where it applies.** The permission's own
+explanation is a row detail for the same reason, and it sits three lines above
+the box — which is the other thing that made the example redundant.
+
+**And the command that acts on a cause goes in that cause's row.** The Windows
+settings page is offered as an `a.btn.ghost` inside the row, with the glyph the
+three Tailscale links already use, because `ms-settings:` really is elsewhere.
+It is the tray panel's rule met on a page: an affordance three elements away
+from the sentence saying *which* of the two devices was refused reads as
+belonging to something else — and here there can be **two** of them at once,
+since the permissions are two switches, so the row is the only thing that says
+which is which.
+
+**It appears only where it can work.** `ms-settings:` is a Windows shell
+address, so from a phone it does nothing, and a dead affordance on the screen
+that is diagnosing a fault is worse than none: the reader cannot tell a link
+that did nothing from a permission that did not take. The test is
+`location.hostname` being a loopback one, which is sound because this page is
+served by the monitor itself — a loopback host means the browser is on the
+machine the permission belongs to. Opening the path by its home address **from
+that same machine** answers no, and that false negative is the direction to err
+in: it costs the button and keeps the sentence.
+
+**Which is why the sentence names the page rather than commanding it.** It used
+to read *Open Settings › Privacy & security › Camera and turn camera access on* —
+a command, which beside a button that is also a command is the same instruction
+twice, and on a phone is the only one there is. It states where the switch is
+now, and the button offers to go: **the line names the thing, the command says
+what pressing does**, which is the division the recordings page's lock and the
+tray's own notice both already make.
+
+**`hidden` is the switch, and it works here only because of a rule elsewhere.**
+`.btn` writes a `display`, which beats the attribute; what saves it is
+`[hidden] { display: none !important }` at the bottom of the sheet — the chapter
+below this one, met from the side where it would have left a button permanently
+visible with `href="#"`.
+
+**No guard, and the argument is the alerts chapter's own**: what would have to be
+checked is whether two sentences on one screen say the same thing, and whether an
+invariant is stated in as many directions as the code holds it. Neither is a
+property of a string. What protects it is that the same rule is written twice,
+once as code in `Run` and once as prose here, so writing the second is the moment
+to read the first.
+
 #### `hidden` hides nothing if a sheet writes a `display`
 
 `[hidden] { display: none }` lives in the **browser's default sheet**, and any

@@ -256,6 +256,31 @@ type Pipeline struct {
 	// inferred from the silence.
 	audioOK atomic.Bool
 
+	// camDenied and micDenied say Windows refused the device on the last
+	// attempt, which is a different thing from the device not working.
+	//
+	// **They exist because a withdrawn permission is a normal state and not a
+	// fault**, and nothing in this file could tell the two apart: a camera the
+	// user has revoked and a camera that will not open both arrived as "the
+	// capture is not starting", retried every thirty seconds for ever with the
+	// log naming an HRESULT nobody reads. Camera and microphone are consented
+	// to on Windows 11, the consent can be taken away while the monitor runs —
+	// from Settings, by whoever administers the machine, or by an update
+	// putting *"let desktop apps access your camera"* back to off — and the
+	// remedy is two clicks on a page this program can open.
+	//
+	// They are two flags and not one because the two permissions are separate
+	// switches: a machine can refuse the microphone and grant the camera, which
+	// is a monitor that shows a room it cannot hear, and saying "permission
+	// denied" without saying which would leave whoever reads it to go and look.
+	//
+	// **They follow the evidence and hold no history.** Each is set from the
+	// error the last attempt ended with and cleared the moment the device
+	// opens, so the state cannot outlive the refusal — the way a latch would,
+	// leaving an alert lit all night over a permission granted back in a
+	// second.
+	camDenied, micDenied atomic.Bool
+
 	// micGraceUntil is until when a closed microphone must **not** be reported
 	// as absent: the window of a reopen we decided on. See micRecheckGrace.
 	micGraceUntil atomic.Int64
@@ -658,6 +683,20 @@ func (p *Pipeline) Camera() Camera {
 // CameraIsFallback says the camera being captured is not the one that was
 // chosen, that is, the chosen one is not connected.
 func (p *Pipeline) CameraIsFallback() bool { return p.camFellBack.Load() }
+
+// CameraDenied and MicrophoneDenied say Windows is refusing the device because
+// the permission is off.
+//
+// **They are asked separately from "is it capturing?" and they have to be**: a
+// refused camera delivers no frames and a refused microphone reports no level,
+// so from those two numbers alone a revoked permission is indistinguishable
+// from a broken cable. These answer the question the other two cannot, and they
+// are what lets the interface say *the camera permission is off* instead of
+// *no images from the camera*, which is true and leads nowhere.
+func (p *Pipeline) CameraDenied() bool { return p.camDenied.Load() }
+
+// MicrophoneDenied says Windows is refusing the microphone. See CameraDenied.
+func (p *Pipeline) MicrophoneDenied() bool { return p.micDenied.Load() }
 
 // camWantedLink is the link of the camera we want to open.
 func (p *Pipeline) camWantedLink() string {
@@ -1917,6 +1956,23 @@ func (p *Pipeline) Run(ctx context.Context, sinks Sinks) error {
 			backoff = minBackoff
 			continue
 		}
+		// **What Windows refused is read off the attempt that just failed**, and
+		// it is stored even when it is false: the flag says what the last try
+		// met, so a permission granted back while the camera would not open for
+		// some other reason does not leave the alert behind it.
+		//
+		// **The line comes out when the state changes, not on every retry.** A
+		// refused camera is retried every thirty seconds for as long as the
+		// monitor runs, and a sentence repeated all night is a log in which
+		// nothing that happened once can be found — the rule the camera's own
+		// open already follows a few hundred lines below.
+		if denied := wincom.Denied(err); p.camDenied.Swap(denied) != denied && denied {
+			p.cfg.Log.Error("the camera permission is off: Windows is refusing the "+
+				"device, and there will be no picture until it is granted",
+				"where", "Settings > Privacy & security > Camera",
+				"note", "a desktop program also needs \"let desktop apps access your camera\"",
+				"error", err)
+		}
 		if err != nil {
 			p.cfg.Log.Error("capture interrupted, restarting",
 				"ran_for", ran.Round(time.Millisecond), "waiting", backoff, "error", err)
@@ -2161,6 +2217,16 @@ func (p *Pipeline) superviseAudio(ctx context.Context, sinks Sinks) {
 			p.micGraceUntil.Store(time.Now().Add(micRecheckGrace).UnixNano())
 			backoff = time.Second
 			continue
+		}
+		// The microphone's half of what Run reads for the camera, and by the
+		// same two rules: the flag says what the last attempt met, and the line
+		// comes out on the change rather than on every retry. See camDenied.
+		if denied := wincom.Denied(err); p.micDenied.Swap(denied) != denied && denied {
+			p.cfg.Log.Error("the microphone permission is off: Windows is refusing "+
+				"the device, and the room cannot be heard until it is granted",
+				"where", "Settings > Privacy & security > Microphone",
+				"note", "a desktop program also needs \"let desktop apps access your microphone\"",
+				"error", err)
 		}
 		if wasActive {
 			p.cfg.Log.Warn("audio interrupted, retrying", "error", err)
@@ -2457,6 +2523,12 @@ func (p *Pipeline) runVideo(ctx context.Context, sinks Sinks) error {
 	if err != nil {
 		return fmt.Errorf("camera open: %w", err)
 	}
+	// **The refusal is cleared here and not when the session ends**, which is
+	// the whole difference between a state and a latch: a permission granted
+	// back at two in the morning must take the banner off the phone at the next
+	// open, not at the next fault. Whoever set it is the supervisor, on the
+	// attempt that failed — see Run.
+	p.camDenied.Store(false)
 	defer reader.Release()
 
 	// **The pinning is asked for and its outcome is written, never assumed.**
@@ -3277,6 +3349,10 @@ func (p *Pipeline) runAudio(ctx context.Context, sinks Sinks) error {
 		audio.Options{DeviceID: wanted, Raw: true, FallbackOnRawFailure: true},
 		func(s audio.Stream) error {
 			p.rawMode.Store(s.RawMode)
+			// The endpoint opened, so whatever Windows was refusing it is not
+			// refusing now. See camDenied for why this is cleared at the open
+			// and not at the end of a session.
+			p.micDenied.Store(false)
 			// **Only whoever opened it knows what opened.** The name is not the
 			// chosen one: if the chosen microphone is no longer there, WASAPI
 			// opens the default, and the status page has to say what is

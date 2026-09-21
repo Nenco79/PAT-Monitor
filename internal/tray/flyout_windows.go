@@ -181,6 +181,18 @@ type flyCmd struct {
 	// other is the same thing done to two places — and not a way of making
 	// things fit. Whoever lays out merely divides the width.
 	share bool
+	// lead says this command is drawn between the status lines and the QR code
+	// instead of in the column at the bottom.
+	//
+	// **It is for a command that answers the line above it**, and there is one:
+	// the Windows settings page for a permission the notice has just declared
+	// off. Down in the column it would be four rows away from the sentence it
+	// belongs to, with the QR code and the address in between — measured by
+	// looking, which is the only instrument for this.
+	//
+	// It is deliberately not a general slot: `layout` gives it a single row,
+	// because a second one would be a second main answer and the panel has one.
+	lead bool
 	// stays says the panel does not close when this command runs.
 	//
 	// **There is one, and it is the confirmation's "No"**, which puts the panel
@@ -220,12 +232,21 @@ type flyout struct {
 
 	lines []string
 	// body is the long text of the confirmation question. **It wraps**, and
-	// that is why it is separate from the lines: those are one line each by
-	// construction, this is not — and placed among them it was cut in half
-	// without saying so, on the very sentence warning that the operation cannot
-	// be undone.
+	// that is why it is separate from the lines: those wrap over two rows at
+	// most, this one over as many as it needs — and placed among them it was cut
+	// in half without saying so, on the very sentence warning that the operation
+	// cannot be undone.
 	body  string
 	bodyH int32
+	// lineH is how tall each status line is, in pixels: one row, or two when the
+	// sentence does not fit in one.
+	//
+	// **It is measured, in `rebuild`, and read by `layout`**, which has three
+	// readers of its own and no device context to ask. Empty means nobody has
+	// measured yet, and then every line is worth one row — which is the shape
+	// the panel had before, so the fallback is the old behaviour and not a
+	// guess.
+	lineH []int32
 	cmds  []flyCmd
 	// buttons are the live controls, and they sit **outside cmds** on purpose.
 	//
@@ -362,6 +383,32 @@ func (f *flyout) compose(st Status) {
 	f.body = ""
 	f.cmds = nil
 
+	// **A permission Windows is refusing is answered directly under the line
+	// that states it**, and that is the whole reason `lead` exists: the notice
+	// says *microphone: permission is off* and the command under it says what
+	// pressing does. Anywhere else in the column it is a command about a
+	// sentence four rows above it — the first version landed between the QR
+	// code and the address, which reads as belonging to the address.
+	//
+	// **It is drawn like every other command and it is given the focus**, which
+	// is the panel's own rule about marks: the selected command already wears
+	// the accent, so a filled pill on top of it would be two marks for one
+	// thing — and the pill is the *tunnel's* step, which is a different
+	// question and keeps it. The focus falls here by construction, because
+	// `initialFocus` takes the first command and this one is first.
+	//
+	// It is the one case where this panel is the **only** place the thing can be
+	// done: the switch is in this machine's Settings, so whoever watches from a
+	// phone can be told about it and can do nothing whatever. It is the argument
+	// that already keeps the password reset and the session revocation off the
+	// HTTP routes.
+	if url := privacySetting(st.Fault); url != "" {
+		f.cmds = append(f.cmds, flyCmd{
+			label: t.t("tray.menu.permission"),
+			lead:  true,
+			do:    func() { t.open(url) },
+		})
+	}
 	// **What is missing comes first**: if there is a step to take, that is why
 	// the panel was opened, and it is the only one that deserves the filled
 	// pill. If nothing is missing the panel has no main action, and then none is
@@ -741,6 +788,10 @@ func (f *flyout) rebuild() {
 	// right question put to whoever will actually draw it.
 	w, _ := f.measure()
 	f.bodyH = f.bodyHeight(w - 2*f.px(flyPadding))
+	// The status lines are measured for the body's reason and in the body's
+	// place: what wraps and what does not depends on the font, the DPI and the
+	// language, and DT_CALCRECT is the question put to whoever will draw it.
+	f.measureLines(w - 2*f.px(flyPadding))
 	w, h := f.measure()
 
 	// **The position is not computed by us.** `CalculatePopupWindowPosition` is
@@ -861,6 +912,9 @@ func (f *flyout) cmdHeight(c flyCmd) int32 {
 // monitor to a phone — and sits with the others.
 type layout struct {
 	linesY, bodyY, qrY, cmdY, total int32
+	// leadY is where the lead command goes, and -1 when there is none. It is a
+	// sentinel and not a zero because zero is a legal y inside this panel.
+	leadY int32
 }
 
 func (f *flyout) layout() layout {
@@ -868,7 +922,17 @@ func (f *flyout) layout() layout {
 	y := f.px(flyPadding)
 
 	p.linesY = y
-	y += int32(len(f.lines)) * f.px(flyLine)
+	for i := range f.lines {
+		y += f.lineHeight(i)
+	}
+	// **The lead command belongs to the line above it**, so it is the only
+	// thing that comes between the status and the code. See flyCmd.lead.
+	p.leadY = -1
+	if i := f.leadIndex(); i >= 0 {
+		y += f.px(flyGap)
+		p.leadY = y
+		y += f.cmdHeight(f.cmds[i])
+	}
 	if f.body != "" && f.bodyH > 0 {
 		p.bodyY = y
 		y += f.bodyH
@@ -904,6 +968,9 @@ func (f *flyout) layout() layout {
 func (f *flyout) rows() [][]int {
 	var out [][]int
 	for i, c := range f.cmds {
+		if c.lead {
+			continue // it has a row of its own, above the code
+		}
 		if c.share && len(out) > 0 {
 			out[len(out)-1] = append(out[len(out)-1], i)
 			continue
@@ -911,6 +978,21 @@ func (f *flyout) rows() [][]int {
 		out = append(out, []int{i})
 	}
 	return out
+}
+
+// leadIndex is the command drawn above the code, or -1.
+//
+// **It is derived from the commands and not kept beside them**, which is the
+// same rule `rows` follows: a second field saying which one leads is a second
+// list, and the day it disagrees the panel lays out a button nobody painted.
+// There is at most one, and the first wins — `layout` gives it one row.
+func (f *flyout) leadIndex() int {
+	for i, c := range f.cmds {
+		if c.lead {
+			return i
+		}
+	}
+	return -1
 }
 
 // rowHeight is the height of the tallest command in the row.
@@ -930,7 +1012,13 @@ func (f *flyout) measure() (w, h int32) {
 
 func (f *flyout) place(w int32) {
 	gap := f.px(flyButtonGap)
-	y := f.layout().cmdY
+	p := f.layout()
+	if i := f.leadIndex(); i >= 0 && p.leadY >= 0 && i < len(f.buttons) && f.buttons[i] != 0 {
+		span := f.rowSpans(w, 1)[0]
+		procSetWindowPos.Call(uintptr(f.buttons[i]), 0, uintptr(span[0]), uintptr(p.leadY),
+			uintptr(span[1]), uintptr(f.cmdHeight(f.cmds[i])), swpNoZOrder|swpNoActivate)
+	}
+	y := p.cmdY
 	for _, row := range f.rows() {
 		for k, span := range f.rowSpans(w, len(row)) {
 			i := row[k]
@@ -1306,14 +1394,40 @@ func (f *flyout) paint() {
 	// of centred things read as a piece of another page. The question's body
 	// stays left: that one wraps, and a centred paragraph reads worse with every
 	// extra line.
+	//
+	// **A line too long for its row gets a second row, and the first answer was
+	// to cut it.** Centred and on one row it was cut at *both* ends — the
+	// failure the panel's own icon labels already name, *in the way where one
+	// cannot even tell something is missing* — and it was reachable by three of
+	// the existing fault sentences and not only by a new one: measured at 96
+	// dpi against the 236 px of a row, `remote-no-ingress` is 447 px in German
+	// and 432 in English, and `no-password` is over in all five languages.
+	// Nothing had said so, because a line missing its first word and its last
+	// reads as a line.
+	//
+	// An ellipsis was put there first and it was the wrong repair: **it makes
+	// the cut visible, and what was wanted was the sentence.** These are the
+	// answer to the question the panel is opened for, and half of one is not an
+	// answer. So the rectangle is the one `measureLines` measured, up to
+	// `maxStatusRows`, and the ellipsis stays underneath as the floor for what
+	// does not fit even there.
 	y := p.linesY
-	for i, r := range f.lines {
+	for i, text := range f.lines {
 		font, color := f.fontLine, f.pal.muted
 		if f.pending != nil && i == 0 {
 			font, color = f.fontPill, f.pal.ink
 		}
-		f.drawText(hdc, r, rect{pad, y, rc.Right - pad, y + f.px(flyLine)}, color, font, dtCenter)
-		y += f.px(flyLine)
+		h := f.lineHeight(i)
+		box := rect{pad, y, rc.Right - pad, y + h}
+		if h <= f.px(flyLine) {
+			f.drawText(hdc, text, box, color, font, dtCenter|dtEndEllipsis)
+		} else {
+			// **`DT_VCENTER` is only honoured on a single line**, so a wrapped
+			// one has to be centred by hand: without it the text sits at the
+			// top of its two rows and the gap below reads as a missing line.
+			f.drawWrapped(hdc, text, box, color, font)
+		}
+		y += h
 	}
 
 	// The QR code, below the status: it is a command like the others.
@@ -1335,6 +1449,38 @@ func (f *flyout) paint() {
 		procDrawTextW.Call(hdc, uintptr(unsafe.Pointer(&txt[0])), uintptr(len(txt)-1),
 			uintptr(unsafe.Pointer(&r)), dtWordBreak|dtNoPrefix)
 	}
+}
+
+// drawWrapped draws a status line over more than one row, centred in its box.
+//
+// **It is a second function and not a flag on the first**, because the two
+// cannot share their flags: `DT_SINGLELINE` and `DT_VCENTER` go together and
+// `DT_WORDBREAK` excludes both, so one call with a switch inside it would be
+// two calls wearing one name.
+//
+// The vertical centring is done by measuring and shifting, which is what
+// `DT_VCENTER` would have done: the rows are `flyLine` apart and the text is
+// shorter than that, so without it the sentence sits against the top of its box
+// and the slack collects underneath, where it reads as a line that failed to
+// draw.
+func (f *flyout) drawWrapped(hdc uintptr, s string, r rect, color uint32, font windows.Handle) {
+	if font != 0 {
+		procSelectObject.Call(hdc, uintptr(font))
+	}
+	procSetBkMode.Call(hdc, transparent)
+	procSetTextColor.Call(hdc, uintptr(color))
+	txt, _ := windows.UTF16FromString(s)
+
+	const flags = dtCenter | dtWordBreak | dtNoPrefix | dtEndEllipsis
+	measure := rect{r.Left, r.Top, r.Right, r.Bottom}
+	procDrawTextW.Call(hdc, uintptr(unsafe.Pointer(&txt[0])), uintptr(len(txt)-1),
+		uintptr(unsafe.Pointer(&measure)), flags|dtCalcRect)
+	box := r
+	if slack := (r.Bottom - r.Top) - (measure.Bottom - measure.Top); slack > 0 {
+		box.Top += slack / 2
+	}
+	procDrawTextW.Call(hdc, uintptr(unsafe.Pointer(&txt[0])), uintptr(len(txt)-1),
+		uintptr(unsafe.Pointer(&box)), flags)
 }
 
 func (f *flyout) drawText(hdc uintptr, s string, r rect, color uint32, font windows.Handle, flags uint32) {
@@ -1444,22 +1590,31 @@ func (f *flyout) paintButton(di *drawItemStruct) {
 	}
 	// **What does not fit is cut and said so**, and there are two cases.
 	//
-	// The address comes from outside and can be as long as the installer's
-	// tailnet wants: without the ellipsis it would be cut clean off, and a
-	// truncated address reads as an address — the whole one stays in the
-	// command, which is what gets copied.
+	// **Every label is cut with an ellipsis, and it used to be two of them.**
 	//
-	// **And a `styleIcon` button takes half a row**, and the word written on it
-	// is the fallback for when the engraving fails: "Log folder" does not fit in
-	// a hundred and fifteen points, and centred it would be cut **at both
-	// ends**, that is, in the way where one cannot even tell something is
-	// missing. It is a fallback of a fallback and almost nobody will see it,
-	// which is exactly why the assumption that the commands' labels fit by
-	// construction had to go: whoever reads this line in order to add a command
-	// would take it as true.
-	if c.style == styleText || c.style == styleIcon {
-		flags |= dtEndEllipsis
-	}
+	// The address comes from outside and can be as long as the installer's
+	// tailnet wants; a `styleIcon` button takes half a row, and the word on it
+	// is the fallback for when the engraving fails — "Log folder" does not fit
+	// in a hundred and fifteen points. Both were given the ellipsis because
+	// **centred, a label that does not fit is cut at both ends**, that is, in
+	// the way where one cannot even tell something is missing.
+	//
+	// **The third was in front of us the whole time and was found by looking at
+	// a photograph of the panel**: `tray.menu.todo` carries Tailscale's own
+	// sentence, which is the longest thing in this window and is not ours to
+	// shorten — `firstLine` takes one line of it, and a line is not a width.
+	// Measured, it drew `ve this machine in the Tailscale`, missing its first
+	// word and its last. The assumption underneath was the one the icon label's
+	// note had already retired in one case and left standing in general: that
+	// the commands' labels fit by construction.
+	//
+	// So the rule is unconditional now, because the exception cost more than it
+	// saved: on a label that fits, the ellipsis changes nothing whatever, and on
+	// one that does not it turns an unreadable line into a readable one that
+	// declares itself cut. What the catalogue's own labels must still do is fit
+	// — `TestEveryCommandLabelFitsThePanel` measures them — because an
+	// ellipsised label is a repair, not a design.
+	flags |= dtEndEllipsis
 	r := di.RcItem
 	procDrawTextW.Call(uintptr(di.Hdc), uintptr(unsafe.Pointer(&buf[0])), n,
 		uintptr(unsafe.Pointer(&r)), uintptr(flags))
@@ -1541,6 +1696,97 @@ func classNameOf(h windows.Handle) string {
 		return "(unknown)"
 	}
 	return windows.UTF16ToString(buf[:n])
+}
+
+// maxStatusRows is how many rows a status line may take.
+//
+// **Three, and it is measured rather than chosen.** Two was the guess, and it
+// was made by dividing a width by a width — which is not how text wraps. Asked
+// of `DT_CALCRECT` in all five languages, four sentences need a third row, and
+// the widest is not the one the arithmetic accused: English's
+// `remote-no-ingress` breaks into *access from outside: open, but / nothing
+// gets through from the / Internet*, while German's, 447 px against English's
+// 432, happens to break into two.
+//
+// **The other three are the confirmation titles**, which is the find that
+// matters: *¿Desconectar todos los aparatos?* in Spanish, French and Italian
+// is the question asked before cutting off everybody watching, and on one row
+// it was cut at both ends. It is drawn in the pill's font, 16 at weight 600,
+// so it needs a third row where the same sentence in 14 would not.
+//
+// **What the cap is for is the panel and not the sentence.** These lines sit
+// above the QR code, so every row they take pushes the code, the address and
+// every command down: a notice free to grow makes a panel that no longer fits
+// beside the icon, and `CalculatePopupWindowPosition` would then put it
+// somewhere else entirely. Beyond this the text is cut, with an ellipsis that
+// says so — the old behaviour kept as a floor, not as a place to land.
+// `TestEveryStatusLineFitsTheRowsItIsGiven` is what keeps the two in step.
+const maxStatusRows = 3
+
+// lineHeight is how tall the status line at that index is.
+//
+// **It answers one row when nothing has been measured**, which is the state
+// `layout` can legitimately be in: it is called while the window is being built
+// and from `WM_PAINT`, and only one of those comes after `rebuild`.
+func (f *flyout) lineHeight(i int) int32 {
+	if i < len(f.lineH) && f.lineH[i] > 0 {
+		return f.lineH[i]
+	}
+	return f.px(flyLine)
+}
+
+// measureLines asks how many rows each status line really needs.
+//
+// **The font is the one that will draw it**, which matters for exactly one
+// line: the first of a confirmation question is drawn in the pill's font, 16 at
+// weight 600, and measuring it with the lines' 14/400 would say it fits when it
+// does not. It is the same trap as a palette read from a screenshot — the
+// drawing and the measurement have to come from the same source.
+//
+// The height is rounded **up to whole rows** rather than taken as the text's
+// own: the panel's rhythm is `flyLine`, and a line 34 px tall among rows of 20
+// puts everything below it half a row out of step with the padding it was
+// designed with.
+func (f *flyout) measureLines(width int32) {
+	f.lineH = make([]int32, len(f.lines))
+	if len(f.lines) == 0 || width <= 0 {
+		return
+	}
+	row := f.px(flyLine)
+
+	hdc, _, _ := procGetDC.Call(uintptr(f.hwnd))
+	if hdc == 0 {
+		// No device context is not a reason to lay the panel out differently:
+		// one row each is what it has always done.
+		for i := range f.lineH {
+			f.lineH[i] = row
+		}
+		return
+	}
+	defer procReleaseDC.Call(uintptr(f.hwnd), hdc)
+
+	for i, text := range f.lines {
+		font := f.fontLine
+		if f.pending != nil && i == 0 {
+			font = f.fontPill
+		}
+		if font != 0 {
+			procSelectObject.Call(hdc, uintptr(font))
+		}
+		r := rect{0, 0, width, 0}
+		txt, _ := windows.UTF16FromString(text)
+		procDrawTextW.Call(hdc, uintptr(unsafe.Pointer(&txt[0])), uintptr(len(txt)-1),
+			uintptr(unsafe.Pointer(&r)), dtCalcRect|dtWordBreak|dtNoPrefix)
+
+		rows := (r.Bottom + row - 1) / row
+		if rows < 1 {
+			rows = 1
+		}
+		if rows > maxStatusRows {
+			rows = maxStatusRows
+		}
+		f.lineH[i] = rows * row
+	}
 }
 
 // bodyHeight measures how tall the wrapping text is, at the given width.
