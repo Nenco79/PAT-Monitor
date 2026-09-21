@@ -98,7 +98,19 @@ var (
 	Revision = "0"
 	Commit   = ""
 	Modified = ""
+	// Packaged is set when the binary is built to go inside a package. Empty is
+	// a build that ships on its own.
+	//
+	// **It is a stamp and not a configuration key**, and that is the decision:
+	// inside a package the updating is the Store's, so asking GitHub is not a
+	// setting somebody might prefer off — it is a thing that must not happen.
+	// A key is something a reader can turn back on, and a default is something
+	// an old configuration file carries past it.
+	Packaged = ""
 )
+
+// InPackage says the binary is the one that goes inside a package.
+func InPackage() bool { return Packaged != "" }
 
 // Full is the identifier spelled out: `1.0.0-beta.1 r248 (ea21a23)`.
 //

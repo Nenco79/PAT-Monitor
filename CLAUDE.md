@@ -260,6 +260,7 @@ a heading to its file, `grep -rn` the heading.
 - **A program in somebody else's house cannot be reached, so it asks**
   - The endpoint is the policy, and the belt underneath costs two comparisons
   - The key ships before anything reads it
+- **A package is a second shape of the same binary, and it updates itself elsewhere**
 - **Licences are collected from what is shipped, not from go.mod**
 - **Dead code is found with a tool, not by eye**
 - **An instrument is not believed until something else has checked it**

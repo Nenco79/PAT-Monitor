@@ -2,6 +2,7 @@ package version
 
 import (
 	"regexp"
+	"strings"
 	"testing"
 )
 
@@ -33,13 +34,24 @@ func TestThePackageVersionIsFourNumbersEvenOnAPreRelease(t *testing.T) {
 // a comment. It carries neither, and that is the decision rather than an
 // omission — the file says which build, the package says which release.
 func TestThePackageVersionCarriesNoBuildNumber(t *testing.T) {
-	// The revision is what a stamped build has, and it must not reach the
-	// version whatever it is.
+	// **The property and not a literal.** Written as `!= "1.1.0.0"` this was a
+	// second reader of `Number`, red on the next legitimate bump — and a guard
+	// that goes red on the good state is a guard somebody deletes. What is being
+	// asked is that the revision changes nothing, so the two answers are
+	// compared with each other.
 	old := Revision
 	t.Cleanup(func() { Revision = old })
-	Revision = "248"
 
-	if got := Package(); got != "1.1.0.0" {
-		t.Errorf("Package() = %q with r=248, wanted the release and not the build", got)
+	Revision = "0"
+	unstamped := Package()
+	Revision = "248"
+	stamped := Package()
+
+	if stamped != unstamped {
+		t.Errorf("Package() = %q with r=248 and %q without: the build reached the release",
+			stamped, unstamped)
+	}
+	if !strings.HasSuffix(stamped, ".0") {
+		t.Errorf("Package() = %q, and the fourth field belongs to the Store", stamped)
 	}
 }

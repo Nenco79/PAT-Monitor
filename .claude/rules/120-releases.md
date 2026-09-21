@@ -5,6 +5,8 @@ paths:
   - "cmd/pat-sign/**"
   - "cmd/pat-licenses/**"
   - "cmd/pat-icon/**"
+  - "internal/icon/**"
+  - "packaging/**"
   - "build.ps1"
 ---
 
@@ -190,6 +192,81 @@ than the missing context. `GITHUB_REPOSITORY` is set by Actions on every job and
 was the point and the repair is one line**, which is the shape to expect whenever
 a job is stripped of everything it does not need: what it no longer has includes
 the things nobody thought to list.
+
+## A package is a second shape of the same binary, and it updates itself elsewhere
+
+`build.ps1 -Msix`. The archive and the package carry the same program and are
+not the same artefact, and every difference below is one the format imposes
+rather than a choice made for tidiness.
+
+**The binary inside a package never asks GitHub.** There the updating belongs to
+the Store, and a build that also asked would offer somebody a download it must
+not install and cannot install — the remedy for a packaged program is a store
+page, not a file. So `version.Packaged` is stamped by the linker and the
+goroutine is not started at all, which is the rule that was already there for
+the configuration key: a goroutine that exists in order to decline is something
+somebody later has to read to find out it declines.
+
+**It is a stamp and not a key, and the difference is the whole of it.** A key is
+something a reader turns back on. A changed default is worse: an existing
+configuration file carries `update_check: true` straight past it, so the one
+installation that would go on asking is the one that has been there longest.
+`asksAboutUpdates` takes both and answers with neither alone, and
+`-show-config` goes through the same predicate — printed separately, that line
+would go on announcing a check that no longer happens, and "off" over a
+configuration that reads `true` is a line somebody reads as a defect and goes
+looking for.
+
+**The version is the release and not the build.** A manifest has four fields and
+the fourth belongs to the Store, which leaves three for four numbers, so the
+commit count is the one that goes: `major.minor.patch.0`. The file says which
+build — the executable's fourth field and the log line — and the package says
+which release. Two packages therefore cannot go out under one product number,
+which is right rather than a limitation: they would be two different things
+claiming to be the same release.
+
+**Three things the format needs that the archive does not:**
+
+- **the logos, drawn and not scaled.** The three sizes a manifest names are in
+  no version of `Sides`, and the target sizes below 44 are the ones the taskbar
+  and the app list ask for. Measured against a package without them, on the
+  image the shell hands back: the distance from the drawing made at that size
+  goes from 13.37 to 9.48 at 16 px, and from 9.35 to 5.02 at 32. What is left
+  over is the shell's own treatment, the same for both, which is why neither
+  reaches zero.
+- **the resource index, or the small logos are dead weight.** Measured: a
+  package carrying them and no `resources.pri` gives back an image identical,
+  pixel for pixel, to one that does not carry them at all. `makepri` is part of
+  producing a package, not a refinement of it. Its `priconfig.xml` is an input
+  and is removed before packing.
+- **the manifest, from a template whose version is a token.** A placeholder that
+  parses — `0.0.0.0` — builds, installs and ships a package claiming to be older
+  than every other, and the Store then refuses the one after it for not going
+  up, with no error anywhere along the way. `{VERSION}` fails at MakeAppx
+  instead, while somebody is standing there.
+
+**The SDK is looked for and not written down.** The version folder under Windows
+Kits changes with every SDK, and on a CI image it is whatever that image happens
+to carry: a path spelled in the script is a build that works on one machine and
+fails in somebody else's log.
+
+**What comes out is unsigned, and that is not an omission.** A package submitted
+to the Store is re-signed by the Store with a Microsoft certificate, so a
+signature made here would be replaced — which is also why the MSIX road costs no
+certificate while the EXE/MSI road costs a real one. The signature worth making
+is for sideloading, and it wants a certificate this repository does not hold.
+
+**And a dirty tree is refused, for the archive's reason.** `r` names a commit,
+and a binary corresponding to none is an identifier that lies exactly when
+somebody is trying to find out what they are running. It is cheap to refuse at
+the build and impossible to correct once the package is submitted.
+
+**What is not known is whether the fourth field really must be zero for a
+desktop package.** The requirement is documented for UWP packages, and the two
+pages about packaged Win32 apps neither repeat it nor contradict it. It is not
+resolvable by reading and becomes measurable only at a first submission —
+`major.minor.patch.0` is the shape that holds under either answer, which is why
+it would be the choice even if the rule turned out to be the permissive one.
 
 ## Licences are collected from what is shipped, not from go.mod
 

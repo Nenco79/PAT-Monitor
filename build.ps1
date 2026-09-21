@@ -45,7 +45,7 @@
 # only this word gets a zip without a signature. What comes out is declared
 # unsigned in the line it prints, and the release it belongs to stays a draft
 # until the .sig is beside it.
-param([switch]$Console, [switch]$Release, [switch]$Unsigned, [string]$Key)
+param([switch]$Console, [switch]$Release, [switch]$Msix, [switch]$Unsigned, [string]$Key)
 
 $ErrorActionPreference = 'Stop'
 
@@ -69,6 +69,21 @@ try {
     # build, so on its own it is a word that moves nothing — and a flag that
     # moves nothing is read by whoever typed it as a flag that worked.
     if ($Unsigned -and -not $Release) { throw "-Unsigned only says anything about -Release" }
+
+    # -Msix builds the shape that goes inside a package, so it refuses -Console
+    # for the reason -Release does, and it refuses a dirty tree further down for
+    # the reason -Release does: what comes out of here is meant to be submitted.
+    if ($Msix -and $Console) { throw "-Msix builds what ships: use it without -Console" }
+
+    # **And -Release with it would sign the wrong binary.** There is one
+    # `go build`, so the stamp that switches the update check off for ever lands
+    # in the executable the release block then zips and signs: a standalone
+    # archive whose owner is never told a fix exists, and whose `-show-config`
+    # prints "off, the Store updates this build" over a machine no Store will
+    # ever update. The two shapes are built one at a time, and the refusal is
+    # here rather than further down for the reason written above the first one:
+    # a refusal that leaves the wrong thing in bin\ is half a refusal.
+    if ($Msix -and $Release) { throw "-Msix and -Release are two shapes: build them one at a time" }
 
     # Rebuilding over a running process, Windows cannot overwrite the
     # executable: it **renames** it to .exe~ and puts the new one in its place.
@@ -122,6 +137,14 @@ try {
                 " -X patmonitor/internal/version.Commit=$sha" +
                 " -X patmonitor/internal/version.Modified=$dirty"
 
+    # **The binary that goes inside a package is a different binary**, and this
+    # stamp is the whole of the difference: there the updating is the Store's,
+    # so the daily question to GitHub is not asked at all. A stamp and not a
+    # configuration key, because the requirement is "never" - a key is something
+    # a reader turns back on, and a changed default is something an existing
+    # configuration file carries straight past.
+    if ($Msix) { $ldflags += " -X patmonitor/internal/version.Packaged=yes" }
+
     $mode = "console build"
     if (-not $Console) {
         $ldflags += " -H=windowsgui"
@@ -148,6 +171,14 @@ try {
         $ldflags += " -s -w"
         $mode += ", stripped"
     }
+
+    # **The stamp is declared in the line, and it has to be added after the two
+    # branches above rather than before them.** Set first, it was overwritten by
+    # the GUI branch and the label never said it — an announcement that cannot
+    # fire, over a binary left in bin\ that looks like every other and asks
+    # nobody about updates for ever. The next plain run of this script puts a
+    # normal one back; until it does, this word is the only thing that says so.
+    if ($Msix) { $mode += ", packaged, no update check" }
 
     # --- the executable's icon and version ---
     #
@@ -270,6 +301,82 @@ try {
 
             Write-Host "upload both: $(Split-Path -Leaf $zip) and $(Split-Path -Leaf $zip).sig"
         }
+    }
+
+    if ($Msix) {
+        # A package is submitted, so the same two refusals as a release: a
+        # binary that matches no commit is an identifier that lies exactly when
+        # somebody is trying to find out what they are running.
+        if ($dirty) { throw "the tree has uncommitted changes: a package must match a commit" }
+        if (-not $sha) { throw "no commit: a package has to be identifiable" }
+
+        & go run .\cmd\pat-licenses | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw "licence collection failed" }
+
+        # **The SDK is looked for and not written down.** The version folder
+        # under Windows Kits changes with every SDK, and on a CI image it is
+        # whatever that image happens to carry: a path spelled here is a build
+        # that works on this machine and nowhere else, which is the kind of
+        # failure that shows up only in somebody else's log.
+        $found = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\makeappx.exe" -ErrorAction SilentlyContinue |
+                 Sort-Object FullName | Select-Object -Last 1
+        if (-not $found) { throw "makeappx.exe not found: the Windows SDK is not installed" }
+        $sdk = Split-Path -Parent $found.FullName
+        $makeappx = Join-Path $sdk "makeappx.exe"
+        $makepri = Join-Path $sdk "makepri.exe"
+        if (-not (Test-Path $makepri)) { throw "makepri.exe not found beside makeappx.exe" }
+
+        # The version a manifest carries is asked of the code that owns the
+        # shape of the number. It is not the one in the file properties: the
+        # fourth field belongs to the Store, so the commit count is not in it.
+        $pkgver = (& go run .\cmd\pat-icon -print-package-version).Trim()
+        if ($LASTEXITCODE -ne 0 -or -not $pkgver) { throw "the package version could not be asked for" }
+
+        $pkg = Join-Path "dist" "PAT-Monitor-$pkgver-x64"
+        if (Test-Path $pkg) { Remove-Item -Recurse -Force $pkg }
+        New-Item -ItemType Directory -Force (Join-Path $pkg "Assets") | Out-Null
+
+        # The same layout as the archive, which is the shape an installation has
+        # on disk, plus the two things only a package carries.
+        Copy-Item bin\pat-monitor.exe $pkg
+        Copy-Item LICENSE, NOTICE $pkg
+        Copy-Item -Recurse licenses $pkg
+
+        & go run .\cmd\pat-icon -png (Join-Path $pkg "Assets") -o (Join-Path $env:TEMP "pat-icon-msix.syso") | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw "the package logos could not be drawn" }
+
+        (Get-Content packaging\AppxManifest.xml -Raw) -replace '\{VERSION\}', $pkgver |
+            Set-Content (Join-Path $pkg "AppxManifest.xml") -Encoding UTF8
+
+        # **Without the index the logos below 44 are dead weight.** Measured: a
+        # package carrying the target sizes and no resources.pri gives back an
+        # image identical, pixel for pixel, to one that does not carry them at
+        # all. The resource manager is what chooses among them, and it reads
+        # this file.
+        $priconfig = Join-Path $pkg "priconfig.xml"
+        & $makepri createconfig /cf $priconfig /dq en-US /o | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw "the resource config could not be created" }
+        & $makepri new /pr $pkg /cf $priconfig /of (Join-Path $pkg "resources.pri") /o | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw "the resource index could not be built" }
+        # It is an input to the index and must not travel inside the package.
+        Remove-Item -Force $priconfig
+
+        # **Not `$msix`**: PowerShell does not distinguish case, so that name is
+        # the `-Msix` switch, and assigning a path to it fails with a type error
+        # naming neither the switch nor the line that meant no harm.
+        $outPkg = "$pkg.msix"
+        if (Test-Path $outPkg) { Remove-Item -Force $outPkg }
+        & $makeappx pack /d $pkg /p $outPkg /o | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw "the package could not be built" }
+        Remove-Item -Recurse -Force $pkg
+
+        # **What comes out is not signed, and that is not an omission here.** A
+        # package submitted to the Store is re-signed by the Store with a
+        # Microsoft certificate, so a signature made here would be replaced. The
+        # one it is worth making is for sideloading, and that wants a
+        # certificate this repository does not hold.
+        Write-Host "package: $outPkg"
+        Write-Host "unsigned: the Store signs it, and sideloading wants a certificate of your own"
     }
 
     # Without -Console what is being prepared is what gets shipped, and there the

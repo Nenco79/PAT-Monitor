@@ -318,7 +318,7 @@ func run(log *slog.Logger, path string) error {
 		// know whether it was running had nowhere to look. A feature that goes
 		// out to the Internet and shows up nowhere is exactly what the comment
 		// three lines up says must not exist.
-		fmt.Printf("update check:   %s\n", boolLabel(cfg.UpdateCheck, "on, daily", "off"))
+		fmt.Printf("update check:   %s\n", updateCheckLabel(cfg.UpdateCheck, version.InPackage()))
 		fmt.Printf("funnel:         %s\n", boolLabel(cfg.FunnelEnabled, "on", "off"))
 		return nil
 	}
@@ -1050,11 +1050,11 @@ func run(log *slog.Logger, path string) error {
 	// the room, and a monitor whose camera went off because GitHub answered
 	// oddly would be the invariant on separate lives broken by a courtesy.
 	//
-	// **It is not started at all when the configuration says not to**, rather
-	// than started and made to do nothing: a goroutine that exists in order to
-	// decline is a thing somebody later has to read to find out it declines,
-	// and the promise here is that no request leaves the house.
-	if configNow().UpdateCheck {
+	// **It is not started at all when it is not wanted**, rather than started
+	// and made to do nothing: a goroutine that exists in order to decline is a
+	// thing somebody later has to read to find out it declines, and the promise
+	// here is that no request leaves the house.
+	if asksAboutUpdates(configNow().UpdateCheck, version.InPackage()) {
 		g.Go(aside(log, "the update check", func() error {
 			watchForUpdates(gctx, tr, updates, log)
 			return nil
@@ -1412,6 +1412,33 @@ func captureStopped(s server.Status, startedAt, now time.Time) bool {
 // no flag can reach, and the test instrument goes back to costing nothing.
 func stalledAfterStarting(s server.Status, startedAt, now time.Time) bool {
 	return captureStopped(s, startedAt, now) && s.Ready && s.LastFrameUnix != 0
+}
+
+// asksAboutUpdates says whether the daily question is asked at all.
+//
+// **Inside a package it is not, whatever the configuration says.** The updating
+// there belongs to the Store, and a program that also asked GitHub would be
+// offering somebody a download it must not install and cannot install - the
+// remedy being a store page rather than a file. It is not a preference, so the
+// stamp wins over the key rather than changing its default: a default is
+// something an existing configuration file carries straight past.
+//
+// It takes both as parameters so that both directions can be asked about, and
+// because the same answer has two readers - this, and the line `-show-config`
+// prints. Written twice, the line would go on announcing a check that no longer
+// happens.
+func asksAboutUpdates(wanted, packaged bool) bool { return wanted && !packaged }
+
+// updateCheckLabel is what `-show-config` says about it.
+//
+// **It names the package when the package is the reason**, because "off" over a
+// configuration that says `true` is a line somebody would read as a defect and
+// go looking for.
+func updateCheckLabel(wanted, packaged bool) string {
+	if packaged {
+		return "off, the Store updates this build"
+	}
+	return boolLabel(wanted, "on, daily", "off")
 }
 
 // micSilent: the path delivers zeros. The microphone is there and cannot be heard.
