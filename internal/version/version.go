@@ -38,7 +38,10 @@
 // case the library discards the information instead of saying so.
 package version
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 // Product is the name shown to the user, from *Pet And Toddler*.
 //
@@ -168,6 +171,43 @@ func digits(number string) (major, minor, patch int) {
 func Prerelease() bool { return prerelease(Number) }
 
 func prerelease(number string) bool { return strings.Contains(number, "-") }
+
+// Package is the version a package manifest carries: the product's three digits
+// and a zero.
+//
+// **The commit count is deliberately not in it, and that is the whole
+// decision.** A package manifest has four fields and the fourth belongs to the
+// Store, which leaves three for four numbers — so one of them has to go, and
+// the one that goes is `r`. Putting it in the third field would make the
+// package announce a different product for a commit that changed a comment,
+// which is the objection `internal/icon`'s four fields already answer, moved to
+// the artefact whose version people actually read. What comes out instead is
+// that **the file says which build and the package says which release**: `r`
+// stays in the executable's fourth field and in the log, where it identifies a
+// build, and the package carries the release. The build is still nameable from
+// inside the package, just not from its version, where nobody was asking.
+//
+// It follows that two packages cannot be submitted under one product number,
+// and that is right rather than a limitation: they would be two different
+// things claiming to be the same release.
+//
+// **And the label cannot come along.** `Number + ".0"` is the obvious spelling
+// and it is wrong: on `1.1.0-beta.1` it composes something no manifest accepts.
+// Digits drops it — so a pre-release and its final carry the same package
+// version and only one of the two can ever be submitted, which is a real
+// consequence and is why it is written here rather than found at a submission.
+func Package() string { return packageVersion(Number) }
+
+// packageVersion takes the number instead of reading the one this file holds,
+// and it takes it **as the string** rather than as the three digits — which is
+// the whole point of the seam. The defect being guarded against is composing
+// `Number + ".0"`, and it lives above the split: handed the digits, an
+// implementation with that defect in it cannot express it, so a test driving
+// this from three integers would carry the name of a case it can never see.
+func packageVersion(number string) string {
+	major, minor, patch := digits(number)
+	return fmt.Sprintf("%d.%d.%d.0", major, minor, patch)
+}
 
 // Short is what fits in a tooltip or next to a title: `1.0.0-beta.1 r248`.
 func Short() string {

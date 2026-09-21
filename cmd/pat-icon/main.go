@@ -66,6 +66,13 @@ var (
 	// wrong file property, it offers a beta to every installation as the latest
 	// stable release.
 	printPrerelease = flag.Bool("print-prerelease", false, "print yes or no: whether the product number is a pre-release, and exit")
+
+	// The version a package manifest carries, asked for here for the reason the
+	// two above are: `version` owns the shape of the number, and `Number + ".0"`
+	// spelled out in PowerShell is a second reader of it — one that composes
+	// `1.1.0-beta.1.0` on a pre-release, which no manifest accepts and which
+	// nothing local would catch.
+	printPackage = flag.Bool("print-package-version", false, "print the four-field version a package manifest carries, and exit")
 )
 
 func main() {
@@ -73,6 +80,11 @@ func main() {
 
 	if *printVersion {
 		fmt.Println(version.Number)
+		return
+	}
+
+	if *printPackage {
+		fmt.Println(version.Package())
 		return
 	}
 
