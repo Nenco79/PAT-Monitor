@@ -156,6 +156,11 @@ type Config struct {
 	StatusFn func() Status
 	// OnQuit closes the monitor. The tray does not decide how: it merely says
 	// so.
+	//
+	// **Two things call it, and the second is not a gesture**: the panel's Quit,
+	// and Windows ending the session. It must therefore be callable from the
+	// message loop's thread and do nothing that waits for that loop — see the
+	// WM_ENDSESSION case in wndProc.
 	OnQuit func()
 	// OnRevoke invalidates every session and says how many it closed.
 	OnRevoke func() int
@@ -237,6 +242,16 @@ type Tray struct {
 	// here that "a NIM_MODIFY a second is wasted work", and only the icon's
 	// drawing was skipped: the call went out anyway, every time.
 	tipShown string
+
+	// endingSession says that Windows has declared the session over.
+	//
+	// **It is not a copy of "we are closing": it says who else is closing.**
+	// The monitor is shut down by the panel's Quit too, and there the shell is
+	// alive and the icon has to come off. Here the shell is going down with us,
+	// and the difference decides whether it is still worth speaking to it. It
+	// is written and read on the message loop's thread only — wndProc and Run's
+	// own defer — so it carries no lock.
+	endingSession bool
 
 	// v4 says whether the notification area accepted the modern contract. It
 	// decides **how a message is read**, not what is done: with version 4 the
@@ -568,6 +583,47 @@ func wndProc(hwnd windows.Handle, msg uint32, wparam, lparam uintptr) uintptr {
 		procPostQuitMessage.Call(0)
 		return 0
 
+	// **The question, which is never refused.** Returning FALSE here vetoes the
+	// shutdown: a baby monitor that stops the computer going off — at night,
+	// behind a dialogue nobody is in front of — would be worse than anything it
+	// is guarding. `DefWindowProc` would consent on its own; the case is
+	// written out so that the promise is in the file rather than in what nobody
+	// wrote. What it adds is the line: without it the log cannot tell the
+	// sequence having started from the message never having come.
+	case msg == wmQueryEndSession:
+		t.cfg.Log.Info("Windows is asking to end the session",
+			"reason", sessionEndReason(lparam))
+		return 1
+
+	// **The verdict, which is what the monitor acts on.** The question above is
+	// put to everybody first and any one of them — another program, not us —
+	// can still answer no, and then the session goes on. Closing on the question
+	// would leave the room unwatched for a shutdown that was called off, and
+	// what it would buy is the few seconds between the two messages.
+	//
+	// **Nothing here waits for the shutdown to finish, and that is deliberate
+	// twice over.** This thread is the message loop, and the message loop is a
+	// member of the same group the shutdown waits for: blocking would be a
+	// deadlock with a timeout in front of it. And the API that really buys time,
+	// `ShutdownBlockReasonCreate`, buys it by putting a screen in front of
+	// whoever is turning the computer off, with our name on it as the reason it
+	// will not go. So what is bounded is Windows's grace period and not ours,
+	// and what is written is the start: a log that ends here says the process
+	// was killed inside that period, which is a different fact from never having
+	// been told.
+	case msg == wmEndSession:
+		if !sessionReallyEnding(wparam) {
+			t.cfg.Log.Info("the end of the session was called off")
+			return 0
+		}
+		t.cfg.Log.Info("the Windows session is ending, the monitor is closing",
+			"reason", sessionEndReason(lparam))
+		t.endingSession = true
+		if t.cfg.OnQuit != nil {
+			t.cfg.OnQuit()
+		}
+		return 0
+
 	// **The icon's size is resampled, not taken once.** `t.size` is born in
 	// `New`, with the scale of that moment, and the drawing is tuned to it: if
 	// the scale changes while the monitor is running — the display settings, or
@@ -688,12 +744,35 @@ func (t *Tray) addIcon() error {
 }
 
 func (t *Tray) removeIcon() {
-	if t.hwnd == 0 {
+	if !t.worthTellingTheShell() {
 		return
 	}
 	nid := t.notifyData(0)
 	procShellNotifyIconW.Call(nimDelete, uintptr(unsafe.Pointer(nid)))
 }
+
+// worthTellingTheShell says whether there is still somebody on the other end.
+//
+// **`Shell_NotifyIcon` is a call into Explorer, not a local one**, and this one
+// runs in `Run`'s defer — that is, on the message loop's thread, which is the
+// errgroup member `g.Wait()` is waiting for. At the session's end Explorer is
+// being torn down at the same moment we are asking it to take an icon off a bar
+// that is disappearing: if that call waits, the orderly shutdown never finishes
+// inside the grace period, which is the exact symptom the session-end handler
+// was written to remove. **And the work is pointless anyway**: the notification
+// area goes with the session, so the icon is removed by the thing removing
+// everything else — it is "a resource the system is about to reclaim is not
+// worth waiting for", applied to somebody else's process.
+//
+// **The other writes to the shell are not gated, and that is argued rather than
+// overlooked.** `refresh`, the pulse and the balloons run on the same thread and
+// would block in the same way, but only inside the gap between the cancel and
+// the message loop reading the `WM_CLOSE` posted for it — microseconds, against
+// a timer that fires once a second. This one is not a gap: it is on the way out,
+// every time. If a hang is ever measured in the timer path, that is when the
+// gate widens; guessing five more branches now would be five branches nobody can
+// test.
+func (t *Tray) worthTellingTheShell() bool { return t.hwnd != 0 && !t.endingSession }
 
 // refresh brings the icon and the tooltip back in line with the state of now.
 //

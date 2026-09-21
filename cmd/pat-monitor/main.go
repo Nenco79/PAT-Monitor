@@ -24,6 +24,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"time"
 
 	"github.com/pion/webrtc/v4"
@@ -332,14 +333,22 @@ func run(log *slog.Logger, path string) error {
 		return promptAndSetPassword(&cfg)
 	}
 
-	ctx, stopSignals := signal.NotifyContext(context.Background(), os.Interrupt)
+	// **SIGTERM is here for the build that has a console, and it is not the same
+	// event as Ctrl+C.** Go's runtime maps CTRL_C and CTRL_BREAK onto SIGINT and
+	// the other three — the console window closed, the logoff, the shutdown —
+	// onto SIGTERM, so asking for os.Interrupt alone leaves a `-Console` monitor
+	// killed where it stands when the computer goes off. The shipped build has
+	// no console and none of them reach it: there the session's end arrives as a
+	// window message, at the notification-area icon. Both roads end at the same
+	// cancel.
+	ctx, stopSignals := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stopSignals()
 
 	// A second way of closing, separate from the signal: with -H=windowsgui there
-	// is no console to press Ctrl+C in, and the only way out is the tray's "Quit"
-	// item. Keeping them distinct avoids having to call the function that
-	// uninstalls the signal handlers to get something that has nothing to do with
-	// signals.
+	// is no console to press Ctrl+C in, and what is left goes through the
+	// notification-area window — the "Quit" item, and Windows ending the session.
+	// Keeping them distinct avoids having to call the function that uninstalls
+	// the signal handlers to get something that has nothing to do with signals.
 	ctx, quit := context.WithCancel(ctx)
 	defer quit()
 

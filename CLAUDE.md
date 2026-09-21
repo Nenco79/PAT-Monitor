@@ -269,6 +269,7 @@ a heading to its file, `grep -rn` the heading.
   - The session log is the only instrument for the test that counts
 - **In front of the machine there is an icon, and behind it a panel**
   - The notification-area icon is not an ornament: it is the only presence
+  - The end of the session arrives at that window, and nowhere else
   - The executable's icon lives in the PE, and we write the resource
   - The build number is the fourth field, not the third digit
   - The tray menu: first what is happening, then what can be done

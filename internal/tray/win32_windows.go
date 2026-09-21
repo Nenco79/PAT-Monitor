@@ -69,8 +69,12 @@ var (
 const (
 	wmDestroy = 0x0002
 	wmClose   = 0x0010
-	wmCommand = 0x0111
-	wmTimer   = 0x0113
+	// The end of the Windows session arrives as these two, at this window and
+	// at no other part of the program: see the chapter of that name.
+	wmQueryEndSession = 0x0011
+	wmEndSession      = 0x0016
+	wmCommand         = 0x0111
+	wmTimer           = 0x0113
 	// wmDisplayChange arrives on a change of resolution or of monitor;
 	// wmDpiChanged only to a per-monitor aware process, when the window ends up
 	// on a screen with a different scale factor. Both are wanted: the second

@@ -181,6 +181,109 @@ are **USER** objects, and they are counted with `GetGuiResources`, which
 answered `GDI=7 USER=11`, steady. **The wrong tool always accuses the wrong
 component.**
 
+### The end of the session arrives at that window, and nowhere else
+
+**The window that exists to carry an icon is also the only thing the operating
+system can talk to.** With `-H=windowsgui` there is no console, so no Ctrl+C and
+no `CTRL_SHUTDOWN_EVENT`; there is no service, so nothing is asked to stop. When
+the computer goes off or somebody logs out, what arrives is `WM_QUERYENDSESSION`
+and then `WM_ENDSESSION`, sent to every top-level window — and the hidden window
+behind the notification-area icon is this program's only one. Until they were
+handled, both went to `DefWindowProc`, which consents and says nothing: the
+process was terminated where it stood and the orderly shutdown in
+`cmd/pat-monitor` was never entered.
+
+**What the kill costs is not the camera.** The system takes the camera, the
+handles and the memory back from any process that exits — the argument already
+written for the encoder that is not released at the end, and for the deadline in
+`shutdown.go`. What it costs is the clip being written out, the viewers'
+connections closed cleanly, and the last lines of the log. **The third is the
+one that is paid later**: without them every shutdown of the computer reads in
+the session log exactly like a crash, and the session log is the instrument the
+night test is judged on.
+
+Three decisions, and each has an obvious opposite:
+
+- **The monitor closes on the verdict, not on the question.** The two messages
+  are `WM_ENDSESSION` and `WM_QUERYENDSESSION`, and the second is put to
+  everybody first: any one of them — another program, not us — can still answer
+  no, and then the session goes on. Acting on the question would close the
+  monitor on a shutdown that was called off, which is a room left unwatched for
+  a key somebody else pressed. What waiting costs is the few seconds between the
+  two messages, and those seconds were never ours.
+- **`WM_ENDSESSION` arrives in both directions, and the direction is in
+  `wParam`.** TRUE is the session ending, FALSE is the same message saying it
+  was called off after everybody had been asked. A handler that reads the
+  message and not the word closes the monitor in the second case too, and it
+  looks identical in a diff.
+- **The question is never refused.** Returning FALSE vetoes the shutdown: a baby
+  monitor that stops the computer going off, at night, behind a dialogue nobody
+  is in front of, would be worse than anything it is guarding. `DefWindowProc`
+  consents by itself, so the case is written out only to put the promise in the
+  file instead of in what nobody wrote — and to get the line that tells a log
+  where the sequence started from one where the message never came.
+
+**Nothing waits for the shutdown to finish, and the two obvious ways of making
+it wait are both wrong.** Blocking inside the window procedure blocks the
+message loop, and the message loop is a member of the same errgroup the shutdown
+is waiting on: that is a deadlock with a ten-second timeout in front of it.
+`ShutdownBlockReasonCreate`, which is the API that really buys time, buys it by
+putting a screen in front of whoever is turning the computer off, naming us as
+the reason it will not go. So the grace period is Windows's, not ours, and what
+is written is the **start** of the shutdown with its reason: a log that ends
+there says the process was killed inside that period, which is a different fact
+from never having been told.
+
+**And the console build needs a second word, for the same event.** Go's runtime
+maps `CTRL_C` and `CTRL_BREAK` onto SIGINT and the other three — the console
+window closed, the logoff, the shutdown — onto **SIGTERM**, so a
+`signal.NotifyContext` asking for `os.Interrupt` alone leaves a `-Console`
+monitor killed where it stands when the machine goes off. Both roads end at the
+same cancel.
+
+**And on the way out the notification area is not written to at all.**
+`Shell_NotifyIcon` is a call into Explorer, and the one that takes the icon off
+sits in `Run`'s defer — that is, on the message loop's thread, which is the
+errgroup member `g.Wait()` is waiting for. At that moment Explorer is being torn
+down as well, and a call that waits there would spend the grace period on
+exactly the thing this handler exists to protect. **The work is pointless
+anyway**: the notification area goes with the session. So the session's end sets
+a flag and `removeIcon` stands down — it is "a resource the system is about to
+reclaim is not worth waiting for", applied to somebody else's process. The other
+writes to the shell — the refresh, the pulse, the balloons — are **not** gated,
+because their window is the gap between the cancel and the message loop reading
+its own `WM_CLOSE`, microseconds against a timer that fires once a second, while
+this one is on the way out every time. Five more branches to cover a gap nobody
+has measured would be five branches nobody can test.
+
+**Measured, on this machine, 21 September 2026**: the messages sent to the
+running monitor's own window from another process, with the camera open and no
+viewer connected. `WM_QUERYENDSESSION` answered 1 and closed nothing;
+`WM_ENDSESSION` with `wParam` FALSE left the monitor running; with TRUE, three
+runs gave **378, 384 and 411 ms** from the line announcing the session's end to
+`shutdown complete`, exit code 0 and not `exitShutdownStuck`. A fourth, taken
+immediately after a rebuild, took **1212 ms** — kept here because it is the
+honest width of the number rather than an embarrassment: even that is well
+inside a grace period measured in seconds, and what has to fit is under half a
+second.
+
+**The grace period itself is still Windows's, and it is not what was
+measured.** Sending the messages by hand proves the wiring, not the deadline: on
+a real logoff the process is also being killed, and whether it gets its 420 ms
+is a fact about that machine at that moment. The answer is in the log after a
+real shutdown — `shutdown complete` present or absent under the line announcing
+the session's end — and it costs one reboot.
+
+**And the measurement is re-taken without one**, which is the part worth
+writing down: nothing is kept in the tree for it, and nothing needs to be. From
+a second process, enumerate the top-level windows with `EnumWindows`, keep the
+one whose process is the monitor's and whose class is `PATMonitorTray` — **not**
+`FindWindow`, which answered 0 for that same class while `EnumWindows` was
+returning the window a line later — then `SendMessage` it `0x0011`, and `0x0016`
+with `wParam` 0 and then 1. The log says the rest. It exercises the real
+procedure on the real window, which is everything here except how long Windows
+waits.
+
 ### The executable's icon lives in the PE, and we write the resource
 
 **They are two different icons: the tray's is drawn by the program while it
