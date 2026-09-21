@@ -43,6 +43,10 @@ func TestTheManifestAndTheGeneratorNameTheSameLogos(t *testing.T) {
 		t.Fatal("the manifest names no logo at all, which no package can be right about")
 	}
 
+	// **The bases and not every file.** The target sizes are chosen by the
+	// resource index from the base's name, so the manifest names three things
+	// and the package carries more — comparing against every file produced
+	// would report the good state as broken, which is how a guard gets removed.
 	var drawn []string
 	for _, l := range PackageLogos {
 		drawn = append(drawn, l.Name)

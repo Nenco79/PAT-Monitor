@@ -2,6 +2,7 @@ package icon
 
 import (
 	"bytes"
+	"fmt"
 	"image/png"
 )
 
@@ -17,6 +18,10 @@ import (
 type Logo struct {
 	Name string
 	Side int
+	// TargetSizes are the sizes shipped beside it as
+	// `<Name>.targetsize-<n>.png`, for the shell to pick among the way it picks
+	// among Sides.
+	TargetSizes []int
 }
 
 // PackageLogos are the images the package manifest names.
@@ -31,15 +36,62 @@ type Logo struct {
 // exactly the detail that was meant to disappear, softened. Drawn at 44 it is
 // the drawing made for 44.
 //
-// Three and not more: 44 and 150 are what `uap:VisualElements` requires, and 50
-// is the `Properties/Logo`. The scaled variants a manifest may also carry
-// (`.scale-200` and the rest) are not produced, and that is a decision rather
-// than an omission — Windows scales the one it has, and every extra file is
-// another name that has to keep matching.
+// Three names and not more: 44 and 150 are what `uap:VisualElements` requires,
+// and 50 is the `Properties/Logo`.
+//
+// **The 44 carries target sizes, and leaving them out was the same mistake one
+// floor down.** The taskbar and the app list ask for 16, 24 and 32, and a
+// package that ships only the 44 has Windows shrink it — which is the rescale
+// the icon is drawn rather than scaled to avoid. Measured against a package
+// without them, on the image the shell hands back: at 16 px the distance from
+// the drawing made at 16 goes from 13.37 to 9.48, and at 32 px from 9.35 to
+// 5.02. What is left over is the shell's own treatment, which is the same for
+// both and is why neither reaches zero.
+//
+// **And they are inert without a resource index.** Measured: a package carrying
+// the variants and no `resources.pri` gives back an image identical, pixel for
+// pixel, to one that does not carry them at all — 0.00. So `makepri` is part of
+// producing the package and not an improvement to it: without that step these
+// files travel and nothing reads them.
+//
+// The sizes are the ones the shell asks for and we draw, which is not the same
+// list as Sides: 128 is in Sides and is not a target size the shell knows, and
+// the drawing is happy at any size anyway.
+//
+// The `.scale-*` family is deliberately not produced: those are for a manifest
+// declaring a scale-aware asset, and the target sizes are what the small icon
+// is actually chosen from.
 var PackageLogos = []Logo{
-	{Name: "Square44x44Logo", Side: 44},
+	{
+		Name:        "Square44x44Logo",
+		Side:        44,
+		TargetSizes: []int{16, 20, 24, 32, 40, 48, 64, 256},
+	},
 	{Name: "Square150x150Logo", Side: 150},
 	{Name: "StoreLogo", Side: 50},
+}
+
+// File is one image to write, already named the way the package wants it.
+type File struct {
+	Name string // without the extension
+	Side int
+}
+
+// Files is every image a package carries, the bases and their target sizes.
+//
+// It exists so that whoever writes them does not compose the variant's name: a
+// name composed at the call site is the second spelling of a contract this file
+// owns, and the one that ends up differing from what the resource index was
+// built against.
+func Files() []File {
+	var out []File
+	for _, l := range PackageLogos {
+		out = append(out, File{Name: l.Name, Side: l.Side})
+		for _, s := range l.TargetSizes {
+			out = append(out, File{Name: fmt.Sprintf("%s.targetsize-%d", l.Name, s), Side: s})
+		}
+	}
+	return out
 }
 
 // PNG draws the icon at that size and encodes it.

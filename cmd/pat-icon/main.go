@@ -103,13 +103,14 @@ func main() {
 		if err := os.MkdirAll(*pngDir, 0o755); err != nil {
 			fail(err)
 		}
-		for _, l := range icon.PackageLogos {
-			name := filepath.Join(*pngDir, l.Name+".png")
-			if err := os.WriteFile(name, icon.PNG(l.Side), 0o644); err != nil {
+		files := icon.Files()
+		for _, f := range files {
+			name := filepath.Join(*pngDir, f.Name+".png")
+			if err := os.WriteFile(name, icon.PNG(f.Side), 0o644); err != nil {
 				fail(err)
 			}
 		}
-		fmt.Printf("%s  (%d package logos)\n", *pngDir, len(icon.PackageLogos))
+		fmt.Printf("%s  (%d package logos)\n", *pngDir, len(files))
 	}
 
 	if *icoFile != "" {

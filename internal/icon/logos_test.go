@@ -2,6 +2,7 @@ package icon
 
 import (
 	"bytes"
+	"fmt"
 	"image/png"
 	"testing"
 )
@@ -17,19 +18,44 @@ import (
 // **Verified to catch**: with `PNG` given a fixed side, the sizes stop matching
 // and every logo but one fails.
 func TestEveryPackageLogoIsDrawnAtItsOwnSize(t *testing.T) {
-	if len(PackageLogos) == 0 {
+	files := Files()
+	if len(files) == 0 {
 		t.Fatal("no logo is produced, and a manifest that names one gets nothing")
 	}
-	for _, l := range PackageLogos {
-		data := PNG(l.Side)
-		img, err := png.Decode(bytes.NewReader(data))
+	for _, f := range files {
+		img, err := png.Decode(bytes.NewReader(PNG(f.Side)))
 		if err != nil {
-			t.Errorf("%s: does not decode: %v", l.Name, err)
+			t.Errorf("%s: does not decode: %v", f.Name, err)
 			continue
 		}
 		b := img.Bounds()
-		if b.Dx() != l.Side || b.Dy() != l.Side {
-			t.Errorf("%s: %dx%d, wanted %dx%d", l.Name, b.Dx(), b.Dy(), l.Side, l.Side)
+		if b.Dx() != f.Side || b.Dy() != f.Side {
+			t.Errorf("%s: %dx%d, wanted %dx%d", f.Name, b.Dx(), b.Dy(), f.Side, f.Side)
+		}
+	}
+}
+
+// **The target sizes are named the way the resource index was built against**,
+// and nowhere else: `<base>.targetsize-<n>`. A variant spelled at the call site
+// is a second spelling of the contract, and it is inert rather than wrong —
+// the shell falls back on the base and the only sign is an icon that is
+// slightly soft at small sizes.
+func TestTheTargetSizesAreNamedAfterTheirBase(t *testing.T) {
+	for _, l := range PackageLogos {
+		for _, s := range l.TargetSizes {
+			want := fmt.Sprintf("%s.targetsize-%d", l.Name, s)
+			found := false
+			for _, f := range Files() {
+				if f.Name == want {
+					if f.Side != s {
+						t.Errorf("%s: drawn at %d", want, f.Side)
+					}
+					found = true
+				}
+			}
+			if !found {
+				t.Errorf("%s: declared and not produced", want)
+			}
 		}
 	}
 }
@@ -39,7 +65,7 @@ func TestEveryPackageLogoIsDrawnAtItsOwnSize(t *testing.T) {
 // leaves the shell drawing the fallback — the failure the format gives no error
 // for.
 func TestNoPackageLogoIsBlank(t *testing.T) {
-	for _, l := range PackageLogos {
+	for _, l := range Files() {
 		img, err := png.Decode(bytes.NewReader(PNG(l.Side)))
 		if err != nil {
 			t.Errorf("%s: does not decode: %v", l.Name, err)
@@ -70,7 +96,7 @@ func TestNoPackageLogoIsBlank(t *testing.T) {
 // adds one.
 func TestTheLogoNamesAreDistinctAndCarryNoExtension(t *testing.T) {
 	seen := map[string]bool{}
-	for _, l := range PackageLogos {
+	for _, l := range Files() {
 		if l.Name == "" {
 			t.Error("a logo with no name is a file the manifest cannot ask for")
 		}
