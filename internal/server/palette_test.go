@@ -471,3 +471,117 @@ func TestNoFontShorthandCarriesAToken(t *testing.T) {
 			"reading the sheets", longhands)
 	}
 }
+
+// **The tray panel is drawn three times, and the third copy was unheld.**
+//
+// `internal/tray` carries the palette as Go constants, and
+// `TestTheTwoGoCopiesMatchTheSheet` holds those against this sheet. What nobody
+// held is the **drawing** of that panel on the last screen of the guided path:
+// it is SVG, so its colours are presentation attributes and cannot be `var()`,
+// which means seven hand-written copies of `--muted` alone. The chapter on the
+// pages already states the rule they follow — *the little window of our own
+// tray follows the token, because there following the palette makes the drawing
+// more faithful and not less* — and stating it was the whole of the protection.
+//
+// It cost a manual sweep the moment the token moved: darkening `--muted` for
+// contrast changed the panel and left its portrait the old colour, which is the
+// **one** defect this drawing can have, since its whole claim is to look like
+// what the reader will see next.
+//
+// **The scope is derived and not listed.** The group is the one containing
+// `tray-line-1`, found by walking up from it, so a colour added anywhere inside
+// that drawing is covered with nothing to remember — and a colour in the
+// illustrations around it, which legitimately have their own palette of wood
+// and grass and fur, is not touched.
+//
+// **One exception, by name.** `#699C96` is the focused command's border,
+// `palLight.ground` blended 60% towards `palLight.accent`: it is computed from
+// the palette rather than declared in it, and the markup's own comment says so.
+// An exception is named here rather than given a prefix, for the reason the
+// scale's own exemptions record.
+//
+// **Verified to catch**: with any one of the seven put back to `#6E6659`, this
+// fails naming the colour.
+func TestTheDrawingOfTheTrayUsesThePalette(t *testing.T) {
+	s := serverWithoutPassword(t)
+	markup, err := fs.ReadFile(s.assets, "onboarding.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	css, err := fs.ReadFile(s.assets, "onboarding.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	declared := map[string]bool{}
+	for _, m := range reToken.FindAllStringSubmatch(string(css), -1) {
+		if v := strings.TrimSpace(m[2]); strings.HasPrefix(v, "#") {
+			declared[strings.ToUpper(v)] = true
+		}
+	}
+	if len(declared) < 10 {
+		t.Fatalf("%d colours read from the sheet: the guard is looking at nothing", len(declared))
+	}
+	// Computed from the palette, not declared in it: the border of the command
+	// that has the focus, `ground` blended 60% towards `accent`.
+	declared["#699C96"] = true
+
+	group := trayDrawing(t, string(markup))
+	seen := 0
+	for _, m := range regexp.MustCompile(
+		`(?:fill|stroke)="(#[0-9A-Fa-f]{6})"`).FindAllStringSubmatch(group, -1) {
+		seen++
+		if !declared[strings.ToUpper(m[1])] {
+			t.Errorf("the drawing of the tray panel writes %s, which the palette "+
+				"does not declare: that drawing is a portrait of what the reader "+
+				"opens next, so a colour of its own is the one defect it can have",
+				m[1])
+		}
+	}
+	// A guard that found no colour would pass in silence, which is how a
+	// drawing that has been moved goes on looking protected.
+	if seen < 20 {
+		t.Fatalf("%d colours found inside the drawing: the group is no longer "+
+			"the one this test walks up to", seen)
+	}
+}
+
+// trayDrawing is the markup of the group that draws the tray panel: the one
+// carrying `tray-line-1`.
+//
+// It is cut from the source rather than parsed into a tree because what is
+// wanted is the **text** of that group, attributes and all, and the parser
+// would hand back a tree whose attributes have already been through its own
+// normalisation. The opening tag is found by searching backwards, and the close
+// by counting `<g` against `</g` from there, which is what makes the extent the
+// document's rather than a line count's.
+func trayDrawing(t *testing.T, markup string) string {
+	t.Helper()
+	anchor := strings.Index(markup, `id="tray-line-1"`)
+	if anchor < 0 {
+		t.Fatal(`id="tray-line-1" is not in the markup: the drawing has been ` +
+			`renamed, and with it this guard has stopped looking at anything`)
+	}
+	start := strings.LastIndex(markup[:anchor], "<g ")
+	if start < 0 {
+		t.Fatal("no group above tray-line-1")
+	}
+	depth, i := 0, start
+	for i < len(markup) {
+		switch {
+		case strings.HasPrefix(markup[i:], "</g"):
+			depth--
+			if depth == 0 {
+				return markup[start:i]
+			}
+			i += 3
+		case strings.HasPrefix(markup[i:], "<g"):
+			depth++
+			i += 2
+		default:
+			i++
+		}
+	}
+	t.Fatal("the group holding tray-line-1 is never closed")
+	return ""
+}

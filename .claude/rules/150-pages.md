@@ -136,15 +136,54 @@ control inside a card" and the answer is one, background `--card`, border
 `--line`, radius `--radius-s`.
 
 **A colour rejected for contrast must be rejected everywhere, not only in the
-sheet.** The light `--muted` is `#6E6659` because the comment beside it measures
-`#7A7264` at 4.48:1 on the card, "just below the threshold" — and then seventeen
-`<text>` elements of the illustrations were exactly `#7A7264`. The margin was
-not two hundredths: that ground is not the card, `.art` is inset and in the
-explainer it is inset twice, so the real figure was **4.04:1**. Seventeen hex
-values were not corrected: the attribute was removed and a rule added, `.art svg
-text:not([fill]) { fill: var(--muted) }`. **The `:not([fill])` is the part that
-counts** — a CSS rule beats a presentation attribute, so a `fill` written there
-would have greyed out the six labels that say something **with** their colour.
+sheet.** The light `--muted` was `#6E6659` because the comment beside it
+measures `#7A7264` at 4.48:1 on the card, "just below the threshold" — and then
+seventeen `<text>` elements of the illustrations were exactly `#7A7264`. The
+margin was not two hundredths: inside the explainer that ground is not the card
+at all, `.art` there being `--card-sunk`, so the real figure was **4.04:1**.
+Seventeen hex values were not corrected: the attribute was removed and a rule
+added, `.art svg text:not([fill]) { fill: var(--muted) }`. **The `:not([fill])`
+is the part that counts** — a CSS rule beats a presentation attribute, so a
+`fill` written there would have greyed out the six labels that say something
+**with** their colour.
+
+**And then the same defect was found in the value that had replaced it, one
+surface further out.** `#6E6659` was chosen against the **card**, where it is
+5.34:1, and the sheet's own comment closes the question the right way — *text
+that sits outside the cards uses `--ink-2`*. The tray panel paints its status
+lines and its ghost labels straight onto `--ground`, which is neither: there
+`#6E6659` measures **4.27:1**, under the threshold. **A token is only as
+measured as its worst surface, and the surface nobody thought of is the one in
+another package.**
+
+It is why it shows in the light face and not the dark one, which is the form the
+report arrived in — *the light mode looks less contrasted than the dark*. In the
+dark palette `--ground` is the **darkest** of the three surfaces, so muted on
+ground is the best of them at 5.42:1; in the light one the order inverts and the
+ground is the lightest, so the same pairing is the worst. **Two palettes that
+are mirror images in lightness are not mirror images in contrast**, and nothing
+that compares them name by name can see it.
+
+The value is **`#6A6256`** — the same hue and saturation one notch down — which
+is 4.53 on the ground, 5.10 on the sunken card and 5.67 on the card, so the
+surface that forced it is the only one that was failing and the other two
+improve. Measured with an instrument checked first against the three canonical
+figures, 21.00 for white on black and the 4.54 and 7.00 of the reference greys.
+
+**Three numbers in the sheet's own comment were wrong, and the re-measurement is
+what found them**: `#7A7264` on the ground is 3.58 and not "3.0", the explainer
+figure is 4.04 and not the 4.28 written there, and `.art` was described as
+sunken when the rule above it says `background: var(--card)`. None of them
+changed a decision — the colour was rejected for the right reason — which is
+exactly why they survived: **a number nobody acts on is a number nobody
+checks.**
+
+**What was not done is the other repair, and it is left written down rather than
+taken.** The faithful reading of that comment is that the panel's rows want
+`--ink-2` and not `--muted` at all, since they are text outside a card: it is
+6.07:1 on the ground and it would leave every page untouched. It costs the tray
+palette a field and its guard a row, and it is a change to what the panel says
+rather than to what it measures, so it is a decision and not a correction.
 
 **Three literals remain, the ones depicting somebody else's interface**:
 `login.tailscale.com` in the fake browser bar, the device row in the Tailscale

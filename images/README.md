@@ -70,3 +70,17 @@ names every configuration key. Nothing can ask a PNG whether it still looks like
 the page it claims to show. When one of those pages changes, nothing regenerates
 these and nothing complains: somebody has to remember, and this paragraph is the
 whole of the mechanism.
+
+**And the two drawn sources have moved ahead of their pictures, deliberately.**
+`--muted` went from `#6E6659` to `#6A6256` for contrast, and both sources carry
+the new value, since the header's own comment says it is the file that goes
+stale with nobody saying so. `header.png` and `social-preview.png` were **not**
+re-rendered, and the reason is a measurement rather than an omission: rendering
+the **unchanged** `header.html` here reproduces the layout exactly — every shape
+in the same place — and differs from the committed picture on **24 318 pixels of
+5.8%**, all of them glyph and curve edges, because the antialiasing is that of
+another browser build and another export. So a re-render is not a no-op: it
+would change every edge in the image to carry a four-unit shift in one grey that
+nobody can see at 22 px. **A tool that cannot reproduce what is already there
+has not earned the right to replace it** — whoever next regenerates these for a
+real reason will pick the new value up with them.

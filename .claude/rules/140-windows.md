@@ -517,6 +517,22 @@ theme chosen by Windows. The left button goes on opening the monitor, and **that
 is why the panel has no entry that opens it**: repeating a shorter gesture
 occupies a command's place without adding anything.
 
+**And "the pages' two palettes" is the sentence that had never been measured
+here.** The panel takes the tokens and paints its own surfaces with them, and
+the surface it paints nearly everything on is `--ground`: the status lines and
+every ghost label are `muted` on `ground`. The pages do not do that — their own
+sheet says *text that sits outside the cards uses `--ink-2`* — so `--muted` had
+been tuned against the **card**, and the one place it went onto the ground was
+this file. In the light face that is 4.27:1, under the threshold, which is what
+somebody meant by *the light mode looks less contrasted than the dark*; in the
+dark face the ground is the darkest surface instead of the lightest and the same
+pairing is the best of the three. The token moved to `#6A6256`, and the whole
+measurement is in `150-pages.md`, beside the rule it belongs to.
+
+**Taking a palette is not the same as taking its measurements**, and that is the
+line worth keeping: the copy guard holds the three writings of `--muted` equal
+and has nothing to say about what the panel puts underneath it.
+
 **What authorises removing the menu is that the controls stay the system's.**
 The buttons are real `BUTTON`s with `BS_OWNERDRAW`: **only who paints** changes,
 so focus, keyboard and accessibility come free — verified that Narrator reads

@@ -33,9 +33,17 @@
   --ink:    #2E2A24;
   --ink-2:  #574F44;
   /* Measured: #7A7264 on the card's cream gives 4.48:1, just under the
-     threshold, and on the earth ground it drops to 3.0:1. This one is 5.34:1 on
-     the card; text that sits **outside** the cards uses --ink-2. */
-  --muted:  #6E6659;
+     threshold, and on the earth ground it drops to 3.58:1. This one is 5.67:1
+     on the card, 5.10 on the sunken one and 4.53 on the ground; text that sits
+     **outside** the cards uses --ink-2.
+
+     It was #6E6659, and the value moved because a surface nobody had measured
+     it on turned up: the tray panel paints its rows straight onto --ground,
+     where #6E6659 is 4.27:1 — under the threshold, in the one face where the
+     ground is the lightest of the three surfaces rather than the darkest. The
+     rule that the value had never been wrong is the line above it, and the
+     panel is what broke it. See 150-pages.md. */
+  --muted:  #6A6256;
 
   /* --- colour by phase: it says where you are, it does not decorate ------
      Each group of steps has its own, and the eyebrow, the progress bar, the
@@ -457,8 +465,8 @@ p.small { font-size: var(--t-ui); color: var(--muted); }
 /* **And the labels' colour is decided by the palette, not by seventeen hex
    values.** They were all `#7A7264`, which is the grey this same sheet
    **rejected** for text a few lines above: 4.48:1 on the card, "just under the
-   threshold". But the ground they sit on is not the card — `.art` is sunken, and
-   inside the explainer it is sunken twice — so the real figure is 4.28:1, under
+   threshold". And inside the explainer the ground they sit on is not the card
+   at all — `.art` there is `--card-sunk` — so the real figure is 4.04:1, under
    the threshold with room to spare and in the worse direction.
 
    `:not([fill])` is not an affectation: a CSS rule **wins** over the
