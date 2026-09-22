@@ -1527,7 +1527,8 @@ func (f *flyout) paint() {
 	// cannot even tell something is missing* — and it was reachable by three of
 	// the existing fault sentences and not only by a new one: measured at 96
 	// dpi against the 236 px of a row, `remote-no-ingress` is 447 px in German
-	// and 432 in English, and `no-password` is over in all five languages.
+	// and 434 in English, and `no-password` is over in all five Latin
+	// catalogues.
 	// Nothing had said so, because a line missing its first word and its last
 	// reads as a line.
 	//
@@ -1843,11 +1844,11 @@ func classNameOf(h windows.Handle) string {
 //
 // **Three, and it is measured rather than chosen.** Two was the guess, and it
 // was made by dividing a width by a width — which is not how text wraps. Asked
-// of `DT_CALCRECT` in all five languages, four sentences need a third row, and
-// the widest is not the one the arithmetic accused: English's
+// of `DT_CALCRECT` in the five Latin catalogues, four sentences need a third
+// row, and the widest is not the one the arithmetic accused: English's
 // `remote-no-ingress` breaks into *access from outside: open, but / nothing
 // gets through from the / Internet*, while German's, 447 px against English's
-// 432, happens to break into two.
+// 434, happens to break into two. Chinese needs no second row for any of them.
 //
 // **The other three are the confirmation titles**, which is the find that
 // matters: *¿Desconectar todos los aparatos?* in Spanish, French and Italian

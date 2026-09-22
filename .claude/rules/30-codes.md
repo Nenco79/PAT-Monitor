@@ -565,7 +565,7 @@ key both fail naming `zh`.
   absence anything can complain about. The three **flat** counters are another
   matter and all three are written: `tray.viewers.*` and `tray.sessions.*` are
   chosen in Go by `n == 1`, not by a plural rule.
-- **Ten accelerators, distinct, in the Windows Chinese form**: the Latin letter
+- **Eleven labels answering to nine letters, in the Windows Chinese form**: the Latin letter
   in half-width brackets at the end of the label — `打开 Windows 设置(&W)` — which
   is what Microsoft's own localisation does, since the characters are not on the
   keyboard. The guard reads the character after the first `&`, so the form passes
@@ -587,8 +587,9 @@ the catalogue the convention was invented for.
 **What CJK costs in the panel is nothing, and that is measured.** Chinese is the
 **narrowest** of the six in every status line — `remote-no-ingress` is 212 px
 against German's 447 in a row of 236 — and the worst tooltip is **42 characters
-of the 127**, against French's 111. Two of Tailscale's six actions drop from two
-rows to one. The one number that had to be bought back is
+of the 127**, against French's 111. Three of Tailscale's six actions drop from
+two rows to one, and `approve` from six to four. The one number that had to be
+bought back is
 `tray.fault.remote-no-ingress`, whose first writing left a **single character
 alone on the second row**: 孤字 is a real defect in Chinese typography and no
 guard here can see it, since a line that wraps within its rows is a line that

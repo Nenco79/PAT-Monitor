@@ -76,12 +76,20 @@ func panelDC(t *testing.T) (*flyout, uintptr, func()) {
 //
 // It walks the catalogues rather than a list of languages, because **what
 // overflows is a translation and not the base**: measured at 96 dpi,
-// `remote-no-ingress` is 447 px in German against 432 in English and 338 in
-// Italian, and `no-password` is over one row in all five.
+// `remote-no-ingress` is 447 px in German against 434 in English and 340 in
+// Italian, and `no-password` is over one row in the five Latin catalogues. In
+// Chinese both fit one row — 212 and 175 — which is the direction nobody
+// predicts and is why the list is derived rather than written.
+//
+// **The English and Italian figures used to read 432 and 338 here**, and no
+// font this panel builds produces either: they belong to a sentence or an
+// instrument that no longer exists, and they survived because nothing acts on
+// them. Re-measured with `makeFonts`, which is the one list the panel and its
+// guards now share.
 //
 // **Verified to catch**: with the ceiling put back to one row, it fails naming
-// eight sentences across the five languages — which is the state this panel was
-// in until somebody photographed it.
+// eight sentences across the five Latin languages — which is the state this
+// panel was in until somebody photographed it.
 func TestEveryStatusLineFitsTheRowsItIsGiven(t *testing.T) {
 	f, hdc, done := panelDC(t)
 	defer done()
@@ -131,10 +139,18 @@ func TestEveryStatusLineFitsTheRowsItIsGiven(t *testing.T) {
 			// both ends, which is the worst way this panel fails and the case
 			// this guard was written for.
 			//
-			// It costs nothing in the five languages here, where a space is
-			// always available; it is the whole of the question in a script
-			// with no spaces, where whether GDI breaks between characters is a
-			// property of the flags and not of the sentence.
+			// It costs nothing in the five Latin catalogues, where a space is
+			// always available; it was written for the script with no spaces,
+			// where whether GDI breaks between characters is a property of the
+			// flags and not of the sentence.
+			//
+			// **That script has arrived, and the answer is that it breaks.**
+			// `DT_NOFULLWIDTHCHARBREAK` is the flag that *prevents* a break at
+			// a double-byte character and has no effect without
+			// `DT_WORDBREAK` — so the flag already passed here is the one that
+			// allows it, and the one that would have caused the defect is one
+			// nobody sets. This guard therefore stays silent in the case it
+			// was added for, which is the answer and not a disappointment.
 			if box.Right > room {
 				t.Errorf("%s: %q measures %d px in a row of %d and did not wrap: "+
 					"it would lose its first word and its last", language, text,

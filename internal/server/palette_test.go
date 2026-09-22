@@ -1,9 +1,11 @@
 package server
 
 import (
+	"fmt"
 	"io/fs"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -475,7 +477,8 @@ func TestNoFontShorthandCarriesAToken(t *testing.T) {
 // **The tray panel is drawn three times, and the third copy was unheld.**
 //
 // `internal/tray` carries the palette as Go constants, and
-// `TestTheTwoGoCopiesMatchTheSheet` holds those against this sheet. What nobody
+// `TestTheFlyoutPaletteMatchesTheStylesheet` holds those against this sheet.
+// What nobody
 // held is the **drawing** of that panel on the last screen of the guided path:
 // it is SVG, so its colours are presentation attributes and cannot be `var()`,
 // which means seven hand-written copies of `--muted` alone. The chapter on the
@@ -522,9 +525,16 @@ func TestTheDrawingOfTheTrayUsesThePalette(t *testing.T) {
 	if len(declared) < 10 {
 		t.Fatalf("%d colours read from the sheet: the guard is looking at nothing", len(declared))
 	}
-	// Computed from the palette, not declared in it: the border of the command
-	// that has the focus, `ground` blended 60% towards `accent`.
-	declared["#699C96"] = true
+	// **The one colour the sheet does not declare is computed, not spelled.**
+	// It is the border of the command that has the focus, which the panel
+	// builds as `blend(ground, accent, 0.60)` — a value the palette holds
+	// nowhere, so the drawing has to write the result. Whitelisting the six
+	// characters would have been the defect this guard exists for, one colour
+	// across: move `--ground` or `--c-home` and the border goes stale while the
+	// exception absolves it for ever. So it is recomputed from the two tokens
+	// every run, with the panel's own rounding.
+	light := block(t, string(css), ":root")
+	declared[blend60(t, light["--ground"], light["--c-home"])] = true
 
 	group := trayDrawing(t, string(markup))
 	seen := 0
@@ -584,4 +594,40 @@ func trayDrawing(t *testing.T, markup string) string {
 	}
 	t.Fatal("the group holding tray-line-1 is never closed")
 	return ""
+}
+
+// blend60 is `internal/tray`'s `blend(a, b, 0.60)`, which is how the panel
+// builds the focused command's border out of two tokens.
+//
+// **The rounding is copied deliberately and it is the whole of the function.**
+// `blend` adds a half before truncating, so a channel that lands on 105.9 gives
+// 105 and not 106; a version here that rounded the other way would disagree with
+// the panel on about half the channels and accuse a drawing that is right.
+func blend60(t *testing.T, a, b string) string {
+	t.Helper()
+	ca, cb := channels(t, a), channels(t, b)
+	var out [3]int
+	for i := range out {
+		out[i] = int(float64(ca[i]) + (float64(cb[i])-float64(ca[i]))*0.60 + 0.5)
+	}
+	return strings.ToUpper(fmt.Sprintf("#%02x%02x%02x", out[0], out[1], out[2]))
+}
+
+// channels splits `#RRGGBB` into its three numbers.
+func channels(t *testing.T, hex string) [3]int {
+	t.Helper()
+	hex = strings.TrimSpace(hex)
+	if len(hex) != 7 || hex[0] != '#' {
+		t.Fatalf("%q is not a six-digit colour: the token this guard computes "+
+			"from has changed shape", hex)
+	}
+	var out [3]int
+	for i := range out {
+		v, err := strconv.ParseInt(hex[1+i*2:3+i*2], 16, 32)
+		if err != nil {
+			t.Fatalf("%q: %v", hex, err)
+		}
+		out[i] = int(v)
+	}
+	return out
 }

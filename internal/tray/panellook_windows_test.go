@@ -126,7 +126,7 @@ func TestLookAtThePanel(t *testing.T) {
 				dictionary: i18n.Open([]string{lookLanguage()}),
 			}
 			f := &flyout{t: tr, dpi: 96, pills: map[pillKey]windows.Handle{}}
-			f.pal = lookPalette()
+			f.pal = lookPalette(t)
 			f.url = st.PublicURL
 			if f.url == "" {
 				f.url = st.HomeURL
@@ -218,17 +218,31 @@ func lookLanguage() string {
 // The two faces are not the same picture at a different lightness — the ink
 // sits on `ground` here, and that is the surface the two palettes differ on
 // most — so a face nobody can photograph is a face nobody checks.
-func lookPalette() palette {
-	switch os.Getenv("PATMON_LOOK_THEME") {
+// **A value it does not recognise is refused, not ignored.** Falling back to the
+// system theme for `PATMON_LOOK_THEME=ligth` would photograph the face Windows
+// happens to be in and say nothing, so the picture would be of the wrong
+// palette and look perfectly correct — the one failure this instrument cannot
+// afford, since its whole value is that it shows what is really there. It is
+// the same rule as the fallback that answers the same thing as the road it
+// stands in for.
+func lookPalette(t *testing.T) palette {
+	t.Helper()
+	switch v := os.Getenv("PATMON_LOOK_THEME"); v {
 	case "light":
 		return palLight
 	case "dark":
 		return palDark
+	case "":
+		if darkTheme() {
+			return palDark
+		}
+		return palLight
+	default:
+		t.Fatalf("PATMON_LOOK_THEME=%q is neither \"light\" nor \"dark\": "+
+			"photographing whichever face Windows is in would give a picture "+
+			"of the wrong palette with nothing saying so", v)
+		return palLight
 	}
-	if darkTheme() {
-		return palDark
-	}
-	return palLight
 }
 
 // pumpMessages runs the window's own message loop for a while. The panel paints
