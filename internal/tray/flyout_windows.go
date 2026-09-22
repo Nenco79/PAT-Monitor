@@ -136,10 +136,19 @@ const (
 	// comes out discreet, not coloured. The other way round, the first one to
 	// forget the style would take the filled pill, and there would be two.
 	styleGhost flyStyle = iota
-	// stylePill is the main command: a pill filled with the phase's colour,
-	// light text, weight 600. **There is one per panel**, as in the pages,
-	// where every screen has one main action and only one — and here it is
-	// there only when there really is something to do.
+	// stylePill is the main command, weight 600. **There is one per panel**, as
+	// in the pages, where every screen has one main action and only one — and
+	// here it is there only when there really is something to do.
+	//
+	// **It wears the mark of the selected command, and it used to wear a solid
+	// accent.** The comment here said "the phase's colour" and the code took
+	// `pal.accent`, which is chosen by the Windows theme and not by the phase —
+	// a sentence that could not fail, describing something the code had never
+	// done. What that solid fill produced on screen is the report that found
+	// it: the same token reads dark green at 22% over near-black and bright
+	// cyan at 100%, so the panel appeared to hold two accents, one of them
+	// belonging to nothing. The panel has one way of saying *this one*, and
+	// this is it.
 	stylePill
 	// styleText has neither background nor border: it is the address, which is
 	// pressed to copy it. **It stays a real control** even though it does not
@@ -1545,6 +1554,20 @@ func (f *flyout) drawText(hdc uintptr, s string, r rect, color uint32, font wind
 		uintptr(unsafe.Pointer(&r)), uintptr(dtSingleLine|dtVCenter|dtNoPrefix|flags))
 }
 
+// marked is how this panel says *this one*: the viewer's switched-on toggle,
+// `border-color` accent at 60%, `background` accent at 22%, text `--ink`.
+//
+// **It is one function because there is one mark.** The main command and the
+// command with the focus are two questions with one answer here, and written
+// twice they would drift — which is what the solid accent was, a second mark
+// that had stopped meaning anything the day `pal.accent` stopped being the
+// phase.
+func (f *flyout) marked() (fill, border, ink uint32) {
+	return blend(f.pal.ground, f.pal.accent, 0.22),
+		blend(f.pal.ground, f.pal.accent, 0.60),
+		f.pal.ink
+}
+
 // paintButton is the half we pay for having keyboard and accessibility free:
 // the control is the system's, the pixels are ours.
 func (f *flyout) paintButton(di *drawItemStruct) {
@@ -1562,7 +1585,7 @@ func (f *flyout) paintButton(di *drawItemStruct) {
 	fill, border, ink := f.pal.ground, f.pal.line, f.pal.muted
 	switch c.style {
 	case stylePill:
-		fill, border, ink = f.pal.accent, 0, palLight.card
+		fill, border, ink = f.marked()
 	case styleText:
 		border = 0
 	}
@@ -1572,13 +1595,11 @@ func (f *flyout) paintButton(di *drawItemStruct) {
 	// it is a selection that exists only for whoever presses Enter blind.
 	//
 	// The form is that of the viewer's switched-on toggles, taken from the same
-	// rule: `border-color` accent at 60%, `background` accent at 22%, text
-	// `--ink`. The filled one stays out: that is already the accent, and accent
-	// cannot be added on top of accent.
-	if di.ItemState&odsFocus != 0 && c.style != stylePill {
-		fill = blend(f.pal.ground, f.pal.accent, 0.22)
-		border = blend(f.pal.ground, f.pal.accent, 0.60)
-		ink = f.pal.ink
+	// rule, and it is `marked` — the same function the main command draws with,
+	// so the panel cannot end up with two ways of saying the same thing. On the
+	// main command it assigns what is already there.
+	if di.ItemState&odsFocus != 0 {
+		fill, border, ink = f.marked()
 	}
 	if di.ItemState&odsSelected != 0 {
 		// Pressed: the sheet lightens by 12%. Here it is mixed towards the ink,

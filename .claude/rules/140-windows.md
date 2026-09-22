@@ -716,6 +716,24 @@ changed, the state became dead weight and must be removed, not kept "just in
 case". What remains is the real half of the same mechanism: the underlines,
 which show only on pressing Alt.
 
+**And the main command wears that same mark, which it did not.** It was filled
+with `pal.accent` solid, under a comment calling it *the phase's colour* — and
+`pal` is `palDark` or `palLight`, chosen by the Windows theme, so that fill had
+never been the phase's anything. **A comment that cannot fail, describing
+something the code had never done.**
+
+What it produced on screen is the report that found it: the same token reads
+dark green at 22% over near-black and **bright cyan at 100%**, so a panel
+holding one accent appeared to hold two, and the louder of the two belonged to
+nothing. Both now go through `marked()`, one function because there is one mark;
+what still separates the main command from the one with the focus is the weight,
+600 against 500, which is the difference that was meant to be carried all along.
+
+**The price is declared**: in the one state that has both — a permission refused
+*and* a step waiting on Tailscale — two commands carry the mark at once. That is
+honest rather than tidy, because both really are things to do, and the panel has
+never had a way of saying *first this, then that*.
+
 #### What is shown is not what is used
 
 The address is a command: press it and it is copied. **It is shown without
