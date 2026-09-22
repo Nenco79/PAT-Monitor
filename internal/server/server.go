@@ -134,10 +134,14 @@ type Status struct {
 	// written in the file. They are filled by whoever knows: the first by the
 	// capture, the second by the server, which is the only one holding the
 	// configuration.
-	MicrophoneID     string  `json:"microphoneId"`
-	MicrophoneChosen string  `json:"microphoneChosen"`
-	RawAudio         bool    `json:"rawAudio"`
-	AudioLevelDBFS   float64 `json:"audioLevelDbfs"`
+	MicrophoneID     string `json:"microphoneId"`
+	MicrophoneChosen string `json:"microphoneChosen"`
+	RawAudio         bool   `json:"rawAudio"`
+	// MicrophoneMuted says the endpoint is muted in Windows, which is the one
+	// cause of silence with a remedy on this machine. See
+	// pipeline.MicrophoneMuted for what it describes and what it cannot.
+	MicrophoneMuted bool    `json:"microphoneMuted"`
+	AudioLevelDBFS  float64 `json:"audioLevelDbfs"`
 	// MicHealth is a **code**, not a sentence: `ok`, `digital-silence`, `quiet`,
 	// `unknown`. See detect.MicCode*.
 	MicHealth      string `json:"micHealth"`

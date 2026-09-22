@@ -98,3 +98,57 @@ func enclosingTopLevel(src string, at int) string {
 	}
 	return src[from:to]
 }
+
+// **And a mute is the same claim about the same stream.**
+//
+// `microphoneMuted` is written where the capture opens and describes the last
+// open, exactly as `rawAudio` does, so it carries the same three-into-two
+// squeeze: on a microphone that has since gone it is yesterday's answer, and a
+// page that states it says *Windows has the microphone muted* — with a command
+// offering the volume slider — about a device that is not in the machine.
+//
+// It is a second test and not a list inside the first, because the two say
+// different things to whoever reads a failure: one is about a property of the
+// audio, the other about a state of Windows. What they share is the machinery,
+// which is why that lives in functions.
+//
+// **And it does not catch the defect it was written after, which is the thing
+// to know about it.** The read that was wrong sits in the same function as
+// `micOk`, which asks `microphoneActive` two lines down, so at this resolution
+// the function is guarded and the expression is not — the coarseness its
+// sibling already declares, met by the one case where it matters. Sharpening it
+// to the statement would accuse the legitimate shape where the absence is
+// returned early and the mute asked afterwards, that is, it would protect the
+// list of exceptions rather than the rule.
+//
+// **What it does catch is a new reader in a function that never asks at all**,
+// and that is verified rather than assumed: a `mutedSays(s)` added to `app.js`
+// fails it by name. What found the other one was a review.
+
+func TestNothingCallsAMicrophoneMutedWithoutAskingIfThereIsOne(t *testing.T) {
+	seen := map[string]bool{}
+	readers := 0
+	for _, c := range pagesAndScripts(t) {
+		if seen[c.js] {
+			continue
+		}
+		seen[c.js] = true
+
+		src := withoutComments(readAsset(t, c.js))
+		for _, at := range readsMicrophoneMuted.FindAllStringIndex(src, -1) {
+			readers++
+			fn := enclosingTopLevel(src, at[0])
+			if !strings.Contains(fn, "microphoneActive") {
+				t.Errorf("%s reads microphoneMuted in a function that never asks "+
+					"microphoneActive: with the device gone the page offers a volume "+
+					"slider for a microphone that is not there", c.js)
+			}
+		}
+	}
+	if readers == 0 {
+		t.Fatal("nothing reads microphoneMuted: either the field has been renamed, " +
+			"or this test is watching nothing")
+	}
+}
+
+var readsMicrophoneMuted = regexp.MustCompile(`\bmicrophoneMuted\b`)

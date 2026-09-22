@@ -24,11 +24,18 @@ import (
 type Fault string
 
 const (
-	FaultNone            Fault = ""
-	FaultNoPassword      Fault = "no-password"
-	FaultCaptureStopped  Fault = "capture-stopped"
-	FaultMicMissing      Fault = "mic-missing"
-	FaultMicSilent       Fault = "mic-silent"
+	FaultNone           Fault = ""
+	FaultNoPassword     Fault = "no-password"
+	FaultCaptureStopped Fault = "capture-stopped"
+	FaultMicMissing     Fault = "mic-missing"
+	FaultMicSilent      Fault = "mic-silent"
+	// FaultMicMuted: the microphone opens and Windows is muting it.
+	//
+	// **It is here for the reason the two refusals below are**: the remedy is
+	// on this machine and nowhere else. Whoever is watching from a phone can be
+	// told the room is muted and can do nothing at all; whoever walks past the
+	// computer is one click from the slider that did it — see settingsPage.
+	FaultMicMuted        Fault = "mic-muted"
 	FaultMicFiltered     Fault = "mic-filtered"
 	FaultRemoteNoIngress Fault = "remote-no-ingress"
 	// FaultCameraDenied and FaultMicDenied: Windows is refusing the device
@@ -38,14 +45,20 @@ const (
 	// only place the remedy exists.** Whoever watches from a phone can be told
 	// the camera permission is off and can do nothing whatever about it; the
 	// switch is in the Settings of this machine, and whoever is in front of it
-	// is one click away — see privacySetting, which is what turns this code
+	// is one click away — see settingsPage, which is what turns this code
 	// into that click. It is the argument NoteCameraOther and NoteUpdate
 	// already carry.
 	FaultCameraDenied Fault = "camera-denied"
 	FaultMicDenied    Fault = "mic-denied"
 )
 
-// privacySetting is the Windows page where a refused capability is granted.
+// settingsPage is the Windows page where what is wrong can be put right.
+//
+// **It was called privacySetting while the only two answers were privacy
+// switches**, and a mute is not a permission: the name would have gone on
+// describing two thirds of the function, which is the shape this repository
+// keeps a chapter about. The button's word never said "permission" — it says
+// *open Windows settings* — so only the key and the name had to follow.
 //
 // **The address belongs here and not to whoever composes the state**: it is a
 // Windows shell address, this package is the monitor's Windows presence, and
@@ -57,16 +70,31 @@ const (
 // button sitting directly under a line that already says *microphone: permission
 // is off*. The line names the device and the button says what pressing does —
 // the same division the recordings page's lock already makes — so there is one
-// entry, `tray.menu.permission`, and it is shorter, which the panel notices.
+// entry, `tray.menu.settings`, and it is shorter, which the panel notices.
 //
 // An empty answer means there is nothing to grant, and then there is no command:
 // a panel entry that does nothing is worse than a shorter panel.
-func privacySetting(f Fault) string {
+func settingsPage(f Fault) string {
 	switch f {
 	case FaultCameraDenied:
 		return "ms-settings:privacy-webcam"
 	case FaultMicDenied:
 		return "ms-settings:privacy-microphone"
+	case FaultMicMuted:
+		// **The Sound page and not the default microphone's properties.**
+		// `ms-settings:sound-defaultinputproperties` lands on the very slider,
+		// which is better every time the muted endpoint is the default one and
+		// wrong the rest of the time — the chosen microphone can be another
+		// device, and a page that opens the wrong device's volume is worse than
+		// one that opens a list: it shows a slider that is not down.
+		//
+		// There is an address that is always right,
+		// `ms-settings:sound-properties?endpointId=`, and it wants the ID of
+		// the endpoint that is capturing — which this package does not have and
+		// `cmd/pat-monitor` does. It is a field's worth of work and it is not
+		// done until somebody has measured that the URI takes the ID in the
+		// shape WASAPI hands it over.
+		return "ms-settings:sound"
 	}
 	return ""
 }
@@ -121,7 +149,7 @@ const (
 func AllFaults() []Fault {
 	return []Fault{
 		FaultNoPassword, FaultCaptureStopped, FaultMicMissing,
-		FaultMicSilent, FaultMicFiltered, FaultRemoteNoIngress,
+		FaultMicSilent, FaultMicMuted, FaultMicFiltered, FaultRemoteNoIngress,
 		FaultCameraDenied, FaultMicDenied,
 	}
 }

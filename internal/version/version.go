@@ -54,9 +54,16 @@ const Product = "PAT Monitor"
 //
 // **It is not chosen by whoever has just finished something.** A number decided
 // on a feeling drifts optimistic on its own, so the rule is outside it: the
-// major moves when a milestone closes, and the suffix stays while the open
+// minor moves when a milestone closes, and the suffix stays while the open
 // issues still carry something the product **is missing**, as opposed to
 // something about it that has not been measured.
+//
+// **The major has no rule, and inventing one to fill the gap would be worse
+// than the gap.** It has never moved: the repository was born at 1.0.0 and the
+// only step the number has taken since is the minor, at a milestone. A
+// condition written here now would be obeyed by whoever next reads it exactly
+// as if somebody had decided it, and what a 2 means is for the release that
+// first deserves one to say.
 //
 // **That boundary is the whole rule, and the first version of it was the wrong
 // half.** It said the suffix comes off when the open proofs are closed — and

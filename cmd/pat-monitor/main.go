@@ -352,6 +352,30 @@ func run(log *slog.Logger, path string) error {
 	ctx, quit := context.WithCancel(ctx)
 	defer quit()
 
+	// **The machine must not fall asleep while this is running**, and asking is
+	// the whole of it: the idle timeout belongs to Windows, and a monitor that
+	// lets it fire stops in the middle of the night with nothing to show for
+	// it. See awake_windows.go for why it is not a configuration key and why
+	// the screen is left to go dark.
+	//
+	// A refusal is worth a line and not a stop. What is lost is the machine
+	// possibly sleeping, which is exactly the state everything was in before
+	// this existed, and refusing to monitor over it would trade a maybe for a
+	// certainty.
+	if a, err := keepAwake(awakeReason()); err != nil {
+		log.Warn("Windows would not be asked to stay awake: the machine may sleep", "error", err)
+	} else {
+		defer a.release()
+		// **The line says what was asked, not what will happen.** Windows drops
+		// the request on a user-initiated sleep, and on a modern standby
+		// machine on battery it drops it five minutes after the sleep timeout
+		// — so a log asserting the machine is awake would be a claim that goes
+		// stale in the night, in the file somebody reads to find out why the
+		// monitor stopped.
+		log.Info("Windows asked to keep the machine awake", "reason", awakeReason(),
+			"who_is_holding_it", "powercfg /requests")
+	}
+
 	// --- device selection ---
 	//
 	// The formats **are enumerated**, and the opposite claim does not hold: "the
@@ -753,6 +777,7 @@ func run(log *slog.Logger, path string) error {
 			MicrophoneID:      mic.ID,
 			MicrophoneActive:  p.AudioActive(),
 			RawAudio:          p.RawAudioMode(),
+			MicrophoneMuted:   p.MicrophoneMuted(),
 			AudioLevelDBFS:    lvl.RMSdBFS,
 			MicHealth:         lvl.Health().Code(),
 			Viewers:           hub.Stats.ViewersNow.Load(),
@@ -1453,6 +1478,18 @@ func micSilent(s server.Status) bool {
 	return s.MicHealth == detect.MicCodeDigitalSilence && !s.MicrophoneOpening
 }
 
+// micMuted: the microphone is muted in Windows, which is why it delivers zeros.
+//
+// **It is the cause and `micSilent` is the consequence**, so it takes
+// precedence in the chain rather than excluding the other here: the exclusion
+// written into this predicate would be a second place saying which of the two
+// wins, and `activeFaults` is already that place for the denied pair above.
+//
+// It carries `MicrophoneOpening` like the rest of the family. A mute read
+// before an open has finished is last night's answer, and the whole point of
+// this code is that it names something true now that somebody can go and undo.
+func micMuted(s server.Status) bool { return s.MicrophoneMuted && !s.MicrophoneOpening }
+
 // micMissing: there is no audio at all. It happens on laptops with the lid
 // closed, and it must not switch off the video.
 //
@@ -1566,6 +1603,12 @@ func activeFaults(s server.Status, startedAt, now time.Time) []alerts.Code {
 		out = append(out, alerts.MicDenied)
 	} else if micMissing(s) {
 		out = append(out, alerts.MicMissing)
+	} else if micMuted(s) {
+		// **Above the silence, for the reason the refusal sits above the
+		// missing picture**: they are one fault seen twice, and of the two only
+		// this one says what to do. Below `micMissing`, because a microphone
+		// that is not there cannot usefully be described as muted.
+		out = append(out, alerts.MicMuted)
 	} else if micSilent(s) {
 		// If the microphone is not there, saying it also delivers zeros is
 		// true and useless: they are the same fault seen from two points.
@@ -1709,11 +1752,19 @@ func trayStatus(s server.Status, cfg config.Config, startedAt time.Time, dict *i
 	// the shown phrase would be turned off by translating the interface, with
 	// nothing to say so — that is, it would remove the warning from the worst
 	// fault of all. Covered by traystatus_test.go.
-	case micSilent(s) || micMissing(s):
+	case micSilent(s) || micMissing(s) || micMuted(s):
 		out.Phase = tray.PhaseCheck
-		if micMissing(s) {
+		// The order is `activeFaults`' order, and it is written twice on
+		// purpose rather than shared: the banner chooses one of a set and the
+		// icon reduces everything to one word, so they are two questions that
+		// happen to have the same answer. What must not diverge is which of the
+		// three wins, and traystatus_test.go asks both.
+		switch {
+		case micMissing(s):
 			out.Fault = tray.FaultMicMissing
-		} else {
+		case micMuted(s):
+			out.Fault = tray.FaultMicMuted
+		default:
 			out.Fault = tray.FaultMicSilent
 		}
 

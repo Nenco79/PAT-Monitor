@@ -251,6 +251,9 @@ type Pipeline struct {
 	Stats Stats
 	// rawMode records whether the last microphone open obtained raw mode.
 	rawMode atomic.Bool
+	// micMuted records whether the endpoint the last open found was muted in
+	// Windows. See MicrophoneMuted.
+	micMuted atomic.Bool
 	// audioOK says whether there is a microphone capturing right now. It serves
 	// the status page: a monitor without audio has to say so, not leave it to be
 	// inferred from the silence.
@@ -675,6 +678,31 @@ func New(cfg Config) *Pipeline {
 // test**; the two in Go are a rule written down, and the chapter says why no
 // guard was added for them.
 func (p *Pipeline) RawAudioMode() bool { return p.rawMode.Load() }
+
+// MicrophoneMuted says the endpoint is muted in Windows.
+//
+// **It is read from the endpoint and not deduced from the silence**, which is
+// the whole of it: deduced, a mute looks exactly like a microphone that has
+// stopped working, and the two have nothing in common — one is undone by a
+// click on this machine and the other is a fault. It is the argument
+// `micDenied` already makes about a withdrawn permission.
+//
+// **It describes the last open, like RawAudioMode**, and for a reason of its
+// own: reading it again means asking the endpoint from a thread that is not the
+// one holding it, and the capture loop is not a place to put a call that crosses
+// into the audio service.
+//
+// **What makes that enough is the re-examination**, which a muted open arms like
+// any other worse path: the monitor comes back to look every two minutes and
+// disarms the timer when it finds the endpoint unmuted. Without that arming this
+// field would be a latch, and the command the tray panel offers under it — open
+// the Windows Sound page — would be a remedy that never reaches the monitor. See
+// micRecheckWanted.
+//
+// The price is that the news is late: up to two minutes between somebody
+// unmuting and the room being heard again, which is the figure the chosen
+// microphone's return already carries.
+func (p *Pipeline) MicrophoneMuted() bool { return p.micMuted.Load() }
 
 // AudioActive says whether the microphone is capturing right now.
 func (p *Pipeline) AudioActive() bool {
@@ -2161,13 +2189,23 @@ const micRecheckInterval = 2 * time.Minute
 // micRecheckWanted says whether the audio path just opened is a fallback to be
 // re-examined.
 //
-// **There are two fallbacks, and it is easy for the timer to watch one.** Raw
+// **There are three fallbacks, and it is easy for the timer to watch one.** Raw
 // mode not obtained was the only case foreseen; since an absent endpoint makes
 // the default open instead of failing, there is a second one — the capture is on
 // a microphone nobody asked for — and without this it would **never** be
 // re-examined: on a machine that does obtain raw mode, that is where everything
 // is fine, the timer would not arm at all and whoever plugged the USB stick back
 // in would stay on the lid microphone until the program restarts.
+//
+// **The third is the mute, and it is the one that makes a button lie.** A muted
+// endpoint delivers silence and the gain is held at zero for the life of the
+// open, so on a machine that obtains raw mode with nothing to fall back to, the
+// timer was not armed at all: whoever read *microphone: muted in Windows*,
+// pressed the command under it and unmuted, got a room that stayed silent and a
+// fault that stayed red until the program restarted. **The remedy the panel
+// offers has to reach the monitor**, and the road already existed — it is the
+// same worse path, re-examined on the same cadence, disarming itself the moment
+// the endpoint opens unmuted.
 //
 // **It lives in a function because it was a condition inside three hundred lines
 // of opening**, where it can only be tested by running WASAPI. Here the answers
@@ -2177,12 +2215,12 @@ const micRecheckInterval = 2 * time.Minute
 // Windows calls default", and whatever the role opens is by definition the right
 // choice. The test tone does not go through WASAPI, so it has neither a mode to
 // obtain nor an endpoint to compare.
-func micRecheckWanted(rawObtained bool, wantedID, openedID string, testTone bool) bool {
+func micRecheckWanted(rawObtained, muted bool, wantedID, openedID string, testTone bool) bool {
 	if testTone {
 		return false
 	}
 	fellBack := wantedID != "" && openedID != wantedID
-	return !rawObtained || fellBack
+	return !rawObtained || fellBack || muted
 }
 
 // micRecheckGrace is how long a planned reopen may last without anyone calling
@@ -3431,6 +3469,11 @@ func (p *Pipeline) runAudio(ctx context.Context, sinks Sinks) error {
 		func(s audio.Stream) error {
 			p.micOpening.Store(false)
 			p.rawMode.Store(s.RawMode)
+			// **The mute was already read here and went no further than the
+			// log.** It is the cause of the silence the monitor was about to
+			// report as `mic-silent`, and it is the one cause of silence that
+			// whoever is in front of the machine can undo in a click.
+			p.micMuted.Store(s.Muted)
 			// The endpoint opened, so whatever Windows was refusing it is not
 			// refusing now. See camDenied for why this is cleared at the open
 			// and not at the end of a session.
@@ -3550,7 +3593,7 @@ func (p *Pipeline) runAudio(ctx context.Context, sinks Sinks) error {
 			// one: **it is only retried while we are on the worse path**, and
 			// when we are on the good one the timer does not exist and the audio
 			// is never interrupted.
-			if micRecheckWanted(s.RawMode, wanted, s.DeviceID, p.cfg.AudioTestTone) {
+			if micRecheckWanted(s.RawMode, s.Muted, wanted, s.DeviceID, p.cfg.AudioTestTone) {
 				guard.After(p.cfg.Log, "the microphone re-examination timer",
 					micRecheckInterval, func() {
 						recheck.Store(true)

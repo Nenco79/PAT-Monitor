@@ -169,7 +169,7 @@ func TestEveryCommandLabelFitsThePanel(t *testing.T) {
 	for language := range i18n.Languages() {
 		tr := &Tray{dictionary: i18n.Open([]string{language})}
 		for _, key := range []string{
-			"tray.menu.permission", "tray.menu.setup", "tray.menu.reset",
+			"tray.menu.settings", "tray.menu.setup", "tray.menu.reset",
 			"tray.menu.revoke", "tray.menu.quit", "tray.menu.videos", "tray.menu.logs",
 			"tray.confirm.yes", "tray.confirm.no",
 		} {

@@ -402,9 +402,9 @@ func (f *flyout) compose(st Status) {
 	// phone can be told about it and can do nothing whatever. It is the argument
 	// that already keeps the password reset and the session revocation off the
 	// HTTP routes.
-	if url := privacySetting(st.Fault); url != "" {
+	if url := settingsPage(st.Fault); url != "" {
 		f.cmds = append(f.cmds, flyCmd{
-			label: t.t("tray.menu.permission"),
+			label: t.t("tray.menu.settings"),
 			lead:  true,
 			do:    func() { t.open(url) },
 		})

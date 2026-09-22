@@ -39,6 +39,19 @@ const (
 	// MicMissing: there is no microphone at all. It happens on laptops with the
 	// lid closed.
 	MicMissing Code = "mic-missing"
+	// MicMuted: the microphone is there, it opens, and Windows is muting it.
+	//
+	// **It is the cause of a MicSilent, and it is a separate code because only
+	// one of the two can be acted on.** *The microphone cannot be heard* is a
+	// fault somebody takes to be a broken device, a wrong cable or a driver;
+	// muted is a switch on this machine, and the difference between the two
+	// sentences is a night of recordings with no sound. The monitor already
+	// knew — the endpoint says so at every open — and said it only in the log.
+	//
+	// It is a Fault for MicSilent's reason and not a Notice: the room cannot be
+	// heard, and that whoever muted it did so on purpose does not change what
+	// the cot gets. See CameraDenied on the same boundary.
+	MicMuted Code = "mic-muted"
 	// CameraDenied and MicDenied: Windows is refusing the device because the
 	// permission is off.
 	//
@@ -110,6 +123,7 @@ var levels = map[Code]Level{
 	CaptureStopped: Fault,
 	MicSilent:      Fault,
 	MicMissing:     Fault,
+	MicMuted:       Fault,
 	CameraDenied:   Fault,
 	MicDenied:      Fault,
 	// **A Notice and not a Fault**, and the boundary is the level's own

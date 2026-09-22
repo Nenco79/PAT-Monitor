@@ -8,21 +8,28 @@ import (
 	"patmonitor/internal/i18n"
 )
 
-// **Each refusal opens its own page**, and there is one word for both, because
-// the line above already names the device: the notice says *microphone:
-// permission is off* and the button says what pressing does.
+// **Each fault with a switch behind it opens its own page**, and there is one
+// word for all of them, because the line above already names the device: the
+// notice says *microphone: permission is off* and the button says what pressing
+// does.
 //
 // The first draft put the device name on the button too, which read as the same
 // word twice on two adjacent rows, and made that button the widest thing in the
 // panel.
+//
+// **They open three different pages, and that is what the second half asks.**
+// Two faults sharing an address would send whoever presses one of them to a
+// switch that is not the one the line above just named — a button that goes
+// somewhere plausible and wrong, which is worse than a panel with no button.
 func TestEachRefusalOpensItsOwnPage(t *testing.T) {
 	want := map[Fault]string{
 		FaultCameraDenied: "ms-settings:privacy-webcam",
 		FaultMicDenied:    "ms-settings:privacy-microphone",
+		FaultMicMuted:     "ms-settings:sound",
 	}
 	seen := map[string]Fault{}
 	for f, url := range want {
-		got := privacySetting(f)
+		got := settingsPage(f)
 		if got != url {
 			t.Errorf("%q opens %q, wanted %q", f, got, url)
 		}
@@ -41,8 +48,8 @@ func TestEachRefusalOpensItsOwnPage(t *testing.T) {
 		if _, taken := want[f]; taken {
 			continue
 		}
-		if url := privacySetting(f); url != "" {
-			t.Errorf("%q offers %q, and it is not a refused permission", f, url)
+		if url := settingsPage(f); url != "" {
+			t.Errorf("%q offers %q, and there is no switch behind it", f, url)
 		}
 	}
 }
@@ -57,7 +64,7 @@ func TestEachRefusalOpensItsOwnPage(t *testing.T) {
 // the command is below the code.
 func TestThePermissionIsAnsweredUnderTheLineThatStatesIt(t *testing.T) {
 	tr := &Tray{dictionary: i18n.Open([]string{"en"})}
-	word := tr.t("tray.menu.permission")
+	word := tr.t("tray.menu.settings")
 
 	find := func(f *flyout, label string) int {
 		for i, c := range f.cmds {

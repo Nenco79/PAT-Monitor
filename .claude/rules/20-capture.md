@@ -1207,7 +1207,7 @@ layer that can answer for it:
 **And the remedy is in the notification area, because that is the only place it
 exists.** Whoever watches from a phone can be told the camera permission is off
 and can do nothing whatever about it; the switch is in this machine's Settings.
-`tray.privacySetting` answers with the address — `ms-settings:privacy-webcam`
+`tray.settingsPage` answers with the address — `ms-settings:privacy-webcam`
 or `ms-settings:privacy-microphone` — and the word is not there, because there
 is one word for both.
 
@@ -1379,6 +1379,86 @@ than guarded against, because the guard would need the number this chapter has
 just refused to invent, and because the thing that would tell the watcher is
 already on their screen.
 
+### A microphone muted in Windows is a cause, and it was only in the log
+
+The endpoint's mute is read at every open — it has to be, because in exclusive
+mode the audio engine does not take part and the gain and the mute it would have
+applied come back to us. Respecting it was right and complete. **Saying so was
+neither**: `gain = 0` and a `Warn` line, and from there on the monitor
+reported *the microphone delivers zeros*, which is the same fault it reports for
+a dead capture path. The program knew why and told the file.
+
+What that costs is not the mute, it is where it sends whoever reads. `mic-silent`
+is the worst fault this product has and it accuses the device: a cable, a driver,
+an array that has gone. The thing that was actually wrong is a slider on the
+machine the reader is standing in front of, and nothing on any surface said the
+word.
+
+**So it is a code of its own and not a detail hung off the old one.** `mic-muted`
+sits between `mic-missing` and `mic-silent` in the same chain the refusal already
+walks, which is the rule stated one chapter up: **the cause is announced instead
+of the consequence**, because the page shows one banner and of the two only one
+says what to do. Below `mic-missing`, because a microphone that is not there
+cannot usefully be called muted; above `mic-silent`, because the silence is what
+the mute produces.
+
+**And the Sound page, not the microphone's own properties.**
+`ms-settings:sound-defaultinputproperties` lands on the very slider and is right
+only while the muted endpoint is the default one — the chosen microphone can be
+another device, and a page showing a slider that is not down is worse than a page
+showing a list. There is an address that is always right,
+`ms-settings:sound-properties?endpointId=`, and it wants the ID of the endpoint
+that is capturing: `internal/tray` does not hold it and `cmd/pat-monitor` does.
+It is a field's worth of work and it waits on somebody measuring that the URI
+takes the ID in the shape WASAPI hands it over.
+
+**It describes the last open, and that is a limit with a road out.** Reading
+the mute again means asking the endpoint from a thread that is not holding it,
+and the capture loop is no place for a call that crosses into the audio service.
+So a mute is read where every other property of the endpoint is read, at the
+open — and **the re-examination is what makes that enough**: a muted open arms
+the same two-minute timer as a raw-mode fallback, so the monitor comes back to
+look on its own and disarms the timer the moment it finds the endpoint unmuted.
+Without that the button in the panel was a command whose remedy never reached
+the monitor, which is written up in `micRecheckWanted`.
+
+**What it costs is that the news is late and never absent**: up to two minutes
+between somebody unmuting and the room being heard again, which is the same
+figure the chosen microphone's return already carries.
+
+**Measured live, with the endpoint really muted**, on a monitor with its own
+configuration, the Funnel off and nothing recording:
+
+| | |
+|---|---|
+| muted before start-up, the open declares it | `raw mode refused` then `the microphone is muted in Windows` |
+| `alert code=mic-muted level=fault` | **+30.5 s**, which is the start-up grace |
+| `mic-silent` in the whole run | **zero lines** |
+| unmuted from outside | 11:56:12 |
+| `alert cleared code=mic-muted` | 11:57:36.8, that is **2m00.7s after the open** |
+| the microphone reopened, gain back, no mute line | +0.6 s after that |
+
+The clearing sits on the re-examination's two minutes to the tenth of a second,
+which is what says the recovery is that timer and not a coincidence — the same
+constant this file already records twice on other devices. And the alert clears
+**during** the reopen rather than after it, because `MicrophoneOpening` waives
+the predicate: the state is correct throughout and does not flicker back.
+
+**What this run does not demonstrate is the repair itself**, and that is worth
+more than the numbers. This machine refuses raw mode, so the re-examination was
+armed by the raw fallback whatever the mute did; the case the repair exists for
+is a machine that **obtains** raw with nothing to fall back on, where there was
+no timer at all. Showing it wants such a machine, and the two muted rows of
+`TestARecheckIsArmedForEveryFallback` are what stands in for it — which is a
+guard proving a guard, and this file has a chapter about why that is not the
+same thing.
+
+**And the function that answers with the page stopped being about permissions.**
+It was `privacySetting` while the only two answers were privacy switches, and a
+mute is not a permission: left alone, the name would have described two thirds of
+what it does. The button's word never said *permission* — it says *open Windows
+settings* — so only the name and the catalogue key had to follow it.
+
 ### The picture stopping is a fault, and `Ready` cannot say so
 
 A monitor that has stopped showing anything is the one thing this program exists
@@ -1507,6 +1587,95 @@ against the threshold is their **sum**, which is what the picture waited. It is
 the same distinction as everywhere else here: **attribution is one question and
 the stall is another**, and a number that answers the first is not automatically
 the one to threshold.
+
+### The machine must not fall asleep, and who is holding it awake is readable
+
+Nothing in this program had ever asked Windows to stay awake, and nothing in
+these chapters had noticed. The idle timeout is the operating system's, it is on
+by default, and what it produces is the one failure with no symptom to diagnose:
+a monitor that was watching at midnight and is not there at two, with a log that
+ends mid-sentence and no fault anywhere, because nothing broke.
+
+**It is not a configuration key**, for the reason the packaged build's update
+check is not one: it is not a preference somebody might want the other way
+round. The program only runs while it is watching, and a monitor that lets the
+computer sleep is not a monitor. A key would be a way of switching the product
+off that reads like a setting.
+
+**`PowerCreateRequest` and not `SetThreadExecutionState`, and the difference is
+a sentence.** Both hold the machine awake; only the first carries a reason, and
+`powercfg /requests` prints it under our process. So whoever notices the computer
+has stopped sleeping can ask Windows who is responsible and **read the answer**,
+instead of going through startup entries. The old call holds the machine awake
+anonymously, which on somebody else's computer is the difference between a
+program and a nuisance.
+
+**Measured, from an elevated prompt with the monitor running**, which is the
+only thing that separates a request that was made from one that is held:
+
+	SYSTEM:
+	[PROCESS] \Device\HarddiskVolume3\...\bin\pat-monitor.exe
+	PAT Monitor is watching the room
+
+	DISPLAY:
+	Nessuna.
+
+	ESECUZIONE:
+	Nessuna.
+
+**Three things at once, and the two empty sections are worth as much as the full
+one.** The request is live and it is ours, named by the path and by the sentence
+whoever reads that list actually needs. `DISPLAY` is empty, which is the decision
+about the bedroom, held by nothing but the absence of a second call. And
+`ESECUZIONE` is empty, which is `PowerRequestExecutionRequired` not being taken:
+the two really are separate rows of that list, so the argument for not taking it
+is checkable from outside rather than only from the documentation.
+
+**The display is deliberately left to go dark.** `PowerRequestDisplayRequired`
+exists and would light a bedroom all night. What has to stay awake is the system.
+
+Three things the call does that nothing about it looks like:
+
+- **It fails with `INVALID_HANDLE_VALUE` and not with zero.** Read as *nil means
+  it went wrong* — which is what every other handle-returning call here teaches —
+  it reports success for every failure, and then the machine sleeps with the log
+  saying it will not.
+- **It keeps the reason string rather than copying it.** The pointer is read for
+  the life of the handle, so a buffer built inside the call and left to the
+  collector is memory Windows goes on reading; another project shipped exactly
+  that and it was found by a reader rather than by a crash, because freed bytes
+  usually still say what they said. The buffer is a field of the request.
+- **`REASON_CONTEXT` is a layout Go will not check.** A field inserted or
+  widened compiles and has Windows read the pointer out of the middle of two
+  integers, with no error on either side. `awake_windows_test.go` asserts the
+  three offsets rather than trusting them, and the release is nil-safe and
+  happens once — both roads out of the monitor can reach it, the deferred one
+  and the end of the Windows session, and clearing a request twice closes a
+  handle twice, which lands on whatever has been given that number since.
+
+**A refusal is worth a line and not a stop.** What is lost is the machine
+possibly sleeping, which is the state everything was in before this existed;
+refusing to monitor over it would trade a maybe for a certainty.
+
+**What is not measured here is the one case where the request is not enough.**
+On a modern standby machine running on battery, Windows terminates system
+requests five minutes after the sleep timeout expires — documented, not measured
+on this hardware — so a laptop left unplugged still stops. That is an argument
+for reading the power source, not for holding the display on, and nobody has
+read it yet. It is also why the log line says the request was **made** rather
+than that the machine is awake: the claim can expire in the night, in the file
+somebody opens to find out why it stopped.
+
+**And `PowerRequestExecutionRequired` is not the answer to it**, which is
+written down because it is the obvious next proposal and a review has already
+made it. That request is about the **process** — *"the calling process continues
+to run instead of being suspended or terminated by process lifetime management
+mechanisms"* — not about the system, and the same sentence that terminates
+system requests on battery terminates *"system and execution required"* ones
+together. On traditional S3 it implies `PowerRequestSystemRequired`, which is
+the direction that needs no help. So it would buy nothing on the case it is
+proposed for, and on a packaged full-trust desktop program there is no lifetime
+management to be suspended by in the first place.
 
 ### A shutdown that does not finish keeps the camera
 

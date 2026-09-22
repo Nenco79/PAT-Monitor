@@ -156,7 +156,10 @@ a heading to its file, `grep -rn` the heading.
   - A chosen camera that is gone does not stop the monitor
   - A permission Windows has taken away is a state, not a fault
   - A permission Windows is still asking about is not an absence
+  - A microphone muted in Windows is a cause, and it was only in the log
   - The picture stopping is a fault, and `Ready` cannot say so
+  - The machine must not fall asleep, and who is holding it awake is
+    readable
   - A shutdown that does not finish keeps the camera
   - Codes cross the API, words stay at the edges
     - The tunnel phases are codes, and the pages hold the dictionary

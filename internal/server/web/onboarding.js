@@ -1053,15 +1053,32 @@ async function heartbeat() {
     // capture's own answer — and the refusal is added for the reason it is
     // added above: it is immediate, where the grace that covers a planned
     // reopen is two seconds wide, and it is the one that carries a cause.
-    const micOk = !s.microphoneDenied && s.microphoneActive &&
+    //
+    // **The mute is the third cause, and it is the one this screen is for.**
+    // The generic detail sends whoever reads it to open the laptop's lid; the
+    // muted one names a slider in Windows, and whoever is on this screen is
+    // sitting in front of the machine that has it. The order is the tray's
+    // order — refused, muted, then the silence they both produce — because two
+    // places deciding which cause wins is two places that disagree.
+    // **A mute is only a mute while there is a microphone.** The field describes
+    // the last open, so on a device that has since gone it is yesterday's
+    // answer: unguarded, this row said *Windows has the microphone muted* and
+    // offered a volume slider, about a microphone that is not in the machine,
+    // beside a tray icon saying it is missing. It is the chain `activeFaults`
+    // already walks — refused, absent, muted — and the guard is here because
+    // this is where the sentence is chosen.
+    const muted = s.microphoneMuted && s.microphoneActive;
+    const micOk = !s.microphoneDenied && !muted && s.microphoneActive &&
       s.micHealth !== 'digital-silence';
     if (s.microphoneOpening) waitRow('r-mic', T('onb.s1.mic'));
     else checkRow('r-mic', micOk,
           T(micOk ? 'onb.s1.mic-ok' : 'onb.s1.mic-bad'),
           T(micOk ? (s.rawAudio ? 'onb.s1.mic-raw' : 'onb.s1.mic-filtered')
                   : s.microphoneDenied ? 'onb.s1.mic-denied-detail'
+                  : muted ? 'onb.s1.mic-muted-detail'
                   : 'onb.s1.mic-bad-detail'),
-          s.microphoneDenied ? 'ms-settings:privacy-microphone' : '');
+          s.microphoneDenied ? 'ms-settings:privacy-microphone'
+            : muted ? 'ms-settings:sound' : '');
 
     // **The illustration's bars follow nothing any more**: they are a drawing,
     // and the reason sits next to `@keyframes wave`. The server's measurement is

@@ -226,7 +226,7 @@ func (c *lineCounter) count(prefix string) int {
 	return n
 }
 
-// **The recheck watches two fallbacks, not one.**
+// **The recheck watches three fallbacks, not one.**
 //
 // The raw-mode one was there from the start; the **device** one came with the
 // choice of microphone. Without it, on a machine that does obtain raw mode —
@@ -235,27 +235,39 @@ func (c *lineCounter) count(prefix string) int {
 // program restarts, with the page showing the choice and the audio coming from
 // somewhere else.
 //
+// **The mute is the third, and it is the one that makes a command lie.** The
+// panel offers the Windows Sound page under *microphone: muted in Windows*, and
+// the gain is held at zero for the life of the open: with raw mode obtained and
+// nothing to fall back to, no timer was armed, so unmuting changed nothing at
+// all and the fault stayed red until the program restarted. **A remedy the
+// interface offers has to reach the monitor.**
+//
 // The table is also the explanation: the answers, and why.
-func TestARecheckIsArmedForEitherFallback(t *testing.T) {
+//
+// **Verified to catch**: with `|| muted` removed from the predicate, the two
+// muted rows fail.
+func TestARecheckIsArmedForEveryFallback(t *testing.T) {
 	const usb = "{0.0.1.00000000}.usb"
 	const array = "{0.0.1.00000000}.array"
 
 	cases := []struct {
 		name         string
-		raw          bool
+		raw, muted   bool
 		wanted, open string
 		tone         bool
 		want         bool
 	}{
-		{"everything as asked: no timer", true, usb, usb, false, false},
-		{"no raw mode: try again, as always", false, usb, usb, false, true},
-		{"the microphone asked for was not there: try again for that too", true, usb, array, false, true},
-		{"neither one works: one timer is enough", false, usb, array, false, true},
-		{"the default role is not a fallback, whatever it opens", true, "", array, false, false},
-		{"the test tone does not go through WASAPI: nothing to recheck", false, usb, array, true, false},
+		{"everything as asked: no timer", true, false, usb, usb, false, false},
+		{"no raw mode: try again, as always", false, false, usb, usb, false, true},
+		{"the microphone asked for was not there: try again for that too", true, false, usb, array, false, true},
+		{"neither one works: one timer is enough", false, false, usb, array, false, true},
+		{"the default role is not a fallback, whatever it opens", true, false, "", array, false, false},
+		{"the test tone does not go through WASAPI: nothing to recheck", false, false, usb, array, true, false},
+		{"muted on the good path: nothing else would ever look again", true, true, usb, usb, false, true},
+		{"muted on the default role, which is not a fallback either", true, true, "", array, false, true},
 	}
 	for _, c := range cases {
-		if got := micRecheckWanted(c.raw, c.wanted, c.open, c.tone); got != c.want {
+		if got := micRecheckWanted(c.raw, c.muted, c.wanted, c.open, c.tone); got != c.want {
 			t.Errorf("%s: recheck=%v, want %v", c.name, got, c.want)
 		}
 	}
