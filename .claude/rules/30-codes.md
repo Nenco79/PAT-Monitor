@@ -512,6 +512,117 @@ instrument sees one side**: Spanish is the first language whose right-hand label
 are the wider pair, and what that costs is neither described by this number nor
 measured by anybody.
 
+##### Chinese: the decisions, and the first script with no spaces in it
+
+The sixth language is the first that is not written in the Latin alphabet, and
+it is where the four rules the others share stop being about wording and start
+being about bytes. Every guard was green on the first run, and **two of them were
+shown to see it before that was believed**: a duplicate accelerator and a removed
+key both fail naming `zh`.
+
+- **Simplified only, and the file is `zh.json`.** Traditional is a declared
+  limitation and not an oversight: `i18n.pick` tries the whole tag and then the
+  part before the first hyphen, so `zh-TW` and `zh-Hant-TW` both land on `zh`,
+  and a `zh-hant.json` beside it would be a file **no browser can reach**. The
+  day somebody wants it, what has to change is `pick`, not the folder.
+- **`你`, never `您`, and the platform decided it rather than a style guide.**
+  Microsoft's own Simplified Chinese guide says to use the polite form in all
+  software; Windows 11's Chinese interface does not — *允许应用访问你的相机* is
+  the sentence on the very privacy page this program sends people to. The panel
+  sits inside that interface, and the other four catalogues have all chosen the
+  familiar form already, so the guide is the older evidence and the product is
+  the newer.
+- **`监护器` for *the monitor*, and the obvious words were refused.** `监视器`
+  and `监控器` both name a **screen** first in Chinese, which is the one thing
+  this is not — the trap German, French and Spanish all decided to live with, and
+  the only one of the six where the language offers a way out. `监护器` is the
+  word `婴儿监护器` (baby monitor) is built from: it names watching over
+  somebody, not a display.
+- **`摄像头` for the camera, and `相机` only where Windows says `相机`.** It is
+  Italian's split, arrived at from the other side: the prose calls the device
+  what a Chinese reader calls it, and where a sentence names the Settings page
+  the reader is about to open, it uses the page's own word. Likewise `麦克风`,
+  which is the same in both.
+- **`外网访问` for access from outside**, the term Chinese routers and NAS boxes
+  already use, for the reason the German section gives about `router`: the
+  alternative is the one in the dictionary and the one nobody has at home.
+- **`对讲` for talk-back**, which is what every Chinese camera app calls two-way
+  audio, and shorter than anything a translation would have built.
+- **Punctuation is full width — `。，、：；！？` — and parentheses are not.**
+  The bracket is the one place two forms would collide, because the accelerator
+  is `(&W)` and must be half width; a catalogue carrying `（至少 8 个字符）` in
+  one entry and `(&W)` in another is the two-apostrophe defect in a script where
+  it is more visible, not less. One bracket, half width, with a space against
+  Latin and none against Han.
+- **The ellipsis is six dots, `……`, and the menu's is one.** They look alike and
+  they are not the same sign: `……` is Chinese punctuation, while the `…` on
+  *重置密码(&R)…* is Windows' notation for *a dialog follows*, which every
+  language's menu carries identically. The rule is therefore about what the mark
+  is doing, and the two places never meet.
+- **No plural forms.** `Intl.PluralRules('zh')` selects `other` and nothing else,
+  so the six plural objects carry that form alone — `TN` falls back to it, and
+  the placeholder guard compares form by form, so the missing `one` is not an
+  absence anything can complain about. The three **flat** counters are another
+  matter and all three are written: `tray.viewers.*` and `tray.sessions.*` are
+  chosen in Go by `n == 1`, not by a plural rule.
+- **Ten accelerators, distinct, in the Windows Chinese form**: the Latin letter
+  in half-width brackets at the end of the label — `打开 Windows 设置(&W)` — which
+  is what Microsoft's own localisation does, since the characters are not on the
+  keyboard. The guard reads the character after the first `&`, so the form passes
+  unchanged, and `DT_HIDEPREFIX` eats the ampersand exactly as a Chinese menu
+  draws it. They are `L Q R D W G A N V`, with `A` shared by the step's three.
+
+**Three of the rules the other five live by cannot fail here, and one new one
+took their place.** There is no apostrophe, no space before `: ; ? !` and no
+letter case, so those three guards pass by finding nothing. What did fail is a
+rule nobody had written: **the non-breaking space must be an escape in the
+file**, and the Chinese catalogue arrived with two literal ones, because it was
+written through a tool whose own argument is JSON and which decoded `\u00a0` on
+the way in. Every reader parses the escape, so by the time a value has been read
+the two forms are the same string — and in a diff they are the same width.
+`TestTheNonBreakingSpaceIsWrittenAsAnEscape` is the one guard in that file that
+looks at bytes, and it was shown to fail on `zh.json` and on `fr.json`, which is
+the catalogue the convention was invented for.
+
+**What CJK costs in the panel is nothing, and that is measured.** Chinese is the
+**narrowest** of the six in every status line — `remote-no-ingress` is 212 px
+against German's 447 in a row of 236 — and the worst tooltip is **42 characters
+of the 127**, against French's 111. Two of Tailscale's six actions drop from two
+rows to one. The one number that had to be bought back is
+`tray.fault.remote-no-ingress`, whose first writing left a **single character
+alone on the second row**: 孤字 is a real defect in Chinese typography and no
+guard here can see it, since a line that wraps within its rows is a line that
+passed. It was shortened until it fits one row, and what found it was the
+photograph.
+
+**And `DT_WORDBREAK` does break between Han characters**, which was the open
+question: MSDN documents `DT_NOFULLWIDTHCHARBREAK` as *preventing* that break and
+says it has no effect without `DT_WORDBREAK`, so the flag we already pass is the
+one that allows it. Confirmed by looking — the panel wraps mid-sentence with no
+space anywhere in the text. **This is the case the width half of the fit guard
+was added for**, and it is worth saying that it stayed silent: a script with no
+spaces is exactly where `DT_CALCRECT` would have returned a width past its box,
+and it did not, because GDI really does break.
+
+**The typeface was the other open question and it is answered from here.**
+`lfMessageFont` on this Italian Windows is Segoe UI, which has no Han glyphs at
+all; the panel draws the Chinese catalogue with no tofu in it, because the charset
+travels with the face and GDI's font linking substitutes. **That is the whole of
+what this machine can show** — the road works where the answer is wrong — and it
+is the reason the face is asked for rather than chosen.
+
+**The pages needed nothing, and that is a fact about two lines somebody already
+wrote.** `--sans` ends in `sans-serif`, so a glyph none of the named families has
+falls through to whatever the system calls its sans — and `i18n.js` sets
+`documentElement.lang`, which is what tells the browser **which** Han to draw:
+the same codepoints are drawn differently in Chinese and Japanese, and without
+that attribute the choice is the browser's guess. Adding CJK families to the
+stack was the obvious next step and is not taken, because nothing here can
+measure which of them a Chinese machine has: **a font list written from a machine
+that cannot render it is a preference expressed in ignorance**, and the generic
+at the end already asks the system, which is this project's answer to that shape
+of question everywhere else.
+
 ### Alerts are the set of what is wrong now, not a list of events
 
 `internal/alerts`. The state carries what **is wrong now**, not the history: a

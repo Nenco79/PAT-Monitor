@@ -167,6 +167,7 @@ a heading to its file, `grep -rn` the heading.
       - German: the decisions, because nobody here can check the sentences
       - French: the decisions, and two guards that had been written by hand
       - Spanish: the decisions, and the bar's threshold moving
+      - Chinese: the decisions, and the first script with no spaces in it
   - Alerts are the set of what is wrong now, not a list of events
   - Motion is measured on the merged frame, with the camera's breathing removed
   - Crying and barking are recognised by shape, and the floor is measured by the

@@ -1239,8 +1239,8 @@ The measurement and the rule that came out of it are in `140-windows.md`, where
 the panel is: the status lines wrap now, into as many rows as they need.
 
 What belongs here is that **these two sentences were shortened anyway**. As
-first written they were 241 to 288 px against 236 of room, and they are 180 to
-200 now — one row, in all five languages. A notice that fits its row is worth
+first written they were 241 to 288 px against 236 of room, and they are 119 to
+201 now — one row, in every language. A notice that fits its row is worth
 more than one that is allowed to take two: the rows above the QR code are the
 first thing read, and the second row is there for the sentences that cannot do
 without it. It is why the notice says *microphone: permission is off* and not

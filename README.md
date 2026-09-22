@@ -68,8 +68,10 @@ name stands for *Pet And Toddler*.
   packet loss, and standalone measurement tools.
 
 The interface takes its language from the browser — English, Italian, German,
-French or Spanish, English being what everything else falls back to — with a
-selector in the top right corner for when the browser gets it wrong.
+French, Spanish or Simplified Chinese, English being what everything else falls
+back to — with a selector in the top right corner for when the browser gets it
+wrong. Traditional Chinese is not there: a browser asking for `zh-TW` gets the
+Simplified catalogue.
 
 <p align="center">
   <img src="images/recordings.png" width="100%"

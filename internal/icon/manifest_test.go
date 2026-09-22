@@ -6,6 +6,8 @@ import (
 	"sort"
 	"strings"
 	"testing"
+
+	"patmonitor/internal/i18n"
 )
 
 const manifestPath = "../../packaging/AppxManifest.xml"
@@ -112,5 +114,67 @@ func TestTheManifestDeclaresWhatTheProgramNeeds(t *testing.T) {
 		if !strings.Contains(s, want) {
 			t.Errorf("the manifest does not declare %s", want)
 		}
+	}
+}
+
+// **The manifest's list of languages is a second list, and it was unheld.**
+//
+// The comment above it already asserted the invariant — *every language the
+// catalogues carry* — which is the shape this repository names first: a
+// hand-written list protects exactly what somebody remembered, and the language
+// added tomorrow is added to the folder, never here. What it costs is not an
+// error: the package installs and the Store lists the program in the languages
+// this file happens to name, so a catalogue nobody declared is a translation
+// that ships and is never offered.
+//
+// **The two documents agree about the language and not about the tag.** The
+// Store wants a full BCP-47 tag and a catalogue is named by the language alone,
+// because `i18n.pick` cuts at the first hyphen: `zh.json` is what `zh-CN` and
+// `zh-Hans-CN` both reach. So what is compared is the part before that hyphen —
+// comparing the whole string would demand `zh.json` be called `zh-hans.json`,
+// which is the one name that catalogue cannot have.
+//
+// **Verified to catch**, in both directions: with the Chinese resource removed
+// it names the missing language, and with a `<Resource Language="nl-nl" />`
+// added it names the catalogue that does not exist.
+func TestTheManifestNamesEveryLanguageTheProgramHas(t *testing.T) {
+	data, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatalf("the manifest cannot be read: %v", err)
+	}
+	declared := map[string]bool{}
+	for _, m := range regexp.MustCompile(
+		`<Resource Language="([A-Za-z0-9-]+)"`).FindAllStringSubmatch(string(data), -1) {
+		tag, _, _ := strings.Cut(strings.ToLower(m[1]), "-")
+		declared[tag] = true
+	}
+	if len(declared) == 0 {
+		t.Fatal("no <Resource Language> found: the guard is reading nothing")
+	}
+
+	have := i18n.Languages()
+	if len(have) == 0 {
+		t.Fatal("no catalogue found: the guard is reading nothing")
+	}
+	var missing, extra []string
+	for l := range have {
+		if !declared[l] {
+			missing = append(missing, l)
+		}
+	}
+	for l := range declared {
+		if !have[l] {
+			extra = append(extra, l)
+		}
+	}
+	sort.Strings(missing)
+	sort.Strings(extra)
+	for _, l := range missing {
+		t.Errorf("the catalogue %s.json exists and the manifest declares no "+
+			"language for it: the Store would not list the program in it", l)
+	}
+	for _, l := range extra {
+		t.Errorf("the manifest declares %q and there is no catalogue for it: "+
+			"the package would claim a language the program does not speak", l)
 	}
 }

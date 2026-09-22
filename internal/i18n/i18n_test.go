@@ -199,6 +199,55 @@ func TestASpaceBeforePunctuationIsNotBreakable(t *testing.T) {
 	})
 }
 
+// **The non-breaking space is written as an escape, and that is a property of
+// the file rather than of the value.**
+//
+// The guard above insists French puts an unbreakable space before its four
+// marks; the convention beside it — declared where that space was introduced —
+// is that it is spelled ` ` in the JSON and never typed as the character,
+// because on screen and in a patch the two spaces are the same width, so a diff
+// cannot show which one arrived. Every reader of these files parses the escape,
+// so **by the time a value has been read the two forms are indistinguishable**:
+// this is the one guard here that has to look at the bytes.
+//
+// It caught itself at once. The Chinese catalogue was written through a tool
+// whose own argument is JSON, so the six characters ` ` were decoded on the
+// way in and two literal ones reached the file — in `clips.note` and in
+// `tray.line.uptime`, that is, in exactly the two entries the other four
+// catalogues carry the escape in.
+//
+// **Verified to catch**: with either one typed as the character, this fails
+// naming the file and the line.
+func TestTheNonBreakingSpaceIsWrittenAsAnEscape(t *testing.T) {
+	entries, err := fs.ReadDir(FS, ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	seen := 0
+	for _, e := range entries {
+		if !strings.HasSuffix(e.Name(), ".json") {
+			continue
+		}
+		raw, err := fs.ReadFile(FS, e.Name())
+		if err != nil {
+			t.Fatal(err)
+		}
+		seen++
+		for n, line := range strings.Split(string(raw), "\n") {
+			if strings.ContainsRune(line, ' ') {
+				t.Errorf("%s:%d carries a literal non-breaking space: it is "+
+					"written `\\u00a0` so that a diff can show it, and nothing "+
+					"downstream can tell the two apart: %q", e.Name(), n+1, line)
+			}
+		}
+	}
+	// A walk that read nothing passes in silence, which is the failure this
+	// file's guards can least afford.
+	if seen < 2 {
+		t.Fatalf("%d catalogues read: the test is not looking at them", seen)
+	}
+}
+
 // **A lost placeholder is a sentence with a hole in it, and nothing else looks
 // at it.** The key exists, the entry exists, the page renders — and the reader
 // is shown `{n}` where a number should be. It is the family of the code with no

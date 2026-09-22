@@ -44,6 +44,13 @@
   <!--
     Every language the catalogues carry. A package declaring only one is a
     package the Store lists in one, whatever the program speaks.
+
+    The tag here and the catalogue's filename are not the same string, and they
+    are not meant to be: the Store wants a full BCP-47 tag, while a catalogue is
+    named by the language alone - `zh.json` serves `zh-CN`, `zh-SG` and every
+    other region, because `i18n.pick` cuts at the first hyphen. What is held is
+    therefore the part before that hyphen, which is the only part the two
+    documents agree about. See TestTheManifestNamesEveryLanguageTheProgramHas.
   -->
   <Resources>
     <Resource Language="en-us" />
@@ -51,6 +58,7 @@
     <Resource Language="de-de" />
     <Resource Language="fr-fr" />
     <Resource Language="es-es" />
+    <Resource Language="zh-hans" />
   </Resources>
 
   <!--

@@ -126,11 +126,7 @@ func TestLookAtThePanel(t *testing.T) {
 				dictionary: i18n.Open([]string{lookLanguage()}),
 			}
 			f := &flyout{t: tr, dpi: 96, pills: map[pillKey]windows.Handle{}}
-			if darkTheme() {
-				f.pal = palDark
-			} else {
-				f.pal = palLight
-			}
+			f.pal = lookPalette()
 			f.url = st.PublicURL
 			if f.url == "" {
 				f.url = st.HomeURL
@@ -205,12 +201,34 @@ const (
 )
 
 // lookLanguage is the language to draw in: PATMON_LOOK_LANG, or Italian, which
-// is the widest of the five in this panel.
+// is the widest of the five Latin catalogues in this panel.
 func lookLanguage() string {
 	if v := os.Getenv("PATMON_LOOK_LANG"); v != "" {
 		return v
 	}
 	return "it"
+}
+
+// lookPalette is the face to draw in: PATMON_LOOK_THEME, or whichever one
+// Windows is in.
+//
+// **The other face cannot be photographed by asking Windows**, which is the
+// whole reason this exists: the theme is a system setting, so looking at the
+// light panel meant changing the machine's appearance and changing it back.
+// The two faces are not the same picture at a different lightness — the ink
+// sits on `ground` here, and that is the surface the two palettes differ on
+// most — so a face nobody can photograph is a face nobody checks.
+func lookPalette() palette {
+	switch os.Getenv("PATMON_LOOK_THEME") {
+	case "light":
+		return palLight
+	case "dark":
+		return palDark
+	}
+	if darkTheme() {
+		return palDark
+	}
+	return palLight
 }
 
 // pumpMessages runs the window's own message loop for a while. The panel paints

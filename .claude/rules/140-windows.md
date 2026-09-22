@@ -771,16 +771,24 @@ cannot even tell something is missing — and the panel knew it in one place onl
 the note beside the icon buttons' fallback says exactly that, about a label
 almost nobody ever sees.
 
-**Measured at 96 dpi against the 236 px of a full-width row**, in all five
+**Measured at 96 dpi against the 236 px of a full-width row**, in the five Latin
 catalogues, it was reachable in eight places:
 
 | | |
 |---|---|
 | `tray.fault.remote-no-ingress` | **447** px in German, 434 in English, 408 in French |
-| `tray.fault.no-password` | over in **all five** languages, 259 to 351 px |
+| `tray.fault.no-password` | over in **all five**, 259 to 351 px |
 | `tray.fault.mic-filtered` | over in English (251) and Spanish (247) |
 | the confirmation titles | over in Spanish, French and Italian |
 | the widest command label | `Beenden und Monitor ausschalten`, **210** — 26 px of room |
+
+**Chinese arrived afterwards and is under the room in every one of them** — 212,
+175, 147, 121 and 141 px for the same five rows — which is worth a line because
+it is the direction nobody predicts: the script with no spaces, the one this
+section worried about, is the one that never needs the second row. A Han glyph
+is wider than a letter and a Chinese sentence is far shorter in glyphs, and the
+second effect is the larger. **The instrument was checked against this table
+before the row was added**, and it reproduced 447, 434 and 408 to the pixel.
 
 **That last row said 236 — *exactly* the room — and it was wrong**, which is
 worth more than the row. The guard that produced it built `fontGhost` at
@@ -842,9 +850,17 @@ language, because **what overflows is a translation and not the base.**
 sentence.** The counters are a pair of facts joined by a middot, and the wrap
 broke *aparatos registrados:* from its *3*, leaving a row carrying a lone digit
 — which reads as a fault rather than as a number. The space before each
-placeholder is non-breaking now, in all five catalogues: **a figure is not
+placeholder is non-breaking now, in every catalogue: **a figure is not
 separable from the label that names it**, and that is a typographic fact rather
 than a change of wording, so not one sentence moved.
+
+**Chinese is the exception and it argues the rule rather than breaking it.**
+There the join is a full-width colon, which carries its own blank — a
+non-breaking space after it draws as a second gap — so `tray.line.watching`
+writes none, and what keeps the figure off a row of its own is that the whole
+line is 256 px against the other five's 296 to 335. `tray.line.uptime` keeps it,
+because there the space between the Han and the Latin clock **is** a space and
+the reason it must not break is unchanged.
 
 **And the guard counted rows and never the width, which is the half that lets
 the worst case through.** `DT_CALCRECT` with `DT_WORDBREAK` returns the width of
@@ -852,10 +868,21 @@ the widest line and goes **past** the box it was given when nothing in the text
 can be broken — so a sentence with no break opportunity measures **one row**,
 passes a count of rows, and is drawn cut at both ends, which is the failure this
 whole section exists for. Measured with an unbreakable line put in: 391 px in a
-row of 236, one row, green. It costs nothing in the five languages here, where a
-space is always available; it is the whole of the question in a script that has
-none, where whether GDI breaks between characters is a property of the flags and
-not of the sentence.
+row of 236, one row, green. It costs nothing in the five Latin languages, where
+a space is always available; it was written for the script that has none, where
+whether GDI breaks between characters is a property of the flags and not of the
+sentence.
+
+**That script has since arrived, and the answer is that `DT_WORDBREAK` alone
+breaks between Han characters.** MSDN documents `DT_NOFULLWIDTHCHARBREAK` as
+*preventing* a break at a double-byte character and says it has no effect unless
+`DT_WORDBREAK` is specified — that is, the flag already passed here is the one
+that allows it, and the flag that would have caused the defect is one nobody
+set. Confirmed by looking: the panel wraps a Chinese sentence mid-phrase with no
+space anywhere in it. **So the guard stayed silent in the case it was added
+for**, and that is the right outcome to write down rather than the
+disappointing one: what it now holds is that the answer was measured instead of
+assumed.
 
 **The commands do not wrap and must fit**, because a button has one height and a
 taller one among the others is a crooked column. The ellipsis is there
@@ -891,14 +918,15 @@ is the panel: `measureLines` clamps to `maxStatusRows` and `drawWrapped` carries
 `DT_END_ELLIPSIS`, so the cut is at the end of the last row, where it can be
 seen.
 
-**Measured at 96 dpi in the 236 px of a row, in all five languages**, rows needed
-of the three there are:
+**Measured at 96 dpi in the 236 px of a row, in every language**, rows needed of
+the three there are:
 
-| | de | en | es | fr | it |
-|---|---|---|---|---|---|
-| `wait-certificate`, `authorise`, `enable-funnel`, `failed` | 2 | 2 | 2 | 2 | 2 |
-| `other-user` | **3** | 2 | 2 | 2 | 2 |
-| `approve` | 6 | 5 | 5 | 6 | 6 |
+| | de | en | es | fr | it | zh |
+|---|---|---|---|---|---|---|
+| `wait-certificate`, `enable-funnel`, `failed` | 2 | 2 | 2 | 2 | 2 | **1** |
+| `authorise` | 2 | 2 | 2 | 2 | 2 | 2 |
+| `other-user` | **3** | 2 | 2 | 2 | 2 | 2 |
+| `approve` | 6 | 5 | 5 | 6 | 6 | **4** |
 
 **Five of the six fit everywhere, German's `other-user` fits exactly** — one word
 more and it does not — and `approve` is the one exception, named in the guard
