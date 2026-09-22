@@ -82,8 +82,14 @@ func TestLookAtThePanel(t *testing.T) {
 			Phase: PhaseCheck, Fault: FaultMicDenied,
 			Viewers: 1, Devices: 2, Uptime: "2h14m",
 			HomeURL: "http://192.168.1.42:8080/",
-			Todo:    "approve this machine in the Tailscale admin console",
-			TodoURL: "https://login.tailscale.com/admin",
+			// The three go together: the sentence for the line, the code for
+			// the button's label, the address for where it leads. A fixture
+			// carrying two of the three draws a panel this program cannot
+			// produce — which is how this one was caught, by the photograph
+			// coming back without the command.
+			Todo:       "approve this machine in the Tailscale admin console",
+			TodoAction: "approve",
+			TodoURL:    "https://login.tailscale.com/admin",
 		}, false},
 		{"nothing-wrong", Status{
 			Phase: PhaseOutside, Viewers: 1, Devices: 2, Uptime: "2h14m",

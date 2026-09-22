@@ -99,6 +99,42 @@ func settingsPage(f Fault) string {
 	return ""
 }
 
+// todoCommands is the label for the step Tailscale is waiting on, per action
+// code, and the empty string where the step is not something to press.
+//
+// **The sentence and the label are two different things, and one used to do
+// both.** The button carried the explanation — ours, or Tailscale's when their
+// control server answers, which it composes knowing the tailnet and the
+// reader's role — so what appeared on it was a paragraph cut mid-word:
+// `Da fare: approve this machin…`, in another language, on the one command the
+// reader has to press. The ellipsis was there and it did not help; a cut
+// sentence does not read as a short one.
+//
+// So the explanation goes to the status lines, which wrap into as many rows as
+// they need, and the button says what pressing does, in the reader's language
+// and short enough to fit. It is the division the recordings page's lock and
+// the permission's own notice already make.
+//
+// **Three of the six actions never had a URL**, so they never produced a button
+// and produce none now: `wait-certificate` says in as many words that there is
+// nothing to do, `other-user` and `failed` describe a state nobody can press
+// their way out of. An empty label is how that is said, and it is the shape
+// `settingsPage` already uses.
+var todoCommands = map[string]string{
+	"authorise":        "tray.menu.todo.authorise",
+	"approve":          "tray.menu.todo.approve",
+	"enable-funnel":    "tray.menu.todo.enable-funnel",
+	"wait-certificate": "",
+	"other-user":       "",
+	"failed":           "",
+}
+
+// todoCommand is the label key for an action, or "" when there is nothing to
+// press. An action nobody listed answers "" as well, and the guard in
+// words_windows_test.go is what stops that being a silent hole: it walks
+// tunnel.AllActions and fails on one this map has never met.
+func todoCommand(action string) string { return todoCommands[action] }
+
 // Note is a condition worth saying that is not a fault.
 type Note string
 
@@ -214,6 +250,13 @@ func (t *Tray) lines(st Status) []string {
 			"viewers", strconv.FormatInt(st.Viewers, 10),
 			"devices", strconv.FormatInt(st.Devices, 10)),
 		t.t("tray.line.uptime", "since", st.Uptime),
+	}
+	// **The step Tailscale is waiting on is a line, not a label.** It is the
+	// answer to the question the panel was opened with, it can be a paragraph,
+	// and these rows wrap into as many as `maxStatusRows` allows — while a
+	// button has one line and cuts. See todoCommands.
+	if st.Todo != "" {
+		lines = append([]string{st.Todo}, lines...)
 	}
 	if st.Fault != FaultNone {
 		return append([]string{t.t("tray.fault." + string(st.Fault))}, lines...)

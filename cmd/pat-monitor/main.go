@@ -1692,6 +1692,7 @@ func trayStatus(s server.Status, cfg config.Config, startedAt time.Time, dict *i
 			text = dict.T("tunnel.action." + string(s.Remote.Action))
 		}
 		out.Todo = firstLine(text)
+		out.TodoAction = string(s.Remote.Action)
 		out.TodoURL = s.Remote.ActionURL
 	}
 

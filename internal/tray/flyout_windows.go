@@ -234,7 +234,8 @@ type flyout struct {
 	// The fonts, one per role, with the sizes and weights of the stylesheets:
 	// the pill 600/16, the secondary button 500/14, the lines 400/14, the
 	// address 400/13.
-	fontPill  windows.Handle
+	fontTitle windows.Handle
+	fontMain  windows.Handle
 	fontGhost windows.Handle
 	fontLine  windows.Handle
 	fontSmall windows.Handle
@@ -422,10 +423,10 @@ func (f *flyout) compose(st Status) {
 	// the panel was opened, and it is the only one that deserves the filled
 	// pill. If nothing is missing the panel has no main action, and then none is
 	// coloured.
-	if st.Todo != "" && st.TodoURL != "" {
+	if key := todoCommand(st.TodoAction); key != "" && st.TodoURL != "" {
 		url := st.TodoURL
 		f.cmds = append(f.cmds, flyCmd{
-			label: t.t("tray.menu.todo", "what", st.Todo),
+			label: t.t(key),
 			style: stylePill,
 			do:    func() { t.open(url) },
 		})
@@ -669,10 +670,7 @@ func (f *flyout) create(iconRect rect) error {
 	f.dwm(dwmwaSystemBackdropType, dwmsbtTransientWindow)
 	f.dwm(dwmwaBorderColor, f.pal.line)
 
-	f.fontPill = f.createFont(tBody, 600)
-	f.fontGhost = f.createFont(tUI, 500)
-	f.fontLine = f.createFont(tUI, 400)
-	f.fontSmall = f.createFont(tSmall, 400)
+	f.makeFonts()
 	if err := f.createQR(); err != nil {
 		f.t.cfg.Log.Warn("flyout: QR not drawn", "error", err)
 	}
@@ -841,17 +839,31 @@ func (f *flyout) rebuild() {
 // initialFocus puts the focus on the first command, which in the confirmation
 // question is "No".
 func (f *flyout) initialFocus() {
-	// **The focus starts on the first command, and the address is not one.**
-	// Since copying is done by pressing the address, that is the panel's first
-	// control: opening it from the keyboard and pressing Enter would copy an
-	// address instead of opening the monitor. In the confirmation question the
-	// rule changes nothing, because there the first one is "No".
-	for i, c := range f.cmds {
-		if c.style == styleText || i >= len(f.buttons) || f.buttons[i] == 0 {
-			continue
+	// **The focus starts on the main command, and where there is none, on the
+	// first.** The address is not a command: copying is done by pressing it, so
+	// it is the panel's first control, and opening from the keyboard and
+	// pressing Enter would copy an address instead of opening the monitor. In
+	// the confirmation question the rule changes nothing, because there the
+	// first one is "No" and there is no main command to prefer.
+	//
+	// **The preference is what makes one mark enough.** The panel says *this
+	// one* in a single way — the accent of the selected command — so the main
+	// action has to be the selected one, or the loudest thing on the panel
+	// would be sitting on something that is not the main action. It used to
+	// paint itself as well, and then a panel with both a refused permission and
+	// a step waiting carried two marked buttons, which is the thing this rule
+	// exists to prevent.
+	for _, want := range []flyStyle{stylePill, styleGhost} {
+		for i, c := range f.cmds {
+			if c.style == styleText || i >= len(f.buttons) || f.buttons[i] == 0 {
+				continue
+			}
+			if want == stylePill && c.style != stylePill {
+				continue
+			}
+			procSetFocus.Call(uintptr(f.buttons[i]))
+			return
 		}
-		procSetFocus.Call(uintptr(f.buttons[i]))
-		return
 	}
 	for _, h := range f.buttons {
 		if h != 0 {
@@ -1189,6 +1201,31 @@ func messageFaceFrom(lf logFontW, answered bool) (string, byte) {
 	return name, lf.CharSet
 }
 
+// makeFonts builds the five the panel draws with.
+//
+// **It is a function because the guards build them too, and a second list
+// diverges.** One was already written by hand in `panelDC` and had `fontGhost`
+// at `tBody` against the panel's `tUI` — two points larger, which put German's
+// longest command at exactly the room it has and made a number this project
+// wrote down wrong. The sizes and the weights are the stylesheets' and they are
+// decided here, once.
+//
+// **The title of a question is a title, and a command is a command.** One font
+// served both: the confirmation's question at 16/600, which is right, and the
+// main command at 16/600 beside its neighbours at 14/500 — two buttons of the
+// same shape side by side with their words at two sizes, `Sì, procedi` two
+// points larger than `No, lascia stare`. It was defensible while the main
+// command was a solid block, that is, a different object; once both wear the
+// same mark the size is the only loud thing left, and it reads as a mistake,
+// which is how it was reported.
+func (f *flyout) makeFonts() {
+	f.fontTitle = f.createFont(tBody, 600)
+	f.fontMain = f.createFont(tUI, 600)
+	f.fontGhost = f.createFont(tUI, 500)
+	f.fontLine = f.createFont(tUI, 400)
+	f.fontSmall = f.createFont(tSmall, 400)
+}
+
 func (f *flyout) createFont(measure, weight int32) windows.Handle {
 	face, charSet := f.messageFace()
 	name, err := windows.UTF16PtrFromString(face)
@@ -1214,12 +1251,12 @@ func (f *flyout) release() {
 		procDeleteObject.Call(uintptr(f.qrBm))
 		f.qrBm = 0
 	}
-	for _, h := range []windows.Handle{f.fontPill, f.fontGhost, f.fontLine, f.fontSmall} {
+	for _, h := range []windows.Handle{f.fontTitle, f.fontMain, f.fontGhost, f.fontLine, f.fontSmall} {
 		if h != 0 {
 			procDeleteObject.Call(uintptr(h))
 		}
 	}
-	f.fontPill, f.fontGhost, f.fontLine, f.fontSmall = 0, 0, 0, 0
+	f.fontTitle, f.fontMain, f.fontGhost, f.fontLine, f.fontSmall = 0, 0, 0, 0, 0
 	for key, bm := range f.pills {
 		procDeleteObject.Call(uintptr(bm))
 		delete(f.pills, key)
@@ -1475,7 +1512,7 @@ func (f *flyout) paint() {
 	for i, text := range f.lines {
 		font, color := f.fontLine, f.pal.muted
 		if f.pending != nil && i == 0 {
-			font, color = f.fontPill, f.pal.ink
+			font, color = f.fontTitle, f.pal.ink
 		}
 		h := f.lineHeight(i)
 		box := rect{pad, y, rc.Right - pad, y + h}
@@ -1583,10 +1620,7 @@ func (f *flyout) paintButton(di *drawItemStruct) {
 	// text. The radius is `border-radius: 999px`, that is, half the height: a
 	// pill, not a value to choose.
 	fill, border, ink := f.pal.ground, f.pal.line, f.pal.muted
-	switch c.style {
-	case stylePill:
-		fill, border, ink = f.marked()
-	case styleText:
+	if c.style == styleText {
 		border = 0
 	}
 	// **The command that has the focus is visible, even to whoever has not
@@ -1840,7 +1874,7 @@ func (f *flyout) measureLines(width int32) {
 	for i, text := range f.lines {
 		font := f.fontLine
 		if f.pending != nil && i == 0 {
-			font = f.fontPill
+			font = f.fontTitle
 		}
 		if font != 0 {
 			procSelectObject.Call(hdc, uintptr(font))
@@ -1932,7 +1966,7 @@ func (f *flyout) fontFor(c flyCmd) windows.Handle {
 	case styleText:
 		return f.fontSmall
 	}
-	return f.fontPill
+	return f.fontMain
 }
 
 // pill paints a pill-shaped button with antialiased edges.

@@ -14,6 +14,7 @@ import (
 	"unicode"
 
 	"patmonitor/internal/i18n"
+	"patmonitor/internal/tunnel"
 	"patmonitor/internal/version"
 )
 
@@ -93,6 +94,36 @@ func catalogues(t *testing.T) map[string]map[string]any {
 		outside[name] = m
 	}
 	return outside
+}
+
+// **Every action the tunnel can report is answered here, including with
+// nothing.**
+//
+// `todoCommand` reads a map, and a map answers "" for a key it has never met —
+// which is the same answer as *this step is not something to press*. So an
+// action added to `internal/tunnel` and forgotten here would produce a panel
+// with no command and no complaint, about the one thing the monitor is waiting
+// on somebody for. The list it is checked against is the authoritative one,
+// Go's, not a copy written here.
+//
+// **Verified to catch**: with any entry removed from `todoCommands`, this
+// fails naming it.
+func TestEveryTunnelActionIsAnsweredByTheTray(t *testing.T) {
+	for _, a := range tunnel.AllActions() {
+		if _, known := todoCommands[string(a)]; !known {
+			t.Errorf("the action %q is in no entry of todoCommands: the panel "+
+				"would offer no command and say nothing about why", a)
+		}
+	}
+	for action, key := range todoCommands {
+		if key == "" {
+			continue
+		}
+		if !strings.HasPrefix(key, "tray.menu.todo.") {
+			t.Errorf("%q answers with %q, which is outside the family the "+
+				"accelerator guard folds into one slot", action, key)
+		}
+	}
 }
 
 func TestEveryTrayKeyIsInEveryCatalogue(t *testing.T) {
@@ -197,6 +228,15 @@ func TestTheTooltipFitsItsBufferInEveryLanguage(t *testing.T) {
 func TestEveryLanguageHasDistinctMenuAccelerators(t *testing.T) {
 	for language, cat := range catalogues(t) {
 		byLetter := map[rune]string{}
+		// **The step's labels are alternatives, so they are one slot.** Only
+		// one of `tray.menu.todo.*` can be on the panel at a time — they are
+		// three answers to the same state — so demanding three distinct letters
+		// would be a guard stricter than the thing it guards, and it would
+		// spend three of a language's free letters on a single row. They are
+		// required to carry the **same** letter instead, which is also what one
+		// wants from the keyboard: whatever the step is, it answers to the same
+		// key.
+		family := map[string]rune{}
 		for key, v := range cat {
 			if !strings.HasPrefix(key, "tray.menu.") {
 				continue
@@ -208,6 +248,10 @@ func TestEveryLanguageHasDistinctMenuAccelerators(t *testing.T) {
 				continue
 			}
 			letter := unicode.ToUpper([]rune(phrase[i+1:])[0])
+			if strings.HasPrefix(key, "tray.menu.todo.") {
+				family[key] = letter
+				continue
+			}
 			if other, double := byLetter[letter]; double {
 				t.Errorf("%s: the letter %q is on two entries, %q and %q: from the "+
 					"keyboard the menu stops answering and nobody says so",
@@ -215,6 +259,27 @@ func TestEveryLanguageHasDistinctMenuAccelerators(t *testing.T) {
 				continue
 			}
 			byLetter[letter] = key
+		}
+		if len(family) == 0 {
+			t.Errorf("%s: no label for the step: the family is watched by name, "+
+				"so a rename leaves this guard reading nothing", language)
+		}
+		var shared rune
+		for key, letter := range family {
+			if shared == 0 {
+				shared = letter
+			} else if letter != shared {
+				t.Errorf("%s: %q answers to %q while its siblings answer to %q: "+
+					"the key to press would depend on which step it is",
+					language, key, string(letter), string(shared))
+			}
+			if other, double := byLetter[letter]; double {
+				t.Errorf("%s: the letter %q is on %q and on the step's label %q",
+					language, string(letter), other, key)
+			}
+		}
+		if shared != 0 {
+			byLetter[shared] = "tray.menu.todo.*"
 		}
 		if len(byLetter) == 0 {
 			t.Errorf("%s: no menu entry found", language)

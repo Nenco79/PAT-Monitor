@@ -147,8 +147,13 @@ type Status struct {
 	// and the tray is where that promise is worth most: the icon is yellow and
 	// whoever opens it is already asking "what do I have to do?". Answering with
 	// the diagnosis alone would send them looking for it elsewhere.
-	Todo    string
-	TodoURL string
+	// Todo is the sentence, TodoAction the code that chooses the button's
+	// label, TodoURL where it leads. Three fields because they answer three
+	// questions: what is happening, what pressing does, and where it goes —
+	// and the first of the three is the only one that can be a paragraph.
+	Todo       string
+	TodoAction string
+	TodoURL    string
 }
 
 // Config is the things the tray cannot know by itself.

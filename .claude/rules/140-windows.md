@@ -729,10 +729,17 @@ nothing. Both now go through `marked()`, one function because there is one mark;
 what still separates the main command from the one with the focus is the weight,
 600 against 500, which is the difference that was meant to be carried all along.
 
-**The price is declared**: in the one state that has both — a permission refused
-*and* a step waiting on Tailscale — two commands carry the mark at once. That is
-honest rather than tidy, because both really are things to do, and the panel has
-never had a way of saying *first this, then that*.
+**And then two marks at once turned out to be the price nobody wanted**, which
+is what the next photograph showed: with a permission refused *and* a step
+waiting on Tailscale, the panel carried two. The rule is therefore narrower than
+it was — **the mark belongs to the focus and to nothing else**, and the focus
+goes to the main command when there is one. The main action is the selected one
+by construction, so there is one accent on the panel whatever state it is in,
+and it is never sitting on something that is not the main action.
+
+It costs the command answering the notice its mark in that one state. That is
+the right way round: the notice above it already names the device, and the step
+is the thing the monitor cannot get past on its own.
 
 #### What is shown is not what is used
 
@@ -779,6 +786,20 @@ found a second half: `tray.confirm.yes` is the panel's one pill with a word of
 ours on it, so it is drawn two points *larger* than its neighbour "No" and was
 being measured two points small — that half erred lax. Found by a review, not by
 a test: **a guard cannot check the instrument it is made of.**
+
+**That two-point difference is gone, and the same report removed it.** One font
+served the confirmation's question and the main command: 16 at weight 600, which
+is right for a title and wrong for a button standing beside others at 14 — `Sì,
+procedi` two points larger than `No, lascia stare`, which is what somebody saw
+and called a defect. It was defensible while the main command painted itself a
+different colour, that is, was a different object; once the mark went to the
+focus alone, the size was the only loud thing left. The question keeps 16/600
+and the command takes 14/600, so what separates it from its neighbours is the
+weight.
+
+**And the guards built their own fonts by hand**, which is the list this
+paragraph already records going wrong once. There is one list now, `makeFonts`,
+and the panel and its guards both call it.
 
 **The one that matters is the fourth row.** `tray.confirm.revoke.title` is the
 question asked before cutting off everybody who is watching — *¿Desconectar
@@ -835,6 +856,36 @@ sentence and **a line is not a width**: `firstLine` takes one line of it and it
 had been drawing `ve this machine in the Tailscale` for as long as it had
 existed. But **an ellipsis on a word somebody chose is a word chosen badly**, so
 `TestEveryCommandLabelFitsThePanel` measures the ones that are ours.
+
+**And then the sentence was taken off the button altogether**, which is what
+that paragraph had been arguing for without noticing. The step Tailscale is
+waiting on used to be one key, `tray.menu.todo`, carrying their prose: what
+appeared was `Da fare: approve this machin…` — a paragraph cut mid-word, in
+another language, on the one command the reader has to press. **The ellipsis was
+there and it did not help**: a cut sentence does not read as a short one, it
+reads as a defect, and it was reported as one.
+
+The division is the panel's own, the one the permission's notice already makes:
+**the line names the thing and the button says what pressing does.** The
+explanation goes to the status rows, which wrap into as many as they are given —
+theirs when their control server answers, since it composes it knowing the
+tailnet and the reader's role, ours when it does not. The button carries a short
+label of ours per action, so `TestEveryCommandLabelFitsThePanel` measures it like
+every other, and the truncation is gone rather than decorated.
+
+**Three of the six actions never produced a button and still do not**, and that
+is a reading rather than a decision: `wait-certificate` says in as many words
+that there is nothing to do, and `other-user` and `failed` carry no address.
+They answer with an empty label, which is `settingsPage`'s shape, and a guard
+walks `tunnel.AllActions` so that an action added over there and forgotten here
+fails instead of quietly producing a panel with no command.
+
+**The three labels share one accelerator, and the guard folds them into one
+slot.** They are alternatives — only one can be on the panel at a time — so
+demanding three distinct letters would be a rule stricter than the thing it
+guards, and it would spend three of a language's free letters on one row.
+Sharing is also what one wants from the keyboard: whatever the step is, it
+answers to the same key.
 
 **And a command that answers a line goes under that line.** `flyCmd.lead` is the
 one row between the status and the code, and there is exactly one user: the

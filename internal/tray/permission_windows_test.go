@@ -111,9 +111,10 @@ func TestThePermissionIsAnsweredUnderTheLineThatStatesIt(t *testing.T) {
 	t.Run("it wears no pill, and the tunnel step keeps its own", func(t *testing.T) {
 		f := &flyout{t: tr, dpi: 96}
 		f.compose(Status{
-			Fault:   FaultCameraDenied,
-			Todo:    "approve this machine",
-			TodoURL: "https://login.example/admin",
+			Fault:      FaultCameraDenied,
+			Todo:       "approve this machine",
+			TodoAction: "approve",
+			TodoURL:    "https://login.example/admin",
 		})
 		i := find(f, word)
 		if i < 0 {
@@ -140,7 +141,8 @@ func TestThePermissionIsAnsweredUnderTheLineThatStatesIt(t *testing.T) {
 	// move the focus in silence.
 	t.Run("it is the first command, so it takes the focus", func(t *testing.T) {
 		f := &flyout{t: tr, dpi: 96}
-		f.compose(Status{Fault: FaultMicDenied, Todo: "x", TodoURL: "https://example/x"})
+		f.compose(Status{Fault: FaultMicDenied, Todo: "x", TodoAction: "approve",
+			TodoURL: "https://example/x"})
 		if find(f, word) != 0 {
 			t.Errorf("the command is at %d and not first: the focus would open "+
 				"somewhere else", find(f, word))

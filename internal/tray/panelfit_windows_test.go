@@ -41,18 +41,17 @@ func measureBox(hdc uintptr, font windows.Handle, s string, width int32, wrap bo
 // pretend.
 func panelDC(t *testing.T) (*flyout, uintptr, func()) {
 	t.Helper()
-	// **The same sizes and weights `create` uses, and they are the point.** A
-	// guard that measures with a font the panel does not draw with is measuring
-	// something else: `fontGhost` was built here at `tBody` against the panel's
-	// `tUI`, two points larger, which put German's longest command at exactly
-	// the room it has — one character from failing over nothing. It errs strict
-	// and so it never went green over a defect; what it did do is make the
-	// number this guard reports wrong, and that number was written down.
+	// **The same fonts `create` uses, and they are the point.** A guard that
+	// measures with a font the panel does not draw with is measuring something
+	// else: this list was written by hand and had `fontGhost` at `tBody`
+	// against the panel's `tUI`, two points larger, which put German's longest
+	// command at exactly the room it has — one character from failing over
+	// nothing. It errs strict and so it never went green over a defect; what it
+	// did do is make the number this guard reports wrong, and that number was
+	// written down. There is one list now, and it is `makeFonts`.
 	f := &flyout{dpi: 96}
-	f.fontPill = f.createFont(tBody, 600)
-	f.fontGhost = f.createFont(tUI, 500)
-	f.fontLine = f.createFont(tUI, 400)
-	if f.fontLine == 0 || f.fontGhost == 0 || f.fontPill == 0 {
+	f.makeFonts()
+	if f.fontLine == 0 || f.fontGhost == 0 || f.fontMain == 0 || f.fontTitle == 0 {
 		t.Skip("no fonts: there is nothing to measure with")
 	}
 	hdc, _, _ := procGetDC.Call(0)
@@ -61,7 +60,7 @@ func panelDC(t *testing.T) (*flyout, uintptr, func()) {
 	}
 	return f, hdc, func() {
 		procReleaseDC.Call(0, hdc)
-		for _, h := range []windows.Handle{f.fontLine, f.fontGhost, f.fontPill} {
+		for _, h := range []windows.Handle{f.fontTitle, f.fontMain, f.fontGhost, f.fontLine, f.fontSmall} {
 			procDeleteObject.Call(uintptr(h))
 		}
 	}
@@ -114,7 +113,7 @@ func TestEveryStatusLineFitsTheRowsItIsGiven(t *testing.T) {
 			// font: measuring them with the lines' would say they fit when they
 			// do not. It is the same trap as a palette read from a screenshot.
 			if i >= len(texts)-2 {
-				font = f.fontPill
+				font = f.fontTitle
 			}
 			box := measureBox(hdc, font, text, room, true)
 			rows := (box.Bottom + row - 1) / row
@@ -177,10 +176,10 @@ func TestEveryCommandLabelFitsThePanel(t *testing.T) {
 	measured := 0
 
 	// **The font goes with the key, because the style does.** `fontFor` gives
-	// the filled pill `fontPill`, 16 at weight 600, and everything else
-	// `fontGhost`, 14 at 500 — so `tray.confirm.yes`, which is the panel's one
-	// pill with a word of ours on it, is two points larger than its neighbour
-	// "No". Measured with the ghost's font it was being let off.
+	// the main command `fontMain` and everything else `fontGhost` — the same 14
+	// points at two weights, so `tray.confirm.yes` is a little wider than its
+	// neighbour "No" and no longer two points larger. Measured with the ghost's
+	// font it would still be let off, which is why the distinction stays.
 	pill := map[string]bool{"tray.confirm.yes": true}
 
 	for language := range i18n.Languages() {
@@ -188,16 +187,21 @@ func TestEveryCommandLabelFitsThePanel(t *testing.T) {
 		for _, key := range []string{
 			"tray.menu.settings", "tray.menu.setup", "tray.menu.reset",
 			"tray.menu.revoke", "tray.menu.quit", "tray.menu.videos", "tray.menu.logs",
+			"tray.menu.todo.authorise", "tray.menu.todo.approve",
+			"tray.menu.todo.enable-funnel",
 			"tray.confirm.yes", "tray.confirm.no",
 		} {
-			// The accelerator marker is not drawn. `tray.menu.todo` and
-			// `tray.menu.update` are left out because their width belongs to a
-			// sentence from Tailscale and to a version number, neither of which
-			// this catalogue decides.
+			// The accelerator marker is not drawn. **The step's three labels
+			// are measured now, and that is the change**: they used to be one
+			// key carrying Tailscale's sentence, whose width this catalogue
+			// does not decide and which was therefore let off — and what it
+			// produced on the panel was that sentence cut mid-word.
+			// `tray.menu.update` stays out: its width belongs to a version
+			// number.
 			label := strings.ReplaceAll(tr.t(key), "&", "")
 			font := f.fontGhost
 			if pill[key] {
-				font = f.fontPill
+				font = f.fontMain
 			}
 			measured++
 			if w := measureBox(hdc, font, label, room, false).Right; w > room {
