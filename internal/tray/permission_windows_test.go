@@ -139,13 +139,46 @@ func TestThePermissionIsAnsweredUnderTheLineThatStatesIt(t *testing.T) {
 	// first command. It is asserted rather than left to the reading: the order
 	// of `compose` is what holds it up, and a command inserted above it would
 	// move the focus in silence.
-	t.Run("it is the first command, so it takes the focus", func(t *testing.T) {
+	// **It is the first command, and the focus is a separate question now.**
+	//
+	// The two used to be one: `initialFocus` took the first command, so being
+	// first *was* taking the focus, and this subtest asserted the first half
+	// while being named for the second. Once the mark followed the focus, the
+	// focus began preferring the main command — and with a step also waiting
+	// this fixture disproves its own name, while still passing. **A test that
+	// goes on passing after the rule under it has changed is a test that has
+	// stopped asking anything**, and this one had, in the same commit that
+	// changed the rule.
+	//
+	// So both halves are asserted, separately: the command is first, because
+	// that is what puts it under the sentence it answers; and with a step
+	// waiting the focus is on the step, because the panel has one mark and it
+	// belongs to what the monitor cannot get past on its own.
+	t.Run("it is the first command, and the step takes the focus", func(t *testing.T) {
 		f := &flyout{t: tr, dpi: 96}
 		f.compose(Status{Fault: FaultMicDenied, Todo: "x", TodoAction: "approve",
 			TodoURL: "https://example/x"})
 		if find(f, word) != 0 {
-			t.Errorf("the command is at %d and not first: the focus would open "+
+			t.Errorf("the command is at %d and not first: it would be drawn "+
 				"somewhere else", find(f, word))
+		}
+		i := f.focusIndex()
+		if i < 0 || i >= len(f.cmds) {
+			t.Fatalf("no command takes the focus: %d", i)
+		}
+		if f.cmds[i].style != stylePill {
+			t.Errorf("the focus opens on %q, which is not the step: the one mark "+
+				"the panel has would be sitting on something else", f.cmds[i].label)
+		}
+	})
+
+	// And with nothing waiting, the first command is the one, which is the half
+	// the rule above must not have taken away.
+	t.Run("with no step, the focus is on the first command", func(t *testing.T) {
+		f := &flyout{t: tr, dpi: 96}
+		f.compose(Status{Fault: FaultMicDenied})
+		if i := f.focusIndex(); i != 0 {
+			t.Errorf("the focus opens at %d and not on the first command", i)
 		}
 	})
 

@@ -873,6 +873,39 @@ tailnet and the reader's role, ours when it does not. The button carries a short
 label of ours per action, so `TestEveryCommandLabelFitsThePanel` measures it like
 every other, and the truncation is gone rather than decorated.
 
+**And moving it there was half the repair, which a review found.** The sentence
+was still going through a sixty-character cut written when its destination was a
+menu item — so it arrived on the wrapping line already truncated, with two of its
+three rows unused. **A limit written for one destination does not travel to the
+next**, and the defect that had been reported on the button reappeared on the
+line, in the same commit that was supposed to have removed it. What bounds it now
+is the panel: `measureLines` clamps to `maxStatusRows` and `drawWrapped` carries
+`DT_END_ELLIPSIS`, so the cut is at the end of the last row, where it can be
+seen.
+
+**Measured at 96 dpi in the 236 px of a row, in all five languages**, rows needed
+of the three there are:
+
+| | de | en | es | fr | it |
+|---|---|---|---|---|---|
+| `wait-certificate`, `authorise`, `enable-funnel`, `failed` | 2 | 2 | 2 | 2 | 2 |
+| `other-user` | **3** | 2 | 2 | 2 | 2 |
+| `approve` | 6 | 5 | 5 | 6 | 6 |
+
+**Five of the six fit everywhere, German's `other-user` fits exactly** — one word
+more and it does not — and `approve` is the one exception, named in the guard
+with its reason: it is an explanation rather than an instruction, it is read on
+the pages too where the whole of it is right, and in the panel its first three
+rows carry the half that says what to do. The guard asserts the exception **in
+both directions**, so shortening that sentence until it fits fails and asks for
+the exception to be removed.
+
+**The guard had not known this source existed**, which is the first failure this
+repository lists: its list of texts is hand-written, the step's sentence arrived
+after it, and nothing went red only because the sixty-character cut upstream was
+arriving first. **A guard green because of a defect somewhere else is not a
+guard.**
+
 **Three of the six actions never produced a button and still do not**, and that
 is a reading rather than a decision: `wait-certificate` says in as many words
 that there is nothing to do, and `other-user` and `failed` carry no address.
@@ -994,4 +1027,23 @@ because we do not handle `WM_PRINTCLIENT`.
 **And colours are read, not judged.** "There is a white border" became solvable
 when it became `+0:262D32 +2:B4B4B4 +18:121517`: the first is ours, the third is
 the ground, and the second belongs to neither.
+
+**And it wants a screen that is on.** Run with the session locked or the display
+asleep, every photograph comes back **black** — with the right rectangle, the
+right size and no error anywhere, which is the shape of failure this file keeps
+a list of. What separates the two is the file: a panel is 35 to 50 kB of PNG and
+a black one is 1 to 4. **A number is what tells a picture of nothing from a
+picture**, and it is cheaper than opening them. Measured on the same five states
+an hour apart: 1.4 to 4.1 kB locked, 15.5 to 37.3 unlocked, with the rectangles
+identical to the byte — so the instrument reports success, reports the right
+geometry, and hands over nothing.
+
+**And a fixture that draws a state the program cannot produce is worse than no
+photograph.** Two were found together: the confirmation's *Yes* was given the
+main command's style while `askInside` builds both answers with the plain one,
+so the picture carried a weight nothing draws — 73 px against 62 in Italian; and
+the step's row was given a sentence and an address but no action code, so the
+photograph came back with no command at all, which is how that one was caught.
+**The instrument's whole value is that it shows what is really there**, and a
+fixture is the one place that can be untrue without anybody noticing.
 

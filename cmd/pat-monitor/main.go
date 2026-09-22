@@ -1241,24 +1241,26 @@ func aside(log *slog.Logger, what string, fn func() error) func() error {
 	}
 }
 
-// firstLine keeps the first line of a text and shortens it to menu width.
+// oneParagraph flattens a prerequisite text into a single run of words.
 //
-// The prerequisite text comes from Tailscale and can be long and on several
-// lines: a menu item cannot show it, and truncating it without saying so would
-// make it a half sentence. The whole version stays on the page and in the log;
-// here the end of the thread is enough, because the item serves to **open** the
-// address, not to explain.
-func firstLine(s string) string {
-	if i := strings.IndexAny(s, "\r\n"); i >= 0 {
-		s = s[:i]
-	}
-	s = strings.TrimSpace(s)
-	const max = 60
-	if len([]rune(s)) > max {
-		s = string([]rune(s)[:max-1]) + "…"
-	}
-	return s
-}
+// **It used to be `firstLine`, and it cut at sixty characters**, which was the
+// right shape while this text was a menu item: one line, one width, and an
+// ellipsis rather than a half sentence. The text has since moved to the panel's
+// status rows, which wrap into as many rows as they are given — so the cut
+// arrived **before** the room did, and the defect reported on the button came
+// back on the line with two of its three rows unused. **A limit written for one
+// destination does not travel to the next.**
+//
+// **What bounds it now is the panel**, which clamps a line to `maxStatusRows`
+// and draws it with `DT_END_ELLIPSIS`: cut at the end, where the cut can be
+// seen, rather than at sixty characters or — the failure that whole section
+// exists for — at both ends. The length is not ours to decide anyway, since
+// Tailscale composes it knowing the tailnet and the reader's role.
+//
+// The newlines go because they are theirs and the destination is a wrapped box.
+// Keeping the first line alone would drop the half that says what to do: in
+// their longest message that is the second sentence.
+func oneParagraph(s string) string { return strings.Join(strings.Fields(s), " ") }
 
 // simulatedFaults returns the fake faults asked for with -simulate-fault.
 //
@@ -1691,7 +1693,7 @@ func trayStatus(s server.Status, cfg config.Config, startedAt time.Time, dict *i
 		if text == "" {
 			text = dict.T("tunnel.action." + string(s.Remote.Action))
 		}
-		out.Todo = firstLine(text)
+		out.Todo = oneParagraph(text)
 		out.TodoAction = string(s.Remote.Action)
 		out.TodoURL = s.Remote.ActionURL
 	}

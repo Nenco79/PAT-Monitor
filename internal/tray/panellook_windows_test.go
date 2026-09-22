@@ -149,7 +149,15 @@ func TestLookAtThePanel(t *testing.T) {
 						f.body = f.cmds[i].confirm[1]
 						f.cmds = []flyCmd{
 							{label: tr.t("tray.confirm.no"), stays: true},
-							{label: tr.t("tray.confirm.yes"), style: stylePill},
+							// **Both answers are `styleGhost`, which is what
+							// `askInside` builds.** Giving "Yes" the main
+							// command's style photographed a weight the
+							// program never draws — 73 px against 62 in
+							// Italian — that is, a picture of a panel this
+							// code cannot produce, on the one instrument whose
+							// whole value is that it shows what is really
+							// there.
+							{label: tr.t("tray.confirm.yes")},
 						}
 						break
 					}

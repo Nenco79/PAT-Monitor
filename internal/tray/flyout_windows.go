@@ -232,8 +232,9 @@ type flyout struct {
 	qrBm   windows.Handle
 	qrPx   int32
 	// The fonts, one per role, with the sizes and weights of the stylesheets:
-	// the pill 600/16, the secondary button 500/14, the lines 400/14, the
-	// address 400/13.
+	// the confirmation's question 600/16, the main command 600/14, the
+	// secondary button 500/14, the lines 400/14, the address 400/13. See
+	// makeFonts for why the first two are not one.
 	fontTitle windows.Handle
 	fontMain  windows.Handle
 	fontGhost windows.Handle
@@ -405,7 +406,10 @@ func (f *flyout) compose(st Status) {
 	// the accent, so a filled pill on top of it would be two marks for one
 	// thing — and the pill is the *tunnel's* step, which is a different
 	// question and keeps it. The focus falls here by construction, because
-	// `initialFocus` takes the first command and this one is first.
+	// It is the `lead`, drawn between the lines and the code — **and it is no
+	// longer the one the focus falls on**: with a step also waiting, the focus
+	// goes to the step, because the mark follows the focus and the panel has
+	// one. See focusIndex.
 	//
 	// It is the one case where this panel is the **only** place the thing can be
 	// done: the switch is in this machine's Settings, so whoever watches from a
@@ -836,8 +840,29 @@ func (f *flyout) rebuild() {
 	}
 }
 
-// initialFocus puts the focus on the first command, which in the confirmation
-// question is "No".
+// focusIndex is the command the panel opens with selected, or -1.
+//
+// **It is a function because the mark follows the focus**, so which command
+// this picks *is* which command the panel marks — and a rule that decides the
+// loudest thing on the screen should be answerable without a window. The
+// drawing needs handles; this needs only the composed commands.
+func (f *flyout) focusIndex() int {
+	for _, want := range []flyStyle{stylePill, styleGhost} {
+		for i, c := range f.cmds {
+			if c.style == styleText {
+				continue
+			}
+			if want == stylePill && c.style != stylePill {
+				continue
+			}
+			return i
+		}
+	}
+	return -1
+}
+
+// initialFocus puts the focus where focusIndex says, and falls back to the
+// first control there is when that command has no button.
 func (f *flyout) initialFocus() {
 	// **The focus starts on the main command, and where there is none, on the
 	// first.** The address is not a command: copying is done by pressing it, so
@@ -853,17 +878,9 @@ func (f *flyout) initialFocus() {
 	// paint itself as well, and then a panel with both a refused permission and
 	// a step waiting carried two marked buttons, which is the thing this rule
 	// exists to prevent.
-	for _, want := range []flyStyle{stylePill, styleGhost} {
-		for i, c := range f.cmds {
-			if c.style == styleText || i >= len(f.buttons) || f.buttons[i] == 0 {
-				continue
-			}
-			if want == stylePill && c.style != stylePill {
-				continue
-			}
-			procSetFocus.Call(uintptr(f.buttons[i]))
-			return
-		}
+	if i := f.focusIndex(); i >= 0 && i < len(f.buttons) && f.buttons[i] != 0 {
+		procSetFocus.Call(uintptr(f.buttons[i]))
+		return
 	}
 	for _, h := range f.buttons {
 		if h != 0 {
@@ -1706,13 +1723,19 @@ func (f *flyout) paintButton(di *drawItemStruct) {
 	// the way where one cannot even tell something is missing.
 	//
 	// **The third was in front of us the whole time and was found by looking at
-	// a photograph of the panel**: `tray.menu.todo` carries Tailscale's own
-	// sentence, which is the longest thing in this window and is not ours to
-	// shorten — `firstLine` takes one line of it, and a line is not a width.
-	// Measured, it drew `ve this machine in the Tailscale`, missing its first
-	// word and its last. The assumption underneath was the one the icon label's
-	// note had already retired in one case and left standing in general: that
-	// the commands' labels fit by construction.
+	// a photograph of the panel**: `tray.menu.todo` carried Tailscale's own
+	// sentence, which is the longest thing in this window and was not ours to
+	// shorten — it took one line of it, and a line is not a width. Measured, it
+	// drew `ve this machine in the Tailscale`, missing its first word and its
+	// last. The assumption underneath was the one the icon label's note had
+	// already retired in one case and left standing in general: that the
+	// commands' labels fit by construction.
+	//
+	// **That key no longer exists**, and the repair went further than an
+	// ellipsis: the sentence is a status row now and the button carries a short
+	// label of ours per action. What this paragraph records is the measurement
+	// and the assumption, both of which still hold for whatever is put on a
+	// button next.
 	//
 	// So the rule is unconditional now, because the exception cost more than it
 	// saved: on a label that fits, the ellipsis changes nothing whatever, and on
@@ -1817,7 +1840,7 @@ func classNameOf(h windows.Handle) string {
 // **The other three are the confirmation titles**, which is the find that
 // matters: *¿Desconectar todos los aparatos?* in Spanish, French and Italian
 // is the question asked before cutting off everybody watching, and on one row
-// it was cut at both ends. It is drawn in the pill's font, 16 at weight 600,
+// it was cut at both ends. It is drawn in the title's font, 16 at weight 600,
 // so it needs a third row where the same sentence in 14 would not.
 //
 // **What the cap is for is the panel and not the sentence.** These lines sit
@@ -1953,8 +1976,11 @@ func insideRounded(x, y, side, radius int32) bool {
 	return dx*dx+dy*dy <= radius*radius
 }
 
-// fontFor picks the button's font: the pill carries 600/16, the secondary one
-// 500/14. It lives here because two callers ask for it — whoever creates the
+// fontFor picks the button's font: the main command carries 600/14, the
+// secondary one 500/14. **They used to differ in size as well as weight**, and
+// a button two points taller than the one above it was reported as the defect
+// it is — the confirmation's question keeps the larger one, because a title is
+// a title. It lives here because two callers ask for it — whoever creates the
 // control and whoever paints it — and two separate choices would diverge.
 func (f *flyout) fontFor(c flyCmd) windows.Handle {
 	switch c.style {

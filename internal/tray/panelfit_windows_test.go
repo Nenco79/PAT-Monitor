@@ -11,6 +11,7 @@ import (
 	"golang.org/x/sys/windows"
 
 	"patmonitor/internal/i18n"
+	"patmonitor/internal/tunnel"
 )
 
 // panelRoom is the width everything full-width in this panel gets: the panel
@@ -175,12 +176,23 @@ func TestEveryCommandLabelFitsThePanel(t *testing.T) {
 	room := panelRoom(f)
 	measured := 0
 
-	// **The font goes with the key, because the style does.** `fontFor` gives
-	// the main command `fontMain` and everything else `fontGhost` — the same 14
-	// points at two weights, so `tray.confirm.yes` is a little wider than its
-	// neighbour "No" and no longer two points larger. Measured with the ghost's
-	// font it would still be let off, which is why the distinction stays.
-	pill := map[string]bool{"tray.confirm.yes": true}
+	// **The font goes with the key, because the style does** — and this map had
+	// it the wrong way round, which is the shape of defect a guard cannot see
+	// in itself. It named `tray.confirm.yes`, and `askInside` builds **both**
+	// answers with the zero value, `styleGhost`: the panel has never drawn that
+	// label in the main command's font. What it does draw there are the three
+	// `tray.menu.todo.*`, which were being measured with the narrower ghost —
+	// French's `Ouvrir la liste des appareils` is 164 px measured that way and
+	// 193 as it is drawn, in a row of 236.
+	//
+	// The two questions a guard like this has to keep apart: which font a key
+	// is **drawn** with, and which one it is **measured** with. They are one
+	// answer, `fontFor`, and the map is only the styles `compose` assigns.
+	pill := map[string]bool{
+		"tray.menu.todo.authorise":     true,
+		"tray.menu.todo.approve":       true,
+		"tray.menu.todo.enable-funnel": true,
+	}
 
 	for language := range i18n.Languages() {
 		tr := &Tray{dictionary: i18n.Open([]string{language})}
@@ -224,5 +236,78 @@ func TestTheCountersAreMeasuredWithPlausibleNumbers(t *testing.T) {
 	line := tr.t("tray.line.watching", "viewers", strconv.Itoa(128), "devices", "128")
 	if !strings.Contains(line, "128") {
 		t.Fatalf("the count does not reach the line: %q", line)
+	}
+}
+
+// **The sentence the tunnel hands over is a status line too, and this guard did
+// not know it existed.**
+//
+// The list above is hand-written, which is the failure this repository names
+// first: it protects exactly what somebody remembered, and the step Tailscale
+// is waiting on arrived after it was written. Nothing failed only because a
+// sixty-character cut in `cmd/pat-monitor` was arriving before the panel ever
+// measured anything — that is, the guard was green because of a defect
+// elsewhere.
+//
+// Measured at 96 dpi in the 236 px of a row, rows needed of the three there
+// are:
+//
+//	              de  en  es  fr  it
+//	wait-certificate 2   2   2   2   2
+//	authorise        2   2   2   2   2
+//	enable-funnel    2   2   2   2   2
+//	failed           2   2   2   2   2
+//	other-user       3   2   2   2   2
+//	approve          6   5   5   6   6
+//
+// **Five of the six fit in every language, and German's `other-user` fits
+// exactly** — one word more and it does not, which is the kind of thing only a
+// number says.
+//
+// **`approve` is the exception, it is named, and the naming is checked both
+// ways.** It is the one sentence of the six that is an explanation rather than
+// an instruction, it is read on the pages as well — where there is room and the
+// whole of it is right — and in the panel it is cut at the end of the third row
+// by `DT_END_ELLIPSIS`, which keeps the half that says what to do and loses the
+// half that reassures. The second loop is what stops that exception rotting: if
+// somebody shortens the sentence until it fits, this fails and asks for the
+// exception to be removed.
+func TestTheStepsSentenceFitsTheRowsThePanelGivesIt(t *testing.T) {
+	f, hdc, done := panelDC(t)
+	defer done()
+
+	room := panelRoom(f)
+	row := f.px(flyLine)
+	// Cut at the end of the last row instead of fitting. The whole of it is on
+	// the page, and the button beside it says what pressing does.
+	cutAtTheEnd := map[tunnel.ActionCode]bool{"approve": true}
+	measured := 0
+
+	for language := range i18n.Languages() {
+		tr := &Tray{dictionary: i18n.Open([]string{language})}
+		for _, a := range tunnel.AllActions() {
+			text := tr.t("tunnel.action." + string(a))
+			box := measureBox(hdc, f.fontLine, text, room, true)
+			rows := (box.Bottom + row - 1) / row
+			measured++
+			if cutAtTheEnd[a] {
+				if rows <= maxStatusRows {
+					t.Errorf("%s: %q now fits in %d rows: it is no longer an "+
+						"exception, and the entry naming it has to go", language, a, rows)
+				}
+				continue
+			}
+			if rows > maxStatusRows {
+				t.Errorf("%s: %q needs %d rows and the panel gives %d: it is cut, "+
+					"and nothing but this says so", language, a, rows, maxStatusRows)
+			}
+			if box.Right > room {
+				t.Errorf("%s: %q measures %d px in a row of %d and did not wrap",
+					language, a, box.Right, room)
+			}
+		}
+	}
+	if measured < 25 {
+		t.Fatalf("%d sentences measured: the guard has stopped finding them", measured)
 	}
 }
