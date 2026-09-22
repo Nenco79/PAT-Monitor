@@ -39,9 +39,18 @@ var (
 	procGetDpiForMonitor       = shcore.NewProc("GetDpiForMonitor")
 	procSetProcessDpiAwareness = user32.NewProc("SetProcessDpiAwarenessContext")
 	procSetProcessDPIAware     = user32.NewProc("SetProcessDPIAware")
-	procDestroyIcon            = user32.NewProc("DestroyIcon")
-	procGetDoubleClickTime     = user32.NewProc("GetDoubleClickTime")
-	procCreateIconIndirect     = user32.NewProc("CreateIconIndirect")
+	// **The panel's typeface is the system's, and only the typeface.**
+	// SystemParametersInfoForDpi with SPI_GETNONCLIENTMETRICS hands over the
+	// face Windows writes its own message text in -- Segoe UI on this machine,
+	// Microsoft YaHei UI on a Chinese one -- which is the usual rule of asking
+	// the system rather than choosing, and the only way a script we cannot name
+	// in advance gets drawn instead of tofu. The DPI variant is taken because
+	// the plain one answers with the session's, which is the half
+	// GetSystemMetrics already cost this file once.
+	procSystemParametersInfoForDpi = user32.NewProc("SystemParametersInfoForDpi")
+	procDestroyIcon                = user32.NewProc("DestroyIcon")
+	procGetDoubleClickTime         = user32.NewProc("GetDoubleClickTime")
+	procCreateIconIndirect         = user32.NewProc("CreateIconIndirect")
 
 	procGetCursorPos        = user32.NewProc("GetCursorPos")
 	procSetForegroundWindow = user32.NewProc("SetForegroundWindow")
@@ -142,6 +151,59 @@ const (
 	ninSelect    = wmUser + 0
 	ninKeySelect = wmUser + 1
 )
+
+// logFontW is LOGFONTW. It is 92 bytes on every word size -- five 32-bit
+// fields, eight bytes of flags and a fixed array -- and there is not a pointer
+// in it, which is what makes it safe to read straight out of the block Windows
+// fills.
+type logFontW struct {
+	Height         int32
+	Width          int32
+	Escapement     int32
+	Orientation    int32
+	Weight         int32
+	Italic         byte
+	Underline      byte
+	StrikeOut      byte
+	CharSet        byte
+	OutPrecision   byte
+	ClipPrecision  byte
+	Quality        byte
+	PitchAndFamily byte
+	FaceName       [32]uint16
+}
+
+// nonClientMetricsW is NONCLIENTMETRICSW, of which this program reads one
+// field.
+//
+// **The whole structure is declared even so, and that is not waste**: the call
+// is refused unless `cbSize` matches, and `cbSize` is computed with
+// `unsafe.Sizeof` -- so a field left out produces a structure that declares its
+// own wrong size precisely, which Windows then fills from an offset of its own
+// choosing. It is the trap `cbSize` already sprang on `NOTIFYICONDATAW`, and
+// `win32_windows_test.go` checks the offsets rather than trusting them.
+//
+// `PaddedBorderWidth` is the last field and exists from Vista; leaving it off
+// would make the size 500 instead of 504 and the call would fail on every
+// Windows this program supports.
+type nonClientMetricsW struct {
+	Size              uint32
+	BorderWidth       int32
+	ScrollWidth       int32
+	ScrollHeight      int32
+	CaptionWidth      int32
+	CaptionHeight     int32
+	CaptionFont       logFontW
+	SmCaptionWidth    int32
+	SmCaptionHeight   int32
+	SmCaptionFont     logFontW
+	MenuWidth         int32
+	MenuHeight        int32
+	MenuFont          logFontW
+	StatusFont        logFontW
+	MessageFont       logFontW
+	PaddedBorderWidth int32
+}
 
 type wndClassEx struct {
 	Size       uint32

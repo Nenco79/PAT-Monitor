@@ -1128,16 +1128,67 @@ func (f *flyout) createQR() error {
 	return nil
 }
 
+// spiGetNonClientMetrics is SPI_GETNONCLIENTMETRICS.
+const spiGetNonClientMetrics = 0x0029
+
+// messageFace is the typeface Windows writes its own message text in, and the
+// character set it writes it with.
+//
+// **The typeface is the system's and the sizes are ours, and they are different
+// questions.** The scale -- `tBody`, `tUI`, `tSmall`, the two weights -- is the
+// stylesheets', measured on this panel, and the panel's own chapter is a record
+// of what happens when one of those numbers is taken from somewhere else. What
+// is not ours to choose is the *face*: on a Chinese, Japanese or Korean Windows
+// "Segoe UI" has no glyph for most of what it would be asked to draw, and GDI
+// answers with the box every user of those systems knows. `lfMessageFont` is
+// the face that system writes with, so asking is the difference between a panel
+// and a row of tofu -- and it is the same rule as the videos folder, the local
+// address and the preferred languages.
+//
+// **A refusal is not a fault**: Segoe UI is what this panel has always used and
+// is right on the machines this program has been measured on. The face is taken
+// and the height is deliberately not, because `lfMessageFont.Height` is the
+// system's text size and would throw the scale away.
+func (f *flyout) messageFace() (string, byte) {
+	var m nonClientMetricsW
+	m.Size = uint32(unsafe.Sizeof(m))
+	ok, _, _ := procSystemParametersInfoForDpi.Call(
+		spiGetNonClientMetrics, uintptr(m.Size), uintptr(unsafe.Pointer(&m)),
+		0, uintptr(f.dpi))
+	return messageFaceFrom(m.MessageFont, ok != 0)
+}
+
+// messageFaceFrom takes the answer instead of asking for it, which is what
+// makes both directions testable: a function that interrogates the operating
+// system can be run and not tested, and on this machine the refusal and the
+// answer are the **same string** -- an Italian Windows writes with Segoe UI,
+// so a test on the value alone would pass over a call that never succeeded.
+func messageFaceFrom(lf logFontW, answered bool) (string, byte) {
+	const fallback = "Segoe UI"
+	const defaultCharSet = 1
+	if !answered {
+		return fallback, defaultCharSet
+	}
+	name := windows.UTF16ToString(lf.FaceName[:])
+	if name == "" {
+		return fallback, defaultCharSet
+	}
+	// **The character set comes with the face and is not guessed.**
+	// DEFAULT_CHARSET makes GDI choose from the system locale, which is nearly
+	// always the same answer and is an answer arrived at by a second road; the
+	// face and the set Windows paired are the pair it drew with.
+	return name, lf.CharSet
+}
+
 func (f *flyout) createFont(measure, weight int32) windows.Handle {
-	// For now Segoe UI at the DPI's size. The right road is to ask for the
-	// system font with `SystemParametersInfoForDpi`
-	// (SPI_GETNONCLIENTMETRICS): it is the usual rule — ask the system rather
-	// than choose ourselves — and it has to be done before the panel becomes
-	// the real feature.
-	name, _ := windows.UTF16PtrFromString("Segoe UI")
+	face, charSet := f.messageFace()
+	name, err := windows.UTF16PtrFromString(face)
+	if err != nil {
+		name, _ = windows.UTF16PtrFromString("Segoe UI")
+	}
 	h, _, _ := procCreateFontW.Call(
 		uintptr(-f.px(measure)), 0, 0, 0, uintptr(weight), 0, 0, 0,
-		1 /* DEFAULT_CHARSET */, 0, 0, 5 /* CLEARTYPE_QUALITY */, 0,
+		uintptr(charSet), 0, 0, 5 /* CLEARTYPE_QUALITY */, 0,
 		uintptr(unsafe.Pointer(name)))
 	return windows.Handle(h)
 }

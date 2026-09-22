@@ -544,6 +544,58 @@ alpha the GDI text would come out fringed: ClearType antialiases against a
 background it assumes is black and knows nothing of the alpha channel. It is the
 constraint that, got wrong, is paid for with a rewrite.
 
+#### The typeface is the system's, the sizes are ours
+
+The panel hard-coded `"Segoe UI"`, and its own comment named the road out for as
+long as it stood there. **The two halves of a font are not the same question.**
+The scale — `tBody`, `tUI`, `tSmall`, the two weights — is the stylesheets', it
+was measured on this panel, and the rows above are a record of what it costs to
+take one of those numbers from somewhere else. The **face** is not ours to
+choose at all: on a Chinese, Japanese or Korean Windows, Segoe UI has no glyph
+for most of what this panel would ask it to draw, and GDI answers with the box
+every user of those systems recognises. So the face and the character set come
+from `SystemParametersInfoForDpi(SPI_GETNONCLIENTMETRICS)`, `lfMessageFont` —
+the face Windows writes its own message text in — and the height is deliberately
+left behind, because that is the system's text size and taking it would throw
+the scale away.
+
+It is **ask the system rather than choose**, in the place where the answer
+cannot be guessed from here: the videos folder, the local address and the
+preferred languages are the same rule, and this is the one where the right
+answer depends on a script nobody here can name in advance.
+
+**The DPI variant, for the reason the icon's size already cost this file.**
+`SystemParametersInfo` without it answers with the **session's** DPI, which
+Windows fixes at sign-in; the panel knows the DPI of the monitor it is opening
+on and hands it over.
+
+Three things that give no error when they are wrong:
+
+- **`cbSize` makes a wrong structure look right.** The call is refused unless
+  the size matches, and the size is computed from the declaration — so a field
+  left out produces a structure that declares its own wrong size **precisely**,
+  which Windows then fills while our reads come out of the wrong offsets. It is
+  `NOTIFYICONDATAW`'s trap one structure across, so the whole of
+  `NONCLIENTMETRICSW` is declared for one field of it, and the offsets are
+  checked rather than trusted: 92 bytes for `LOGFONTW`, 504 for the whole, the
+  message font at 408. Leaving `iPaddedBorderWidth` off gives 500 and the call
+  fails on every Windows this program supports.
+- **The refusal and the answer are the same string here.** An Italian Windows
+  writes its messages in Segoe UI, which is exactly what the panel used to
+  hard-code — so a test on the value would pass over a call that had never
+  succeeded. The decision is therefore handed the answer rather than asking for
+  it (`messageFaceFrom`), both directions are tested, and a third test asks the
+  real call and fails if it refuses. **A fallback that answers the same thing as
+  the road it stands in for hides whether anybody is there.**
+- **The character set travels with the face.** `DEFAULT_CHARSET` makes GDI
+  choose from the system locale, which is nearly always the same answer arrived
+  at by a second road; the pair Windows drew with is the pair to draw with.
+
+**Measured on this machine**: the call answers `Segoe UI`, charset 1, and the
+five photographs of the panel are unchanged. That is the whole of what can be
+shown from here — the road changed and the pixels did not — and what it buys is
+on a machine nobody here has.
+
 #### Removing the non-client area does not remove whoever paints it
 
 `WS_THICKFRAME` is there for one reason: **DWM rounds the frame**, and a bare
@@ -746,6 +798,17 @@ broke *aparatos registrados:* from its *3*, leaving a row carrying a lone digit
 placeholder is non-breaking now, in all five catalogues: **a figure is not
 separable from the label that names it**, and that is a typographic fact rather
 than a change of wording, so not one sentence moved.
+
+**And the guard counted rows and never the width, which is the half that lets
+the worst case through.** `DT_CALCRECT` with `DT_WORDBREAK` returns the width of
+the widest line and goes **past** the box it was given when nothing in the text
+can be broken — so a sentence with no break opportunity measures **one row**,
+passes a count of rows, and is drawn cut at both ends, which is the failure this
+whole section exists for. Measured with an unbreakable line put in: 391 px in a
+row of 236, one row, green. It costs nothing in the five languages here, where a
+space is always available; it is the whole of the question in a script that has
+none, where whether GDI breaks between characters is a property of the flags and
+not of the sentence.
 
 **The commands do not wrap and must fit**, because a button has one height and a
 taller one among the others is a crooked column. The ellipsis is there

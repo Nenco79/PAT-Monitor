@@ -279,6 +279,7 @@ a heading to its file, `grep -rn` the heading.
   - The build number is the fourth field, not the third digit
   - The tray menu: first what is happening, then what can be done
   - The tray panel: the pixels are ours, the controls are Windows's
+    - The typeface is the system's, the sizes are ours
     - Removing the non-client area does not remove whoever paints it
     - The first image is not drawn by WM_PAINT
     - `DefDlgProc` is not there, and its omissions give no error

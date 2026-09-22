@@ -123,6 +123,23 @@ func TestEveryStatusLineFitsTheRowsItIsGiven(t *testing.T) {
 				t.Errorf("%s: %q needs %d rows and the panel gives %d: it would be "+
 					"cut", language, text, rows, maxStatusRows)
 			}
+			// **And a line that does not wrap at all counts as one row.**
+			// `DT_CALCRECT` with `DT_WORDBREAK` returns the width of the widest
+			// line, and it goes **past** the box it was given when nothing in
+			// the text can be broken — so a sentence with no break opportunity
+			// measures one row, passes the count above, and is drawn cut at
+			// both ends, which is the worst way this panel fails and the case
+			// this guard was written for.
+			//
+			// It costs nothing in the five languages here, where a space is
+			// always available; it is the whole of the question in a script
+			// with no spaces, where whether GDI breaks between characters is a
+			// property of the flags and not of the sentence.
+			if box.Right > room {
+				t.Errorf("%s: %q measures %d px in a row of %d and did not wrap: "+
+					"it would lose its first word and its last", language, text,
+					box.Right, room)
+			}
 		}
 	}
 	if measured < 40 {
