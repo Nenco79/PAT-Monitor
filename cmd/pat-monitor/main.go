@@ -1241,27 +1241,6 @@ func aside(log *slog.Logger, what string, fn func() error) func() error {
 	}
 }
 
-// oneParagraph flattens a prerequisite text into a single run of words.
-//
-// **It used to be `firstLine`, and it cut at sixty characters**, which was the
-// right shape while this text was a menu item: one line, one width, and an
-// ellipsis rather than a half sentence. The text has since moved to the panel's
-// status rows, which wrap into as many rows as they are given — so the cut
-// arrived **before** the room did, and the defect reported on the button came
-// back on the line with two of its three rows unused. **A limit written for one
-// destination does not travel to the next.**
-//
-// **What bounds it now is the panel**, which clamps a line to `maxStatusRows`
-// and draws it with `DT_END_ELLIPSIS`: cut at the end, where the cut can be
-// seen, rather than at sixty characters or — the failure that whole section
-// exists for — at both ends. The length is not ours to decide anyway, since
-// Tailscale composes it knowing the tailnet and the reader's role.
-//
-// The newlines go because they are theirs and the destination is a wrapped box.
-// Keeping the first line alone would drop the half that says what to do: in
-// their longest message that is the second sentence.
-func oneParagraph(s string) string { return strings.Join(strings.Fields(s), " ") }
-
 // simulatedFaults returns the fake faults asked for with -simulate-fault.
 //
 // **They come on and go off in twenty-second windows** instead of staying on:
@@ -1693,7 +1672,11 @@ func trayStatus(s server.Status, cfg config.Config, startedAt time.Time, dict *i
 		if text == "" {
 			text = dict.T("tunnel.action." + string(s.Remote.Action))
 		}
-		out.Todo = oneParagraph(text)
+		// **Not flattened here.** The newlines have to go because the panel
+		// wraps, and the panel is the only thing that knows that: see
+		// tray.oneParagraph, which lives beside the rows it is for so that the
+		// guard measuring them can measure what is really drawn.
+		out.Todo = text
 		out.TodoAction = string(s.Remote.Action)
 		out.TodoURL = s.Remote.ActionURL
 	}

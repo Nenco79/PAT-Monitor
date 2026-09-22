@@ -140,15 +140,20 @@ const (
 	// in the pages, where every screen has one main action and only one — and
 	// here it is there only when there really is something to do.
 	//
-	// **It wears the mark of the selected command, and it used to wear a solid
-	// accent.** The comment here said "the phase's colour" and the code took
-	// `pal.accent`, which is chosen by the Windows theme and not by the phase —
-	// a sentence that could not fail, describing something the code had never
-	// done. What that solid fill produced on screen is the report that found
-	// it: the same token reads dark green at 22% over near-black and bright
-	// cyan at 100%, so the panel appeared to hold two accents, one of them
-	// belonging to nothing. The panel has one way of saying *this one*, and
-	// this is it.
+	// **It paints nothing of its own, and what marks it is the focus.**
+	// `paintButton` has no branch for it: a main command that is not selected
+	// is drawn exactly like its neighbours, and `focusIndex` is what makes sure
+	// it is selected. So this style says *prefer me*, not *fill me*.
+	//
+	// It used to wear a solid accent, under a comment here calling it "the
+	// phase's colour" while the code took `pal.accent`, which the Windows theme
+	// chooses and the phase does not — a sentence that could not fail,
+	// describing something the code had never done. What the solid fill
+	// produced is the report that found it: the same token reads dark green at
+	// 22% over near-black and bright cyan at 100%, so the panel appeared to
+	// hold two accents, one belonging to nothing. Then painting it *and*
+	// painting the focus gave two marked buttons whenever both existed, which
+	// is why the paint went and the preference stayed.
 	stylePill
 	// styleText has neither background nor border: it is the address, which is
 	// pressed to copy it. **It stays a real control** even though it does not
@@ -401,15 +406,15 @@ func (f *flyout) compose(st Status) {
 	// sentence four rows above it — the first version landed between the QR
 	// code and the address, which reads as belonging to the address.
 	//
-	// **It is drawn like every other command and it is given the focus**, which
-	// is the panel's own rule about marks: the selected command already wears
-	// the accent, so a filled pill on top of it would be two marks for one
-	// thing — and the pill is the *tunnel's* step, which is a different
-	// question and keeps it. The focus falls here by construction, because
-	// It is the `lead`, drawn between the lines and the code — **and it is no
-	// longer the one the focus falls on**: with a step also waiting, the focus
-	// goes to the step, because the mark follows the focus and the panel has
-	// one. See focusIndex.
+	// **It is drawn like every other command**, which is the panel's own rule
+	// about marks: the selected command already wears the accent, so anything
+	// added on top of it would be two marks for one thing.
+	//
+	// **And it is no longer the one the focus falls on.** It is the `lead`,
+	// drawn between the lines and the code; with a step also waiting the focus
+	// goes to the step, because the mark follows the focus, the panel has one,
+	// and the step is what the monitor cannot get past on its own. With nothing
+	// waiting this is the first command and the focus is here. See focusIndex.
 	//
 	// It is the one case where this panel is the **only** place the thing can be
 	// done: the switch is in this machine's Settings, so whoever watches from a
@@ -882,11 +887,18 @@ func (f *flyout) initialFocus() {
 		procSetFocus.Call(uintptr(f.buttons[i]))
 		return
 	}
-	for _, h := range f.buttons {
-		if h != 0 {
-			procSetFocus.Call(uintptr(h))
-			return
+	// **The fallback skips the address, and the first version of it did not.**
+	// Walking the handles alone reaches `styleText`, which is the address —
+	// the one control this panel must never open with selected, because Enter
+	// would then copy an address instead of opening the monitor. The old loop
+	// carried that test inside itself; splitting the choice out of it left the
+	// fallback with nothing but handles to look at.
+	for i, c := range f.cmds {
+		if c.style == styleText || i >= len(f.buttons) || f.buttons[i] == 0 {
+			continue
 		}
+		procSetFocus.Call(uintptr(f.buttons[i]))
+		return
 	}
 }
 

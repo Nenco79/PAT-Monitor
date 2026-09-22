@@ -729,6 +729,14 @@ nothing. Both now go through `marked()`, one function because there is one mark;
 what still separates the main command from the one with the focus is the weight,
 600 against 500, which is the difference that was meant to be carried all along.
 
+**And splitting the choice out of `initialFocus` left the address unguarded.**
+That single loop skipped `styleText` and required a button in one condition;
+`focusIndex` took the choice and the fallback beneath it was left walking the
+handles alone — so a panel whose preferred command failed to get a control could
+open with the **address** selected, and there Enter copies an address instead of
+opening the monitor. The rule now lives in both places, because there are two,
+and `focusIndex` is asked about it directly in three states.
+
 **And then two marks at once turned out to be the price nobody wanted**, which
 is what the next photograph showed: with a permission refused *and* a step
 waiting on Tailscale, the panel carried two. The rule is therefore narrower than
@@ -905,6 +913,22 @@ repository lists: its list of texts is hand-written, the step's sentence arrived
 after it, and nothing went red only because the sixty-character cut upstream was
 arriving first. **A guard green because of a defect somewhere else is not a
 guard.**
+
+**And the flattening had to move into this package to be guardable at all.** It
+lived in `cmd/pat-monitor`, so the guard here measured the catalogue's value
+while the panel drew a transformed one — measuring something the program does
+not do, one package apart, which is where that shape is hardest to see. It
+belongs here anyway: the newlines have to go **because these rows wrap**, which
+is a fact about them and about nothing else.
+
+**And the obvious spelling of it destroyed French.** `strings.Fields` splits on
+`unicode.IsSpace`, which answers true for **U+00A0** — so joining its fields
+turned every non-breaking space into an ordinary one, undoing at the last step
+before drawing exactly what `TestASpaceBeforePunctuationIsNotBreakable` defends
+the catalogues for, and leaving the panel free to end a row on a bare colon.
+Three of the six French sentences that reach this row carry one. The separator
+is now decided by what it is for: anything the box may break on collapses to one
+space, and the one space that exists **in order not to be broken** is kept.
 
 **Three of the six actions never produced a button and still do not**, and that
 is a reading rather than a decision: `wait-certificate` says in as many words

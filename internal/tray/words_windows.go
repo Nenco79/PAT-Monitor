@@ -5,6 +5,7 @@ package tray
 import (
 	"strconv"
 	"strings"
+	"unicode"
 )
 
 // The tray's words, and the codes that choose them.
@@ -135,6 +136,47 @@ var todoCommands = map[string]string{
 // tunnel.AllActions and fails on one this map has never met.
 func todoCommand(action string) string { return todoCommands[action] }
 
+// oneParagraph flattens a prerequisite text into one run of words.
+//
+// **It used to live in `cmd/pat-monitor` and cut at sixty characters**, which
+// was the right shape while the text was a menu item. It is here now for two
+// reasons: the newlines have to go **because this panel wraps**, which is a
+// fact about these rows and about nothing else — and a guard in another package
+// cannot measure what this one draws, which is how the defect below stayed
+// green.
+//
+// **`strings.Fields` was the obvious spelling and it destroys French.**
+// `unicode.IsSpace` answers true for U+00A0, so joining its fields turns every
+// non-breaking space into an ordinary one — that is, it undoes at the last step
+// before drawing exactly what `TestASpaceBeforePunctuationIsNotBreakable`
+// defends the catalogues for, and the panel is then free to end a row on a bare
+// `:`. Three of the six French sentences carry one.
+//
+// So the separator is decided by what it is for: anything the box may break on
+// collapses to one space, and the one space that exists in order **not** to be
+// broken is kept.
+func oneParagraph(s string) string {
+	var b strings.Builder
+	gap := false
+	for _, r := range s {
+		if r == ' ' {
+			b.WriteRune(r)
+			gap = false
+			continue
+		}
+		if unicode.IsSpace(r) {
+			gap = true
+			continue
+		}
+		if gap && b.Len() > 0 {
+			b.WriteByte(' ')
+		}
+		gap = false
+		b.WriteRune(r)
+	}
+	return b.String()
+}
+
 // Note is a condition worth saying that is not a fault.
 type Note string
 
@@ -256,7 +298,7 @@ func (t *Tray) lines(st Status) []string {
 	// and these rows wrap into as many as `maxStatusRows` allows — while a
 	// button has one line and cuts. See todoCommands.
 	if st.Todo != "" {
-		lines = append([]string{st.Todo}, lines...)
+		lines = append([]string{oneParagraph(st.Todo)}, lines...)
 	}
 	if st.Fault != FaultNone {
 		return append([]string{t.t("tray.fault." + string(st.Fault))}, lines...)

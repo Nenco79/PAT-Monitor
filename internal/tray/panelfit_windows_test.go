@@ -286,7 +286,11 @@ func TestTheStepsSentenceFitsTheRowsThePanelGivesIt(t *testing.T) {
 	for language := range i18n.Languages() {
 		tr := &Tray{dictionary: i18n.Open([]string{language})}
 		for _, a := range tunnel.AllActions() {
-			text := tr.t("tunnel.action." + string(a))
+			// **What the panel draws, not what the catalogue holds.** The row
+			// is fed `oneParagraph(...)`, and measuring the raw value is a
+			// guard measuring something the program does not do — which is
+			// how a defect in that very function stayed green here.
+			text := oneParagraph(tr.t("tunnel.action." + string(a)))
 			box := measureBox(hdc, f.fontLine, text, room, true)
 			rows := (box.Bottom + row - 1) / row
 			measured++

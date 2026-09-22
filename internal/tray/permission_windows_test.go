@@ -182,6 +182,32 @@ func TestThePermissionIsAnsweredUnderTheLineThatStatesIt(t *testing.T) {
 		}
 	})
 
+	// **And never on the address, in any state.** Copying is done by pressing
+	// it, so it is a real control and it is the panel's first one: opening from
+	// the keyboard and pressing Enter there would copy an address instead of
+	// opening the monitor. The rule used to live inside `initialFocus`'s single
+	// loop; splitting the choice out of it put it in two places, and this asks
+	// the one that decides.
+	t.Run("never the address", func(t *testing.T) {
+		for _, st := range []Status{
+			{Fault: FaultMicDenied, HomeURL: "http://192.168.1.42:8080/"},
+			{HomeURL: "http://192.168.1.42:8080/"},
+			{Fault: FaultMicDenied, Todo: "x", TodoAction: "approve",
+				TodoURL: "https://example/x", HomeURL: "http://192.168.1.42:8080/"},
+		} {
+			f := &flyout{t: tr, dpi: 96}
+			f.compose(st)
+			i := f.focusIndex()
+			if i < 0 || i >= len(f.cmds) {
+				t.Fatalf("no command takes the focus: %d", i)
+			}
+			if f.cmds[i].style == styleText {
+				t.Errorf("the focus opens on the address: Enter would copy it "+
+					"instead of opening the monitor (fault=%q)", st.Fault)
+			}
+		}
+	})
+
 	t.Run("nothing is refused", func(t *testing.T) {
 		f := &flyout{t: tr, dpi: 96}
 		f.compose(Status{Fault: FaultCaptureStopped})

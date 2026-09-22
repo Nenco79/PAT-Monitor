@@ -1,4 +1,6 @@
-package main
+//go:build windows
+
+package tray
 
 import (
 	"strings"
@@ -27,22 +29,44 @@ func TestThePrerequisiteBecomesOneParagraph(t *testing.T) {
 	}
 }
 
-// Windows breaks lines with CRLF, and a lone `\r` left behind shows as a
-// rectangle. `strings.Fields` splits on both, which is why nothing here looks
-// for them by name.
+// Windows breaks lines with CRLF, and a lone carriage return left behind shows
+// as a rectangle.
 func TestThePrerequisiteCopesWithCRLF(t *testing.T) {
 	if got := oneParagraph("first line\r\nsecond line"); got != "first line second line" {
 		t.Errorf("oneParagraph with CRLF = %q", got)
 	}
 }
 
-// **Nothing is cut here any more, and that is the point of the change.**
+// **The French non-breaking space survives, and `strings.Fields` was what
+// destroyed it.** `unicode.IsSpace` answers true for U+00A0, so the obvious
+// spelling turned every one of them into an ordinary space — undoing, at the
+// last step before drawing, exactly what the catalogues are guarded for, and
+// leaving the panel free to end a row on a bare colon. Three of the six French
+// sentences that reach this row carry one.
 //
-// Sixty characters was the width of a menu item, and the text is now drawn in
-// rows that wrap: the cut arrived before the room did, so the sentence reached
-// the panel already truncated with two of its three rows unused. What bounds it
-// is the panel — `maxStatusRows` and `DT_END_ELLIPSIS` — which cuts at the end
-// of the last row it can give.
+// **Verified to catch**: with `strings.Join(strings.Fields(s), " ")` put back,
+// this fails.
+func TestTheNonBreakingSpaceSurvivesTheFlattening(t *testing.T) {
+	const in = "Aucune action requise : cela peut prendre\nune minute."
+	got := oneParagraph(in)
+	if !strings.ContainsRune(got, ' ') {
+		t.Errorf("the non-breaking space was collapsed: %q", got)
+	}
+	if strings.ContainsAny(got, "\r\n") {
+		t.Errorf("a line break survived: %q", got)
+	}
+	if got != "Aucune action requise : cela peut prendre une minute." {
+		t.Errorf("oneParagraph = %q", got)
+	}
+}
+
+// **Nothing is cut here, and that is the point of where this now lives.**
+//
+// Sixty characters was the width of a menu item, and the text is drawn in rows
+// that wrap: the cut arrived before the room did, so the sentence reached the
+// panel already truncated with two of its three rows unused. What bounds it is
+// the panel — `maxStatusRows` and `DT_END_ELLIPSIS` — which cuts at the end of
+// the last row it can give.
 //
 // **Verified to catch**: with the sixty-rune cap put back, this fails.
 func TestThePrerequisiteIsNotShortenedHere(t *testing.T) {
