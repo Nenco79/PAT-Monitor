@@ -186,8 +186,8 @@ func settled(floorDB float64) *detect.Sound {
 	seed := uint32(1)
 	now := time.Unix(0, 0)
 	// Three time constants are enough for the floor to converge.
-	for i := 0; i < int(3*detect.DefaultFloorTau/blockDuration); i++ {
-		for k := 0; k < n; k++ {
+	for range int(3 * detect.DefaultFloorTau / blockDuration) {
+		for k := range n {
 			seed = seed*1664525 + 1013904223
 			v := (float64(seed>>8)/float64(1<<24) - 0.5) * 2 * amp
 			binary.LittleEndian.PutUint16(buf[k*2:], uint16(int16(v)))

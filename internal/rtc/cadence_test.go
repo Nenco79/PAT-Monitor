@@ -58,7 +58,7 @@ func TestWithNoMeasurementTheMaximumIsDeclared(t *testing.T) {
 // flickers, and without the wait a passing cloud would rebuild the encoder.
 func TestComingDownTakesTime(t *testing.T) {
 	g := newCadenceGovernor(30)
-	for i := 0; i < cadenceConfirmDown-1; i++ {
+	for i := range cadenceConfirmDown - 1 {
 		if fps, changed := g.target(18.4, 30); changed || fps != 30 {
 			t.Fatalf("came down after only %d samples, to %d", i+1, fps)
 		}
@@ -81,13 +81,13 @@ func TestGoingUpIsQuicker(t *testing.T) {
 	// side of the file the difference matters: a cap that rises now has a precise
 	// meaning.
 	g := newCadenceGovernor(30)
-	for i := 0; i < cadenceConfirmDown; i++ {
+	for range cadenceConfirmDown {
 		g.target(14.0, 30)
 	}
 	if g.declared != 15 {
 		t.Fatalf("setup: it should have declared 15, instead %d", g.declared)
 	}
-	for i := 0; i < cadenceConfirmUp-1; i++ {
+	for i := range cadenceConfirmUp - 1 {
 		if _, changed := g.target(28.0, 30); changed {
 			t.Fatalf("went up on the first sample: %d", i+1)
 		}
@@ -105,7 +105,7 @@ func TestGoingUpIsQuicker(t *testing.T) {
 // tenth the gain does not pay for it.
 func TestASmallDeviationDoesNotRebuildTheEncoder(t *testing.T) {
 	g := newCadenceGovernor(30)
-	for i := 0; i < 30; i++ {
+	for i := range 30 {
 		if _, changed := g.target(28.0, 30); changed {
 			t.Fatalf("rebuilt the encoder for 28 fps against 30 declared, at sample %d", i+1)
 		}
@@ -129,7 +129,7 @@ func TestTheScalesCapCommandsAtOnce(t *testing.T) {
 func TestFlickeringLightDoesNotMakeItOscillate(t *testing.T) {
 	g := newCadenceGovernor(30)
 	changes := 0
-	for i := 0; i < 60; i++ {
+	for i := range 60 {
 		measured := 21.0
 		if i%2 == 0 {
 			measured = 19.0 // either side of the border between 20 and 24
@@ -150,7 +150,7 @@ func TestFlickeringLightDoesNotMakeItOscillate(t *testing.T) {
 func TestTheBorderDoesNotBounce(t *testing.T) {
 	g := newCadenceGovernor(30)
 	// First it comes down to 10, which is the ordinary case in the dark.
-	for i := 0; i < cadenceConfirmDown+1; i++ {
+	for range cadenceConfirmDown + 1 {
 		g.target(9.8, 30)
 	}
 	if g.declared != 10 {
@@ -159,7 +159,7 @@ func TestTheBorderDoesNotBounce(t *testing.T) {
 
 	// And now the cadence swings around the border, as it really does.
 	changes := 0
-	for i := 0; i < 60; i++ {
+	for i := range 60 {
 		m := 9.8
 		if i%3 == 0 {
 			m = 10.0
@@ -196,7 +196,7 @@ func TestARisingCapFreesTheCadence(t *testing.T) {
 		t.Fatalf("with the scale at 2 fps, %d is declared", fps)
 	}
 	// From here on the measured cadence is the one we impose.
-	for i := 0; i < 20; i++ {
+	for range 20 {
 		g.target(2.1, 2)
 	}
 
@@ -218,7 +218,7 @@ func TestARisingCapFreesTheCadence(t *testing.T) {
 // frames that will never arrive.
 func TestACapComingDownFreesNothing(t *testing.T) {
 	g := newCadenceGovernor(30)
-	for i := 0; i < cadenceConfirmDown; i++ {
+	for range cadenceConfirmDown {
 		g.target(9.8, 30)
 	}
 	if g.declared != 10 {

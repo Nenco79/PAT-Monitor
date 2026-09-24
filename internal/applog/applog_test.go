@@ -35,7 +35,7 @@ func TestRotationKeepsTheOrder(t *testing.T) {
 	// only check that the names shift along.
 	const lineLen = 1024
 	writes := (MaxBytes / lineLen) * (Keep + 2)
-	for i := 0; i < writes; i++ {
+	for i := range writes {
 		// The sequence number at the head of the line is what makes it possible
 		// to ask a file **when** it was written instead of how much it weighs.
 		line := fmt.Sprintf("%08d%s\n", i, strings.Repeat("x", lineLen-9))
@@ -104,7 +104,7 @@ func firstSequence(t *testing.T, path string) int {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, line := range strings.Split(string(b), "\n") {
+	for line := range strings.SplitSeq(string(b), "\n") {
 		if len(line) < 8 {
 			continue
 		}

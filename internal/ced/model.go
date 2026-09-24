@@ -426,7 +426,7 @@ func padChunk(dst, mel []float32, nMels, frames, t0, width, maxFrames int) {
 	for i := range dst {
 		dst[i] = 0
 	}
-	for b := 0; b < nMels; b++ {
+	for b := range nMels {
 		copy(dst[b*maxFrames:], mel[b*frames+t0:b*frames+t0+width])
 	}
 }
@@ -470,7 +470,7 @@ func (m *Model) forward(mel []float32, stride, t0, tp int) {
 	for i := range pooled {
 		pooled[i] = 0
 	}
-	for i := 0; i < n; i++ {
+	for i := range n {
 		for k, v := range x[i*m.dim : (i+1)*m.dim] {
 			pooled[k] += v
 		}
@@ -499,13 +499,13 @@ func (m *Model) forward(mel []float32, stride, t0, tp int) {
 func (m *Model) patchEmbed(mel []float32, stride, t0, tp int) {
 	p := m.patch
 	for pf := 0; pf < m.freqPatches; pf++ {
-		for pt := 0; pt < tp; pt++ {
+		for pt := range tp {
 			n := pf*tp + pt
 			tok := m.buf.tokens[n*m.dim : (n+1)*m.dim]
 			for d := range tok {
 				w := m.patchW[d*p*p : (d+1)*p*p]
 				s := m.patchB[d] + m.timePos[d*m.maxPatches+pt] + m.freqPos[d*m.freqPatches+pf]
-				for kf := 0; kf < p; kf++ {
+				for kf := range p {
 					row := mel[(pf*p+kf)*stride+t0+pt*p:]
 					s += dot(w[kf*p:(kf+1)*p], row[:p])
 				}
@@ -561,9 +561,9 @@ func (m *Model) attention(n int) {
 	row := m.buf.scores[:n]
 	for h := 0; h < m.heads; h++ {
 		off := h * hd
-		for i := 0; i < n; i++ {
+		for i := range n {
 			q := m.buf.qkv[i*3*d+off : i*3*d+off+hd]
-			for j := 0; j < n; j++ {
+			for j := range n {
 				k := m.buf.qkv[j*3*d+d+off : j*3*d+d+off+hd]
 				row[j] = dot(q, k) * scale
 			}

@@ -21,13 +21,10 @@ func ToMonoS16(src []byte, f StreamFormat, dst []int16) (int, error) {
 	if bpf <= 0 {
 		return 0, fmt.Errorf("audio: unconvertible format: %s", f)
 	}
-	frames := len(src) / bpf
-	if frames > len(dst) {
-		frames = len(dst)
-	}
+	frames := min(len(src)/bpf, len(dst))
 
 	bps := f.BitsPerSample / 8
-	for i := 0; i < frames; i++ {
+	for i := range frames {
 		base := i * bpf
 		var sum float64
 		for c := 0; c < f.Channels; c++ {

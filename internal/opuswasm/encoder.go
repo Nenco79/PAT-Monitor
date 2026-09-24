@@ -107,10 +107,7 @@ func (e *Encoder) Encode(ctx context.Context, pcm []int16, out []byte) (int, err
 	if err := e.in.writePCM(pcm); err != nil {
 		return 0, err
 	}
-	room := len(out)
-	if room > int(e.in.pktLen) {
-		room = int(e.in.pktLen)
-	}
+	room := min(len(out), int(e.in.pktLen))
 	r, err := e.encode.Call(ctx,
 		uint64(e.statePtr),
 		uint64(e.in.pcmPtr),

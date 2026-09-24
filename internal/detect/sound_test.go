@@ -60,7 +60,7 @@ func TestAQuietRoomHearsNothing(t *testing.T) {
 func TestTwoShortBurstsAreABark(t *testing.T) {
 	s, at := newTuned()
 
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		_, at = run(s, block(loud, 900), at, 200*time.Millisecond)
 		_, at = run(s, block(quiet, 500), at, 300*time.Millisecond)
 	}
@@ -112,7 +112,7 @@ func TestALongBurstIsACry(t *testing.T) {
 func TestAThumpIsNotABark(t *testing.T) {
 	s, at := newTuned()
 
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		_, at = run(s, block(loud, 60), at, 150*time.Millisecond) // 60 Hz: a thud
 		_, at = run(s, block(quiet, 500), at, 300*time.Millisecond)
 	}
@@ -146,7 +146,7 @@ func TestTheFloorDoesNotFollowTheEvent(t *testing.T) {
 	s, at := newTuned()
 	before := s.floor
 
-	for i := 0; i < 15; i++ {
+	for range 15 {
 		_, at = run(s, block(loud, 500), at, 1500*time.Millisecond)
 		_, at = run(s, block(quiet, 500), at, 500*time.Millisecond)
 	}
@@ -174,7 +174,7 @@ func TestASteadyNoiseBecomesTheNewFloor(t *testing.T) {
 	}
 
 	// And from then on what sits above the fan is heard again.
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		_, at = run(s, block(-25, 900), at, 200*time.Millisecond)
 		_, at = run(s, block(-45, 500), at, 300*time.Millisecond)
 	}
@@ -208,7 +208,7 @@ func TestTheFloorFollowsTheRoom(t *testing.T) {
 // seconds has to be able to see it, and a bark lasts half a second.
 func TestAnEpisodeOutlastsTheSound(t *testing.T) {
 	s, at := newTuned()
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		_, at = run(s, block(loud, 900), at, 200*time.Millisecond)
 		_, at = run(s, block(quiet, 500), at, 300*time.Millisecond)
 	}

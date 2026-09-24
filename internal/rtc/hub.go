@@ -422,18 +422,9 @@ func (h *Hub) nextVideoDurationAt(now time.Time) time.Duration {
 	// receiver absorbs without difficulty.
 	maxCorrection := h.avgInterval / 2
 	drift := h.videoMedia - now.Sub(h.videoStart)
-	correction := -drift
-	if correction > maxCorrection {
-		correction = maxCorrection
-	}
-	if correction < -maxCorrection {
-		correction = -maxCorrection
-	}
+	correction := max(min(-drift, maxCorrection), -maxCorrection)
 
-	dur := h.avgInterval + correction
-	if dur < time.Millisecond {
-		dur = time.Millisecond
-	}
+	dur := max(h.avgInterval+correction, time.Millisecond)
 	h.videoMedia += dur
 	return dur
 }

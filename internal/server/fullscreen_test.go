@@ -50,12 +50,12 @@ func TestEveryCommandOnTheRailHasAGlyph(t *testing.T) {
 		if id == nil {
 			continue
 		}
-		end := strings.Index(chunk, "</button>")
-		if end < 0 {
+		before, _, ok := strings.Cut(chunk, "</button>")
+		if !ok {
 			t.Errorf("the button %q is not closed in the bar", id[1])
 			continue
 		}
-		body := chunk[:end]
+		body := before
 		checked++
 		if hidden[id[1]] {
 			continue
@@ -81,8 +81,8 @@ func TestEveryCommandOnTheRailHasAGlyph(t *testing.T) {
 			continue
 		}
 		onVideo++
-		end := strings.Index(chunk, "</button>")
-		if end < 0 || !strings.Contains(chunk[:end], "<svg") {
+		before, _, ok := strings.Cut(chunk, "</button>")
+		if !ok || !strings.Contains(before, "<svg") {
 			t.Error("a control floating on the picture has no glyph: there the " +
 				"word is clipped, so it would be an empty pill over the video")
 		}

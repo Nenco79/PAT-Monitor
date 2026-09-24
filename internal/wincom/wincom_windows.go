@@ -219,8 +219,7 @@ func Thread(a Apartment, s Sharing, fn func() error) error {
 
 // Code pulls the HRESULT out of a go-ole error. Zero if it is not one of theirs.
 func Code(err error) uintptr {
-	var oe *ole.OleError
-	if errors.As(err, &oe) {
+	if oe, ok := errors.AsType[*ole.OleError](err); ok {
 		return oe.Code()
 	}
 	return 0

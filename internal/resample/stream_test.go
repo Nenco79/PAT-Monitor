@@ -75,7 +75,7 @@ func TestTheHistoryDoesNotGrow(t *testing.T) {
 	}
 	in := make([]float32, 4410) // a tenth of a second
 	var maxHist int
-	for i := 0; i < 600; i++ { // one minute
+	for range 600 { // one minute
 		s.Write(in)
 		if len(s.hist) > maxHist {
 			maxHist = len(s.hist)

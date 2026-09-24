@@ -81,7 +81,7 @@ func dib(img *image.NRGBA) []byte {
 	put(uint32(0)) // biClrImportant
 
 	for y := h - 1; y >= 0; y-- {
-		for x := 0; x < w; x++ {
+		for x := range w {
 			// Straight alpha out of an NRGBA into the BGRA an icon wants: a
 			// copy, with no conversion, which is what the format asks for.
 			c := img.NRGBAAt(x, y)

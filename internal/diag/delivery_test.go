@@ -190,7 +190,7 @@ func TestThePercentileIndicesHoldAtTheEdges(t *testing.T) {
 		gaps := make([]time.Duration, 0, n)
 		// Alternate so there are as many runs as the length allows: every burst
 		// is one short interval between two long ones.
-		for i := 0; i < n; i++ {
+		for i := range n {
 			if i%2 == 1 {
 				gaps = append(gaps, time.Millisecond)
 			} else {
@@ -233,11 +233,11 @@ func TestEveryMarkIsCountedWhenTheyComeFromSeveralGoroutines(t *testing.T) {
 
 	const writers, each = 8, 200
 	var wg sync.WaitGroup
-	for w := 0; w < writers; w++ {
+	for w := range writers {
 		wg.Add(1)
 		go func(w int) {
 			defer wg.Done()
-			for i := 0; i < each; i++ {
+			for i := range each {
 				d.Mark(t0.Add(time.Duration(w*each+i) * time.Millisecond))
 			}
 		}(w)

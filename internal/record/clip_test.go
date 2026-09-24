@@ -71,7 +71,7 @@ func TestAClipStartsWithAKeyframeAndCarriesBothTracks(t *testing.T) {
 	r := NewRing(nil)
 	at := feedGOP(t, r, sps720p, t0, 20, step)
 	at = feedGOP(t, r, sps720p, at, 20, step)
-	for i := 0; i < 200; i++ {
+	for i := range 200 {
 		r.WriteAudio([]byte{0xfc, byte(i)}, t0.Add(time.Duration(i)*opusFrameDuration))
 	}
 	s := r.Snapshot()
@@ -148,7 +148,7 @@ func TestAClipStartsWithAKeyframeAndCarriesBothTracks(t *testing.T) {
 func TestAGapKeepsTheTwoTracksOnTheSameClock(t *testing.T) {
 	var video []Frame
 	at := t0
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		video = append(video, Frame{At: at})
 		if i == 9 {
 			at = at.Add(3 * time.Second) // the camera stops
@@ -160,7 +160,7 @@ func TestAGapKeepsTheTwoTracksOnTheSameClock(t *testing.T) {
 	const delay = time.Second
 	var audio []Packet
 	at = t0.Add(delay)
-	for i := 0; i < 60; i++ {
+	for i := range 60 {
 		audio = append(audio, Packet{At: at})
 		if i == 29 {
 			at = at.Add(500 * time.Millisecond) // the microphone reopens
@@ -196,7 +196,7 @@ func TestALateMicrophoneIsDeclaredInTheFile(t *testing.T) {
 	r := NewRing(nil)
 	feedGOP(t, r, sps720p, t0, 20, step)
 	// The microphone arrives a second after the camera.
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		r.WriteAudio([]byte{0xfc, byte(i)}, t0.Add(time.Second+time.Duration(i)*opusFrameDuration))
 	}
 

@@ -1256,7 +1256,7 @@ func simulatedFaults(now time.Time) []alerts.Code {
 		return nil
 	}
 	var out []alerts.Code
-	for _, c := range strings.Split(*simulateFault, ",") {
+	for c := range strings.SplitSeq(*simulateFault, ",") {
 		if c = strings.TrimSpace(c); c != "" {
 			out = append(out, alerts.Code(c))
 		}
@@ -1288,7 +1288,7 @@ func validateSimulation() error {
 	for _, c := range simulatableCodes() {
 		known[c] = true
 	}
-	for _, c := range strings.Split(*simulateFault, ",") {
+	for c := range strings.SplitSeq(*simulateFault, ",") {
 		c = strings.TrimSpace(c)
 		if c != "" && !known[c] {
 			return fmt.Errorf("-simulate-fault: unknown code %q, choose from %s",

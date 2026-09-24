@@ -282,7 +282,7 @@ func Version(ctx context.Context) (string, error) {
 func cString(mod api.Module, ptr uint32) (string, error) {
 	mem := mod.Memory()
 	var b []byte
-	for i := uint32(0); i < 256; i++ {
+	for i := range uint32(256) {
 		c, ok := mem.ReadByte(ptr + i)
 		if !ok {
 			return "", errors.New("opuswasm: string outside the module memory")

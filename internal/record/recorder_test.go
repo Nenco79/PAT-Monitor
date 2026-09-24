@@ -15,14 +15,14 @@ const step = 100 * time.Millisecond
 // last frame.
 func feedRec(t *testing.T, r *Recorder, spsHex string, at time.Time, frames int) time.Time {
 	t.Helper()
-	for i := 0; i < frames; i++ {
+	for i := range frames {
 		if i == 0 {
 			r.WriteVideo(keyframe(t, spsHex, 400), at)
 		} else {
 			r.WriteVideo(inter(100), at)
 		}
 		// Five 20 ms audio packets for every 100 ms frame.
-		for j := 0; j < 5; j++ {
+		for j := range 5 {
 			r.WriteAudio([]byte{0xfc, byte(j)}, at.Add(time.Duration(j)*opusFrameDuration))
 		}
 		at = at.Add(step)
@@ -51,14 +51,14 @@ func TestAClipCarriesTheSecondsBeforeAndAfter(t *testing.T) {
 	r := NewRecorder(RecorderConfig{PostRoll: 2 * time.Second})
 
 	at := t0
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		at = feedRec(t, r, sps720p, at, 20)
 	}
 	event := at
 	r.Trigger("motion", event)
 
 	// Three seconds afterwards: the finish line is at two.
-	for i := 0; i < 30; i++ {
+	for range 30 {
 		at = feedRec(t, r, sps720p, at, 1)
 	}
 
@@ -99,13 +99,13 @@ func TestASecondEventExtendsTheClipInsteadOfStartingAnother(t *testing.T) {
 	r.Trigger("motion", event)
 
 	// A second later the cry arrives: the finish line moves to event+3s.
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		at = feedRec(t, r, sps720p, at, 1)
 	}
 	r.Trigger("cry", at)
 	second := at
 
-	for i := 0; i < 25; i++ {
+	for range 25 {
 		at = feedRec(t, r, sps720p, at, 1)
 	}
 
@@ -249,7 +249,7 @@ func TestARebuildAtTheSameSizeDoesNotCutTheClip(t *testing.T) {
 		Keyframe: true,
 	}, at)
 	at = at.Add(step)
-	for i := 0; i < 40; i++ {
+	for range 40 {
 		at = feedRec(t, r, sps720p, at, 1)
 	}
 

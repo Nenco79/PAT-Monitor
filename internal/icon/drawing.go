@@ -86,11 +86,11 @@ func Draw(side int) *image.NRGBA {
 	// edges, and it is the same density as the tray icon: there is no reason
 	// for two drawings of the same program to be antialiased differently.
 	const ss = 4
-	for y := 0; y < side; y++ {
-		for x := 0; x < side; x++ {
+	for y := range side {
+		for x := range side {
 			var sr, sg, sb, sa float64
-			for sy := 0; sy < ss; sy++ {
-				for sx := 0; sx < ss; sx++ {
+			for sy := range ss {
+				for sx := range ss {
 					px := float64(x) + (float64(sx)+0.5)/ss
 					py := float64(y) + (float64(sy)+0.5)/ss
 					if math.Hypot(px-c, py-c) > rDisc {

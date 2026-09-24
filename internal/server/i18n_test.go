@@ -84,7 +84,7 @@ func keysFromMarkup(t *testing.T, source string) []string {
 					}
 				case "data-i18n-attr":
 					// `attribute:key` pairs, separated by spaces.
-					for _, pair := range strings.Fields(a.Val) {
+					for pair := range strings.FieldsSeq(a.Val) {
 						_, key, ok := strings.Cut(pair, ":")
 						if !ok || key == "" {
 							t.Errorf("<%s data-i18n-attr=%q>: the key is missing in %q",

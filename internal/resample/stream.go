@@ -71,10 +71,7 @@ func (s *Stream) Write(in []float32) []float32 {
 	// Throw away what will not be needed again: the next output sample starts
 	// at q-k, and nothing before that is ever looked at again.
 	q := s.n * int64(s.r.m) / int64(s.r.l)
-	keep := q - k
-	if keep < 0 {
-		keep = 0
-	}
+	keep := max(q-k, 0)
 	if d := keep - s.from; d > 0 {
 		s.hist = append(s.hist[:0], s.hist[d:]...)
 		s.from = keep

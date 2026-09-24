@@ -23,7 +23,7 @@ import (
 	"math"
 	"os"
 	"os/signal"
-	"sort"
+	"slices"
 	"time"
 
 	"patmonitor/internal/audio"
@@ -272,7 +272,7 @@ func encodeAll(enc audiocodec.Encoder, pcm []int16) ([][]byte, []time.Duration, 
 	took := make([]time.Duration, 0, frames)
 
 	wallStart := time.Now()
-	for i := 0; i < frames; i++ {
+	for i := range frames {
 		frame := pcm[i*frameSamples() : (i+1)*frameSamples()]
 		t0 := time.Now()
 		pkt, err := enc.Encode(frame)
@@ -326,7 +326,7 @@ func correlation(a, b []int16, lag int) float64 {
 		return -2
 	}
 	var sa, sb, saa, sbb, sab float64
-	for i := 0; i < n; i++ {
+	for i := range n {
 		x, y := float64(a[i]), float64(b[i+lag])
 		sa += x
 		sb += y
@@ -355,7 +355,7 @@ func snr(a, b []int16, lag int) float64 {
 		return math.NaN()
 	}
 	var sig, noise float64
-	for i := 0; i < n; i++ {
+	for i := range n {
 		x, y := float64(a[i]), float64(b[i+lag])
 		sig += x * x
 		noise += (x - y) * (x - y)
@@ -381,7 +381,7 @@ func bandEnergies(pcm []int16) []float64 {
 	windows := 0
 	for start := 0; start+window <= len(pcm); start += window {
 		seg := pcm[start : start+window]
-		for b := 0; b < bands; b++ {
+		for b := range bands {
 			freq := f0 * math.Pow(f1/f0, float64(b)/float64(bands-1))
 			k := 2 * math.Pi * freq / float64(*rate)
 			var re, im float64
@@ -456,7 +456,7 @@ func printQuantiles(d []time.Duration) {
 		return
 	}
 	s := append([]time.Duration(nil), d...)
-	sort.Slice(s, func(i, j int) bool { return s[i] < s[j] })
+	slices.Sort(s)
 	q := func(p float64) time.Duration { return s[int(float64(len(s)-1)*p)] }
 	fmt.Printf("  median %v · p95 %v · p99 %v · max %v\n",
 		q(0.5).Round(time.Microsecond), q(0.95).Round(time.Microsecond),

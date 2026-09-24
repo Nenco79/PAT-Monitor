@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"slices"
 	"sort"
 
 	"patmonitor/internal/ced"
@@ -211,15 +212,15 @@ func dilute(args []string) {
 		}
 		fmt.Printf("\n--- %s: %d positives (%s) ---\n", code, n, positive)
 		fmt.Printf("%-10s %-26s %s\n", "event", "in silence", "on the room background")
-		sort.Slice(whole, func(a, b int) bool { return whole[a] < whole[b] })
+		slices.Sort(whole)
 		sort.Float64s(lengthsSeen)
 		fmt.Printf("%-10s whole clip: median %.3f  p10 %.3f  min %.3f\n",
 			fmt.Sprintf("%.1f s", lengthsSeen[len(lengthsSeen)/2]),
 			quantile(whole, 50), quantile(whole, 10), whole[0])
 		for _, secs := range lengths {
 			a, b := silence[secs], room[secs]
-			sort.Slice(a, func(x, y int) bool { return a[x] < a[y] })
-			sort.Slice(b, func(x, y int) bool { return b[x] < b[y] })
+			slices.Sort(a)
+			slices.Sort(b)
 			fmt.Printf("%-10.1f med %.3f p10 %.3f min %.3f    med %.3f p10 %.3f min %.3f\n",
 				secs, quantile(a, 50), quantile(a, 10), a[0],
 				quantile(b, 50), quantile(b, 10), b[0])
@@ -314,7 +315,7 @@ func sweepToTheFloor(m *ced.Model, clips []clip, load func(string) []float32,
 				die(err)
 				got = append(got, best(sc, code))
 			}
-			sort.Slice(got, func(a, b int) bool { return got[a] < got[b] })
+			slices.Sort(got)
 			over20 := 0
 			for _, v := range got {
 				if float64(v) >= threshold {

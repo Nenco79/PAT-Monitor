@@ -51,7 +51,7 @@ func TestEncodeAndDecodeAtTheSameTime(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		for i := 0; i < rounds; i++ {
+		for range rounds {
 			if _, err := enc.Encode(frame); err != nil {
 				errs <- err
 				return
@@ -61,7 +61,7 @@ func TestEncodeAndDecodeAtTheSameTime(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		for i := 0; i < rounds; i++ {
+		for range rounds {
 			if _, err := dec.Decode(packet); err != nil {
 				errs <- err
 				return

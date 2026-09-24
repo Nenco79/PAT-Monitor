@@ -462,8 +462,8 @@ func engrave(pix []byte, side int32, lines [][]glyphPoint, ink, fill uint32) {
 	// zero or one costs the same wait one sees when a panel arrives in pieces.
 	const ss = 4
 	const halfDiagonal = 0.7072
-	for y := int32(0); y < side; y++ {
-		for x := int32(0); x < side; x++ {
+	for y := range side {
+		for x := range side {
 			var cov float64
 			switch d := dist(float64(x)+0.5, float64(y)+0.5); {
 			case d <= half-halfDiagonal:
@@ -472,8 +472,8 @@ func engrave(pix []byte, side int32, lines [][]glyphPoint, ink, fill uint32) {
 				cov = 0
 			default:
 				var inside float64
-				for sy := 0; sy < ss; sy++ {
-					for sx := 0; sx < ss; sx++ {
+				for sy := range ss {
+					for sx := range ss {
 						if dist(float64(x)+(float64(sx)+0.5)/ss,
 							float64(y)+(float64(sy)+0.5)/ss) <= half {
 							inside++

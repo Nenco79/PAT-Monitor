@@ -4,7 +4,7 @@ import "testing"
 
 // seeQP records n frames with the same quantiser.
 func seeQP(p *Pipeline, qp, n int) {
-	for i := 0; i < n; i++ {
+	for range n {
 		p.qpSeen(qp)
 	}
 }

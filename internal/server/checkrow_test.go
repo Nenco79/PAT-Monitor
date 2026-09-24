@@ -16,7 +16,7 @@ import (
 func stripJSComments(src string) string {
 	src = regexp.MustCompile(`(?s)/\*.*?\*/`).ReplaceAllString(src, "")
 	var out []string
-	for _, line := range strings.Split(src, "\n") {
+	for line := range strings.SplitSeq(src, "\n") {
 		if i := strings.Index(line, "//"); i >= 0 {
 			line = line[:i]
 		}

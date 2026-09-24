@@ -506,7 +506,7 @@ func mapped(t *testing.T) map[string]bool {
 	t.Helper()
 
 	out := make(map[string]bool)
-	for _, line := range strings.Split(readCLAUDE(t), "\n") {
+	for line := range strings.SplitSeq(readCLAUDE(t), "\n") {
 		if !strings.HasPrefix(line, "| `") {
 			continue
 		}

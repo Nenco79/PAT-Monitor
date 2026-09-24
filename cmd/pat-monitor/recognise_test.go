@@ -36,7 +36,7 @@ func TestNothingIsAskedWithBothSwitchesOff(t *testing.T) {
 		v := int16(x >> 20)
 		win[i], win[i+1] = byte(uint16(v)), byte(uint16(v)>>8)
 	}
-	for i := 0; i < 12; i++ {
+	for range 12 {
 		r.Feed(win, 16000)
 	}
 

@@ -274,14 +274,12 @@ func (g *qualityGovernor) note(produced int) int {
 // five seconds, for the usual reason — an encoder is not judged while it is
 // answering.
 func (g *qualityGovernor) atCap(capKbps, meanThroughput int, now time.Time) (int, bool) {
-	want := g.byteCeiling(capKbps, capKbps, meanThroughput)
-	// **The floor holds on every road.** Below `bitrateFloorKbps` the right
-	// answer is not to take more bits away but to send fewer pixels, and there
-	// the quantiser read is no longer a measurement: without this line the
-	// correction came down to twenty-five kbit/s.
-	if want < bitrateFloorKbps {
-		want = bitrateFloorKbps
-	}
+	want := max(
+		// **The floor holds on every road.** Below `bitrateFloorKbps` the right
+		// answer is not to take more bits away but to send fewer pixels, and there
+		// the quantiser read is no longer a measurement: without this line the
+		// correction came down to twenty-five kbit/s.
+		g.byteCeiling(capKbps, capKbps, meanThroughput), bitrateFloorKbps)
 	if want == g.current {
 		return g.current, false
 	}
@@ -590,11 +588,7 @@ func (g *qualityGovernor) target(qp, produced, capKbps int, fullSize, stirred bo
 	if shortfall < 0 {
 		exponent *= qualityDescentDamping
 	}
-	want := int(float64(base)*math.Pow(2, exponent) + 0.5)
-
-	if want > capKbps {
-		want = capKbps
-	}
+	want := min(int(float64(base)*math.Pow(2, exponent)+0.5), capKbps)
 
 	// **The cap holds on the bytes that come out, not on the number we ask for.**
 	//
@@ -635,25 +629,23 @@ func (g *qualityGovernor) target(qp, produced, capKbps int, fullSize, stirred bo
 	// that cuts the request by 40% one time in two for a frame that has to be
 	// sent anyway. The correction stays the inversion of the ratio, only measured
 	// over two GOPs instead of over one second.
-	want = g.byteCeiling(want, capKbps, meanThroughput)
-	// **The floor is the one the project has already decided on**, not a new one:
-	// below `bitrateFloorKbps` the right answer is not to take more bits from the
-	// same picture, it is to send fewer pixels — and the resolution scale sees to
-	// that.
-	//
-	// It is not fussiness about constants: without this limit the loop came down
-	// to 125 kbit/s and **oscillated** there, because at that bitrate a keyframe
-	// every two seconds dominates the measurement window and the quantiser read
-	// jumps between 23 and 40 from one sample to the next. Observed live: 125 →
-	// 213 → 152 → 125 → 435. It is not the loop that is unstable, it is the
-	// measurement that down there is no longer a measurement.
-	if want < bitrateFloorKbps {
-		want = bitrateFloorKbps
-	}
-	if want > capKbps {
+	want = min(
+		// **The floor is the one the project has already decided on**, not a new one:
+		// below `bitrateFloorKbps` the right answer is not to take more bits from the
+		// same picture, it is to send fewer pixels — and the resolution scale sees to
+		// that.
+		//
+		// It is not fussiness about constants: without this limit the loop came down
+		// to 125 kbit/s and **oscillated** there, because at that bitrate a keyframe
+		// every two seconds dominates the measurement window and the quantiser read
+		// jumps between 23 and 40 from one sample to the next. Observed live: 125 →
+		// 213 → 152 → 125 → 435. It is not the loop that is unstable, it is the
+		// measurement that down there is no longer a measurement.
+		max(
+
+			g.byteCeiling(want, capKbps, meanThroughput), bitrateFloorKbps),
 		// A cap below the floor commands anyway: it is the network speaking.
-		want = capKbps
-	}
+		capKbps)
 	if want == g.current {
 		return g.current, false
 	}

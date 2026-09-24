@@ -17,13 +17,7 @@ var start = time.Date(2026, 8, 24, 23, 0, 0, 0, time.UTC)
 func room(noise int, r *rand.Rand) []byte {
 	f := make([]byte, w*h)
 	for i := range f {
-		v := 90 + r.Intn(noise+1) - noise/2
-		if v < 0 {
-			v = 0
-		}
-		if v > 255 {
-			v = 255
-		}
+		v := min(max(90+r.Intn(noise+1)-noise/2, 0), 255)
 		f[i] = byte(v)
 	}
 	return f
@@ -43,7 +37,7 @@ func square(f []byte, x, y, side int) []byte {
 // feed sends n identical frames, to let the filter settle.
 func feed(m *Motion, f []byte, n int, t time.Time) MotionState {
 	var st MotionState
-	for i := 0; i < n; i++ {
+	for i := range n {
 		st = one(m, f, t.Add(time.Duration(i)*200*time.Millisecond))
 	}
 	return st
@@ -69,7 +63,7 @@ func TestAStillRoomDoesNotMove(t *testing.T) {
 	r := rand.New(rand.NewSource(1))
 	m := NewMotion()
 
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		st := one(m, room(8, r), start.Add(time.Duration(i)*200*time.Millisecond))
 		if st.Moving {
 			t.Fatalf("motion on a still room at frame %d, ratio %.4f", i, st.Ratio)
@@ -106,7 +100,7 @@ func TestAGlobalBrightnessShiftIsNotMotion(t *testing.T) {
 	for i, p := range base {
 		brighter[i] = p + 20
 	}
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		if st := one(m, brighter, start.Add(time.Duration(2+i)*time.Second)); st.Moving {
 			t.Fatalf("the camera breathing was mistaken for motion, ratio %.4f", st.Ratio)
 		}
@@ -121,7 +115,7 @@ func TestContinuousMotionIsAnnouncedOnce(t *testing.T) {
 	feed(m, base, 10, start)
 
 	announced := 0
-	for i := 0; i < 40; i++ {
+	for i := range 40 {
 		// the rectangle moves on every frame: real, continuous motion
 		st := one(m, square(base, 20+i, 30, 20), start.Add(time.Duration(2000+i*200)*time.Millisecond))
 		if st.Started {

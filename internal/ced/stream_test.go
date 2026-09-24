@@ -212,7 +212,7 @@ func TestTheIntervalRatesTheWork(t *testing.T) {
 
 func waitVerdict(t *testing.T, s *Stream, after *Result) *Result {
 	t.Helper()
-	for i := 0; i < 400; i++ {
+	for range 400 {
 		if r := s.Last(); r != nil && r != after {
 			return r
 		}
@@ -241,7 +241,7 @@ func TestClosingTwiceIsHarmless(t *testing.T) {
 	s2 := NewStream(tiny(t, 0), 0)
 	gate := make(chan struct{})
 	var wg sync.WaitGroup
-	for i := 0; i < 8; i++ {
+	for range 8 {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()

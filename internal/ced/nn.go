@@ -38,7 +38,7 @@ func dot(a, b []float32) float32 {
 // to go faster — more goroutines, or assembly, which with CGO_ENABLED=0 is
 // still allowed — this function is the one to touch and nothing else.
 func linear(out, x, w, bias []float32, n, in, outDim int) {
-	for i := 0; i < n; i++ {
+	for i := range n {
 		xr := x[i*in : i*in+in]
 		or := out[i*outDim : (i+1)*outDim]
 		for o := range or {
@@ -55,7 +55,7 @@ func linear(out, x, w, bias []float32, n, in, outDim int) {
 // right, which is the fault this project fears most.
 func layerNorm(x, w, b []float32, n, dim int, eps float32) {
 	inv := 1 / float32(dim)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		r := x[i*dim : (i+1)*dim]
 		var mean float32
 		for _, v := range r {

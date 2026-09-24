@@ -78,7 +78,7 @@ func TestTheTwoRoadsAgreeWhereBothExist(t *testing.T) {
 	averaged := make([]float32, 0, len(in)/decim)
 	for i := 0; i+decim <= len(in); i += decim {
 		var s float32
-		for j := 0; j < decim; j++ {
+		for j := range decim {
 			s += in[i+j]
 		}
 		averaged = append(averaged, s/float32(decim))

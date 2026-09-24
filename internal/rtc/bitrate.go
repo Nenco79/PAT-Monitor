@@ -131,10 +131,7 @@ func (g *bitrateGovernor) target(estimateKbps int, loss float64, now time.Time) 
 	// exactly the case where the monitor stayed at 2500 while a phone was
 	// drowning.
 	if loss >= bitrateLossSevere {
-		want := roundToStep(int(float64(g.current) * (1 - bitrateLossReduction*loss)))
-		if want < bitrateFloorKbps {
-			want = bitrateFloorKbps
-		}
+		want := max(roundToStep(int(float64(g.current)*(1-bitrateLossReduction*loss))), bitrateFloorKbps)
 		if want >= g.current {
 			return g.current, false
 		}
@@ -195,13 +192,7 @@ func (g *bitrateGovernor) target(estimateKbps int, loss float64, now time.Time) 
 		want = estimateKbps
 	}
 
-	want = roundToStep(want)
-	if want < bitrateFloorKbps {
-		want = bitrateFloorKbps
-	}
-	if want > g.ceiling {
-		want = g.ceiling
-	}
+	want = min(max(roundToStep(want), bitrateFloorKbps), g.ceiling)
 
 	// The dead band applies to the rounded result: it is the only way not to
 	// emit commands that change nothing perceptible.

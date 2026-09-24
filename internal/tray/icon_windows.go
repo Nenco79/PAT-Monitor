@@ -125,11 +125,11 @@ func iconPixels(p Phase, size int, dim float64) []byte {
 	// Four samples a side: curved edges at 16 pixels without antialiasing look
 	// like a staircase, and a staircase on a disc shows at once.
 	const ss = 4
-	for y := 0; y < size; y++ {
-		for x := 0; x < size; x++ {
+	for y := range size {
+		for x := range size {
 			var covDisc, covMoon float64
-			for sy := 0; sy < ss; sy++ {
-				for sx := 0; sx < ss; sx++ {
+			for sy := range ss {
+				for sx := range ss {
 					px := float64(x) + (float64(sx)+0.5)/ss
 					py := float64(y) + (float64(sy)+0.5)/ss
 					if math.Hypot(px-c, py-c) <= rDisc {

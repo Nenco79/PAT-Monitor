@@ -50,7 +50,7 @@ func layout(t *testing.T) map[string]bool {
 	body, _, _ := strings.Cut(after, "\n## ")
 
 	out := make(map[string]bool)
-	for _, line := range strings.Split(body, "\n") {
+	for line := range strings.SplitSeq(body, "\n") {
 		if !strings.HasPrefix(line, "| `") {
 			continue
 		}

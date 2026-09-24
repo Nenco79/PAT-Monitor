@@ -101,7 +101,7 @@ func TestVetoedSamplesDoNotAccumulate(t *testing.T) {
 	// Bandwidth below the step's threshold but not a collapse, for many more
 	// samples than confirmation needs, with the picture healthy.
 	under := g.steps[0].MinKbps - 10
-	for i := 0; i < scaleConfirmSamples*3; i++ {
+	for i := range scaleConfirmSamples * 3 {
 		now = now.Add(time.Second)
 		if _, _, _, came := g.target(under, true, 25, lim, true, now); came {
 			t.Fatalf("sample %d: came down with the veto in force", i)
@@ -209,7 +209,7 @@ func TestTheScaleDoesNotInheritTheLastSession(t *testing.T) {
 		now := time.Now()
 
 		// The previous session: healthy picture, bandwidth below the threshold.
-		for i := 0; i < scaleQPWindow; i++ {
+		for range scaleQPWindow {
 			now = now.Add(time.Second)
 			g.target(under, true, 25, lim, true, now)
 		}

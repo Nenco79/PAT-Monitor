@@ -23,6 +23,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
+	"maps"
 	"sort"
 	"strconv"
 	"strings"
@@ -108,7 +109,7 @@ func FromAcceptLanguage(header string) []string {
 		q   float64
 	}
 	var entries []entry
-	for _, part := range strings.Split(header, ",") {
+	for part := range strings.SplitSeq(header, ",") {
 		fields := strings.Split(strings.TrimSpace(part), ";")
 		tag := strings.ToLower(strings.TrimSpace(fields[0]))
 		if tag == "" {
@@ -185,9 +186,7 @@ func open(fsys fs.FS, prefs []string) *Dictionary {
 				fmt.Errorf("catalogue %q unreadable, falling back to %q: %w", d.language, Fallback, err))
 			d.language = Fallback
 		} else {
-			for k, v := range over {
-				d.entries[k] = v
-			}
+			maps.Copy(d.entries, over)
 		}
 	}
 	return d

@@ -54,7 +54,7 @@ func TestTheKeyframeSecondNoLongerLooksLikeACollapse(t *testing.T) {
 func TestARealCollapseIsStillBelieved(t *testing.T) {
 	var w sentWindow
 	var mean int
-	for i := 0; i < sentWindowSamples; i++ {
+	for range sentWindowSamples {
 		mean = w.add(2500)
 	}
 	if !believableDrop(300, mean, 0) {
@@ -95,13 +95,13 @@ func TestTheWindowSpeaksAfterOneGOP(t *testing.T) {
 // look like a collapse to it.
 func TestAMissingReadingAgesTheWindow(t *testing.T) {
 	var w sentWindow
-	for i := 0; i < sentWindowSamples; i++ {
+	for range sentWindowSamples {
 		w.add(2400)
 	}
 
 	// Every missing reading removes the oldest sample, and below the minimum the
 	// window goes back to "I do not know" instead of answering with what it held.
-	for i := 0; i < sentWindowSamples-sentWindowMinSamples+1; i++ {
+	for range sentWindowSamples - sentWindowMinSamples + 1 {
 		w.add(0)
 	}
 	if v := w.add(0); v != 0 {
@@ -112,7 +112,7 @@ func TestAMissingReadingAgesTheWindow(t *testing.T) {
 	}
 
 	// And new samples fill it again, with no trace of the old ones.
-	for i := 0; i < sentWindowSamples; i++ {
+	for range sentWindowSamples {
 		w.add(600)
 	}
 	if v := w.add(600); v != 600 {
@@ -125,7 +125,7 @@ func TestAMissingReadingAgesTheWindow(t *testing.T) {
 // would authorise another.
 func TestTheWindowDoesNotSurviveASizeChange(t *testing.T) {
 	var w sentWindow
-	for i := 0; i < sentWindowSamples; i++ {
+	for range sentWindowSamples {
 		w.add(2500)
 	}
 	w.reset()

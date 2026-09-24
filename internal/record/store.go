@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -366,9 +367,9 @@ func (s *Store) prune(now time.Time) (int, error) {
 	// the folder empty would break the promise for an aesthetic reason.
 	newest := ""
 	if len(entries) > 0 {
-		for i := len(entries) - 1; i >= 0; i-- {
-			if !entries[i].Kept {
-				newest = entries[i].Name
+		for _, entrie := range slices.Backward(entries) {
+			if !entrie.Kept {
+				newest = entrie.Name
 				break
 			}
 		}

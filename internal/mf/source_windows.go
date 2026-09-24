@@ -254,7 +254,7 @@ func CameraFormats(link string) ([]CameraFormat, error) {
 	defer reader.Release()
 
 	var out []CameraFormat
-	for stream := 0; stream < cameraFormatStreams; stream++ {
+	for stream := range cameraFormatStreams {
 		for index := 0; ; index++ {
 			mt, res := reader.nativeMediaType(stream, index)
 			if mt == nil {
@@ -522,7 +522,7 @@ func (r *SourceReader) DisableFrameRateConversion() (int, error) {
 	vt := (*sourceReaderExVtbl)(unsafe.Pointer(ex.RawVTable))
 
 	set := 0
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		var category ole.GUID
 		var t *transform
 		res, _, _ := syscall.SyscallN(vt.GetTransformForStream,

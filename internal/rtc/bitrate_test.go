@@ -60,7 +60,7 @@ func TestAFullNetworkStaysAtThePreset(t *testing.T) {
 	g := newBitrateGovernor(2500)
 	estimate := transportBudget(2500, audio)
 
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		video := availableForVideo(estimate, audio)
 		if kbps, changed := g.target(video, 0, t0.Add(time.Duration(i)*bitrateRiseInterval)); changed {
 			t.Fatalf("turn %d: came down to %d with the network holding the preset", i, kbps)
@@ -98,7 +98,7 @@ func TestLossesBringItDownEvenIfTheEstimateDoesNot(t *testing.T) {
 
 	// And insisting it reaches the minimum quickly: while one pushes, the link
 	// goes on not getting through.
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		now = now.Add(time.Second)
 		kbps, _ = g.target(2500, 0.898, now)
 	}
@@ -137,7 +137,7 @@ func TestTheLossExpiresEvenIfAnotherViewerIsTalking(t *testing.T) {
 
 	// The PC goes on declaring zero, once a second, for far longer than the
 	// window.
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		now = now.Add(time.Second)
 		h.recordLoss(0, now)
 	}
@@ -296,7 +296,7 @@ func TestTheGovernorDoesNotClimbOnALuckyInstant(t *testing.T) {
 	g.target(800, 0, t0)
 
 	now := t0
-	for i := 0; i < 4; i++ {
+	for i := range 4 {
 		now = now.Add(time.Second)
 		if kbps, changed := g.target(2500, 0, now); changed {
 			t.Fatalf("climb after %d seconds of waiting, to %d", i+1, kbps)
@@ -309,7 +309,7 @@ func TestTheGovernorDoesNotExceedTheCap(t *testing.T) {
 	g := newBitrateGovernor(2500)
 	g.target(800, 0, t0)
 	now := t0
-	for i := 0; i < 20; i++ {
+	for range 20 {
 		now = now.Add(bitrateRiseInterval + time.Second)
 		g.target(9000, 0, now)
 	}
@@ -323,7 +323,7 @@ func TestTheGovernorDoesNotExceedTheCap(t *testing.T) {
 // constantly to leave it where it is.
 func TestTheGovernorStaysQuietAtTheCap(t *testing.T) {
 	g := newBitrateGovernor(2500)
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		if kbps, changed := g.target(9000, 0, t0.Add(time.Duration(i)*bitrateRiseInterval)); changed {
 			t.Fatalf("turn %d: a change declared at %d with the network holding", i, kbps)
 		}

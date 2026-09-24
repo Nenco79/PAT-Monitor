@@ -47,7 +47,7 @@ func cssPalette(t *testing.T, selector string) map[string]string {
 	}
 	// Aliases are resolved afterwards, so that `--accent: var(--c-home)`
 	// carries a colour here too.
-	for i := 0; i < 4; i++ {
+	for range 4 {
 		for _, d := range reAliasP.FindAllStringSubmatch(m[1], -1) {
 			if v, ok := out[d[2]]; ok {
 				out[d[1]] = v

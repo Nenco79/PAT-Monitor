@@ -200,7 +200,7 @@ func TestThePasswordChangeIsUnderTheRateLimiter(t *testing.T) {
 	// deliberately generous: the test is not "after how many", it is "sooner or
 	// later, yes".
 	limited := false
-	for i := 0; i < 20; i++ {
+	for range 20 {
 		if w := change(t, s, token, "wrong", "new-password"); w.Code == http.StatusTooManyRequests {
 			limited = true
 			break

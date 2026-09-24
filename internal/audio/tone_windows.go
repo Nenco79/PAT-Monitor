@@ -94,7 +94,7 @@ func CaptureTone(
 			}
 			pcm = pcm[:need]
 
-			for i := int64(0); i < n; i++ {
+			for i := range n {
 				// The pitch changes, the phase does not: breaking the phase
 				// would produce a click every second, that is, a wideband
 				// transient exactly where a simple signal is wanted.

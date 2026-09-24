@@ -197,7 +197,7 @@ func TestSetupRefusesBeforeItHashes(t *testing.T) {
 	// without the limiter this route answered 409 for ever, each time having
 	// paid for a hash first.
 	var last int
-	for i := 0; i < freeAttempts+2; i++ {
+	for range freeAttempts + 2 {
 		last = call()
 	}
 	if last != http.StatusTooManyRequests {

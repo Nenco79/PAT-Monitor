@@ -15,7 +15,7 @@ func passed(g *cadenceGate, in int, window time.Duration) int {
 	step := time.Second / time.Duration(in)
 	count := in * int(window/time.Second)
 	n := 0
-	for i := 0; i < count; i++ {
+	for range count {
 		if g.due(t) {
 			n++
 		}

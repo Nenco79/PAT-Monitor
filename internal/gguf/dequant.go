@@ -29,7 +29,7 @@ func (t *Tensor) F32() ([]float32, error) {
 		for b := 0; b*q8BlockValues < n; b++ {
 			blk := t.data[b*q8BlockBytes:]
 			s := f16(binary.LittleEndian.Uint16(blk))
-			for j := 0; j < q8BlockValues; j++ {
+			for j := range q8BlockValues {
 				out[b*q8BlockValues+j] = s * float32(int8(blk[2+j]))
 			}
 		}

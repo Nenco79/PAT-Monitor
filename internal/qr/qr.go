@@ -82,7 +82,7 @@ func Encode(text string) (*Matrix, error) {
 	// some readers will not lock onto.
 	var best *Matrix
 	bestPenalty := -1
-	for mask := 0; mask < 8; mask++ {
+	for mask := range 8 {
 		m := newMatrix(v)
 		m.drawFunctionPatterns(v)
 		m.writeFormat(mask)
@@ -205,7 +205,7 @@ var (
 
 func init() {
 	x := 1
-	for i := 0; i < 255; i++ {
+	for i := range 255 {
 		exp[i] = byte(x)
 		log[x] = byte(i)
 		x <<= 1
@@ -241,7 +241,7 @@ func mul(a, b byte) byte {
 // right in every one of its parts.
 func generator(n int) []byte {
 	g := []byte{1}
-	for i := 0; i < n; i++ {
+	for i := range n {
 		// multiply by (x + alpha^i)
 		next := make([]byte, len(g)+1)
 		for j, c := range g {
@@ -263,7 +263,7 @@ func reedSolomon(data, gen []byte) []byte {
 		copy(rem, rem[1:])
 		rem[n-1] = 0
 		if f != 0 {
-			for i := 0; i < n; i++ {
+			for i := range n {
 				rem[i] ^= mul(gen[i+1], f)
 			}
 		}
@@ -298,13 +298,13 @@ func (m *Matrix) drawFunctionPatterns(v int) {
 
 	// The 31 format modules are reserved now and filled in later: were they not
 	// taken, the data would write over them.
-	for i := 0; i < 9; i++ {
+	for i := range 9 {
 		if i != 6 {
 			m.reserve(i, 8)
 			m.reserve(8, i)
 		}
 	}
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		m.reserve(m.Size-1-i, 8)
 		m.reserve(8, m.Size-1-i)
 	}
@@ -395,7 +395,7 @@ func (m *Matrix) writeData(stream []byte, mask int) {
 			if up {
 				y = m.Size - 1 - i
 			}
-			for j := 0; j < 2; j++ {
+			for j := range 2 {
 				x := dx - j
 				if m.taken(x, y) {
 					continue

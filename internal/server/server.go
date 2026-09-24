@@ -1551,7 +1551,7 @@ func codecsIn(sdp string) []string {
 	// profile-level-id is on an a=fmtp:<pt> line, to be matched with the rtpmap
 	// of the same payload type.
 	fmtps := map[string]string{}
-	for _, line := range strings.Split(sdp, "\n") {
+	for line := range strings.SplitSeq(sdp, "\n") {
 		line = strings.TrimSpace(line)
 		rest, ok := strings.CutPrefix(line, "a=fmtp:")
 		if !ok {
@@ -1561,7 +1561,7 @@ func codecsIn(sdp string) []string {
 		if !found {
 			continue
 		}
-		for _, param := range strings.Split(params, ";") {
+		for param := range strings.SplitSeq(params, ";") {
 			if id, ok := strings.CutPrefix(strings.TrimSpace(param), "profile-level-id="); ok {
 				fmtps[pt] = id
 			}
@@ -1569,7 +1569,7 @@ func codecsIn(sdp string) []string {
 	}
 
 	var out []string
-	for _, line := range strings.Split(sdp, "\n") {
+	for line := range strings.SplitSeq(sdp, "\n") {
 		line = strings.TrimSpace(line)
 		rest, ok := strings.CutPrefix(line, "a=rtpmap:")
 		if !ok {
@@ -1744,8 +1744,7 @@ func wsRead(ctx context.Context, conn *websocket.Conn, msg *signalMessage) error
 }
 
 func isNormalClose(err error) bool {
-	var ce websocket.CloseError
-	if errors.As(err, &ce) {
+	if ce, ok := errors.AsType[websocket.CloseError](err); ok {
 		return ce.Code == websocket.StatusNormalClosure || ce.Code == websocket.StatusGoingAway
 	}
 	return errors.Is(err, context.Canceled)

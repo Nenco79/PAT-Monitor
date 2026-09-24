@@ -36,6 +36,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -332,12 +333,7 @@ type scored struct {
 }
 
 func (s scored) has(label string) bool {
-	for _, l := range strings.Split(s.labels, ",") {
-		if l == label {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(strings.Split(s.labels, ","), label)
 }
 
 func (s scored) best(classes []string) float32 {
@@ -454,7 +450,7 @@ func perClass(rows []scored, positive string, all, used []string) {
 		if len(pos) == 0 {
 			continue
 		}
-		sort.Slice(pos, func(a, b int) bool { return pos[a] < pos[b] })
+		slices.Sort(pos)
 		mark := "  "
 		if inUse[c] {
 			mark = "->"
@@ -478,8 +474,8 @@ func summary(rows []scored, positive string, classes []string) {
 			}
 		}
 	}
-	sort.Slice(pos, func(a, b int) bool { return pos[a] < pos[b] })
-	sort.Slice(neg, func(a, b int) bool { return neg[a] < neg[b] })
+	slices.Sort(pos)
+	slices.Sort(neg)
 	fmt.Printf("\npositives n=%d", len(pos))
 	if len(pos) > 0 {
 		fmt.Printf("  min %.3f  p10 %.3f  median %.3f", pos[0], quantile(pos, 10), quantile(pos, 50))
@@ -545,7 +541,7 @@ func whereTheRecallGoes(rows []scored, positive string, classes []string) {
 		sort.Strings(keys)
 		for _, k := range keys {
 			v := m[k]
-			sort.Slice(v, func(a, b int) bool { return v[a] < v[b] })
+			slices.Sort(v)
 			pct := func(th float32) string {
 				n := 0
 				for _, x := range v {
@@ -601,7 +597,7 @@ func byLabel(rows []scored, positive string, classes []string) {
 	}
 	var out []entry
 	for cat, vs := range byCat {
-		sort.Slice(vs, func(a, b int) bool { return vs[a] < vs[b] })
+		slices.Sort(vs)
 		over := 0
 		for _, v := range vs {
 			if v >= 0.2 {

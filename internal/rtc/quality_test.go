@@ -211,7 +211,7 @@ func TestTheLoopConverges(t *testing.T) {
 	produced := 2500
 
 	var recent []int
-	for i := 0; i < 40; i++ {
+	for i := range 40 {
 		now = after(now)
 		kbps, _ := g.target(qpAt(produced), produced, 2500, true, false, now)
 		produced = kbps // the encoder obeys
@@ -252,7 +252,7 @@ func TestItConvergesFromBelowToo(t *testing.T) {
 	now := time.Now()
 	produced := 200
 
-	for i := 0; i < 40; i++ {
+	for range 40 {
 		now = after(now)
 		kbps, _ := g.target(qpAt(produced), produced, 2500, true, false, now)
 		produced = kbps
@@ -286,7 +286,7 @@ func TestItDoesNotCutWhileTheQualityWorsens(t *testing.T) {
 	}
 
 	// And the spiral must not restart even after a few turns.
-	for i := 0; i < 4; i++ {
+	for i := range 4 {
 		now = after(now)
 		kbps, _ = g.target(33, kbps*2/5, 2500, true, false, now)
 		if kbps < 2000 {
@@ -309,7 +309,7 @@ func TestTheCapHoldsOnTheBytesOut(t *testing.T) {
 	// `qualityThroughputWindow`. The price is that the constraint bites after
 	// four seconds instead of one, and it is the right price — on the other side
 	// there was a 40% cut on every keyframe at the bottom of the scale.
-	for i := 0; i < qualityThroughputWindow-1; i++ {
+	for range qualityThroughputWindow - 1 {
 		now = after(now)
 		g.target(36, 4156, 2500, true, false, now)
 	}
@@ -398,7 +398,7 @@ func TestARealOvershootPassesTheThreshold(t *testing.T) {
 		// overshoot lasts, a keyframe does not — and that is exactly what the
 		// window serves to distinguish.
 		var kbps int
-		for i := 0; i < qualityThroughputWindow; i++ {
+		for range qualityThroughputWindow {
 			now = after(now)
 			kbps, _ = g.target(32, produced, 2500, true, false, now)
 		}
@@ -425,7 +425,7 @@ func runLoop(target, qp, capKbps, turns int, throughput func(asked int, s int) i
 	g := newQualityGovernor(target, capKbps)
 	now := time.Now()
 	asked, lowest := capKbps, capKbps
-	for s := 0; s < turns; s++ {
+	for s := range turns {
 		produced := throughput(asked, s)
 		now = now.Add(time.Second)
 		asked, _ = g.target(qp, produced, capKbps, true, false, now)
@@ -602,10 +602,7 @@ func climb(qpAtFloor, pointsPerDoubling float64, stirred bool) (commands, second
 
 	for seconds = 1; seconds <= 120; seconds++ {
 		now = now.Add(time.Second)
-		qp := int(qpAtFloor - pointsPerDoubling*math.Log2(float64(produced)/float64(bitrateFloorKbps)) + 0.5)
-		if qp > 51 {
-			qp = 51
-		}
+		qp := min(int(qpAtFloor-pointsPerDoubling*math.Log2(float64(produced)/float64(bitrateFloorKbps))+0.5), 51)
 		kbps, moved := g.target(qp, produced, 2500, true, stirred, now)
 		stirred = false // the episode begins once only
 		if moved {
@@ -726,7 +723,7 @@ func TestASustainedRiseStillCommands(t *testing.T) {
 	now := time.Now()
 	var last int
 	commands := 0
-	for i := 0; i < 12; i++ {
+	for range 12 {
 		now = now.Add(time.Second)
 		kbps, moved := g.target(targetQP+6, 900, 2500, true, false, now)
 		if moved {
@@ -813,7 +810,7 @@ func TestSittingAtTheCapDoesNotOscillate(t *testing.T) {
 		g := newQualityGovernor(c.target, 2500)
 		now := time.Now()
 		produced, commands := 2500, 0
-		for i := 0; i < 30; i++ {
+		for range 30 {
 			now = now.Add(time.Second)
 			kbps, moved := g.target(22, produced, 2500, c.fullSize, false, now)
 			if moved {
@@ -839,7 +836,7 @@ func TestSittingAtTheCapIsSilentWithAnHonestEncoder(t *testing.T) {
 	g := newQualityGovernor(targetQP, 2500)
 	now := time.Now()
 	commands := 0
-	for i := 0; i < 30; i++ {
+	for range 30 {
 		now = now.Add(time.Second)
 		if _, moved := g.target(22, 2450, 2500, false, false, now); moved {
 			commands++
@@ -862,7 +859,7 @@ func TestSittingAtTheCapRespectsTheFloor(t *testing.T) {
 	// point.
 	g.throughput = []int{4156, 4156, 4156, 4156}
 	now := time.Now()
-	for i := 0; i < 12; i++ {
+	for range 12 {
 		now = now.Add(qualitySettle + time.Second)
 		g.target(22, 4156, 2500, false, false, now)
 	}
@@ -884,7 +881,7 @@ func TestTheQuantiserWindowDoesNotSurviveASizeChange(t *testing.T) {
 	now := time.Now()
 
 	// At the reduced size the scene is easy: a low quantiser, turn after turn.
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		now = now.Add(time.Second)
 		g.target(22, 700, 2500, false, false, now)
 	}
@@ -935,7 +932,7 @@ func TestAMissingQuantiserAgesTheWindow(t *testing.T) {
 	produced := discount
 	lowest := discount
 	kbps := discount
-	for i := 0; i < 25; i++ {
+	for range 25 {
 		now = now.Add(time.Second)
 		kbps, _ = g.target(-1, produced, 2500, true, false, now)
 		if kbps < lowest {
@@ -1016,7 +1013,7 @@ func TestTheEnlargingTickCarriesTheOldQuantiser(t *testing.T) {
 	now := time.Now()
 
 	// Reduced size, easy scene.
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		now = now.Add(time.Second)
 		g.target(20, 1200, 2500, false, false, now)
 	}
@@ -1030,7 +1027,7 @@ func TestTheEnlargingTickCarriesTheOldQuantiser(t *testing.T) {
 	}
 
 	// Four good turns, and the window is all the new size's.
-	for i := 0; i < 4; i++ {
+	for range 4 {
 		now = now.Add(time.Second)
 		g.target(30, 2400, 2500, true, false, now)
 	}

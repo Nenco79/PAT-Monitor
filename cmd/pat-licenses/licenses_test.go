@@ -73,7 +73,7 @@ func TestTheFolderFollowsTheDependencies(t *testing.T) {
 	// moment the repository states that it distributes code it no longer
 	// distributes: not dangerous, but false, and the kind of thing nobody
 	// re-reads.
-	for _, line := range strings.Split(text, "\n") {
+	for line := range strings.SplitSeq(text, "\n") {
 		if !strings.HasPrefix(line, "| `") {
 			continue
 		}

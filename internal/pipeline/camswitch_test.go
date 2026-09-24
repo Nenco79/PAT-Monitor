@@ -193,7 +193,7 @@ func TestAChoiceNeverWaits(t *testing.T) {
 	p := quietPipeline()
 	done := make(chan struct{})
 	go func() {
-		for i := 0; i < 50; i++ {
+		for range 50 {
 			p.SetCamera("x")
 		}
 		close(done)

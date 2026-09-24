@@ -37,7 +37,7 @@ func testFrontend(t *testing.T, nFFT, hop, nMels int, topDB float64) *Frontend {
 		win[i] = 1
 	}
 	fb := make([]float32, nMels*nFreqs)
-	for b := 0; b < nMels; b++ {
+	for b := range nMels {
 		fb[b*nFreqs+b] = 1
 	}
 	fe, err := NewFrontend(nFFT, hop, nMels, win, fb, 1e-10, 1, 10, topDB)
@@ -88,7 +88,7 @@ func TestASineLightsItsOwnBand(t *testing.T) {
 	// A frame in the middle is examined, far from the reflected edges.
 	t0 := frames / 2
 	best, at := float32(math.Inf(-1)), -1
-	for b := 0; b < nMels; b++ {
+	for b := range nMels {
 		if v := mel[b*frames+t0]; v > best {
 			best, at = v, b
 		}
@@ -97,7 +97,7 @@ func TestASineLightsItsOwnBand(t *testing.T) {
 		t.Errorf("the sine on bin %d lit band %d", bin, at)
 	}
 	// The other bands have to sit well below: in decibels, "well" is tens.
-	for b := 0; b < nMels; b++ {
+	for b := range nMels {
 		if b == bin {
 			continue
 		}

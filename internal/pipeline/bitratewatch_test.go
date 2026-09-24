@@ -97,7 +97,7 @@ func TestABlatantlyDeafEncoderIsCaughtAtOnce(t *testing.T) {
 func TestWithoutAskingForLessNobodyIsAccused(t *testing.T) {
 	p, out := watched(t)
 
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		window(p, 1000, 1500) // always 50% more, but we never asked for less
 	}
 

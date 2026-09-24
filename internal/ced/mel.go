@@ -171,7 +171,7 @@ func (fe *Frontend) toDB(mel []float32) {
 // all: the spectrogram comes out plausible and different from the model's.
 func reflectPad(dst, wave []float32, pad int) {
 	n := len(wave)
-	for i := 0; i < pad; i++ {
+	for i := range pad {
 		dst[i] = wave[pad-i]
 		dst[len(dst)-1-i] = wave[n-1-pad+i]
 	}

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"slices"
 	"testing"
 	"time"
 
@@ -10,12 +11,7 @@ import (
 )
 
 func contains(cs []alerts.Code, c alerts.Code) bool {
-	for _, x := range cs {
-		if x == c {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(cs, c)
 }
 
 func TestAHealthyMonitorHasNothingToReport(t *testing.T) {

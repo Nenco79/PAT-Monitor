@@ -286,7 +286,7 @@ func compare(a, b string) int {
 		return 0
 	}
 
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		if an[i] != bn[i] {
 			if an[i] < bn[i] {
 				return -1

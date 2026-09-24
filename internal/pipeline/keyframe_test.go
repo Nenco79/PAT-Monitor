@@ -12,7 +12,7 @@ func frame(p *Pipeline, keyframe bool) {
 func TestKeyframeAnEncoderThatObeys(t *testing.T) {
 	p := New(Config{})
 
-	for i := 0; i < 6; i++ {
+	for range 6 {
 		p.keyframeAsked()
 		frame(p, false) // one frame of delay: the encoder already has some in flight
 		frame(p, true)
@@ -33,7 +33,7 @@ func TestKeyframeAnEncoderThatObeys(t *testing.T) {
 func TestKeyframeAnEncoderThatIgnores(t *testing.T) {
 	p := New(Config{})
 
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		p.keyframeAsked()
 		for j := 0; j <= keyframeGraceFrames; j++ {
 			frame(p, false)
@@ -75,7 +75,7 @@ func TestKeyframeThePeriodicOneDoesNotCount(t *testing.T) {
 // do not know yet".
 func TestKeyframeWithoutRequestsNothingIsJudged(t *testing.T) {
 	p := New(Config{})
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		frame(p, i%20 == 0)
 	}
 	if p.kfAsked != 0 || p.kfServed != 0 || p.kfDeclaredBad.Load() {

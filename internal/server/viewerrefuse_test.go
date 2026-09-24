@@ -37,7 +37,7 @@ func TestARefusedViewerIsLoggedOnceNoMatterHowOftenItRetries(t *testing.T) {
 	s, buf := serverWithLog(t)
 	from := origin{Kind: "local network", Addr: "192.0.2.7"}
 
-	for i := 0; i < 500; i++ {
+	for range 500 {
 		s.refuseViewer(from, errors.New("no keyframe received yet"))
 	}
 
@@ -57,7 +57,7 @@ func TestTheRunOfRefusalsIsReportedWhenItEnds(t *testing.T) {
 	s, buf := serverWithLog(t)
 	from := origin{Kind: "local network", Addr: "192.0.2.7"}
 
-	for i := 0; i < 42; i++ {
+	for range 42 {
 		s.refuseViewer(from, errors.New("no keyframe received yet"))
 	}
 	s.viewerAdmitted()

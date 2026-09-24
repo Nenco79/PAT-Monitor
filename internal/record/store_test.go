@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -36,12 +37,7 @@ func namesIn(t *testing.T, dir string) []string {
 }
 
 func has(list []string, name string) bool {
-	for _, n := range list {
-		if n == name {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(list, name)
 }
 
 // **The promise that matters.** A monitor that runs every night must not be
@@ -255,7 +251,7 @@ func TestSaveWritesAClipThatTheListingCanRead(t *testing.T) {
 	ring := NewRing(nil)
 	at := feedGOP(t, ring, sps720p, t0, 20, step)
 	feedGOP(t, ring, sps720p, at, 20, step)
-	for i := 0; i < 200; i++ {
+	for i := range 200 {
 		ring.WriteAudio([]byte{0xfc, byte(i)}, t0.Add(time.Duration(i)*opusFrameDuration))
 	}
 	snap := ring.Snapshot()

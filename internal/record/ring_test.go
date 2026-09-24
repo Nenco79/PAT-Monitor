@@ -97,7 +97,7 @@ func TestTheRingAlwaysStartsAtAKeyframe(t *testing.T) {
 	r := NewRing(nil)
 
 	at := t0
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		r.WriteVideo(inter(100), at)
 		at = at.Add(100 * time.Millisecond)
 	}
@@ -131,7 +131,7 @@ func TestTwoWholeGopsSurviveTheGrowingOne(t *testing.T) {
 		perG = 20 // twenty 100 ms frames: a two-second GOP
 	)
 	at := t0
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		at = feedGOP(t, r, sps720p, at, perG, step)
 	}
 	// The keyframe opening the fourth group: from here on the oldest one goes,
@@ -188,7 +188,7 @@ func TestAnEncoderThatStopsSendingKeyframesCannotGrowForever(t *testing.T) {
 
 	at := t0
 	r.WriteVideo(keyframe(t, sps720p, 400), at)
-	for i := 0; i < 4000; i++ {
+	for i := range 4000 {
 		at = at.Add(33 * time.Millisecond)
 		r.WriteVideo(inter(8000), at)
 		if b := r.Stats().Bytes; b > maxBytes {
@@ -245,7 +245,7 @@ func TestAudioAloneDoesNotGrowForever(t *testing.T) {
 	r := NewRing(nil)
 
 	at := t0
-	for i := 0; i < 10000; i++ { // two hundred seconds of voice alone
+	for i := range 10000 { // two hundred seconds of voice alone
 		r.WriteAudio([]byte{0xfc, byte(i)}, at)
 		at = at.Add(opusFrameDuration)
 	}
@@ -265,7 +265,7 @@ func TestTheSnapshotSurvivesLaterWrites(t *testing.T) {
 
 	const step = 100 * time.Millisecond
 	at := feedGOP(t, r, sps720p, t0, 20, step)
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		r.WriteAudio([]byte{0xfc, byte(i)}, t0.Add(time.Duration(i)*opusFrameDuration))
 	}
 
@@ -278,9 +278,9 @@ func TestTheSnapshotSurvivesLaterWrites(t *testing.T) {
 	}
 
 	// The ring carries on: more GOPs, more pruning, the oldest thrown away.
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		at = feedGOP(t, r, sps720p, at, 20, step)
-		for j := 0; j < 100; j++ {
+		for j := range 100 {
 			r.WriteAudio([]byte{0xfd, byte(j)}, at.Add(time.Duration(j)*opusFrameDuration))
 		}
 	}

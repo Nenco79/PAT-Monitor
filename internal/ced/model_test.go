@@ -33,7 +33,7 @@ func tiny(t *testing.T, depth int) *Model {
 		win[i] = 1
 	}
 	bank := make([]float32, nMels*nFreqs)
-	for b := 0; b < nMels; b++ {
+	for b := range nMels {
 		bank[b*nFreqs+b] = 1
 	}
 	fe, err := NewFrontend(nFFT, hop, nMels, win, bank, 1e-10, 1, 10, 120)
@@ -104,7 +104,7 @@ func TestTheTokensAreLaidOutFrequencyMajor(t *testing.T) {
 	const stride = 6
 	mel := make([]float32, m.nMels*stride)
 	for f := 0; f < m.nMels; f++ {
-		for x := 0; x < stride; x++ {
+		for x := range stride {
 			mel[f*stride+x] = float32(f*100 + x)
 		}
 	}
@@ -134,7 +134,7 @@ func TestTheTimePositionsAreSlicedNotStretched(t *testing.T) {
 	m.alloc(m.freqPatches * 3)
 	m.patchEmbed(mel, 6, 0, 3)
 	for pf := 0; pf < m.freqPatches; pf++ {
-		for pt := 0; pt < 3; pt++ {
+		for pt := range 3 {
 			if got := m.buf.tokens[(pf*3+pt)*m.dim]; got != float32(pt+1) {
 				t.Errorf("band %d step %d: position %v, wanted %v", pf, pt, got, pt+1)
 			}
@@ -153,7 +153,7 @@ func TestTheFrequencyPositionIsThatOfTheBand(t *testing.T) {
 	m.alloc(m.freqPatches * 3)
 	m.patchEmbed(mel, 6, 0, 3)
 	for pf := 0; pf < m.freqPatches; pf++ {
-		for pt := 0; pt < 3; pt++ {
+		for pt := range 3 {
 			if got := m.buf.tokens[(pf*3+pt)*m.dim]; got != float32(10*(pf+1)) {
 				t.Errorf("band %d step %d: %v, wanted %v", pf, pt, got, 10*(pf+1))
 			}
@@ -170,7 +170,7 @@ func TestAChunkStartsWhereItIsToldTo(t *testing.T) {
 	const stride = 8
 	mel := make([]float32, m.nMels*stride)
 	for f := 0; f < m.nMels; f++ {
-		for x := 0; x < stride; x++ {
+		for x := range stride {
 			mel[f*stride+x] = float32(x)
 		}
 	}
@@ -190,8 +190,8 @@ func TestAChunkStartsWhereItIsToldTo(t *testing.T) {
 func TestThePaddedChunkKeepsTheTailAtTheFront(t *testing.T) {
 	const nMels, frames, maxFrames = 3, 10, 8
 	mel := make([]float32, nMels*frames)
-	for b := 0; b < nMels; b++ {
-		for t0 := 0; t0 < frames; t0++ {
+	for b := range nMels {
+		for t0 := range frames {
 			mel[b*frames+t0] = float32(b*100 + t0)
 		}
 	}
@@ -200,7 +200,7 @@ func TestThePaddedChunkKeepsTheTailAtTheFront(t *testing.T) {
 		dst[i] = -1 // dirty, so it shows if it is not zeroed
 	}
 	padChunk(dst, mel, nMels, frames, 8, 2, maxFrames)
-	for b := 0; b < nMels; b++ {
+	for b := range nMels {
 		row := dst[b*maxFrames : (b+1)*maxFrames]
 		if row[0] != float32(b*100+8) || row[1] != float32(b*100+9) {
 			t.Errorf("band %d: the tail is %v %v", b, row[0], row[1])
@@ -262,18 +262,18 @@ func TestFlatScoresMakeTheAttentionAMean(t *testing.T) {
 	}
 	// q and k stay at zero — the scores all come out equal. In v a different
 	// number goes per token and per head.
-	for j := 0; j < n; j++ {
+	for j := range n {
 		for h := 0; h < m.heads; h++ {
-			for c := 0; c < hd; c++ {
+			for c := range hd {
 				m.buf.qkv[j*3*d+2*d+h*hd+c] = float32((j+1)*10 + h)
 			}
 		}
 	}
 	m.attention(n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		for h := 0; h < m.heads; h++ {
 			want := float32(20 + h) // mean of 10, 20, 30 plus the head
-			for c := 0; c < hd; c++ {
+			for c := range hd {
 				if got := m.buf.ctx[i*d+h*hd+c]; math.Abs(float64(got-want)) > 1e-5 {
 					t.Errorf("token %d head %d component %d: %v, wanted %v", i, h, c, got, want)
 				}

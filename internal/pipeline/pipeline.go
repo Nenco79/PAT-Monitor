@@ -1164,10 +1164,7 @@ func (p *Pipeline) TakeRecentQP() (int, bool) {
 	// is already >= 0 at the first value of the histogram — that is, it would
 	// answer with the lowest quantiser in the window exactly when the worst one
 	// is being asked for.
-	threshold := (p.qpWinCount*qpWinPercentile + 99) / 100
-	if threshold < 1 {
-		threshold = 1
-	}
+	threshold := max((p.qpWinCount*qpWinPercentile+99)/100, 1)
 	qp := 0
 	var cum int64
 	for q := 1; q <= 51; q++ {
@@ -3323,7 +3320,7 @@ func (p *Pipeline) runVideo(ctx context.Context, sinks Sinks) error {
 
 // readFrame keeps at it until the camera delivers a frame.
 func readFrame(ctx context.Context, reader *mf.SourceReader) (*mf.Sample, error) {
-	for tries := 0; tries < 2000; tries++ {
+	for range 2000 {
 		if ctx.Err() != nil {
 			return nil, nil
 		}
@@ -3369,13 +3366,13 @@ func (m *motionScaler) fromSample(s *mf.Sample, fn func([]byte)) error {
 }
 
 func (m *motionScaler) scale(y []byte) {
-	for oy := 0; oy < MotionHeight; oy++ {
+	for oy := range MotionHeight {
 		y0 := oy * m.h / MotionHeight
 		y1 := (oy + 1) * m.h / MotionHeight
 		if y1 <= y0 {
 			y1 = y0 + 1
 		}
-		for ox := 0; ox < MotionWidth; ox++ {
+		for ox := range MotionWidth {
 			x0 := ox * m.w / MotionWidth
 			x1 := (ox + 1) * m.w / MotionWidth
 			if x1 <= x0 {

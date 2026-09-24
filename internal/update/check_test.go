@@ -375,7 +375,7 @@ func TestAHugeAnswerIsBounded(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = fmt.Fprint(w, `{"tag_name":"v99.0.0","notes":"`)
 		chunk := strings.Repeat("x", 64*1024)
-		for i := 0; i < 64; i++ { // 4 MB, four times the ceiling
+		for range 64 { // 4 MB, four times the ceiling
 			_, _ = fmt.Fprint(w, chunk)
 		}
 		_, _ = fmt.Fprint(w, `"}`)
@@ -513,7 +513,7 @@ func TestTheStateCanBeReadWhileItIsBeingWritten(t *testing.T) {
 		}
 	}()
 
-	for i := 0; i < 200; i++ {
+	for i := range 200 {
 		if i%2 == 0 {
 			f.body = release{TagName: "v99.0.0", HTMLURL: "https://example.invalid/r/99"}
 		} else {

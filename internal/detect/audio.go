@@ -56,7 +56,7 @@ func AnalyzeS16LE(b []byte) Block {
 	var zeros, crossings int
 	var peak int16
 	prev := int16(0)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		v := int16(uint16(b[2*i]) | uint16(b[2*i+1])<<8)
 		if v == 0 {
 			zeros++
@@ -250,7 +250,7 @@ func (a *Accumulator) Add(b []byte) Block {
 	// first correction with nothing failing. CrossRate is crossings over these
 	// same n samples, so the count comes back exactly.
 	a.crossings += int(math.Round(blk.CrossRate * float64(n)))
-	for i := 0; i < n; i++ {
+	for i := range n {
 		v := int16(uint16(b[2*i]) | uint16(b[2*i+1])<<8)
 		if v == 0 {
 			a.zeros++

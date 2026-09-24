@@ -173,7 +173,7 @@ func (t *transform) processInput(s *Sample) error {
 // looking at whether the enumeration answers sensibly.
 func (t *transform) availableInputTypes() []string {
 	var out []string
-	for i := uint32(0); i < 32; i++ {
+	for i := range uint32(32) {
 		var mt *MediaType
 		r, _, _ := syscall.SyscallN(t.vtbl().GetInputAvailableType,
 			uintptr(unsafe.Pointer(t)), 0, uintptr(i), uintptr(unsafe.Pointer(&mt)))
@@ -197,7 +197,7 @@ func (t *transform) availableInputTypes() []string {
 // inputTypeFor returns the input type declared by the transform that matches
 // the requested subtype. The caller completes it and releases it.
 func (t *transform) inputTypeFor(subtype *ole.GUID) (*MediaType, error) {
-	for i := uint32(0); i < 32; i++ {
+	for i := range uint32(32) {
 		var mt *MediaType
 		r, _, _ := syscall.SyscallN(t.vtbl().GetInputAvailableType,
 			uintptr(unsafe.Pointer(t)), 0, uintptr(i), uintptr(unsafe.Pointer(&mt)))
@@ -220,7 +220,7 @@ func (t *transform) inputTypeFor(subtype *ole.GUID) (*MediaType, error) {
 // encoder enumerates carries attributes we do not know we are supposed to give
 // it. Building one by hand with the same fields is not equivalent.
 func (t *transform) outputTypeFor(subtype *ole.GUID) (*MediaType, error) {
-	for i := uint32(0); i < 32; i++ {
+	for i := range uint32(32) {
 		var mt *MediaType
 		r, _, _ := syscall.SyscallN(t.vtbl().GetOutputAvailableType,
 			uintptr(unsafe.Pointer(t)), 0, uintptr(i), uintptr(unsafe.Pointer(&mt)))
@@ -921,7 +921,7 @@ func (e *VideoEncoder) Diagnose() string {
 	fmt.Fprintf(&b, "  output adopted     %s\n", describeType(e.t.outputCurrentType()))
 	if e.cb != nil {
 		fmt.Fprintf(&b, "  Invoke calls       %d (last error: %v)\n",
-			atomic.LoadInt64(&e.cb.invocations), e.cb.lastError())
+			e.cb.invocations.Load(), e.cb.lastError())
 		for _, s := range e.cb.log() {
 			fmt.Fprintf(&b, "    event            %s\n", s)
 		}

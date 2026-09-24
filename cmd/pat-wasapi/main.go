@@ -165,7 +165,7 @@ func toS16Channel0(b []byte, f audio.StreamFormat) []byte {
 	frames := len(b) / frame
 	out := make([]byte, 0, frames*2)
 
-	for i := 0; i < frames; i++ {
+	for i := range frames {
 		off := i * frame // channel 0
 		var v int16
 		switch {

@@ -78,7 +78,7 @@ func TestVideoClockTracksRealTime(t *testing.T) {
 			// Thirty seconds of filming at the cadence under test.
 			frames := int(30 * time.Second / tc.actual)
 			var media time.Duration
-			for i := 0; i < frames; i++ {
+			for range frames {
 				media += h.nextVideoDurationAt(now)
 				now = now.Add(tc.actual)
 			}
@@ -147,7 +147,7 @@ func TestVideoClockResetsAfterGap(t *testing.T) {
 
 	start := time.Date(2026, 8, 1, 12, 0, 0, 0, time.UTC)
 	now := start
-	for i := 0; i < 60; i++ {
+	for range 60 {
 		h.nextVideoDurationAt(now)
 		now = now.Add(time.Second / 30)
 	}

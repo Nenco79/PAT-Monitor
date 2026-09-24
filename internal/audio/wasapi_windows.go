@@ -623,7 +623,7 @@ func validateFormatBlob(b []byte) error {
 func openClient(dev *wca.IMMDevice, opts Options) (*wca.IAudioClient2, bool, error, error) {
 	var lastErr error
 
-	for attempt := 0; attempt < rawAttempts; attempt++ {
+	for attempt := range rawAttempts {
 		var client *wca.IAudioClient2
 		if err := dev.Activate(wca.IID_IAudioClient2, ole.CLSCTX_ALL, nil, &client); err != nil {
 			return nil, false, nil, fmt.Errorf("Activate IAudioClient2: %w",

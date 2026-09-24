@@ -28,9 +28,9 @@ var notKnobs = map[string]bool{
 
 func yamlKeys() []string {
 	var out []string
-	t := reflect.TypeOf(Config{})
-	for i := 0; i < t.NumField(); i++ {
-		tag := t.Field(i).Tag.Get("yaml")
+	t := reflect.TypeFor[Config]()
+	for field := range t.Fields() {
+		tag := field.Tag.Get("yaml")
 		tag, _, _ = strings.Cut(tag, ",")
 		if tag == "" || tag == "-" {
 			continue
@@ -53,7 +53,7 @@ func tableKeys(readme string) []string {
 	body, _, _ := strings.Cut(after, "Command line:")
 
 	var out []string
-	for _, line := range strings.Split(body, "\n") {
+	for line := range strings.SplitSeq(body, "\n") {
 		if !strings.HasPrefix(line, "| `") {
 			continue
 		}

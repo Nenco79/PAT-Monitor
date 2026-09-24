@@ -15,7 +15,7 @@ func dft(in []float64) []float64 {
 	out := make([]float64, n/2+1)
 	for k := 0; k <= n/2; k++ {
 		var re, im float64
-		for t := 0; t < n; t++ {
+		for t := range n {
 			a := -2 * math.Pi * float64(k) * float64(t) / float64(n)
 			re += in[t] * math.Cos(a)
 			im += in[t] * math.Sin(a)

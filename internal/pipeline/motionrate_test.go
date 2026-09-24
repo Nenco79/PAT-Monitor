@@ -46,10 +46,7 @@ func TestDetectionKeepsItsCadenceWhateverTheCameraDelivers(t *testing.T) {
 
 		// What the old rule would have produced, computed here rather than
 		// remembered: the divisor is the one that was in the code.
-		divisor := declared / MotionFPS
-		if divisor < 1 {
-			divisor = 1
-		}
+		divisor := max(declared/MotionFPS, 1)
 		old := real / float64(divisor)
 
 		t.Logf("camera %.1f fps: divisor gave %.1f/s, the gate gives %.1f/s", real, old, got)

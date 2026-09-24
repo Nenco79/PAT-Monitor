@@ -1126,10 +1126,7 @@ func (f *flyout) createQR() error {
 	}
 	modules := int32(m.Size + 2*qr.QuietZone)
 	side := f.px(flyQRSide)
-	scale := side / modules
-	if scale < 2 {
-		scale = 2
-	}
+	scale := max(side/modules, 2)
 	// Rounded to the whole module: half a pixel per module does not read.
 	side = modules * scale
 	f.qrPx = side
@@ -1162,8 +1159,8 @@ func (f *flyout) createQR() error {
 			writePixel(pix, int(y*side+x)*4, c)
 		}
 	}
-	for my := int32(0); my < modules; my++ {
-		for mx := int32(0); mx < modules; mx++ {
+	for my := range modules {
+		for mx := range modules {
 			if !m.At(int(mx)-qr.QuietZone, int(my)-qr.QuietZone) {
 				continue
 			}
@@ -1920,13 +1917,7 @@ func (f *flyout) measureLines(width int32) {
 		procDrawTextW.Call(hdc, uintptr(unsafe.Pointer(&txt[0])), uintptr(len(txt)-1),
 			uintptr(unsafe.Pointer(&r)), dtCalcRect|dtWordBreak|dtNoPrefix)
 
-		rows := (r.Bottom + row - 1) / row
-		if rows < 1 {
-			rows = 1
-		}
-		if rows > maxStatusRows {
-			rows = maxStatusRows
-		}
+		rows := min(max((r.Bottom+row-1)/row, 1), maxStatusRows)
 		f.lineH[i] = rows * row
 	}
 }
@@ -2061,16 +2052,16 @@ func (f *flyout) pill(hdc uintptr, r rect, fill, border uint32) {
 	marginY := thick + 1
 
 	const ss = 4
-	for y := int32(0); y < h; y++ {
-		for x := int32(0); x < w; x++ {
+	for y := range h {
+		for x := range w {
 			if float64(x) >= radius+1 && float64(x) <= float64(w)-radius-1 &&
 				float64(y) >= marginY && float64(y) <= float64(h)-marginY {
 				writePixel(pix, int(y*w+x)*4, fill)
 				continue
 			}
 			var outside, inside float64
-			for sy := 0; sy < ss; sy++ {
-				for sx := 0; sx < ss; sx++ {
+			for sy := range ss {
+				for sx := range ss {
 					px := float64(x) + (float64(sx)+0.5)/ss
 					py := float64(y) + (float64(sy)+0.5)/ss
 					if insidePill(px, py, 0, 0, float64(w), float64(h), radius) {

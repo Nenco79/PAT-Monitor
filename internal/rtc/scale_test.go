@@ -47,7 +47,7 @@ func TestTheScaleComesDownAndClimbsBack(t *testing.T) {
 	// the wanted behaviour, not a delay to be worked around.
 	under := g.steps[1].MinKbps + 10
 	var h int
-	for i := 0; i < scaleConfirmSamples+2; i++ {
+	for range scaleConfirmSamples + 2 {
 		now = now.Add(time.Second)
 		_, h, _ = withoutQP(g, under, now)
 	}
@@ -131,7 +131,7 @@ func TestForTheScaleZeroMeansNotKnown(t *testing.T) {
 	withoutQP(g, 2500, now)
 
 	// Then a long sequence with no information: nothing must happen.
-	for i := 0; i < 30; i++ {
+	for i := range 30 {
 		now = now.Add(time.Second)
 		if _, _, changed := withoutQP(g, 0, now); changed {
 			t.Fatalf("it changed step at sample %d with no estimate at all", i)
@@ -507,7 +507,7 @@ func TestTheScaleDoesNotTakePixelsWhileThereAreBitsToBuy(t *testing.T) {
 
 	// A broken picture, but the bitrate is not at the cap yet: the size is not
 	// touched, the bitrate is left to climb.
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		now = now.Add(time.Second)
 		if _, _, _, changed := g.target(bandwidth, true, 45, testLimits, false, now); changed {
 			t.Fatalf("it shrank the picture at sample %d "+
@@ -538,7 +538,7 @@ func TestItClimbsBackEvenWithAnEstimateThatEchoesUs(t *testing.T) {
 
 	// It comes all the way down with a credible estimate, as a network that
 	// really is tightening would do.
-	for i := 0; i < scaleConfirmSamples+2; i++ {
+	for range scaleConfirmSamples + 2 {
 		now = now.Add(time.Second)
 		withoutQP(g, 10, now)
 	}
@@ -571,7 +571,7 @@ func TestAnEchoDoesNotBringItDown(t *testing.T) {
 
 	// A low throughput for a long time, declared not credible: it must move
 	// nothing, however much it insists.
-	for i := 0; i < 60; i++ {
+	for i := range 60 {
 		now = now.Add(time.Second)
 		if _, _, changed := echoOfUs(g, 35, now); changed {
 			t.Fatalf("it came down at sample %d over a number that describes us", i)
@@ -589,7 +589,7 @@ func TestNonCredibleShortfallsDoNotAccumulate(t *testing.T) {
 	g := newScaleGovernor(1280, 720, 30)
 	now := time.Now()
 
-	for i := 0; i < 30; i++ {
+	for range 30 {
 		now = now.Add(time.Second)
 		echoOfUs(g, 35, now)
 	}
@@ -618,7 +618,7 @@ func TestTheScaleRealignsWithWhatIsBeingSent(t *testing.T) {
 
 	// It really does come down one step, so the starting point is the real one.
 	under := g.steps[1].MinKbps + 10
-	for i := 0; i < scaleConfirmSamples+2; i++ {
+	for range scaleConfirmSamples + 2 {
 		now = now.Add(time.Second)
 		withoutQP(g, under, now)
 	}

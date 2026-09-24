@@ -4,6 +4,7 @@ package diag
 import (
 	"fmt"
 	"io"
+	"slices"
 	"sort"
 	"sync"
 	"time"
@@ -67,14 +68,11 @@ func (d *Delivery) Mark(now time.Time) {
 func (d *Delivery) snapshot() ([]time.Duration, int) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	n := d.total
-	if n > len(d.ring) {
-		n = len(d.ring)
-	}
+	n := min(d.total, len(d.ring))
 	out := make([]time.Duration, 0, n)
 	// Oldest to newest, so runs of short intervals stay contiguous: the bursts
 	// are counted on those.
-	for i := 0; i < n; i++ {
+	for i := range n {
 		out = append(out, d.ring[(d.next-n+i+len(d.ring))%len(d.ring)])
 	}
 	return out, d.total
@@ -101,7 +99,7 @@ func (d *Delivery) Report(w io.Writer, label string) {
 	}
 
 	sorted := append([]time.Duration(nil), gaps...)
-	sort.Slice(sorted, func(i, j int) bool { return sorted[i] < sorted[j] })
+	slices.Sort(sorted)
 
 	// Deliberately low threshold: at a quarter of the nominal interval there is
 	// no doubt the two deliveries belong to the same block rather than to two

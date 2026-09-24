@@ -47,14 +47,14 @@ func TestLookAtThePulse(t *testing.T) {
 		}
 	}
 
-	for f := 0; f < frames; f++ {
+	for f := range frames {
 		phase := float64(f) / frames
 		dim := pulseDepth * (1 - math.Cos(2*math.Pi*phase)) / 2
 		pix := iconPixels(PhaseOutside, size, dim)
 
 		x0 := pad + f*(size*zoom+pad)
-		for y := 0; y < size; y++ {
-			for x := 0; x < size; x++ {
+		for y := range size {
+			for x := range size {
 				i := (y*size + x) * 4
 				b, g, r, a := int(pix[i]), int(pix[i+1]), int(pix[i+2]), int(pix[i+3])
 				// **The icon is composed over the background, it does not
@@ -69,8 +69,8 @@ func TestLookAtThePulse(t *testing.T) {
 					B: byte(b + backB*(255-a)/255),
 					A: 0xFF,
 				}
-				for zy := 0; zy < zoom; zy++ {
-					for zx := 0; zx < zoom; zx++ {
+				for zy := range zoom {
+					for zx := range zoom {
 						out.Set(x0+x*zoom+zx, pad+y*zoom+zy, comp)
 					}
 				}

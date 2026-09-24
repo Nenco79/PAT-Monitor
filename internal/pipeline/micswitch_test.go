@@ -147,7 +147,7 @@ func TestTheFallbackIsAnnouncedOnceNotAtEveryReopen(t *testing.T) {
 
 	// Two opens in a row on the same device: the second is the planned reopen,
 	// and it has nothing new to say.
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		ctx, stop := context.WithCancel(context.Background())
 		done := make(chan struct{})
 		go func() { _ = p.runAudio(ctx, Sinks{}); close(done) }()

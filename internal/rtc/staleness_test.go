@@ -59,7 +59,7 @@ func TestTheCadenceDoesNotSurviveTheCameraStopping(t *testing.T) {
 	// And when the frames come back the number climbs again: the decay must not
 	// be a way of switching the measurement off.
 	back := now.Add(3 * time.Second)
-	for i := 0; i < 300; i++ {
+	for range 300 {
 		back = back.Add(step)
 		h.nextVideoDurationAt(back)
 	}

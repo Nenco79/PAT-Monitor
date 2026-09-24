@@ -14,7 +14,7 @@ func TestTheGlobalLimiterNeverCloses(t *testing.T) {
 	now := time.Unix(0, 0)
 
 	var d time.Duration
-	for i := 0; i < 10_000; i++ {
+	for range 10_000 {
 		d = g.fail(now)
 	}
 	if d > globalMaxDelay {
@@ -31,7 +31,7 @@ func TestTheGlobalLimiterForgivesTheFirstAttempts(t *testing.T) {
 	g := newGlobalLimiter()
 	now := time.Unix(0, 0)
 
-	for i := 0; i < globalFreeFailures; i++ {
+	for i := range globalFreeFailures {
 		if d := g.fail(now); d != 0 {
 			t.Fatalf("at attempt %d it already slows by %v", i+1, d)
 		}
@@ -51,7 +51,7 @@ func TestTheGlobalLimiterDecays(t *testing.T) {
 	g := newGlobalLimiter()
 	now := time.Unix(0, 0)
 
-	for i := 0; i < globalFreeFailures+40; i++ {
+	for range globalFreeFailures + 40 {
 		g.fail(now)
 	}
 	if d := g.delay(now); d <= 0 {
@@ -107,7 +107,7 @@ func TestRevokeAll(t *testing.T) {
 // against the 4096 allowed.
 func TestTheLockoutTableIsBounded(t *testing.T) {
 	l := newLimiter()
-	for i := 0; i < maxTrackedAddresses*5; i++ {
+	for i := range maxTrackedAddresses * 5 {
 		l.fail(fmt.Sprintf("198.51.100.%d:%d", i%256, i))
 	}
 	l.mu.Lock()
@@ -125,7 +125,7 @@ func TestAQuietAddressFreesItsPlace(t *testing.T) {
 	l := newLimiter()
 	old := time.Now().Add(-2 * attemptWindow)
 	l.mu.Lock()
-	for i := 0; i < maxTrackedAddresses; i++ {
+	for i := range maxTrackedAddresses {
 		l.m[fmt.Sprintf("old-%d", i)] = &attemptRecord{failures: 1, last: old}
 	}
 	l.mu.Unlock()
@@ -155,7 +155,7 @@ func TestAFullTableDoesNotClearSomebodyElsesLockout(t *testing.T) {
 	if locked <= 0 {
 		t.Fatal("the address was not locked out to begin with")
 	}
-	for i := 0; i < maxTrackedAddresses*2; i++ {
+	for i := range maxTrackedAddresses * 2 {
 		l.fail(fmt.Sprintf("198.51.100.%d:%d", i%256, i))
 	}
 	if d := l.retryAfter("192.168.1.40"); d <= 0 {

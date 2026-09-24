@@ -239,7 +239,7 @@ func resourceSection(im []Image, version []byte) ([]byte, []int) {
 	}
 
 	// Level 3: the language, and under it the leaf.
-	for k := 0; k < n; k++ {
+	for k := range n {
 		writeDir(1)
 		writeEntry(neutralLanguage, leavesAt+k*leafSize, false)
 	}
@@ -247,7 +247,7 @@ func resourceSection(im []Image, version []byte) ([]byte, []int) {
 	// The leaves. The offset of the field that opens them is the one to
 	// relocate.
 	toRelocate := make([]int, 0, n)
-	for k := 0; k < n; k++ {
+	for k := range n {
 		toRelocate = append(toRelocate, b.Len())
 		put(uint32(where[k]))
 		put(uint32(howMuch[k]))

@@ -8,7 +8,7 @@ import "testing"
 // go down to the floor for ever.
 func TestAConstantReadingDoesNotCount(t *testing.T) {
 	var p Pipeline
-	for i := 0; i < 500; i++ {
+	for range 500 {
 		p.qpMeasured(26)
 	}
 	if qp := p.QP(); qp.Known {
@@ -23,7 +23,7 @@ func TestAsSoonAsItVariesTheReadingCounts(t *testing.T) {
 	p.qpMeasured(23)
 	p.qpMeasured(23)
 	p.qpMeasured(24)
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		p.qpMeasured(24)
 	}
 	qp := p.QP()

@@ -15,6 +15,7 @@ package audiocodec
 
 import (
 	"fmt"
+	"slices"
 	"time"
 
 	"patmonitor/internal/opuswasm"
@@ -52,12 +53,7 @@ var SupportedRates = []int{8000, 12000, 16000, 24000, 48000}
 
 // RateSupported says whether Opus can compress directly at this rate.
 func RateSupported(rate int) bool {
-	for _, r := range SupportedRates {
-		if r == rate {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(SupportedRates, rate)
 }
 
 // FrameSamplesAt is how many samples make a frame of FrameDuration at the given

@@ -1005,15 +1005,12 @@ const wasapiPeriod = 10 * time.Millisecond
 // meanAbsDiff measures the mean difference between two gray frames, normalised.
 // It is the basis of motion detection.
 func meanAbsDiff(a, b []byte) float64 {
-	n := len(a)
-	if len(b) < n {
-		n = len(b)
-	}
+	n := min(len(b), len(a))
 	if n == 0 {
 		return 0
 	}
 	var sum int64
-	for i := 0; i < n; i++ {
+	for i := range n {
 		d := int(a[i]) - int(b[i])
 		if d < 0 {
 			d = -d

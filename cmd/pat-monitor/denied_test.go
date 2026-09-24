@@ -1,6 +1,7 @@
 package main
 
 import (
+	"slices"
 	"testing"
 	"time"
 
@@ -15,12 +16,7 @@ import (
 
 // has says whether the snapshot carries a code.
 func has(codes []alerts.Code, want alerts.Code) bool {
-	for _, c := range codes {
-		if c == want {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(codes, want)
 }
 
 // **A refused permission is announced instead of its consequence, not beside

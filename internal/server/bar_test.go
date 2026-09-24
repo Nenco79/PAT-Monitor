@@ -50,7 +50,7 @@ func TestEveryCommandOfTheBarSitsInASide(t *testing.T) {
 
 	inside := 0
 	var orphans []string
-	for _, line := range strings.Split(bar, "\n") {
+	for line := range strings.SplitSeq(bar, "\n") {
 		if reOpen.MatchString(line) {
 			inside++
 		}
@@ -172,7 +172,7 @@ func hoverSelectorsOutsideAPointer(css string) ([]string, int) {
 	inside := 0
 	depthOfPointer := -1
 	depth := 0
-	for _, line := range strings.Split(css, "\n") {
+	for line := range strings.SplitSeq(css, "\n") {
 		if depthOfPointer < 0 && reHoverMedia.MatchString(line) {
 			depthOfPointer = depth
 		}

@@ -16,7 +16,7 @@ func TestARepeatedLineIsSaidOnce(t *testing.T) {
 	log := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelInfo}))
 	say := sayOnce(log)
 
-	for i := 0; i < 40; i++ {
+	for range 40 {
 		say("go to: %s", "https://login.example/a/abc")
 	}
 	if n := strings.Count(buf.String(), "login.example"); n != 1 {

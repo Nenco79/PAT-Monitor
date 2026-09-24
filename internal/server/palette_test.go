@@ -88,7 +88,7 @@ func TestTheTwoLightPalettesAgree(t *testing.T) {
 // button come out with the dark's teal. Here it serves the opposite purpose,
 // understanding that two different spellings say the same colour.
 func resolve(palette map[string]string, v string) string {
-	for i := 0; i < 8; i++ {
+	for range 8 {
 		m := reAlias.FindStringSubmatch(v)
 		if m == nil {
 			break
@@ -238,7 +238,7 @@ func TestNoSheetRewritesTheScaleByHand(t *testing.T) {
 	// `0 1px 2px #00000014` the pieces `1px` and `2px` are not allowed.
 	allowed := regexp.MustCompile(`^(var\(--[a-z0-9-]+\)|999px|50%|0|none)$`)
 	allAllowed := func(v string) bool {
-		for _, piece := range strings.Fields(v) {
+		for piece := range strings.FieldsSeq(v) {
 			if !allowed.MatchString(piece) {
 				return false
 			}
@@ -285,7 +285,7 @@ func TestNoSheetRewritesTheScaleByHand(t *testing.T) {
 			for _, m := range reInline.FindAllStringSubmatch(readAsset(t, name), -1) {
 				// An attribute has no lines: it is read one declaration at a
 				// time, with the trailing semicolon `reDecl` asks for.
-				for _, d := range strings.Split(m[1], ";") {
+				for d := range strings.SplitSeq(m[1], ";") {
 					if strings.TrimSpace(d) != "" {
 						look(name+" (style=)", "\n"+strings.TrimSpace(d)+";")
 					}
@@ -454,7 +454,7 @@ func TestNoFontShorthandCarriesAToken(t *testing.T) {
 		// The comment above tells this story and writes the shorthand while
 		// telling it.
 		css := reCSSComments.ReplaceAllString(readAsset(t, strings.TrimPrefix(sheet, "web/")), "")
-		for _, line := range strings.Split(css, "\n") {
+		for line := range strings.SplitSeq(css, "\n") {
 			if reShorthand.MatchString(line) {
 				t.Errorf("%s: %q writes the font as a shorthand carrying a token: "+
 					"where that form is not parsed the whole declaration goes, and "+
@@ -567,12 +567,12 @@ func TestTheDrawingOfTheTrayUsesThePalette(t *testing.T) {
 // document's rather than a line count's.
 func trayDrawing(t *testing.T, markup string) string {
 	t.Helper()
-	anchor := strings.Index(markup, `id="tray-line-1"`)
-	if anchor < 0 {
+	before, _, ok := strings.Cut(markup, `id="tray-line-1"`)
+	if !ok {
 		t.Fatal(`id="tray-line-1" is not in the markup: the drawing has been ` +
 			`renamed, and with it this guard has stopped looking at anything`)
 	}
-	start := strings.LastIndex(markup[:anchor], "<g ")
+	start := strings.LastIndex(before, "<g ")
 	if start < 0 {
 		t.Fatal("no group above tray-line-1")
 	}

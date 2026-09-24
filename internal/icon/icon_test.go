@@ -115,8 +115,8 @@ func TestTheSmallSizesDoNotCarryTheGlint(t *testing.T) {
 	// at the code but at the result: in the small icon there must be no pixel
 	// of the glint's colour.
 	small := Draw(16)
-	for y := 0; y < 16; y++ {
-		for x := 0; x < 16; x++ {
+	for y := range 16 {
+		for x := range 16 {
 			if small.NRGBAAt(x, y) == eyeLight {
 				t.Fatalf("the glint appears at 16 pixels, at %d,%d", x, y)
 			}
@@ -149,7 +149,7 @@ func TestTheICOContainerReadsBack(t *testing.T) {
 	if n != len(im) {
 		t.Fatalf("%d entries for %d images", n, len(im))
 	}
-	for k := 0; k < n; k++ {
+	for k := range n {
 		v := f[6+16*k:]
 		size := int(binary.LittleEndian.Uint32(v[8:]))
 		off := int(binary.LittleEndian.Uint32(v[12:]))
@@ -384,7 +384,7 @@ func readDirectory(t *testing.T, rsrc []byte, off int) map[uint32]int {
 	}
 	out := make(map[uint32]int, numbered)
 	previous := int64(-1)
-	for k := 0; k < numbered; k++ {
+	for k := range numbered {
 		v := off + dirSize + k*entrySize
 		id := binary.LittleEndian.Uint32(rsrc[v:])
 		// The order is not decoration: whoever reads does a binary search.
@@ -587,10 +587,7 @@ func readNode(t *testing.T, b []byte) parsedNode {
 		t.Fatalf("value of %d bytes that does not fit in %d", byteVal, length)
 	}
 	value := b[i : i+byteVal]
-	end := (i + byteVal + 3) &^ 3
-	if end > length {
-		end = length
-	}
+	end := min((i+byteVal+3)&^3, length)
 	return parsedNode{key: key, value: value, children: b[end:length]}
 }
 

@@ -95,7 +95,7 @@ func TestEncodeThenDecode(t *testing.T) {
 	pkt := make([]byte, 1275)
 	out := make([]int16, 0, len(in))
 	buf := make([]int16, frame)
-	for f := 0; f < frames; f++ {
+	for f := range frames {
 		n, err := enc.Encode(ctx, in[f*frame:(f+1)*frame], pkt)
 		if err != nil {
 			t.Fatalf("frame %d: %v", f, err)
@@ -141,7 +141,7 @@ func TestConcealProducesAFrame(t *testing.T) {
 	in := tone(frame*10, 440)
 	pkt := make([]byte, 1275)
 	buf := make([]int16, frame)
-	for f := 0; f < 10; f++ {
+	for f := range 10 {
 		n, err := enc.Encode(ctx, in[f*frame:(f+1)*frame], pkt)
 		if err != nil {
 			t.Fatal(err)
@@ -218,7 +218,7 @@ func TestEncodeAndDecodeAtTheSameTime(t *testing.T) {
 	go func() {
 		defer wg.Done()
 		in, buf := tone(frame, 440), make([]byte, 1275)
-		for i := 0; i < rounds; i++ {
+		for range rounds {
 			if _, err := enc.Encode(ctx, in, buf); err != nil {
 				errs <- err
 				return
@@ -228,7 +228,7 @@ func TestEncodeAndDecodeAtTheSameTime(t *testing.T) {
 	go func() {
 		defer wg.Done()
 		buf := make([]int16, frame)
-		for i := 0; i < rounds; i++ {
+		for range rounds {
 			if _, err := dec.Decode(ctx, pkt, buf); err != nil {
 				errs <- err
 				return

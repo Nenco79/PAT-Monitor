@@ -220,7 +220,7 @@ func TestTheTensorsComeBackAsFloat32(t *testing.T) {
 func TestQ8BlocksDequantise(t *testing.T) {
 	raw := make([]byte, q8BlockBytes)
 	binary.LittleEndian.PutUint16(raw, 0x3800) // scale 0.5
-	for i := 0; i < q8BlockValues; i++ {
+	for i := range q8BlockValues {
 		raw[2+i] = byte(int8(i - 16))
 	}
 	b := &builder{}

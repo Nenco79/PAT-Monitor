@@ -148,7 +148,7 @@ func TestTheQuantiserIsReadFromAPSlice(t *testing.T) {
 func TestEveryBSliceIsRefused(t *testing.T) {
 	read := 0
 	for _, direct := range []int{0, 1} {
-		for frame := 0; frame < 16; frame++ {
+		for frame := range 16 {
 			for _, override := range []int{0, 1} {
 				for _, modify := range []int{0, 1} {
 					for qp := 20; qp <= 45; qp++ {
@@ -370,7 +370,7 @@ func TestASeedCannotOverrideWhatTheStreamSaid(t *testing.T) {
 		t.Fatalf("from the stream: read %d ok=%v, wanted 26", got, ok)
 	}
 	// The encoder declares something else, over and over, as the pipeline does.
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		q.Seed(annexB(spsNAL(), ppsNAL(8)))
 	}
 	got, ok := q.Feed(annexB(pSliceNAL(0, 0)))
@@ -398,7 +398,7 @@ func TestTheDeclaredHeaderOfARealEncoderIsAsGoodForReading(t *testing.T) {
 		out := make([]byte, len(s)/2)
 		for i := range out {
 			var v int
-			for j := 0; j < 2; j++ {
+			for j := range 2 {
 				c := s[i*2+j]
 				switch {
 				case c >= '0' && c <= '9':
@@ -550,7 +550,7 @@ func TestAMarkingCodeThatDoesNotExistIsRefused(t *testing.T) {
 	n.bit(0)
 	n.bit(0)
 	n.bit(1)
-	for i := 0; i < 80; i++ {
+	for range 80 {
 		n.ue(5) // never terminates
 	}
 	n.se(4)

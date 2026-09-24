@@ -180,10 +180,7 @@ func TestTheTooltipFitsItsBufferInEveryLanguage(t *testing.T) {
 	// shipped build does not have, and that is exactly the margin on which the
 	// tooltip would be cut.
 	const grownIdentity = "PAT Monitor 1.10 r1234"
-	growth := len(grownIdentity) - len(productName+" "+version.Short())
-	if growth < 0 {
-		growth = 0
-	}
+	growth := max(len(grownIdentity)-len(productName+" "+version.Short()), 0)
 
 	for language := range catalogues(t) {
 		tr := &Tray{dictionary: i18n.Open([]string{language})}

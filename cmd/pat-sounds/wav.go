@@ -98,9 +98,9 @@ func decodePCM(b []byte, channels, bits, format int) ([]float32, error) {
 	}
 	frames := len(b) / per / channels
 	out := make([]float32, frames)
-	for k := 0; k < frames; k++ {
+	for k := range frames {
 		var sum float64
-		for c := 0; c < channels; c++ {
+		for c := range channels {
 			o := (k*channels + c) * per
 			switch {
 			case format == formatFloat:

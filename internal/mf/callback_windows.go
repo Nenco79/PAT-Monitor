@@ -63,7 +63,7 @@ type asyncCallback struct {
 	// interface is two words, and the reader of a torn one gets a type and
 	// somebody else's pointer. invocations is atomic for the same reason and
 	// was already.
-	invocations int64
+	invocations atomic.Int64
 	lastErr     error
 	// seen records every event with its outcome. An event our code does not
 	// recognise is to be looked at, not discarded: it is the place where the
@@ -185,7 +185,7 @@ func cbGetParameters(this, flags, queue unsafe.Pointer) uintptr { return eNotImp
 
 func cbInvoke(this, result unsafe.Pointer) uintptr {
 	cb := (*asyncCallback)(this)
-	atomic.AddInt64(&cb.invocations, 1)
+	cb.invocations.Add(1)
 
 	// **Nothing below may run once the encoder has been closed**, because from
 	// that moment the event generator and the transform this reaches through
