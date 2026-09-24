@@ -572,36 +572,54 @@ func (s *Server) pageLogin(w http.ResponseWriter, r *http.Request) {
 	s.serveAsset("login.html", "text/html; charset=utf-8")(w, r)
 }
 
-// setupFromOutside refuses the first-configuration routes to whoever arrives
-// from the Internet.
+// setupNotFromThisPC refuses the first-configuration routes to whoever is not
+// sitting at the PC the monitor runs on.
 //
-// **With no password there is no authentication, so `/setup` is open to whoever
-// reaches it** — and rightly so at the first start, when the only way to get
-// going is for somebody to set it. The problem comes later: if the password is
-// cleared while the tunnel is already on, for the length of that window the
-// public address means "set the password and take the camera". The first person
-// through takes it, and the owner finds themselves locked out of their own
-// house.
+// **With no password there is no authentication, so `/setup` sets the password
+// for whoever reaches it** — and rightly so at the first start, when the only way
+// to get going is for somebody to set it. The problem is who "somebody" can be.
+// If the password is cleared while the tunnel is already on, for the length of
+// that window the public address means "set the password and take the camera":
+// the first person through takes it, and the owner finds themselves locked out
+// of their own house.
 //
-// At the first start it costs nothing, because the funnel cannot be on:
-// CanExposePublicly refuses precisely while there is no password. So it is a
-// permanent rule and not a special case of the reset — which is how a protection
-// survives whoever touches it without knowing its history.
-func setupFromOutside(r *http.Request) bool { return requestOrigin(r).Public() }
+// **The home network is not the owner either, and it used to be let in.** The
+// first version refused only the Internet, which left the window open to every
+// device on the Wi-Fi: a guest's phone, a neighbour on a shared network, a
+// compromised gadget. The privacy policy had to say "anyone on your home network
+// can set it", which is a sentence nobody should have to publish. The proof of
+// ownership is the same one the tray's commands use, physical presence at the
+// machine, and on the wire that is a connection from this PC's own address,
+// loopback or the one it arrived on (see sameAsLocal). The guided setup is
+// opened on this PC by the program itself (`localhost`), so the first start
+// costs nothing.
+//
+// At the first start the Internet case cannot arise anyway, because the funnel
+// cannot be on: CanExposePublicly refuses precisely while there is no password.
+// So it is a permanent rule and not a special case of the reset — which is how a
+// protection survives whoever touches it without knowing its history.
+//
+// **It asks the origin, not `Public()`**: the funnel's visitor is recognised by
+// tunnel.SourceAddr before the socket's address is looked at, so a request that
+// Tailscale delivers over the node's local connection is never mistaken for one
+// typed at this keyboard.
+func setupNotFromThisPC(r *http.Request) bool {
+	return requestOrigin(r).Class != originThisPC
+}
 
 func (s *Server) pageSetup(w http.ResponseWriter, r *http.Request) {
 	if s.conf().HasPassword() {
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
-	if setupFromOutside(r) {
+	if setupNotFromThisPC(r) {
 		// **The one place where the server really writes a sentence**, because
 		// here there is no page around it to hand the translation to: the
 		// refusal happens before the HTML is served, so the browser shows the
 		// body as it comes. The language is still chosen by whoever reads — the
 		// catalogue is within the server's reach, and `Accept-Language` is their
 		// declaration.
-		http.Error(w, s.phrase(r, "err.setup-from-internet"), http.StatusForbidden)
+		http.Error(w, s.phrase(r, "err.setup-not-this-pc"), http.StatusForbidden)
 		return
 	}
 	s.serveAsset("setup.html", "text/html; charset=utf-8")(w, r)
@@ -1005,8 +1023,8 @@ func (s *Server) apiLogout(w http.ResponseWriter, r *http.Request) {
 // that anybody who can reach the monitor can lock out whoever has it at home.
 //
 // From here on the monitor is reachable by nobody until a new one is set —
-// requireAuth imposes it — and the first configuration can only be done from the
-// home network: see setupFromOutside.
+// requireAuth imposes it — and the first configuration can only be done at this
+// PC: see setupNotFromThisPC.
 func (s *Server) ResetPassword() error {
 	if _, err := s.opts.Config.Set(func(c *config.Config) {
 		c.PasswordHash = ""
@@ -1141,10 +1159,11 @@ func (s *Server) apiPassword(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) apiSetup(w http.ResponseWriter, r *http.Request) {
-	if setupFromOutside(r) {
-		s.log.Warn("first-time setup refused: request from the Internet",
-			"from", requestOrigin(r).Addr)
-		writeJSONError(w, http.StatusForbidden, ErrSetupFromInternet)
+	if setupNotFromThisPC(r) {
+		o := requestOrigin(r)
+		s.log.Warn("first-time setup refused: request not from this PC",
+			"from", o.Kind, "address", o.Addr)
+		writeJSONError(w, http.StatusForbidden, ErrSetupNotThisPC)
 		return
 	}
 	req, isForm, err := credentials(w, r)

@@ -27,7 +27,10 @@ func formPost(path string, fields map[string]string) *http.Request {
 	}
 	r := httptest.NewRequest(http.MethodPost, path, strings.NewReader(form.Encode()))
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	r.RemoteAddr = "192.168.1.40:5555"
+	// The owner's own browser, on the PC the monitor runs on: the one place a
+	// first-time setup is accepted from, and so the one place a page somebody
+	// else wrote can try to borrow.
+	r.RemoteAddr = "127.0.0.1:5555"
 	return r
 }
 
@@ -140,7 +143,7 @@ func TestTheJSONShapeOfTheCrossSiteRefusalIsA403(t *testing.T) {
 	r := httptest.NewRequest(http.MethodPost, "/api/setup", strings.NewReader(string(body)))
 	r.Header.Set("Content-Type", "application/json")
 	r.Header.Set("Sec-Fetch-Site", "cross-site")
-	r.RemoteAddr = "192.168.1.40:5555"
+	r.RemoteAddr = "127.0.0.1:5555"
 	w := httptest.NewRecorder()
 	s.Handler().ServeHTTP(w, r)
 
@@ -181,7 +184,7 @@ func TestSetupRefusesBeforeItHashes(t *testing.T) {
 	call := func() int {
 		r := httptest.NewRequest(http.MethodPost, "/api/setup", strings.NewReader(string(body)))
 		r.Header.Set("Content-Type", "application/json")
-		r.RemoteAddr = "192.168.1.40:5555"
+		r.RemoteAddr = "127.0.0.1:5555"
 		w := httptest.NewRecorder()
 		s.Handler().ServeHTTP(w, r)
 		return w.Code

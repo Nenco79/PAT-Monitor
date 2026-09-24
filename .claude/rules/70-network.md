@@ -187,8 +187,9 @@ written for a human reading the log — "Internet (Funnel)", "local network" —
 where there are five roads: it answered the same for the tailnet, the house and
 an address that would not parse. `originClass` is the code, `Public` is derived
 from it rather than stored alongside — a flag and a code saying the same thing
-are two lists, and that one is read by `setupFromOutside`, which decides whether
-a password may be set from the Internet. The guard is a test that spoils every
+are two lists, and that one is read by `apiQR`, which decides whether a code is
+engraved for the caller. The first-time setup asks the class directly, because
+it wants one road and not the complement of another. The guard is a test that spoils every
 fact at once and requires that no road which never left the house is handed an
 Internet cause.
 
@@ -415,13 +416,36 @@ reaches it: right at first start, where the only way to begin is for somebody to
 set one. But resetting it while the tunnel is on, for the duration of that
 window the public address means **"set the password and take the camera"** — the
 first passer-by takes it, and the owner discovers they are locked out of their
-own house. So `/setup` and `/api/setup` refuse requests arriving from the
-Internet, recognised with `requestOrigin` — that is, with `tunnel.SourceAddr`,
-not with a header, which the caller would write. At first start it costs
-nothing, because the Funnel cannot be on: `CanExposePublicly` refuses it until a
-password exists. **It is therefore a permanent rule and not a special case of
-the reset**, which is how a protection survives somebody touching it without
-knowing its history.
+own house. So `/setup` and `/api/setup` accept only a connection from this PC,
+recognised with `requestOrigin` — that is, with `tunnel.SourceAddr` first, not
+with a header, which the caller would write, so that the Funnel's visitor is
+never taken for loopback. At first start it costs nothing: the guided setup is
+opened on `localhost` by the program itself, and the Funnel cannot be on anyway,
+because `CanExposePublicly` refuses it until a password exists. **It is
+therefore a permanent rule and not a special case of the reset**, which is how
+a protection survives somebody touching it without knowing its history.
+
+**The first version refused only the Internet, and the house is not the owner
+either.** It left the window open to every device on the Wi-Fi — a guest's
+phone, a neighbour on a shared network — and the privacy policy, audited
+against the code, had to say "anyone on your home network can set it". The
+proof asked for is the one the tray's commands already rely on, physical
+presence at the machine, and on the wire that is loopback. What it cost: the
+tray panel used to keep the home address and its QR code with no password, as
+the way of finishing the setup from a phone, and now hands out none, because a
+code leading to a refusal is a false affordance.
+`TestTheFirstConfigurationIsNotDoneFromAnotherDeviceAtHome` failed with the old
+check put back.
+
+**And "this PC" is not only loopback.** With `listen_addr` bound to one
+interface there is no loopback listener: the tray opens that interface's
+address, Windows sends the request from it, and a check that asked only for
+loopback refused the one machine the setup exists for. A review caught it before
+it shipped. A connection whose source equals the address it arrived on
+(`http.LocalAddrContextKey`) is this PC too, and it cannot be produced from
+another device, because a TCP handshake from the PC's own address completes only
+on the PC. `TestTheFirstConfigurationIsDoneAtThisPCOnItsOwnLANAddress` failed
+with the loopback-only check put back.
 
 **And the browser of the person who owns the monitor will carry a submission
 into that window on anybody's behalf.** The refusal above asks *where the

@@ -38,7 +38,7 @@
   "err.remote-unavailable": "Der Zugang von außerhalb ist in dieser Version nicht verfügbar.",
   "err.save-failed": "Speichern war nicht möglich.",
   "err.session-failed": "Die Sitzung konnte nicht geöffnet werden.",
-  "err.setup-from-internet": "Die Erstkonfiguration wird aus dem Heimnetz gemacht, nicht aus dem Internet.",
+  "err.setup-not-this-pc": "Die Erstkonfiguration wird an dem PC gemacht, auf dem der Monitor läuft.",
   "err.too-many": {
     "one": "Zu viele Versuche. Probiere es in einer Sekunde noch einmal.",
     "other": "Zu viele Versuche. Probiere es in {n} Sekunden noch einmal."

@@ -1687,13 +1687,16 @@ func trayStatus(s server.Status, cfg config.Config, startedAt time.Time, dict *i
 	// remedy is to open the page — which is precisely what the double click does.
 	case !cfg.HasPassword():
 		out.Phase = tray.PhaseCheck
-		// The click leads straight to choosing the password. **Only the
-		// click**: the home address stays the home address, because without a
-		// password the Funnel does not come on and that QR code is the only way
-		// of finishing the setup from a phone. From there `/` redirects to
-		// `/setup`, which from the home network is open — what gets refused are
-		// the requests arriving from the Internet.
+		// The click leads straight to choosing the password, here. **And the
+		// home address is not handed out**: the password can be set only at this
+		// PC (see setupNotFromThisPC), so the QR code would lead a phone to a
+		// refusal. It used to be kept on purpose, as the way of finishing the
+		// setup from a phone; that road is closed, and a code that invites a
+		// gesture which cannot succeed is the false affordance this panel
+		// already refuses for `localhost`. The panel knows how to draw an empty
+		// one: no line and no code.
 		out.OpenURL = localURL(cfg.ListenAddr, "/setup")
+		out.HomeURL = ""
 		out.Fault = tray.FaultNoPassword
 		out.Note = tray.NoteNoPassword
 

@@ -244,7 +244,8 @@ func TestTheAddressHandedToOtherDevicesIsNotLocalhost(t *testing.T) {
 
 		out := trayStatus(s, cfg, time.Now(), trayDict(t), update.State{})
 
-		if out.HomeURL != home {
+		// With no password none is handed out at all: see below.
+		if cfg.HasPassword() && out.HomeURL != home {
 			t.Errorf("%s: the home address is %q instead of %q: it was recomputed "+
 				"instead of being taken from the status", name, out.HomeURL, home)
 		}
@@ -261,12 +262,19 @@ func TestTheAddressHandedToOtherDevicesIsNotLocalhost(t *testing.T) {
 		}
 	}
 
-	// With no password the click leads to choosing one, and the home address
-	// stays the home address: without the Funnel that code is the only way of
-	// finishing the setup from a phone.
-	out := trayStatus(healthyStatus(), config.Default(), time.Now(), trayDict(t), update.State{})
+	// With no password the click leads to choosing one, here, and the home
+	// address is not handed out: the password is set only at this PC, so a QR
+	// code would lead a phone to a refusal. The defect was put back (the line
+	// clearing it removed) and this test failed with it.
+	s := healthyStatus()
+	s.LocalURL = home
+	out := trayStatus(s, config.Default(), time.Now(), trayDict(t), update.State{})
 	if !strings.HasSuffix(out.OpenURL, "/setup") {
 		t.Errorf("with no password the click opens %q instead of the page that asks for one", out.OpenURL)
+	}
+	if out.HomeURL != "" {
+		t.Errorf("with no password the panel hands out %q: the setup is refused "+
+			"from any device but this PC", out.HomeURL)
 	}
 }
 

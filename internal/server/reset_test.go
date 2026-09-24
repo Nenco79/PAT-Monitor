@@ -1,9 +1,11 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/netip"
@@ -29,19 +31,24 @@ func serverWithoutPassword(t *testing.T) *Server {
 	return s
 }
 
-func setupReq(t *testing.T, s *Server, throughFunnel bool) *httptest.ResponseRecorder {
+// setupReq asks for the first configuration from remoteAddr, or through the
+// funnel when remoteAddr is empty.
+func setupReq(t *testing.T, s *Server, remoteAddr string) *httptest.ResponseRecorder {
 	t.Helper()
 	body, _ := json.Marshal(map[string]string{"password": "a-new-password", "confirm": "a-new-password"})
 	r := httptest.NewRequest(http.MethodPost, "/api/setup", strings.NewReader(string(body)))
 	r.Header.Set("Content-Type", "application/json")
-	if throughFunnel {
+	if remoteAddr == "" {
 		// This is how the funnel declares the real visitor: not with a header,
 		// which the caller would write, but in the context starting from the
-		// connection. See tunnel.WithSourceAddr.
+		// connection. See tunnel.WithSourceAddr. The socket's own address is
+		// left at loopback on purpose, which is what Tailscale's local
+		// connection looks like: the visitor must still be refused.
+		r.RemoteAddr = "127.0.0.1:5555"
 		r = r.WithContext(tunnel.WithSourceAddr(r.Context(),
 			netip.MustParseAddrPort("203.0.113.7:44321")))
 	} else {
-		r.RemoteAddr = "192.168.1.40:5555"
+		r.RemoteAddr = remoteAddr
 	}
 	w := httptest.NewRecorder()
 	s.Handler().ServeHTTP(w, r)
@@ -57,7 +64,7 @@ func setupReq(t *testing.T, s *Server, throughFunnel bool) *httptest.ResponseRec
 func TestTheFirstConfigurationIsNotDoneFromTheInternet(t *testing.T) {
 	s := serverWithoutPassword(t)
 
-	w := setupReq(t, s, true)
+	w := setupReq(t, s, "")
 	if w.Code != http.StatusForbidden {
 		t.Fatalf("first configuration accepted from the Internet: %d %s", w.Code, w.Body.String())
 	}
@@ -66,14 +73,68 @@ func TestTheFirstConfigurationIsNotDoneFromTheInternet(t *testing.T) {
 	}
 }
 
-// From the home network, though, it has to work, otherwise the first start
-// never starts.
-func TestTheFirstConfigurationIsDoneFromHome(t *testing.T) {
+// **Nor from another device on the home network.** The home network is not the
+// owner: a guest's phone on the Wi-Fi would otherwise choose the password. The
+// defect was put back (the check reverted to refusing only the Internet) and
+// this test failed with it.
+func TestTheFirstConfigurationIsNotDoneFromAnotherDeviceAtHome(t *testing.T) {
 	s := serverWithoutPassword(t)
 
-	w := setupReq(t, s, false)
+	w := setupReq(t, s, "192.168.1.40:5555")
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("first configuration accepted from the local network: %d %s", w.Code, w.Body.String())
+	}
+	if s.conf().HasPassword() {
+		t.Fatal("a device on the home network set the password")
+	}
+}
+
+// arrivingOn gives the request the socket address the server saw it arrive on,
+// as net/http does for a real connection.
+func arrivingOn(r *http.Request, local string) *http.Request {
+	return r.WithContext(context.WithValue(r.Context(), http.LocalAddrContextKey,
+		net.TCPAddrFromAddrPort(netip.MustParseAddrPort(local))))
+}
+
+// **A listener bound to one interface has no loopback**, and the setup must
+// still work from this PC: the tray opens that interface's address and Windows
+// sends the request from it. A request from the address it arrived on is this
+// PC; one from another address on the same network is not. The defect was put
+// back (only loopback counted as this PC) and this test failed with it.
+func TestTheFirstConfigurationIsDoneAtThisPCOnItsOwnLANAddress(t *testing.T) {
+	cases := []struct {
+		name, remote string
+		allowed      bool
+	}{
+		{"this PC, by its own address", "192.168.1.10:51000", true},
+		{"another device on the same network", "192.168.1.40:51000", false},
+	}
+	for _, c := range cases {
+		s := serverWithoutPassword(t)
+		body, _ := json.Marshal(map[string]string{"password": "a-new-password", "confirm": "a-new-password"})
+		r := httptest.NewRequest(http.MethodPost, "/api/setup", strings.NewReader(string(body)))
+		r.Header.Set("Content-Type", "application/json")
+		r.RemoteAddr = c.remote
+		r = arrivingOn(r, "192.168.1.10:8080")
+		w := httptest.NewRecorder()
+		s.Handler().ServeHTTP(w, r)
+		if got := w.Code == http.StatusOK; got != c.allowed {
+			t.Errorf("%s: answered %d, allowed=%v wanted", c.name, w.Code, c.allowed)
+		}
+		if s.conf().HasPassword() != c.allowed {
+			t.Errorf("%s: password set=%v, wanted %v", c.name, s.conf().HasPassword(), c.allowed)
+		}
+	}
+}
+
+// From the PC itself, though, it has to work, otherwise the first start never
+// starts: the guided setup is opened here, on localhost.
+func TestTheFirstConfigurationIsDoneAtThisPC(t *testing.T) {
+	s := serverWithoutPassword(t)
+
+	w := setupReq(t, s, "127.0.0.1:5555")
 	if w.Code != http.StatusOK {
-		t.Fatalf("first configuration refused from the local network: %d %s", w.Code, w.Body.String())
+		t.Fatalf("first configuration refused from this PC: %d %s", w.Code, w.Body.String())
 	}
 	if !s.conf().HasPassword() {
 		t.Fatal("the password was not set")

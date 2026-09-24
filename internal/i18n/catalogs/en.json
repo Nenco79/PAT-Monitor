@@ -38,7 +38,7 @@
   "err.remote-unavailable": "Access from outside is not available in this build.",
   "err.save-failed": "Could not save.",
   "err.session-failed": "Could not open the session.",
-  "err.setup-from-internet": "First-time setup is done from the home network, not from the Internet.",
+  "err.setup-not-this-pc": "First-time setup is done on the PC the monitor runs on.",
   "err.too-many": {
     "one": "Too many attempts. Try again in a second.",
     "other": "Too many attempts. Try again in {n} seconds."

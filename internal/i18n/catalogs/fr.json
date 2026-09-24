@@ -38,7 +38,7 @@
   "err.remote-unavailable": "L’accès depuis l’extérieur n’est pas disponible dans cette version.",
   "err.save-failed": "Impossible de sauvegarder.",
   "err.session-failed": "Impossible d’ouvrir la session.",
-  "err.setup-from-internet": "La première configuration se fait depuis le réseau de la maison, pas depuis Internet.",
+  "err.setup-not-this-pc": "La première configuration se fait sur le PC où tourne le moniteur.",
   "err.too-many": {
     "one": "Trop de tentatives. Réessaie dans une seconde.",
     "other": "Trop de tentatives. Réessaie dans {n} secondes."

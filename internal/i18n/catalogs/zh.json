@@ -37,7 +37,7 @@
   "err.remote-unavailable": "这个版本里没有外网访问。",
   "err.save-failed": "保存失败。",
   "err.session-failed": "无法打开会话。",
-  "err.setup-from-internet": "首次配置在家里的网络上做，不从互联网上做。",
+  "err.setup-not-this-pc": "首次配置要在运行监视器的电脑上完成。",
   "err.too-many": {
     "other": "尝试次数太多。{n} 秒后再试。"
   },

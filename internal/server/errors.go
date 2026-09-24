@@ -56,9 +56,10 @@ const (
 	// `retryAfter`, because a duration written inside the sentence belongs to
 	// one language as much as the words do.
 	ErrTooMany errCode = "too-many"
-	// The first configuration was asked for from the Internet. See
-	// "administrative commands are given from in front of the machine".
-	ErrSetupFromInternet errCode = "setup-from-internet"
+	// The first configuration was asked for from somewhere other than the PC
+	// the monitor runs on. See "administrative commands are given from in front
+	// of the machine".
+	ErrSetupNotThisPC errCode = "setup-not-this-pc"
 	// The credentials did not arrive from one of our own pages. It is the
 	// answer to a form submitted by somebody else's site — see
 	// "credentials are taken only from our own pages".
@@ -103,7 +104,7 @@ func AllErrCodes() []string {
 		string(ErrSessionFailed), string(ErrMismatch), string(ErrAlreadySet),
 		string(ErrPasswordTooShort), string(ErrNoPasswordForFunnel),
 		string(ErrTooMany),
-		string(ErrSetupFromInternet), string(ErrCrossSite),
+		string(ErrSetupNotThisPC), string(ErrCrossSite),
 		string(ErrNoSuchClip), string(ErrClipBusy), string(ErrClipUnreadable),
 		string(ErrNoSuchMic), string(ErrMicListFailed),
 		string(ErrNoSuchCam), string(ErrCamListFailed),

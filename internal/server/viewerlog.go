@@ -64,8 +64,7 @@ type origin struct {
 // **It is derived and not stored**, because it was stored beside Class for the
 // length of one draft and that is one list too many: a flag and a code saying
 // the same thing diverge at the first road added, and this one is read by
-// setupFromOutside, which decides whether a password can be set from the
-// Internet.
+// apiQR, which decides whether a code is engraved for the caller.
 func (o origin) Public() bool { return o.Class == originInternet }
 
 // requestOrigin classifies where a request came from.
@@ -88,7 +87,7 @@ func requestOrigin(r *http.Request) origin {
 		return origin{Kind: "unknown origin", Addr: host, Class: originUnknown}
 	}
 	switch {
-	case addr.IsLoopback():
+	case addr.IsLoopback(), sameAsLocal(r, addr):
 		return origin{Kind: "this PC", Addr: host, Class: originThisPC}
 	case tailnetRange.Contains(addr):
 		// 100.64.0.0/10 is the space Tailscale assigns to tailnet nodes:
@@ -102,6 +101,32 @@ func requestOrigin(r *http.Request) origin {
 }
 
 var tailnetRange = netip.MustParsePrefix("100.64.0.0/10")
+
+// sameAsLocal says whether the connection came from the address it arrived on,
+// which is what a browser on this PC produces when it opens one of the PC's own
+// addresses rather than localhost.
+//
+// **Loopback alone was not "this PC", and the first-time setup found out.** With
+// `listen_addr` bound to one interface there is no loopback listener at all: the
+// tray opens that interface's address, Windows sends the request from it, and
+// the setup, which is accepted only from this PC, refused the one machine it
+// exists for, at the first start and after every reset. The same happened to
+// whoever, sitting here, opened the page from a bookmark to the LAN address.
+//
+// It cannot be claimed from another device: a TCP connection whose source is
+// this PC's own address completes only from this PC, and the value comes from
+// the server's socket, not from anything the caller writes.
+func sameAsLocal(r *http.Request, remote netip.Addr) bool {
+	local, ok := r.Context().Value(http.LocalAddrContextKey).(net.Addr)
+	if !ok {
+		return false
+	}
+	ap, err := netip.ParseAddrPort(local.String())
+	if err != nil {
+		return false
+	}
+	return ap.Addr().Unmap() == remote.Unmap()
+}
 
 // watchSession follows a session and writes its report.
 //
