@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PAT Monitor Privacy Policy</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --ink: #1b1a17;
+    --dim: #5f5a51;
+    --bg: #faf8f4;
+    --rule: #e2ddd3;
+    --link: #2f6b4f;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ink: #e8e3d9;
+      --dim: #a49d90;
+      --bg: #171614;
+      --rule: #302d28;
+      --link: #7fb99a;
+    }
+  }
+  body {
+    margin: 0 auto; padding: 3rem 1.25rem 5rem; max-width: 42rem;
+    background: var(--bg); color: var(--ink);
+    font: 16px/1.65 -apple-system, "Segoe UI", system-ui, sans-serif;
+  }
+  h1 { font-size: 1.65rem; line-height: 1.25; margin: 0 0 .35rem; }
+  h2 { font-size: 1.15rem; margin: 2.6rem 0 .6rem; }
+  h3 { font-size: 1rem; margin: 1.6rem 0 .4rem; }
+  p, li { margin: .7rem 0; }
+  ul { padding-left: 1.2rem; }
+  a { color: var(--link); }
+  code { font-family: ui-monospace, Consolas, monospace; font-size: .9em; }
+  .date { color: var(--dim); font-size: .9rem; margin: 0 0 2rem; }
+  .lead { font-size: 1.05rem; }
+  hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
+  footer { color: var(--dim); font-size: .9rem; }
+</style>
+</head>
+<body>
+
+<h1>PAT Monitor Privacy Policy</h1>
+<p class="date">Last updated: 25 September 2026</p>
+
+<p class="lead">PAT Monitor is a pet and baby monitor that runs on your own
+Windows PC. The developer runs no service for it, and the program sends nothing
+to the developer. Video, audio and recordings are sent to the devices you sign
+in from. The live stream is always encrypted. At home, the pages and the recordings travel over your own network
+without encryption. From outside the house, everything travels over HTTPS.</p>
+
+<p>This page describes what the program does with information, as the Microsoft
+Store requires. It covers every version; where the Store version differs, it
+says so.</p>
+
+<h2>In short</h2>
+
+<ul>
+  <li>Nothing the program captures is sent to the developer.</li>
+  <li>The program has no advertising, analytics, crash reporting or tracking of
+      its own. If you turn on access from outside, the Tailscale software built
+      into it sends Tailscale its own diagnostic logs, as described below.</li>
+  <li>Crying, barking and motion are recognised on your PC. Nothing is sent
+      away for analysis.</li>
+  <li>The program saves recordings as files on your PC and makes no other
+      copy.</li>
+  <li>Outside parties: public STUN servers; Tailscale, only if you turn on access
+      from outside; GitHub, for the update check outside the Store; Microsoft, if
+      you installed from the Store.</li>
+</ul>
+
+<h2>What the program handles</h2>
+
+<h3>Video and audio</h3>
+
+<p>While running, the program captures the chosen camera and microphone, or the
+default ones if none is chosen. It streams them to signed-in browsers over
+WebRTC, encrypted end to end. The stream goes
+only to those browsers and to the recording feature described below.</p>
+
+<p>So that a clip can include the moments before it starts, the last few seconds
+of video and audio are kept in memory and constantly overwritten. They reach the
+disk only if a clip is made, and are gone when the program stops.</p>
+
+<p>Windows decides whether the program may use the camera and the microphone
+(Settings &gt; Privacy &amp; security). If you withdraw a permission, the program
+loses that source and says so.</p>
+
+<h3>Talk-back</h3>
+
+<p>When you turn on talk-back from the page, your browser uses your device's
+microphone, with that browser's permission, and your voice plays from the PC's
+speaker over the same encrypted connection. The program does not save the voice
+it receives. While you talk, the room's audio is not sent to viewers, but the
+PC's microphone keeps recording the room, so your voice from the speaker can end
+up in a clip made at that time.</p>
+
+<h3>Detection</h3>
+
+<p>Sound and motion detection run inside the program, on your PC, with a model
+built into the executable. The detectors send nothing over the network. Their
+alerts appear on the monitor's pages and in the log.</p>
+
+<h3>Recordings</h3>
+
+<p>A clip is made when an event is detected, if that detection is on, or when you
+press the record button. Clips are MP4 files, with audio when a microphone is
+capturing, saved in the <code>PAT Monitor</code> folder in your Videos folder. If
+that folder is not available, they are saved in a <code>video</code> folder next
+to the settings. The program uploads them nowhere. The page plays them, and can
+download them, on the device you sign in from.</p>
+
+<p>Deleting a clip from the page removes the file permanently. Clips are also
+deleted automatically when they are older than the retention period or exceed
+the size limit (by default 14 days or 1000 MB). Clips marked as kept are never
+deleted automatically, and clips you record by hand start out marked as
+kept.</p>
+
+<p>If your Videos folder is synchronised to OneDrive or to a backup, your clips
+are too, and deleting one here may leave a copy there. That synchronisation is
+not done by PAT Monitor.</p>
+
+<h3>Settings</h3>
+
+<p>The settings are in <code>%APPDATA%\PAT Monitor\config.yaml</code>. They hold
+your configuration, including camera, microphone and speaker as Windows device
+identifiers, the name used for the public address, and the rest of your
+feature choices. The monitor password is stored only as an argon2id hash. A
+Tailscale authentication key is stored there only if you put it there
+yourself, as plain text.</p>
+
+<p>If you turn on access from outside, Tailscale's own data for this PC (its
+keys, its certificate and its log files) is kept in the <code>tsnet</code> folder
+next to the settings.</p>
+
+<p>Your browser keeps a sign-in cookie and your language choice.</p>
+
+<h3>Log</h3>
+
+<p>The program writes a plain text log in the <code>log</code> folder next to the
+settings, in rotating files. It records what the monitor did, including
+viewer connections and sign-ins, with the network address and device type of
+each. With access from
+outside on, it also records the public address. Folder paths in it include your
+Windows user name. It contains no video or audio. You can read it, and delete it
+after quitting the program.</p>
+
+<h2>Connections, and what the other end sees</h2>
+
+<h3>STUN servers</h3>
+
+<p>Each time a viewer connects, the PC and the browser ask a public STUN server
+for their public address. By default these are run by Google and by Cloudflare.
+The server receives the public IP address and port of whoever asks. The request
+from the PC carries nothing else; what your browser sends is up to your browser.
+Those companies' own privacy policies apply. You can replace the servers in the
+<code>stun_servers</code> setting. An empty list restores the defaults.</p>
+
+<h3>Tailscale, only if you turn on access from outside</h3>
+
+<p>Access from outside the house is off until you turn it on, and it does not
+start while no password is set. It uses your own Tailscale account. Tailscale
+provides the public address, obtains its HTTPS certificate and carries visits to
+that address to your PC. Those visits, meaning the pages, the recordings and the
+setup of each video call, cross Tailscale's servers encrypted and are decrypted
+only on your PC and on your device (see
+<a href="https://tailscale.com/kb/1223/funnel">how Funnel works</a>). The live video and audio do not use the
+public address. If the Tailscale app is also installed on your PC and your
+phone, the live stream can travel over your Tailscale network, and Tailscale may
+relay it, still encrypted.</p>
+
+<p>While access from outside is on, the Tailscale software built into PAT Monitor
+sends its own diagnostic logs and usage counters to Tailscale, as Tailscale's
+app does. They describe the connection, including network addresses and
+attempts to reach other devices, not the video, the audio or the pages (see
+<a href="https://tailscale.com/kb/1011/log-mesh-traffic">Tailscale's logging
+overview</a>). PAT Monitor adds nothing about you or your camera to them.
+<a href="https://tailscale.com/privacy-policy">Tailscale's privacy policy</a>
+covers all of this.</p>
+
+<p>To turn access from outside off, set <code>funnel_enabled</code> to
+<code>false</code> in the settings and restart the program. The PC stays listed
+in your Tailscale account until you remove it there.</p>
+
+<h3>Update check</h3>
+
+<p>The Store version has none. The version distributed outside the Store asks
+GitHub whether a newer release exists, a few minutes after it starts and then
+once a day while it runs. The request carries your public IP address and the
+version number, and nothing about your configuration, your network or who is
+watching. Only the description of the latest release is fetched; no program file
+is downloaded. The <code>update_check</code> setting turns it off.</p>
+
+<h2>Microsoft Store</h2>
+
+<p>Installation and updates from the Store are handled by Microsoft under the
+<a href="https://privacy.microsoft.com/privacystatement">Microsoft Privacy
+Statement</a>. The developer receives aggregate reports from Microsoft
+(installations, ratings and reviews, crash counts) and no contact details or
+identity. A review you write is public, under the display name you chose. The
+program itself sends nothing to Microsoft.</p>
+
+<h2>Children</h2>
+
+<p>A baby monitor is pointed at a child. The program sends the developer nothing
+about a child or anyone else. PAT Monitor asks for no name, e-mail address or
+date of birth; signing in takes only the password you chose. The only account
+involved is your own Tailscale account, and only if you turn on access from
+outside.</p>
+
+<h2>What you control</h2>
+
+<ul>
+  <li><strong>Recordings</strong>: delete them from the page or from
+      Explorer, and mark or unmark them as kept on the page.</li>
+  <li><strong>Retention</strong>: change <code>clips_max_days</code> and
+      <code>clips_max_mb</code> in the settings and restart; 0 means no
+      limit.</li>
+  <li><strong>Detections</strong>: each can be turned off on the page, and then
+      makes no clips.</li>
+  <li><strong>Camera and microphone</strong>: Windows can withhold either, at any
+      time.</li>
+  <li><strong>Access from outside</strong>: off until you turn it on; turned off
+      in the settings, as described above.</li>
+  <li><strong>Password</strong>: can be changed at any time, which ends open
+      sessions.</li>
+  <li><strong>Everything else</strong>: outside the Store, deleting the program
+      file and the <code>%APPDATA%\PAT Monitor</code> folder removes the
+      settings, the log, Tailscale's data and any clips saved there. Clips in
+      your Videos folder stay until you delete them.</li>
+</ul>
+
+<h2>Signing in</h2>
+
+<p>The password can be set only on the PC itself. After that, every page
+requires signing in.
+Failed sign-ins are slowed down. A session ends after 7 days without use, when
+the program stops, or when the password changes. At home, the password travels
+over your own network without encryption; from outside, over HTTPS.</p>
+
+<h2>Recording other people</h2>
+
+<p>Where the camera points, what is recorded and who can reach it are your
+choices. Recording in a workplace, a business or premises other people visit,
+or with a camera that covers a street, a shared entrance or a neighbour's
+property, can carry obligations under data protection law.</p>
+
+<p>Sound needs particular care. A microphone picks up conversations the camera
+does not see, and in some places recording people's voices (for example a babysitter, a
+carer or a guest) requires the consent of everyone recorded, a stricter rule
+than for video. Tell the people who come into your home that a monitor is on. For
+the picture without the sound, withhold the microphone in Windows (Settings
+&gt; Privacy &amp; security).</p>
+
+<h2>This page</h2>
+
+<p>This page is static: no cookies, no scripts, nothing loaded from elsewhere.
+It is hosted on GitHub Pages, whose servers receive the request for it.</p>
+
+<h2>Changes</h2>
+
+<p>This page changes when the program's handling of information changes, and the
+date at the top shows the last change. A change applies from its date. Every
+version is kept as a dated revision in the project's public repository.</p>
+
+<ul>
+  <li><strong>25 September 2026</strong>: first published.</li>
+</ul>
+
+<h2>Contact</h2>
+
+<p>Questions about this page:
+<a href="mailto:patmonitor@outlook.com">patmonitor@outlook.com</a>.</p>
+
+<hr>
+
+<footer>
+<p>PAT Monitor is free software under the
+<a href="https://github.com/Nenco79/PAT-Monitor/blob/main/LICENSE">Apache License
+2.0</a>, whose terms, including those on warranty and liability, govern the
+software.</p>
+</footer>
+
+</body>
+</html>
