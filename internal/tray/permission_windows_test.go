@@ -151,10 +151,14 @@ func TestThePermissionIsAnsweredUnderTheLineThatStatesIt(t *testing.T) {
 	// changed the rule.
 	//
 	// So both halves are asserted, separately: the command is first, because
-	// that is what puts it under the sentence it answers; and with a step
-	// waiting the focus is on the step, because the panel has one mark and it
-	// belongs to what the monitor cannot get past on its own.
-	t.Run("it is the first command, and the step takes the focus", func(t *testing.T) {
+	// that is what puts it under the sentence it answers; and the focus opens
+	// on it even with a step waiting, because the two are stacked at the top
+	// and a selection that started on the second read as skipping the first.
+	// The step keeps its weight; the mark is the selection's.
+	//
+	// **Verified to catch**: with focusIndex preferring the pill again, this
+	// fails naming the step.
+	t.Run("it is the first command, and the focus opens on it", func(t *testing.T) {
 		f := &flyout{t: tr, dpi: 96}
 		f.compose(Status{Fault: FaultMicDenied, Todo: "x", TodoAction: "approve",
 			TodoURL: "https://example/x"})
@@ -166,9 +170,21 @@ func TestThePermissionIsAnsweredUnderTheLineThatStatesIt(t *testing.T) {
 		if i < 0 || i >= len(f.cmds) {
 			t.Fatalf("no command takes the focus: %d", i)
 		}
-		if f.cmds[i].style != stylePill {
-			t.Errorf("the focus opens on %q, which is not the step: the one mark "+
-				"the panel has would be sitting on something else", f.cmds[i].label)
+		if i != find(f, word) {
+			t.Errorf("the focus opens on %q and not on the topmost command, %q",
+				f.cmds[i].label, word)
+		}
+	})
+
+	// With a step and nothing refused, the step is the only lead, so it is the
+	// topmost and the focus is there: the half the old preference covered.
+	t.Run("with only a step, the focus is on the step", func(t *testing.T) {
+		f := &flyout{t: tr, dpi: 96}
+		f.compose(Status{Todo: "x", TodoAction: "approve", TodoURL: "https://example/x",
+			HomeURL: "http://192.168.1.42:8080/"})
+		i := f.focusIndex()
+		if i < 0 || f.cmds[i].style != stylePill {
+			t.Errorf("the focus opens at %d and not on the step", i)
 		}
 	})
 
@@ -221,4 +237,66 @@ func TestThePermissionIsAnsweredUnderTheLineThatStatesIt(t *testing.T) {
 			t.Errorf("the layout keeps a row at %d for a command that is not there", p.leadY)
 		}
 	})
+}
+
+// **A permission refused and a step Tailscale is waiting on answer two
+// different sentences, and each now gets its own row above the code.**
+//
+// Before this, the tunnel's command sat in the column at the bottom, four
+// rows from *"approve this machine …"*, with the QR code and the address in
+// between — the exact defect the settings command was pulled out of the
+// column for, found again by looking at a screenshot with both notices on
+// screen at once.
+//
+// **Verified to catch**: with `lead` removed from the tunnel command, this
+// fails saying it is not above the code.
+func TestTheTunnelStepIsAnsweredUnderItsOwnLineToo(t *testing.T) {
+	tr := &Tray{dictionary: i18n.Open([]string{"en"})}
+	settingsWord := tr.t("tray.menu.settings")
+	todoWord := tr.t(todoCommand("approve"))
+
+	find := func(f *flyout, label string) int {
+		for i, c := range f.cmds {
+			if c.label == label {
+				return i
+			}
+		}
+		return -1
+	}
+
+	f := &flyout{t: tr, dpi: 96, qrBm: 1, qrPx: 120}
+	f.compose(Status{
+		Fault: FaultMicDenied, Todo: "approve this machine",
+		TodoAction: "approve", TodoURL: "https://login.example/admin",
+	})
+
+	si, ti := find(f, settingsWord), find(f, todoWord)
+	if si < 0 || ti < 0 {
+		t.Fatalf("both commands should be offered: settings=%d todo=%d", si, ti)
+	}
+
+	leads := f.leadIndices()
+	if len(leads) != 2 || leads[0] != si || leads[1] != ti {
+		t.Fatalf("leadIndices = %v, want [%d %d]: both stacked, settings first "+
+			"because it is composed first", leads, si, ti)
+	}
+
+	p := f.layout()
+	if len(p.leadYs) != 2 {
+		t.Fatalf("layout kept %d lead rows, want 2", len(p.leadYs))
+	}
+	if !(p.linesY < p.leadYs[0] && p.leadYs[0] < p.leadYs[1] && p.leadYs[1] < p.qrY) {
+		t.Errorf("lines at %d, settings at %d, todo at %d, code at %d: both have to "+
+			"sit between the sentences and the code, in order",
+			p.linesY, p.leadYs[0], p.leadYs[1], p.qrY)
+	}
+
+	// And neither is in the column as well, which would draw it twice.
+	for _, row := range f.rows() {
+		for _, k := range row {
+			if k == si || k == ti {
+				t.Error("a lead command is in the column too: it would be laid out twice")
+			}
+		}
+	}
 }

@@ -142,8 +142,11 @@ const (
 	//
 	// **It paints nothing of its own, and what marks it is the focus.**
 	// `paintButton` has no branch for it: a main command that is not selected
-	// is drawn exactly like its neighbours, and `focusIndex` is what makes sure
-	// it is selected. So this style says *prefer me*, not *fill me*.
+	// is drawn exactly like its neighbours, weight aside. `focusIndex` opens on
+	// the topmost command and not on this one, so with a refused permission
+	// stacked above the step the mark sits on the permission's command and this
+	// one is told apart only by its 600. So this style says *heavier*, not
+	// *fill me* and no longer *prefer me*.
 	//
 	// It used to wear a solid accent, under a comment here calling it "the
 	// phase's colour" while the code took `pal.accent`, which the Windows theme
@@ -198,14 +201,20 @@ type flyCmd struct {
 	// lead says this command is drawn between the status lines and the QR code
 	// instead of in the column at the bottom.
 	//
-	// **It is for a command that answers the line above it**, and there is one:
-	// the Windows settings page for a permission the notice has just declared
-	// off. Down in the column it would be four rows away from the sentence it
-	// belongs to, with the QR code and the address in between — measured by
-	// looking, which is the only instrument for this.
+	// **It is for a command that answers a line above it**: the Windows
+	// settings page for a permission the notice has just declared off, and
+	// the tunnel's own step when one is waiting. Down in the column either
+	// would sit rows away from the sentence it belongs to, with the QR code
+	// and the address in between — measured by looking, which is the only
+	// instrument for this.
 	//
-	// It is deliberately not a general slot: `layout` gives it a single row,
-	// because a second one would be a second main answer and the panel has one.
+	// **There can be more than one, stacked in composition order.** This is
+	// not a general-purpose slot for anything that wants to sit up there: it
+	// exists because these two commands each answer their own sentence a few
+	// lines up, and `leadIndices` is what a third one would have to earn.
+	// Stacking their position does not stack their mark: the accent belongs to
+	// the focus alone, and the focus opens on the topmost of them (see
+	// focusIndex).
 	lead bool
 	// stays says the panel does not close when this command runs.
 	//
@@ -410,11 +419,10 @@ func (f *flyout) compose(st Status) {
 	// about marks: the selected command already wears the accent, so anything
 	// added on top of it would be two marks for one thing.
 	//
-	// **And it is no longer the one the focus falls on.** It is the `lead`,
-	// drawn between the lines and the code; with a step also waiting the focus
-	// goes to the step, because the mark follows the focus, the panel has one,
-	// and the step is what the monitor cannot get past on its own. With nothing
-	// waiting this is the first command and the focus is here. See focusIndex.
+	// **And it is the one the focus falls on**, because it is the topmost: it
+	// is composed first, so it is the first `lead`, drawn between the lines and
+	// the code, above the tunnel's step when one is also waiting. See
+	// focusIndex.
 	//
 	// It is the one case where this panel is the **only** place the thing can be
 	// done: the switch is in this machine's Settings, so whoever watches from a
@@ -432,11 +440,17 @@ func (f *flyout) compose(st Status) {
 	// the panel was opened, and it is the only one that deserves the filled
 	// pill. If nothing is missing the panel has no main action, and then none is
 	// coloured.
+	//
+	// **And it answers the lines above it, so it is drawn under them**, the
+	// same rule the settings command follows and for the same reason: down in
+	// the column, after the code, it used to read as belonging to the
+	// address rather than to Tailscale's own sentence a few lines up.
 	if key := todoCommand(st.TodoAction); key != "" && st.TodoURL != "" {
 		url := st.TodoURL
 		f.cmds = append(f.cmds, flyCmd{
 			label: t.t(key),
 			style: stylePill,
+			lead:  true,
 			do:    func() { t.open(url) },
 		})
 	}
@@ -845,22 +859,32 @@ func (f *flyout) rebuild() {
 	}
 }
 
-// focusIndex is the command the panel opens with selected, or -1.
+// focusIndex is the command the panel opens with selected, or -1: the topmost
+// one on screen that is not the address.
 //
 // **It is a function because the mark follows the focus**, so which command
 // this picks *is* which command the panel marks — and a rule that decides the
 // loudest thing on the screen should be answerable without a window. The
 // drawing needs handles; this needs only the composed commands.
+//
+// **It walks the panel in the order it is drawn**, the leads above the code
+// and then the column, rather than preferring the main command wherever it
+// sits. With a permission refused and a step waiting, the two leads are
+// stacked at the top, and a selection that opened on the second of them read
+// as skipping the first: the eye starts at the top, and so does Tab. The main
+// command still has its weight, 600 against 500, and that is what separates
+// it when the mark is on the button above it.
 func (f *flyout) focusIndex() int {
-	for _, want := range []flyStyle{stylePill, styleGhost} {
-		for i, c := range f.cmds {
-			if c.style == styleText {
-				continue
-			}
-			if want == stylePill && c.style != stylePill {
-				continue
-			}
+	for _, i := range f.leadIndices() {
+		if f.cmds[i].style != styleText {
 			return i
+		}
+	}
+	for _, row := range f.rows() {
+		for _, i := range row {
+			if f.cmds[i].style != styleText {
+				return i
+			}
 		}
 	}
 	return -1
@@ -869,20 +893,15 @@ func (f *flyout) focusIndex() int {
 // initialFocus puts the focus where focusIndex says, and falls back to the
 // first control there is when that command has no button.
 func (f *flyout) initialFocus() {
-	// **The focus starts on the main command, and where there is none, on the
-	// first.** The address is not a command: copying is done by pressing it, so
-	// it is the panel's first control, and opening from the keyboard and
-	// pressing Enter would copy an address instead of opening the monitor. In
-	// the confirmation question the rule changes nothing, because there the
-	// first one is "No" and there is no main command to prefer.
+	// **The focus starts on the topmost command.** The address is not a
+	// command: copying is done by pressing it, so it is skipped, since opening
+	// from the keyboard and pressing Enter would copy an address instead of
+	// opening the monitor. In the confirmation question the first one is "No".
 	//
-	// **The preference is what makes one mark enough.** The panel says *this
-	// one* in a single way — the accent of the selected command — so the main
-	// action has to be the selected one, or the loudest thing on the panel
-	// would be sitting on something that is not the main action. It used to
-	// paint itself as well, and then a panel with both a refused permission and
-	// a step waiting carried two marked buttons, which is the thing this rule
-	// exists to prevent.
+	// **One mark is still enough, because only the focus paints it.** The main
+	// command used to paint itself as well, and then a panel with both a
+	// refused permission and a step waiting carried two marked buttons. Now the
+	// accent is the selection's alone, wherever the selection starts.
 	if i := f.focusIndex(); i >= 0 && i < len(f.buttons) && f.buttons[i] != 0 {
 		procSetFocus.Call(uintptr(f.buttons[i]))
 		return
@@ -962,9 +981,14 @@ func (f *flyout) cmdHeight(c flyCmd) int32 {
 // monitor to a phone — and sits with the others.
 type layout struct {
 	linesY, bodyY, qrY, cmdY, total int32
-	// leadY is where the lead command goes, and -1 when there is none. It is a
-	// sentinel and not a zero because zero is a legal y inside this panel.
+	// leadY is where the first lead command goes, and -1 when there is none.
+	// It is a sentinel and not a zero because zero is a legal y inside this
+	// panel.
 	leadY int32
+	// leadYs holds the y of every lead command, in the same order as
+	// leadIndices. It is computed alongside leadY in the same pass, so the
+	// two cannot disagree the way a second, hand-kept list could.
+	leadYs []int32
 }
 
 func (f *flyout) layout() layout {
@@ -975,12 +999,29 @@ func (f *flyout) layout() layout {
 	for i := range f.lines {
 		y += f.lineHeight(i)
 	}
-	// **The lead command belongs to the line above it**, so it is the only
-	// thing that comes between the status and the code. See flyCmd.lead.
+	// **A lead command belongs to the line above it**, so it is the only kind
+	// of thing that comes between the status and the code. See flyCmd.lead.
+	//
+	// **There can be more than one.** A permission refused and a step
+	// Tailscale is waiting on answer two different sentences, and stacking
+	// both here keeps each under the block of lines that names it, instead of
+	// splitting one of them off into the column below the code, where it
+	// reads as belonging to the address. They are drawn in the order they
+	// were composed, which is the order settingsPage and the tunnel step are
+	// appended in compose.
+	//
+	// **The gap is the block's before the first and the column's between
+	// them**: two stacked commands are a row of buttons to the eye, and the
+	// photograph showed them 10 apart against the 6 of every other pair.
 	p.leadY = -1
-	if i := f.leadIndex(); i >= 0 {
-		y += f.px(flyGap)
-		p.leadY = y
+	for _, i := range f.leadIndices() {
+		if p.leadY < 0 {
+			y += f.px(flyGap)
+			p.leadY = y
+		} else {
+			y += f.px(flyButtonGap)
+		}
+		p.leadYs = append(p.leadYs, y)
 		y += f.cmdHeight(f.cmds[i])
 	}
 	if f.body != "" && f.bodyH > 0 {
@@ -1030,19 +1071,31 @@ func (f *flyout) rows() [][]int {
 	return out
 }
 
-// leadIndex is the command drawn above the code, or -1.
+// leadIndices are every command drawn above the code, in the order they were
+// composed.
 //
 // **It is derived from the commands and not kept beside them**, which is the
-// same rule `rows` follows: a second field saying which one leads is a second
+// same rule `rows` follows: a second field saying which ones lead is a second
 // list, and the day it disagrees the panel lays out a button nobody painted.
-// There is at most one, and the first wins — `layout` gives it one row.
-func (f *flyout) leadIndex() int {
+func (f *flyout) leadIndices() []int {
+	var out []int
 	for i, c := range f.cmds {
 		if c.lead {
-			return i
+			out = append(out, i)
 		}
 	}
-	return -1
+	return out
+}
+
+// leadIndex is the first command drawn above the code, or -1. Callers that
+// only care whether there is a lead at all, and which one comes first, use
+// this instead of leadIndices.
+func (f *flyout) leadIndex() int {
+	ix := f.leadIndices()
+	if len(ix) == 0 {
+		return -1
+	}
+	return ix[0]
 }
 
 // rowHeight is the height of the tallest command in the row.
@@ -1063,9 +1116,15 @@ func (f *flyout) measure() (w, h int32) {
 func (f *flyout) place(w int32) {
 	gap := f.px(flyButtonGap)
 	p := f.layout()
-	if i := f.leadIndex(); i >= 0 && p.leadY >= 0 && i < len(f.buttons) && f.buttons[i] != 0 {
+	// **Zipped with leadYs rather than recomputed**: the two came out of the
+	// same pass over the same commands in layout, so they cannot disagree the
+	// way two separately written loops could.
+	for k, i := range f.leadIndices() {
+		if k >= len(p.leadYs) || i >= len(f.buttons) || f.buttons[i] == 0 {
+			continue
+		}
 		span := f.rowSpans(w, 1)[0]
-		procSetWindowPos.Call(uintptr(f.buttons[i]), 0, uintptr(span[0]), uintptr(p.leadY),
+		procSetWindowPos.Call(uintptr(f.buttons[i]), 0, uintptr(span[0]), uintptr(p.leadYs[k]),
 			uintptr(span[1]), uintptr(f.cmdHeight(f.cmds[i])), swpNoZOrder|swpNoActivate)
 	}
 	y := p.cmdY

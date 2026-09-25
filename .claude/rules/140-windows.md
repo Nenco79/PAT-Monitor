@@ -761,9 +761,19 @@ goes to the main command when there is one. The main action is the selected one
 by construction, so there is one accent on the panel whatever state it is in,
 and it is never sitting on something that is not the main action.
 
-It costs the command answering the notice its mark in that one state. That is
-the right way round: the notice above it already names the device, and the step
-is the thing the monitor cannot get past on its own.
+**The second half of that rule has been reversed, and the first half held.**
+Once the step moved up beside the settings command (see *A notice gets the rows
+it needs*, below), the two sat stacked at the top, and a selection that opened
+on the second of them read as skipping the first. That was reported from the
+photograph, and it is the same kind of report as the two marks. The focus now
+opens on the **topmost** command that is not the address, in the order the
+panel is drawn: leads first, then the column. The mark still belongs to the
+focus alone, so there is still one accent. In the state with both, the accent
+sits on *Open Windows settings*, and the step is set apart by its weight, 600
+against 500. With only a step waiting, the step is the topmost, and nothing
+changes. `focusIndex` walks `leadIndices` and then `rows`, and the subtest that
+used to assert the step was rewritten to assert the topmost. It was seen to
+fail naming the step when the preference was put back.
 
 #### What is shown is not what is used
 
@@ -988,13 +998,31 @@ guards, and it would spend three of a language's free letters on one row.
 Sharing is also what one wants from the keyboard: whatever the step is, it
 answers to the same key.
 
-**And a command that answers a line goes under that line.** `flyCmd.lead` is the
-one row between the status and the code, and there is exactly one user: the
-Windows settings page for a permission the notice has just declared off. In the
-column at the bottom it sat four rows from the sentence it belongs to, with the
-code and the address in between, where it reads as belonging to the address. It
-is deliberately not a general slot — a second one would be a second main answer,
-and the panel has one.
+**And a command that answers a line goes under that line.** `flyCmd.lead` puts a
+command between the status and the code. Its first user was the Windows settings
+page for a permission the notice has just declared off: in the column at the
+bottom it sat four rows from the sentence it belongs to, with the code and the
+address in between, where it reads as belonging to the address.
+
+**Then a photograph found the same defect on the tunnel's step.** With a
+permission refused *and* a step waiting, the settings command sat under the
+lines while *Open the device list* sat below the code, just above the address
+and several rows away from Tailscale's own sentence, which was the thing it
+answered. The slot had been declared single, "a second one would be a second
+main answer", and that argument confused **position** with **mark**. The mark
+is still single, because it belongs to the focus, and where the focus opens is
+decided in *One mark for one thing* above. What is no longer single is the
+row. `leadIndices` returns every lead, `layout` stacks
+them in composition order (settings first, then the step), and `place` zips
+them with `leadYs`, which comes out of the same pass. The slot is still not a
+general one: each of the two answers a sentence a few lines up, and a third
+would have to show the same thing. `TestTheTunnelStepIsAnsweredUnderItsOwnLineToo`
+holds it, and it was seen to fail with the step's `lead` removed.
+
+**Marking the second one `lead` without generalising would have deleted it.**
+`rows` skips every lead, while the old `layout` and `place` drew only the first,
+so a second lead was left out of the column and drawn nowhere. That is why the
+change goes through `leadIndices` and not through the flag alone.
 
 **It wears no pill**, and that is *One mark for one thing* met from the other
 side: the focus falls on the first command, which is this one, and the selected
