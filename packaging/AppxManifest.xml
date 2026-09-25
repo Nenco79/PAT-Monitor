@@ -9,11 +9,12 @@
   error anywhere. An unsubstituted `{VERSION}` fails at MakeAppx, which is the
   moment somebody is standing there.
 
-  **Identity is a placeholder and cannot be guessed.** Name and Publisher come
-  from Partner Center and have to match the account exactly, character for
-  character; what is here builds a package that installs for testing and is not
-  the one that gets submitted. Changing it is a step of the submission, not of
-  the build.
+  **Identity is Partner Center's, character for character, and cannot be
+  guessed.** Name, Publisher and PublisherDisplayName are the values the account
+  was assigned when the app was reserved; the upload is refused if any of them
+  differs. The package comes out unsigned, since the Store re-signs it; to
+  sideload it for a test it has to be signed with a certificate whose subject
+  is exactly this Publisher, the account's own CN, a GUID.
 
   **The logos are not listed twice.** The three files named below are what
   `icon.PackageLogos` draws, and a test holds the two together: a name changed
