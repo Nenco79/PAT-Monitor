@@ -51,6 +51,7 @@
   "login.password": "Mot de passe",
   "login.submit": "Se connecter",
   "login.subtitle": "Saisis le mot de passe pour te connecter.",
+  "safety.notice": "PAT Monitor n’est ni un dispositif médical ni un système de sécurité. Des pleurs, un aboiement ou un mouvement peuvent lui échapper, l’image s’arrête si le PC ou le réseau s’arrête, et il n’appelle personne\u00a0: ses alertes n’apparaissent que sur ce PC et sur les pages ouvertes.",
   "login.title": "Connexion - PAT Monitor",
   "onb.about-minutes": {
     "one": "environ une minute",

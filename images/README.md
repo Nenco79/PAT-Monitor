@@ -11,7 +11,8 @@ The pictures this repository shows and does not read.
 | `onboarding-choice.png` | the fork in the guided path, the one screen where the person is asked something rather than told. |
 | `onboarding-ready.png` | the last screen of the guided path, with both addresses and both QR codes. |
 | `recordings.png` | the clip list, in the night palette. |
-| `viewer.jpg` | the page the monitor is watched on, live. The one picture here that shows the program doing its job rather than being set up. |
+| `viewer.jpg` | the page the monitor is watched on, live, on a desktop browser. With the phone's, the pictures here that show the program doing its job rather than being set up. |
+| `viewer-phone.jpg` | the same page at a phone's size, sideways and full screen, where the controls float on the picture instead of sitting in a bar. With no browser bars, as it is here, it is what the page looks like saved to the Home Screen. |
 
 **The two drawn ones are rendered, not photographed**: `social-preview.html` and
 `header.html` opened in Edge at their own box with a device scale factor of 2.
@@ -30,21 +31,27 @@ protocol at 1180x1000 with a device scale factor of 2, captured whole and then
 cropped to end on a whole element and scaled to 1400 wide. A picture cut across
 the middle of a card reads as a broken layout rather than as a crop.
 
-**`viewer.jpg` was photographed and not driven, because it cannot be driven.**
-The other three are pages a headless browser can be pointed at; this one is
-worth a picture only while there is a real camera pointing at a real room, so it
-is a screenshot of the viewer taken by hand from the running monitor — same
-build, full screen so that no address bar comes into it — and then scaled to
-1400 wide like the rest. What is on screen is the live state: the barking
-detection is the one lit because it is the one switched on, and the dog was
-asleep on the sofa.
+**The two viewer pictures were photographed and not driven, because they cannot
+be driven.** The other three are pages a headless browser can be pointed at;
+these are worth a picture only while there is a real camera pointing at a real
+room, so they are screenshots taken by hand from the running monitor on the
+morning of 25 September 2026. That morning's details panel, photographed in the
+same session, reads `1.1.0 r25 (c50316e)`. `viewer.jpg` is the desktop browser
+with no address bar in the picture, taken 1400 wide; `viewer-phone.jpg` is the
+page drawn at a phone's size, sideways and full screen, taken 1720 wide and
+scaled to 1400. It is deliberately not credited to a device: it is the layout
+the page draws at that size, and a real phone may inset the controls from its
+own notch or rounded corners, which this picture does not show. What is
+on screen is the live state: the barking detection is the one lit because it is
+the one switched on, and the dog was asleep on the sofa. The first `viewer.jpg`,
+from the `1.0.0 r2` build, showed the same room and the same bar.
 
-**And it is the one that is not a PNG.** Three quarters of it is a photograph
-from a webcam, which PNG stores at **1.34 MB** against **118 kB** as a JPEG of
-the same 1400 pixels — eleven times the weight of a file that is committed for
-ever, for a difference nobody can see in a picture whose subject is a sofa. The
-others stay PNG for the opposite reason: flat colour and text, where JPEG is
-the format that shows.
+**And they are the two that are not PNG.** Three quarters of each is a
+photograph from a webcam, which PNG stores at over **1 MB** against **100 to 135
+kB** as a JPEG of the same 1400 pixels, at quality 85 — ten times the weight of
+a file that is committed for ever, for a difference nobody can see in a picture
+whose subject is a sofa. The others stay PNG for the opposite reason: flat colour
+and text, where JPEG is the format that shows.
 
 **One string in `onboarding-ready.png` is not the one the program produced**,
 and this is the whole of the substitution: the public address was replaced with

@@ -471,6 +471,33 @@ one over the heading drew two lines a few pixels apart: the heading keeps the
 air above it and the last row's rule is the break. The last reading of all has
 none, because what follows it is a command and not a reading.
 
+**What the monitor is not is said at the foot of the details, and not on the
+bar.** `safety.notice` — not a medical device or a safety system, it can miss
+crying, barking or motion, the picture stops with the PC or the network, and it
+calls nobody — is a fact about the product, true every night, and that is
+exactly what this page does not announce. So it is a `.hint` spanning the grid
+below the recordings, which stay the last cell; on the sign-in card, the one
+page everybody who watches passes through, as the same `.hint` `/setup` already
+ends with; and on the guided path's arrival as `p.small`, where whoever set the
+monitor up is about to rely on it. **The tray panel does not carry it**: every
+row there is measured and the panel is states and commands, and whoever is in
+front of the machine is whoever read it at the arrival. The wording has no
+promise and no adjective, which is the privacy policy's rule and the same
+exposure.
+
+Two things it cost that are worth knowing next time. **Measured at phone width
+over the DevTools protocol, not by resizing a window**: Edge ignores
+`--window-size` below its own minimum, so the first screenshots showed the card
+cut off on the right, subtitle included, from a layout laid out wider than the
+picture — the instrument, not the page, and the measurement that settled it
+reports the document as wide as the viewport at 360 and 390. **And the French
+non-breaking space was decoded on the way in three times**: by Python, by
+`sed`'s `\u`, and by the editing tool, each turning ` ` into the character
+or into nothing; `TestTheNonBreakingSpaceIsWrittenAsAnEscape` caught the first
+and the third, and the second produced `personne00a0:`, which it cannot see —
+the limit the French section already declares. What wrote it right was a byte
+replacement with the backslash spelled as `\x5C`.
+
 **On a phone the panel opens below the fold, so the page is taken to it.** The
 bar sits at the foot of the viewport, so everything "Details" reveals is under
 it: measured at 390x844, pressing it turned an arrow round and nothing else

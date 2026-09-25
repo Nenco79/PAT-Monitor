@@ -51,6 +51,7 @@
   "login.password": "Contraseña",
   "login.submit": "Iniciar sesión",
   "login.subtitle": "Escribe la contraseña para entrar.",
+  "safety.notice": "PAT Monitor no es un dispositivo médico ni un sistema de seguridad. Puede no detectar un llanto, unos ladridos o un movimiento, la imagen se detiene si se detienen el PC o la red, y no llama a nadie: sus avisos solo aparecen en este PC y en las páginas abiertas.",
   "login.title": "Iniciar sesión - PAT Monitor",
   "onb.about-minutes": {
     "one": "alrededor de un minuto",

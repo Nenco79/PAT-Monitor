@@ -238,7 +238,19 @@ func main() {
 		if logFile.CaptureCrashes() {
 			where = "this file"
 		}
-		log.Info("log file", "path", logFile.Path(), "crash traces", where)
+		attrs := []any{"path", logFile.Path(), "crash traces", where}
+		// **Where the file really is, when the system spells it otherwise.**
+		// Installed from the Store on a machine with no PAT Monitor folder yet,
+		// Windows redirects the writes into the package's own storage, and the
+		// path the program sees does not exist for whoever goes looking for it
+		// in Explorer. The question is asked of the system, as the panel's log
+		// button already does; outside a package the two agree and the line is
+		// the same as ever. See onDisk for what counts as the same.
+		dir := filepath.Dir(logFile.Path())
+		if real, moved := onDisk(longAbs(dir), resolvedDir(dir)); moved {
+			attrs = append(attrs, "on disk", filepath.Join(real, filepath.Base(logFile.Path())))
+		}
+		log.Info("log file", attrs...)
 	}
 
 	// Raised here, on the main goroutine and outside every guard, which is the

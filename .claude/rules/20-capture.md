@@ -1046,6 +1046,37 @@ that is wrong now.
 - **The line is written when it changes, not at every open.** A camera that will
   not open at all is retried every thirty seconds, and a state rewritten every
   thirty seconds is a log that hides what happened once.
+
+  **That held for this line and for no other, and the package found it.** With
+  the only webcam disabled in Device Manager, each retry wrote three: the list
+  having nothing usable, the formats not readable, and `capture interrupted,
+  restarting`. At the thirty-second cap that is ~360 lines an hour for as long
+  as the monitor runs, in a log of four rotating files, so on a machine with no
+  camera the lines that matter are pushed out in a couple of weeks. The refused
+  camera did the same with two. It was measured on the MSIX because the
+  certification's tester may have no webcam, which is the case nobody runs here.
+
+  The audio supervisor already had the rule, `audio still unavailable` at
+  Debug, and the video now has it too: `retryLevel` writes a failure at Error the
+  first time and at Debug when it repeats, and starts again after an attempt in
+  which the camera came open, since then the monitor worked and what failed
+  afterwards is a new episode. The two warnings of the open are written before
+  the attempt's outcome is known, so they are quietened by the attempt before:
+  when it failed without the camera opening, the open logs through `demoted`,
+  which writes at Debug and so is dropped at the normal level and kept by
+  `-verbose`.
+
+  **A review found the two holes in that, and both were about the attempt that
+  is not a repeat.** A choice of camera closes the capture through the branch
+  that reopens at once, and that branch skipped the bookkeeping, so a failure
+  remembered from before the choice quietened the open of the camera just
+  picked: a command is news, and the branch now clears both. And the attempt
+  that finally opens was quietened too, because the open's warnings are written
+  before anyone knows it will succeed — so a camera back whose formats cannot be
+  read would be asked for the preset with nothing saying why. `demoted` holds
+  what it lowers, and `replay` writes it again at its own level the moment the
+  camera comes open; when the open fails, what was held was a repeat and is
+  dropped.
 - **The name in the details is the one that is open**, and it used to be the
   device `main` chose, frozen for the life of the process: with a fallback it
   would have named the camera that is not there while showing the picture of the

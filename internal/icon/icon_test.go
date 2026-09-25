@@ -3,6 +3,7 @@ package icon
 import (
 	"bytes"
 	"encoding/binary"
+	"encoding/xml"
 	"image/color"
 	"image/png"
 	"strings"
@@ -284,8 +285,9 @@ func TestTheResourceIsWalkedFromTheStart(t *testing.T) {
 
 	// **One relocation per leaf, and not one more.** If one were missing, that
 	// icon would point at the start of the file: it is the fault the linker
-	// cannot report.
-	if want := len(im) + 2; nReloc != want {
+	// cannot report. The leaves are the icons, the group, the version and the
+	// manifest.
+	if want := len(im) + 3; nReloc != want {
 		t.Fatalf("%d relocations for %d leaves", nReloc, want)
 	}
 
@@ -425,7 +427,7 @@ func testVersion() *VersionInfo {
 		Product:      "PAT Monitor",
 		Description:  "Pet and baby monitor: webcam and microphone over WebRTC",
 		Version:      "0.9.9 r4567 (abc1234)",
-		Copyright:    "Copyright 2026 Nenco79 — Apache-2.0",
+		Copyright:    "Copyright 2026 Nenco — Apache-2.0",
 		FileName:     "pat-monitor.exe",
 		InternalName: "pat-monitor",
 	}
@@ -547,6 +549,82 @@ func TestWithoutAVersionTheIconsRemain(t *testing.T) {
 	}
 	if _, there := kinds[rtGroupIcon]; !there {
 		t.Error("the icon vanished along with the version")
+	}
+}
+
+// **The manifest is where the loader looks, and it says what it was put there
+// to say.** A manifest under the wrong type or identifier is a resource nobody
+// asks for, and one that parses but declares a different level would change
+// how Windows starts the program: neither complains. So the tree is walked to
+// RT_MANIFEST, identifier 1, and what is there is parsed as XML rather than
+// searched as text.
+//
+// **Verified to catch**: with the entry left out of resourceSection, this fails
+// saying RT_MANIFEST is missing; with `PerMonitorV2` spelled otherwise, it fails
+// naming the value.
+func TestTheManifestIsInTheTreeAndDeclaresPerMonitorV2(t *testing.T) {
+	for _, ver := range []*VersionInfo{testVersion(), nil} {
+		obj, err := Syso(Images(), ver, "amd64")
+		if err != nil {
+			t.Fatal(err)
+		}
+		sec := obj[20:60]
+		rsrc := obj[binary.LittleEndian.Uint32(sec[20:]) : binary.LittleEndian.Uint32(sec[20:])+binary.LittleEndian.Uint32(sec[16:])]
+		sub, ok := readDirectory(t, rsrc, 0)[rtManifest]
+		if !ok {
+			t.Fatalf("RT_MANIFEST is missing (version given: %v)", ver != nil)
+		}
+		langs, ok := readDirectory(t, rsrc, sub)[appManifestID]
+		if !ok {
+			t.Fatal("the manifest does not have identifier 1: the loader will not read it")
+		}
+		leaf, ok := readDirectory(t, rsrc, langs)[neutralLanguage]
+		if !ok {
+			t.Fatal("the manifest's language is missing")
+		}
+		body := readLeaf(t, rsrc, leaf)
+		if !bytes.Equal(body, AppManifest) {
+			t.Fatalf("the leaf holds %d bytes, the manifest is %d", len(body), len(AppManifest))
+		}
+
+		var m struct {
+			Trust struct {
+				Level struct {
+					Level    string `xml:"level,attr"`
+					UIAccess string `xml:"uiAccess,attr"`
+				} `xml:"security>requestedPrivileges>requestedExecutionLevel"`
+			} `xml:"trustInfo"`
+			Settings struct {
+				DPIAware     string `xml:"dpiAware"`
+				DPIAwareness string `xml:"dpiAwareness"`
+			} `xml:"application>windowsSettings"`
+			Compatibility *struct{} `xml:"compatibility"`
+			Dependency    *struct{} `xml:"dependency"`
+		}
+		if err := xml.Unmarshal(body, &m); err != nil {
+			t.Fatalf("the manifest does not parse: %v", err)
+		}
+		if m.Settings.DPIAwareness != "PerMonitorV2" {
+			t.Errorf("dpiAwareness = %q, wanted PerMonitorV2", m.Settings.DPIAwareness)
+		}
+		if m.Settings.DPIAware != "true/pm" {
+			t.Errorf("dpiAware = %q, wanted true/pm", m.Settings.DPIAware)
+		}
+		// asInvoker is the level an unmanifested program already had: anything
+		// else changes how Windows starts it, which this manifest must not do.
+		if m.Trust.Level.Level != "asInvoker" || m.Trust.Level.UIAccess != "false" {
+			t.Errorf("execution level %q uiAccess %q: the program would start differently",
+				m.Trust.Level.Level, m.Trust.Level.UIAccess)
+		}
+		if m.Compatibility != nil || m.Dependency != nil {
+			t.Error("the manifest declares compatibility or a dependency: each changes " +
+				"behaviour beyond DPI, and is a decision of its own")
+		}
+	}
+	for i, c := range AppManifest {
+		if c > 0x7E || (c < 0x20 && c != '\n') {
+			t.Fatalf("byte %d of the manifest is %#x: it is declared UTF-8 and kept ASCII", i, c)
+		}
 	}
 }
 

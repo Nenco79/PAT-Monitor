@@ -159,11 +159,14 @@ func resourceSection(im []Image, version []byte) ([]byte, []int) {
 	if len(version) > 0 {
 		entries = append(entries, resourceEntry{rtVersion, versionID, version})
 	}
+	// The manifest goes in with or without a version: it is not a detail of the
+	// file's sheet but what the loader reads first. See AppManifest.
+	entries = append(entries, resourceEntry{rtManifest, appManifestID, AppManifest})
 
 	// **The entries have to be sorted**, the named ones by name and the
 	// numbered ones by increasing number: whoever reads does a binary search,
 	// and on an unsorted tree it answers "not there" about a resource that is.
-	// Here the order comes for free — 3, 14, 16, and the identifiers assigned
+	// Here the order comes for free — 3, 14, 16, 24, and the identifiers assigned
 	// in sequence — but it is the property everything else rests on, so the
 	// types are collected by walking the entries in the order they were built
 	// rather than trusting a map, which Go iterates at random.

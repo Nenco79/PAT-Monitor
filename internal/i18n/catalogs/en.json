@@ -51,6 +51,7 @@
   "login.password": "Password",
   "login.submit": "Sign in",
   "login.subtitle": "Enter the password to sign in.",
+  "safety.notice": "PAT Monitor is not a medical device or a safety system. It can miss crying, barking or motion, the picture stops if the PC or the network does, and it calls no one: its warnings appear only on this PC and on pages that are open.",
   "login.title": "Sign in - PAT Monitor",
   "onb.about-minutes": {
     "one": "about a minute",

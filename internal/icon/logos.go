@@ -71,6 +71,20 @@ var PackageLogos = []Logo{
 	{Name: "StoreLogo", Side: 50},
 }
 
+// StoreTile is the listing's own icon, the "1:1 App tile icon" Partner Center
+// asks for at 300x300.
+//
+// **It is not a package logo, and that is why it is not in PackageLogos.** The
+// manifest does not name it and the package does not carry it: it is uploaded
+// by hand to the Store listing. Without it the Store falls back to the image in
+// the package, which is StoreLogo at 50, and shows it six times larger — the
+// rescale the icon is drawn rather than scaled to avoid, done by somebody
+// else's code where nobody here can see it.
+//
+// It is drawn, like the others, rather than made in an editor: a hand-made copy
+// is a second drawing, and it goes stale the first time this one changes.
+var StoreTile = File{Name: "StoreTile300x300", Side: 300}
+
 // File is one image to write, already named the way the package wants it.
 type File struct {
 	Name string // without the extension

@@ -35,6 +35,28 @@ func TestEveryPackageLogoIsDrawnAtItsOwnSize(t *testing.T) {
 	}
 }
 
+// **The Store tile is the size Partner Center asks for, and it stays out of the
+// package.** 300x300 is the listing's "1:1 App tile icon"; a different size is
+// refused at upload or scaled by the Store, and a tile that slid into Files()
+// would travel inside every package with no manifest naming it.
+//
+// **Verified to catch**: with StoreTile appended to Files(), the second half
+// fails naming it.
+func TestTheStoreTileIsThreeHundredAndNotInThePackage(t *testing.T) {
+	img, err := png.Decode(bytes.NewReader(PNG(StoreTile.Side)))
+	if err != nil {
+		t.Fatalf("the Store tile does not decode: %v", err)
+	}
+	if b := img.Bounds(); b.Dx() != 300 || b.Dy() != 300 {
+		t.Errorf("the Store tile is %dx%d: Partner Center asks for 300x300", b.Dx(), b.Dy())
+	}
+	for _, f := range Files() {
+		if f.Name == StoreTile.Name {
+			t.Errorf("%s is among the package files: the manifest does not name it", f.Name)
+		}
+	}
+}
+
 // **The target sizes are named the way the resource index was built against**,
 // and nowhere else: `<base>.targetsize-<n>`. A variant spelled at the call site
 // is a second spelling of the contract, and it is inert rather than wrong —

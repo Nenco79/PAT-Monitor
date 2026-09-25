@@ -97,7 +97,7 @@ const Product = "PAT Monitor"
 // would take away the place a real fix goes. In the file properties there is no
 // need to choose either: VS_FIXEDFILEINFO has four fields, and the fourth one
 // is made for the build number.
-const Number = "1.1.0"
+const Number = "1.2.0"
 
 // Stamped by build.ps1. The values here are those of a build made by hand with
 // `go build`, and they show themselves for what they are instead of pretending.

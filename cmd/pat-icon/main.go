@@ -39,6 +39,10 @@ var (
 	// disappear. See icon.PackageLogos.
 	pngDir = flag.String("png", "", "also write the package logos as PNG into this folder (optional)")
 
+	// The Store listing's 300x300 tile, which goes to Partner Center by hand
+	// and not into the package. See icon.StoreTile.
+	storeTile = flag.String("store", "", "also write the Store listing's 300x300 tile here (optional)")
+
 	// Revision, commit and tree state cannot be read from here: at run time the
 	// linker stamps them, and this program runs **before**. build.ps1 passes
 	// them, having already computed them for the stamps.
@@ -113,6 +117,13 @@ func main() {
 		fmt.Printf("%s  (%d package logos)\n", *pngDir, len(files))
 	}
 
+	if *storeTile != "" {
+		if err := os.WriteFile(*storeTile, icon.PNG(icon.StoreTile.Side), 0o644); err != nil {
+			fail(err)
+		}
+		fmt.Printf("%s  (Store tile, %dx%d)\n", *storeTile, icon.StoreTile.Side, icon.StoreTile.Side)
+	}
+
 	if *icoFile != "" {
 		if err := os.WriteFile(*icoFile, icon.ICO(im), 0o644); err != nil {
 			fail(err)
@@ -163,7 +174,7 @@ func versionInfo() *icon.VersionInfo {
 		// redistributes reads it, and so do the tools that scan executables.
 		Description:  version.Product + " - webcam over WebRTC",
 		Version:      version.Full(),
-		Copyright:    "Copyright 2026 Nenco79 — Apache-2.0",
+		Copyright:    "Copyright 2026 Nenco — Apache-2.0",
 		FileName:     "pat-monitor.exe",
 		InternalName: "pat-monitor",
 		// The pre-release flag follows the number's **label**, not its digits:

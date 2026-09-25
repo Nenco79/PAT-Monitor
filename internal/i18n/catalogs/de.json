@@ -51,6 +51,7 @@
   "login.password": "Passwort",
   "login.submit": "Anmelden",
   "login.subtitle": "Gib das Passwort ein, um dich anzumelden.",
+  "safety.notice": "PAT Monitor ist kein Medizinprodukt und kein Sicherheitssystem. Weinen, Bellen oder eine Bewegung können unbemerkt bleiben, das Bild stoppt, wenn der PC oder das Netzwerk ausfällt, und niemand wird angerufen: Warnungen erscheinen nur auf diesem PC und auf geöffneten Seiten.",
   "login.title": "Anmelden - PAT Monitor",
   "onb.about-minutes": {
     "one": "etwa eine Minute",

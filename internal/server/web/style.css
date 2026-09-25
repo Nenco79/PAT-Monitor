@@ -1653,6 +1653,16 @@ body.day .stats .pick option:focus {
   margin-top: var(--s3);
 }
 
+/* **What the monitor is not** is a `.hint`, the note at the foot of a card that
+   `/setup` already has, so the sign-in card and the details say it in the one
+   voice the sheet has for it rather than a second one a line-height apart. At
+   the foot of the details it spans the grid, below the recordings, so that the
+   recordings stay the last cell and this reads as a footnote. */
+.stats .stats-foot {
+  grid-column: 1 / -1;
+  text-align: center;
+}
+
 /* ---------- the warning band ----------
 
    It says that something is wrong, now. It sits above the video because that is

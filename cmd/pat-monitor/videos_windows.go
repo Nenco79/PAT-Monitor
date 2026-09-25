@@ -101,6 +101,44 @@ func provenDir(dir string) (string, error) {
 	return filepath.Dir(real), nil
 }
 
+// onDisk says whether the folder the system reports is spelled differently from
+// the one the program named, and hands it back if so.
+//
+// **Both have to be spelled the same way before they are compared.** The
+// system's answer is always absolute and in long names, so the program's name
+// goes through longAbs first: a relative `-config` and an 8.3 short name are the
+// same folder and must not add a second path to the line. **Case is not a
+// difference** either, since Windows compares paths without it. What is left
+// is a folder that really is somewhere else under that name — the package's
+// redirected storage, or the real volume behind a `subst` drive — and there
+// naming it states where the file is, which is true. It takes both answers
+// rather than asking, so that every direction can be tested without a package.
+func onDisk(named, resolved string) (string, bool) {
+	if resolved == "" || strings.EqualFold(filepath.Clean(named), filepath.Clean(resolved)) {
+		return named, false
+	}
+	return resolved, true
+}
+
+// longAbs is dir as an absolute path in long names, which is how resolvedDir
+// answers, so that the two can be compared; dir itself when either step fails.
+func longAbs(dir string) string {
+	abs, err := filepath.Abs(dir)
+	if err != nil {
+		return dir
+	}
+	p, err := windows.UTF16PtrFromString(abs)
+	if err != nil {
+		return abs
+	}
+	buf := make([]uint16, windows.MAX_LONG_PATH)
+	n, err := windows.GetLongPathName(p, &buf[0], uint32(len(buf)))
+	if err != nil || n == 0 || int(n) > len(buf) {
+		return abs
+	}
+	return windows.UTF16ToString(buf[:n])
+}
+
 // resolvedDir says where an existing folder really is, and answers with the
 // name it was given when it cannot say better.
 //

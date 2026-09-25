@@ -225,12 +225,21 @@ func destroyIcon(h windows.Handle) {
 // the project — ask the system rather than work it out — applied one step
 // earlier, that is, making sure the system answers truthfully.
 //
-// The normal route would be a manifest inside the PE; it is done at run time
-// because it has to be called **before** any window or metric, and a manifest on
-// the executable would want another piece in the build chain. The fallback to
-// SetProcessDPIAware covers Windows versions before 1703, where the newer
-// function does not exist: there per-monitor awareness is lost and system
-// awareness remains, which is still better than nothing.
+// **The executable now declares it in its manifest too** (icon.AppManifest,
+// written by pat-icon), which takes effect before any code runs and is what the
+// App Certification Kit can read: it reported the package as not DPI aware,
+// because this call goes through a DLL loaded at run time and the kit reads the
+// import table. This call stays for a binary built by hand with `go build`,
+// which has no resource file and so no manifest.
+//
+// **With the manifest present, both calls below fail harmlessly.** Measured on a
+// process the manifest had made per-monitor v2: SetProcessDpiAwarenessContext
+// answers access denied, SetProcessDPIAware then answers success, and the
+// awareness is still per-monitor v2 after both. Windows does not lower a
+// declaration already made, so the fallback cannot downgrade it. The fallback
+// exists for Windows versions before 1703, where the newer function does not
+// exist: there per-monitor awareness is lost and system awareness remains,
+// which is still better than nothing.
 func declareDPI() {
 	// DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2
 	const perMonitorV2 = ^uintptr(3) // -4

@@ -21,7 +21,16 @@ name stands for *Pet And Toddler*.
      from, and which of them was photographed rather than driven. -->
 <p align="center">
   <img src="images/viewer.jpg" width="100%"
-       alt="The monitor being watched: the room fills the page, with a live badge and a signal meter at the top and one bar at the bottom carrying talk-back, a clip button, mute, the three detections and the details.">
+       alt="The monitor being watched: the room fills the page, with a live badge and a signal meter at the top and one bar at the bottom carrying talk-back, a clip button, mute, the three detections, the details and sign-out.">
+</p>
+
+Saved to a phone's Home Screen, the page opens with no browser bars, and held
+sideways in full screen it gives the whole screen to the room, with the same
+controls floating on the picture:
+
+<p align="center">
+  <img src="images/viewer-phone.jpg" width="100%"
+       alt="The same room at a phone's size, sideways and full screen: talk-back, clip and mute float on the left of the picture, the three detections on the right, with the live badge, the signal meter and the button that leaves full screen.">
 </p>
 
 ## Features
@@ -90,6 +99,10 @@ Simplified catalogue.
   an existing Google, Microsoft or Apple account, and nothing has to be
   installed on the viewing phone.
 
+PAT Monitor is not a medical device or a safety system. It can miss crying,
+barking or motion, the picture stops if the PC or the network does, and it calls
+no one: its warnings appear only on the monitor's PC and on pages that are open.
+
 ## Getting started
 
 1. Download the zip from
@@ -125,8 +138,13 @@ as it runs. It says so in the log and keeps the video going.
 
 ## Configuration
 
-Config file and logs live in `%APPDATA%\PAT Monitor\`. The file is YAML and is
-written by the setup, so editing it by hand is optional.
+Outside the Microsoft Store, config file and logs live in
+`%APPDATA%\PAT Monitor\`. Installed from the Store they are there too if that
+folder already exists; otherwise
+Windows keeps them in the app's private folder under `%LOCALAPPDATA%\Packages`,
+and the log-folder button in the notification-area panel opens the right one
+either way. The file is YAML and is written by the setup, so editing it by hand
+is optional.
 
 | key | default | meaning |
 |---|---|---|
@@ -183,6 +201,10 @@ downloaded and nothing is replaced: updating means fetching the new zip and
 unpacking it over the old one, with the monitor closed.
 
 Releases marked *pre-release* on GitHub are never reported.
+
+The Microsoft Store version does none of this: the Store updates it, and the
+binary inside the package is built with the check switched off, whatever
+`update_check` says.
 
 What leaves the house is one request a day carrying this machine's address and
 the version it is running — nothing about the configuration, the tailnet or who

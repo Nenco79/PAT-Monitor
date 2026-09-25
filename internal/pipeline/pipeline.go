@@ -324,6 +324,11 @@ type Pipeline struct {
 	// thirty seconds counted from when trying actually began.
 	camOpenedAt atomic.Int64
 
+	// camRetrying says the last attempt failed without the camera coming open,
+	// so the open's own warnings on the next one are a repeat and go to Debug.
+	// Set and cleared by Run. See retryLevel.
+	camRetrying atomic.Bool
+
 	// micGraceUntil is until when a closed microphone must **not** be reported
 	// as absent: the window of a reopen we decided on. See micRecheckGrace.
 	micGraceUntil atomic.Int64
@@ -2000,6 +2005,9 @@ func (p *Pipeline) Run(ctx context.Context, sinks Sinks) error {
 	}()
 
 	backoff := minBackoff
+	// lastRetry is the failure already written, empty after an attempt in which
+	// the camera came open. See retryLevel.
+	var lastRetry string
 	for {
 		if err := ctx.Err(); err != nil {
 			return nil
@@ -2030,6 +2038,11 @@ func (p *Pipeline) Run(ctx context.Context, sinks Sinks) error {
 					"ran_for", ran.Round(time.Millisecond))
 			}
 			backoff = minBackoff
+			// **A command is news**, so what fails after it is written in full:
+			// a failure remembered from before the choice would otherwise
+			// quieten the open of the camera somebody has just picked.
+			lastRetry = ""
+			p.camRetrying.Store(false)
 			continue
 		}
 		// **What Windows refused is read off the attempt that just failed**, and
@@ -2049,8 +2062,26 @@ func (p *Pipeline) Run(ctx context.Context, sinks Sinks) error {
 				"note", "a desktop program also needs \"let desktop apps access your camera\"",
 				"error", err)
 		}
+		// **What is new is written, and a repeat is not.** A camera that is
+		// missing or refused is retried every thirty seconds for as long as the
+		// monitor runs, and this line and the open's two warnings used to come
+		// out every time: measured with the webcam disabled, three lines every
+		// thirty seconds, ~360 an hour for ever, in a log of four rotating files
+		// where the lines that matter get pushed out. It is the audio
+		// supervisor's rule, "audio still unavailable", brought to the video.
+		// **The wait is settled before it is written.** A healthy run resets it,
+		// and doing that after the lines below made them announce the old wait:
+		// measured, `waiting=30s` after a session of four minutes, with the next
+		// attempt coming one second later.
+		if ran >= healthyRun {
+			backoff = minBackoff
+		}
+		opened := p.camOpenedAt.Load() >= start.Unix()
+		lvl, sig := retryLevel(lastRetry, err, opened)
+		lastRetry = sig
+		p.camRetrying.Store(err != nil && !opened)
 		if err != nil {
-			p.cfg.Log.Error("capture interrupted, restarting",
+			p.cfg.Log.Log(ctx, lvl, "capture interrupted, restarting",
 				"ran_for", ran.Round(time.Millisecond), "waiting", backoff, "error", err)
 			// If the capture died right after a reconfiguration, that road is
 			// abandoned: it is worse than the disease it cures. It is said once
@@ -2068,9 +2099,6 @@ func (p *Pipeline) Run(ctx context.Context, sinks Sinks) error {
 				"ran_for", ran.Round(time.Millisecond), "waiting", backoff)
 		}
 
-		if ran >= healthyRun {
-			backoff = minBackoff
-		}
 		select {
 		case <-time.After(backoff):
 		case <-p.camWake:
@@ -2592,14 +2620,30 @@ func (p *Pipeline) runVideo(ctx context.Context, sinks Sinks) error {
 	// clear is what marks the right instant; this one is what makes it true on
 	// every road out.
 	defer p.camOpening.Store(false)
-	cam, fellBack := resolveCamera(wanted, devices.ListCameras, p.cfg.Log)
+	// **On a retry after a failed open, the open's warnings are a repeat.**
+	// They are written before the attempt's outcome is known, so the only thing
+	// that can tell a repeat is the attempt before: when it failed without the
+	// camera coming open, these go to Debug, and the error line in Run carries
+	// whatever is new. See retryLevel.
+	//
+	// **And they are held, because on the attempt that finally opens they were
+	// news.** Written at Debug they would be lost exactly then: a camera back
+	// whose formats cannot be read would be asked for the preset with nothing
+	// saying why. So what the open quietened is written again, at its own
+	// level, the moment the camera comes open.
+	openLog := p.cfg.Log
+	var held []slog.Record
+	if p.camRetrying.Load() {
+		openLog = slog.New(demoted{Handler: p.cfg.Log.Handler(), held: &held})
+	}
+	cam, fellBack := resolveCamera(wanted, devices.ListCameras, openLog)
 	link := cam.Link()
 
 	wantW, wantH, wantF := cameraSize(p.cfg.Width, p.cfg.Height, p.cfg.FPS,
 		p.cfg.KeepRequestedSize,
 		func(w, h, fps int) (int, int, int, bool, error) {
 			return mf.PickCameraSize(link, w, h, fps)
-		}, p.cfg.Log)
+		}, openLog)
 	p.setStartSize(wantW, wantH, wantF)
 	// **A size the previous camera's scale asked for is thrown away.**
 	//
@@ -2631,6 +2675,7 @@ func (p *Pipeline) runVideo(ctx context.Context, sinks Sinks) error {
 	// an open, and anchoring the grace to it would hand a fresh thirty seconds
 	// of silence to every retry.
 	p.camOpenedAt.Store(time.Now().Unix())
+	replay(ctx, p.cfg.Log.Handler(), held)
 	// **The refusal is cleared here and not when the session ends**, which is
 	// the whole difference between a state and a latch: a permission granted
 	// back at two in the morning must take the banner off the phone at the next

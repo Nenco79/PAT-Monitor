@@ -49,6 +49,7 @@
   "login.password": "密码",
   "login.submit": "登录",
   "login.subtitle": "输入密码登录。",
+  "safety.notice": "PAT Monitor 不是医疗器械，也不是安防系统。它可能漏掉哭声、狗叫或移动；电脑或网络一停，画面就会停止；它不会联系任何人：它的提醒只会出现在这台电脑和已打开的页面上。",
   "login.title": "登录 - PAT Monitor",
   "onb.about-minutes": {
     "other": "大约 {n} 分钟"

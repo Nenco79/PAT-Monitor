@@ -99,6 +99,25 @@ window or metric, the same call answers
     Windows with the font of the right DPI — **there is nothing of ours to
     scale** except the icon.
 
+**And the declaration is now in the executable's manifest as well, because a
+tool could not see the call.** The Windows App Certification Kit warned that the
+package was not DPI aware. It reads the file's import table, and the call goes
+through a DLL loaded at run time, as Go's calls to Windows do. The warning was
+half true: there was no manifest, and nothing in the imports named the function.
+It was also half false, because the process was per-monitor v2 from the first
+window. `icon.AppManifest` declares `PerMonitorV2` (and `true/pm` for the
+Windows versions that predate the element) with `asInvoker`, which is the level
+an unmanifested program already runs at, and nothing else.
+
+**The manifest is honoured, measured rather than assumed.** A throwaway program
+that declares nothing by itself, linked with the resource file `pat-icon`
+writes, reports awareness 2 (per-monitor) and the V2 context at start. The same
+program without it reports 0. The run-time call stays for a binary built by
+hand with `go build`, which has no resource file. With the manifest present it
+fails harmlessly, also measured: `SetProcessDpiAwarenessContext` answers access
+denied, `SetProcessDPIAware` answers success, and the process is still
+per-monitor v2 afterwards. Windows does not lower a declaration already made.
+
 **And that is why the icon size is resampled**, not read once in `New`: if the
 scale changes while the monitor runs, the icon stays the old size and Windows
 starts stretching it again. Both `WM_DPICHANGED` **and** `WM_DISPLAYCHANGE` are
@@ -312,6 +331,14 @@ whoever consumes it does, instead of recounting the fields with the code that
 wrote them. And the one that counts is the last, done by hand:
 `PrivateExtractIcons` on the compiled executable answers 16, 48 and 256 — that
 is, it was read by Windows, not by us.
+
+**The tree carries a third kind now, the application manifest** (`RT_MANIFEST`,
+24, identifier 1, the only one the loader reads when it starts an executable).
+It is in the tree with or without a version, since it is what Windows reads
+first and not part of the file's details sheet. The neutral language the other
+resources use is enough for the loader, which was measured rather than assumed:
+see *The process declares its DPI*, above. The list the tree is built from is
+what made a third kind a single line, which is what that rewrite was for.
 
 The `.syso` **is not in the repository**: `build.ps1` regenerates it with `go
 run ./cmd/pat-icon`. It is derived entirely from the drawing, which is code, and

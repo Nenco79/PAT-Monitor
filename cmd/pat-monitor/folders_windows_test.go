@@ -160,3 +160,57 @@ func TestTheExtendedPrefixIsTakenOff(t *testing.T) {
 		}
 	}
 }
+
+// **The log line names where the file really is only when that is elsewhere.**
+// The redirected pair is the one measured inside the package on 25 September;
+// the others are the two ways the system can answer without anything having
+// moved, which must not add a second path to the line.
+//
+// **Verified to catch**: with onDisk comparing case-sensitively, the second
+// case fails announcing a move that did not happen.
+func TestTheLogLineNamesARedirectedFolderAndNothingElse(t *testing.T) {
+	named := `C:\Users\u\AppData\Roaming\PAT Monitor\log`
+	for _, c := range []struct {
+		name, resolved string
+		moved          bool
+	}{
+		{"redirected into the package",
+			`C:\Users\u\AppData\Local\Packages\Nenco.PATMonitor_zehqae2e83nj8\LocalCache\Roaming\PAT Monitor\log`, true},
+		{"the same folder, spelled with another case", `C:\Users\U\AppData\Roaming\PAT Monitor\log`, false},
+		{"the same folder", named, false},
+		{"the system could not say", "", false},
+	} {
+		got, moved := onDisk(named, c.resolved)
+		if moved != c.moved {
+			t.Errorf("%s: moved=%v, wanted %v", c.name, moved, c.moved)
+		}
+		if moved && got != c.resolved {
+			t.Errorf("%s: names %q, wanted %q", c.name, got, c.resolved)
+		}
+	}
+}
+
+// **A folder named relatively, or through a short name, is not a moved one.**
+// The review's case: with `-config config.yaml` the log folder is just `log`,
+// while resolvedDir always answers absolute and in long names, so compared as
+// they were the line announced a move that did not happen. longAbs spells the
+// program's name the way the system answers. It runs on a folder this test
+// creates, from inside its parent, and asks the system nothing else.
+//
+// **Verified to catch**: comparing the bare name instead of longAbs's, the
+// relative case fails announcing a move.
+func TestARelativeLogFolderIsNotAMovedOne(t *testing.T) {
+	parent := t.TempDir()
+	if err := os.Mkdir(filepath.Join(parent, "log"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(parent)
+	if got, moved := onDisk(longAbs("log"), resolvedDir("log")); moved {
+		t.Errorf("a relative folder is reported as moved to %q", got)
+	}
+	// And the parent itself, which on this machine sits under a short-named
+	// profile folder in %TEMP%: the 8.3 half of the same question.
+	if got, moved := onDisk(longAbs(parent), resolvedDir(parent)); moved {
+		t.Errorf("%q is reported as moved to %q", parent, got)
+	}
+}

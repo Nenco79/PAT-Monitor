@@ -51,6 +51,7 @@
   "login.password": "Password",
   "login.submit": "Accedi",
   "login.subtitle": "Inserisci la password per accedere.",
+  "safety.notice": "PAT Monitor non è un dispositivo medico né un sistema di sicurezza. Può non accorgersi di un pianto, di un latrato o di un movimento, l’immagine si ferma se si fermano il PC o la rete, e non chiama nessuno: i suoi avvisi compaiono solo su questo PC e sulle pagine aperte.",
   "login.title": "Accesso - PAT Monitor",
   "onb.about-minutes": {
     "one": "circa un minuto",

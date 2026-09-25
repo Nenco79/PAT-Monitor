@@ -245,6 +245,15 @@ claiming to be the same release.
   up, with no error anywhere along the way. `{VERSION}` fails at MakeAppx
   instead, while somebody is standing there.
 
+**And one image comes out beside the package rather than inside it.** The
+listing's "1:1 App tile icon" is 300x300 and is uploaded to Partner Center by
+hand; the manifest does not name it, so it must not travel in the package, and
+without it the Store shows StoreLogo's 50 pixels six times larger. `-Msix`
+draws it into `dist\` next to the `.msix`, from the same drawing, so a package
+and its tile cannot come from two versions of the icon.
+`TestTheStoreTileIsThreeHundredAndNotInThePackage` holds the size and keeps it
+out of `Files()`.
+
 **The SDK is looked for and not written down.** The version folder under Windows
 Kits changes with every SDK, and on a CI image it is whatever that image happens
 to carry: a path spelled in the script is a build that works on one machine and

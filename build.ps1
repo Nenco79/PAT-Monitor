@@ -370,12 +370,21 @@ try {
         if ($LASTEXITCODE -ne 0) { throw "the package could not be built" }
         Remove-Item -Recurse -Force $pkg
 
+        # The listing's 300x300 tile is not in the package, since the manifest
+        # does not name it: it is uploaded to Partner Center by hand. It is drawn
+        # here, beside the package, so that each package comes with the tile of
+        # the same drawing. See icon.StoreTile.
+        $tile = Join-Path "dist" "PAT-Monitor-$pkgver-store-tile-300.png"
+        & go run .\cmd\pat-icon -store $tile -o (Join-Path $env:TEMP "pat-icon-msix.syso") | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw "the Store tile could not be drawn" }
+        Write-Host "package: $outPkg"
+        Write-Host "Store tile: $tile (for the listing, not inside the package)"
+
         # **What comes out is not signed, and that is not an omission here.** A
         # package submitted to the Store is re-signed by the Store with a
         # Microsoft certificate, so a signature made here would be replaced. The
         # one it is worth making is for sideloading, and that wants a
         # certificate this repository does not hold.
-        Write-Host "package: $outPkg"
         Write-Host "unsigned: the Store signs it, and sideloading wants a certificate of your own"
     }
 
