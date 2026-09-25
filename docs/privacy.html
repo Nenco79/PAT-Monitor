@@ -124,10 +124,13 @@ not done by PAT Monitor.</p>
 
 <h3>Settings</h3>
 
-<p>The settings are in <code>%APPDATA%\PAT Monitor\config.yaml</code>. They hold
+<p>Outside the Store, the settings are in
+<code>%APPDATA%\PAT Monitor\config.yaml</code>. In the Store version they are
+there too if that folder already exists; otherwise Windows keeps them in the
+app's private folder under <code>%LOCALAPPDATA%\Packages</code>. They hold
 your configuration, including camera, microphone and speaker as Windows device
 identifiers, the name used for the public address, and the rest of your
-feature choices. The monitor password is stored only as an argon2id hash. A
+feature choices. The monitor password itself is not stored, only a hash of it. A
 Tailscale authentication key is stored there only if you put it there
 yourself, as plain text.</p>
 
@@ -228,8 +231,10 @@ outside.</p>
       sessions.</li>
   <li><strong>Everything else</strong>: outside the Store, deleting the program
       file and the <code>%APPDATA%\PAT Monitor</code> folder removes the
-      settings, the log, Tailscale's data and any clips saved there. Clips in
-      your Videos folder stay until you delete them.</li>
+      settings, the log, Tailscale's data and any clips saved there. In the
+      Store version, uninstalling deletes the app's private folder and what is
+      in it. A <code>%APPDATA%\PAT Monitor</code> folder, if one was used, and
+      clips in your Videos folder stay until you delete them.</li>
 </ul>
 
 <h2>Signing in</h2>
