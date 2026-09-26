@@ -2018,12 +2018,39 @@ func startProfiler(log *slog.Logger, addr string) error {
 	guard.Go(log, "the profiler", func() {
 		// DefaultServeMux is where `net/http/pprof` registers itself. The
 		// monitor's server has its own mux, so these routes do not touch it.
-		srv := &http.Server{Handler: http.DefaultServeMux, ReadHeaderTimeout: 10 * time.Second}
+		srv := &http.Server{Handler: loopbackNamesOnly(http.DefaultServeMux),
+			ReadHeaderTimeout: 10 * time.Second}
 		if err := srv.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Warn("profiler stopped", "error", err)
 		}
 	})
 	return nil
+}
+
+// loopbackNamesOnly serves a request only if it calls us by a loopback name.
+//
+// **Listening on loopback keeps other machines out, not other pages.** A site
+// whose name has been re-pointed at 127.0.0.1 makes a browser on this PC send
+// its requests to the profiler as the same origin, and read the answers: the
+// stacks of every goroutine, and a CPU profile of whatever length it asks for.
+// What such a page cannot do is call us `localhost` or `127.0.0.1`, so a Host
+// that is anything else is answered 421 and nothing more.
+func loopbackNamesOnly(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		host := r.Host
+		if h, _, err := net.SplitHostPort(host); err == nil {
+			host = h
+		}
+		loopback := strings.EqualFold(host, "localhost")
+		if ip := net.ParseIP(strings.Trim(host, "[]")); ip != nil {
+			loopback = ip.IsLoopback()
+		}
+		if !loopback {
+			http.Error(w, "misdirected request", http.StatusMisdirectedRequest)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 // declaredFPS is the cadence the encoder is receiving, not the preset's.

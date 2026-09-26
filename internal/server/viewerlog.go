@@ -128,6 +128,32 @@ func sameAsLocal(r *http.Request, remote netip.Addr) bool {
 	return ap.Addr().Unmap() == remote.Unmap()
 }
 
+// namesThisPC says whether a Host header is a name only this PC can answer to:
+// an address written as a number, or `localhost`.
+//
+// **It is the half of "this PC" that the socket cannot supply.** A connection
+// from loopback proves the browser is here; it does not prove the page inside
+// it is ours, because a page on a name its author controls can have that name
+// re-pointed at 127.0.0.1 after it has loaded, and the browser then sends its
+// requests here under that name. An address has no name to re-point, and
+// `localhost` is resolved by the operating system — and by the browsers
+// themselves — never by somebody else's DNS.
+//
+// The machine's own name is left out on purpose: it is resolved by the router
+// or by the network, which is exactly the thing whose answers are not ours, and
+// whoever types it at this PC is sent on to the address rather than refused.
+func namesThisPC(host string) bool {
+	if h, _, err := net.SplitHostPort(host); err == nil {
+		host = h
+	}
+	host = strings.TrimSuffix(host, ".")
+	if strings.EqualFold(host, "localhost") {
+		return true
+	}
+	_, err := netip.ParseAddr(strings.TrimSuffix(strings.TrimPrefix(host, "["), "]"))
+	return err == nil
+}
+
 // watchSession follows a session and writes its report.
 //
 // The periodic lines sit at debug level and the opening and closing ones at

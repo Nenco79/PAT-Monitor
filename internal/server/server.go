@@ -12,6 +12,7 @@ import (
 	"io/fs"
 	"log/slog"
 	"math"
+	"net"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -501,6 +502,12 @@ func securityHeaders(next http.Handler) http.Handler {
 		h.Set("X-Frame-Options", "DENY")
 		// The stream must not end up in any intermediate cache.
 		h.Set("Cache-Control", "no-store")
+		// Only on an answer that arrived encrypted, which is the public address
+		// and the tailnet name: said over the LAN's plain HTTP it would be
+		// ignored by the browser, and it should be.
+		if r.TLS != nil {
+			h.Set("Strict-Transport-Security", "max-age=31536000")
+		}
 		next.ServeHTTP(w, r)
 	})
 }
@@ -523,8 +530,20 @@ func (s *Server) requireAuth(next http.Handler) http.Handler {
 			return
 		}
 
+		from := requestOrigin(r)
+		verdict := sessionInvalid
 		c, err := r.Cookie(sessionCookieName)
-		if err != nil || !s.sessions.valid(c.Value) {
+		if err == nil {
+			verdict = s.sessions.check(c.Value, from.Public())
+		}
+		if verdict == sessionWrongRoad {
+			// A cookie that only ever crossed the house in clear, presented at
+			// the public address: somebody carried it there. The owner's own
+			// browser cannot do it, so this line is worth reading.
+			s.log.Warn("session refused: opened on the home network and presented "+
+				"from the Internet", "from", from.Addr, "path", r.URL.Path)
+		}
+		if verdict == sessionInvalid || verdict == sessionWrongRoad {
 			if !answersWithAPage(r) {
 				writeJSONError(w, http.StatusUnauthorized, ErrNoSession)
 				return
@@ -533,6 +552,27 @@ func (s *Server) requireAuth(next http.Handler) http.Handler {
 			return
 		}
 
+		// **A command is taken only from our own pages**, and the cookie's
+		// SameSite used to be the whole of that argument. It is not enough:
+		// SameSite separates sites, not origins, so another port on this PC or
+		// another node of the owner's own tailnet is the same site and its
+		// requests carry the cookie. From there a page could switch detection
+		// off, delete clips or open the Funnel with nobody having pressed
+		// anything. fromOurOwnPages is the check the three credential routes
+		// already use; reads are left alone, because a cross-origin page cannot
+		// read what they answer.
+		if r.Method != http.MethodGet && r.Method != http.MethodHead && !fromOurOwnPages(r) {
+			s.log.Warn("command refused: it did not come from our own pages",
+				"path", r.URL.Path, "from", from.Addr,
+				"origin", r.Header.Get("Origin"),
+				"sec_fetch_site", r.Header.Get("Sec-Fetch-Site"))
+			writeJSONError(w, http.StatusForbidden, ErrCrossSite)
+			return
+		}
+
+		if verdict == sessionValidStaleCookie {
+			s.setSessionCookie(w, r, c.Value)
+		}
 		next.ServeHTTP(w, r)
 	})
 }
@@ -603,14 +643,35 @@ func (s *Server) pageLogin(w http.ResponseWriter, r *http.Request) {
 // tunnel.SourceAddr before the socket's address is looked at, so a request that
 // Tailscale delivers over the node's local connection is never mistaken for one
 // typed at this keyboard.
+//
+// **And the socket is not enough either, because a browser on this PC will
+// carry somebody else's page to it.** A site whose name the attacker has just
+// re-pointed at 127.0.0.1 — DNS rebinding — makes the owner's browser open a
+// connection from loopback, and to that browser the page and the monitor are
+// then the same origin: `Sec-Fetch-Site` says `same-origin`, `Origin` equals
+// `Host`, and every check that compares the two is satisfied by the attacker's
+// own name. What that name cannot be is one only this PC answers to, so the
+// setup also asks what the request calls us — see namesThisPC.
 func setupNotFromThisPC(r *http.Request) bool {
-	return requestOrigin(r).Class != originThisPC
+	return requestOrigin(r).Class != originThisPC || !namesThisPC(r.Host)
 }
 
 func (s *Server) pageSetup(w http.ResponseWriter, r *http.Request) {
 	if s.conf().HasPassword() {
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
+	}
+	if requestOrigin(r).Class == originThisPC && !namesThisPC(r.Host) {
+		// At this PC, under a name rather than an address — the machine's
+		// own, or one the router hands out. The person is where the setup is
+		// done, so they are sent to the same page by the address they
+		// arrived on rather than told they are somewhere else; a page that
+		// re-pointed a name here gets a navigation to an origin it cannot
+		// read.
+		if local, ok := r.Context().Value(http.LocalAddrContextKey).(net.Addr); ok {
+			http.Redirect(w, r, "http://"+local.String()+"/setup", http.StatusSeeOther)
+			return
+		}
 	}
 	if setupNotFromThisPC(r) {
 		// **The one place where the server really writes a sentence**, because
@@ -988,7 +1049,7 @@ func (s *Server) apiLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.limiter.success(key)
-	token, err := s.sessions.create(key)
+	token, err := s.sessions.create(key, requestOrigin(r))
 	if err != nil {
 		authError(w, r, isForm, "/login", http.StatusInternalServerError, ErrSessionFailed)
 		return
@@ -1162,7 +1223,7 @@ func (s *Server) apiSetup(w http.ResponseWriter, r *http.Request) {
 	if setupNotFromThisPC(r) {
 		o := requestOrigin(r)
 		s.log.Warn("first-time setup refused: request not from this PC",
-			"from", o.Kind, "address", o.Addr)
+			"from", o.Kind, "address", o.Addr, "host", r.Host)
 		writeJSONError(w, http.StatusForbidden, ErrSetupNotThisPC)
 		return
 	}
@@ -1318,14 +1379,15 @@ func (s *Server) setSessionCookie(w http.ResponseWriter, r *http.Request, token 
 	})
 }
 
+// isTLS says whether the request arrived encrypted.
+//
+// **It used to believe `X-Forwarded-Proto` as well**, with a comment saying the
+// Funnel terminated TLS and forwarded in the clear on loopback. It does not:
+// `ListenFunnel` hands back a TLS listener, so a request through the Funnel has
+// `r.TLS` like any other HTTPS request. The header was a value the caller
+// writes, and the only thing it could change was the caller's own cookie.
 func isTLS(r *http.Request) bool {
-	if r.TLS != nil {
-		return true
-	}
-	// The Tailscale funnel terminates the TLS and forwards in the clear on
-	// loopback: without this check the cookie would not be Secure on public
-	// sessions, which are exactly the ones that need it most.
-	return strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https")
+	return r.TLS != nil
 }
 
 // ---------- WebRTC signalling ----------
@@ -1682,9 +1744,10 @@ var errCrossSite = errors.New("the credentials did not come from our own pages")
 // password" opens.
 //
 // **The cookie's SameSite does not cover these three.** Everything else that
-// changes state sits behind requireAuth and is protected by the session cookie
-// being `SameSite=Strict`, which a browser will not send cross-site. These
-// three carry no cookie: they are how one is obtained.
+// changes state sits behind requireAuth, which carries a cookie a browser will
+// not send cross-site (`SameSite=Strict`) and asks this same function besides,
+// because SameSite does not stop a sibling origin of the same site. These three
+// carry no cookie at all: they are how one is obtained.
 //
 // **Nor does the Content-Security-Policy.** `form-action 'self'` is enforced on
 // the document that *contains* the form, so it constrains our pages and says

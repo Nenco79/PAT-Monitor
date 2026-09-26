@@ -458,12 +458,11 @@ the monitor on the home network, and then walk in from the Internet through the
 Funnel, which a reset does not take down.
 
 **Neither of the two things that look as though they cover it does.** The
-session cookie is `SameSite=Strict`, which protects everything behind
-`requireAuth` and protects none of these three, because they are how a session
-is obtained and carry no cookie. The CSP's `form-action 'self'` is enforced on
-the document that **contains** the form, so it constrains our pages and says
-nothing about anyone else's — a rule that governs the wrong end of the
-submission.
+session cookie is `SameSite=Strict`, and it protects none of these three,
+because they are how a session is obtained and carry no cookie. The CSP's
+`form-action 'self'` is enforced on the document that **contains** the form, so
+it constrains our pages and says nothing about anyone else's — a rule that
+governs the wrong end of the submission.
 
 What does cover it is `fromOurOwnPages`, in `credentials`, which is the one
 function all three routes go through. It reads `Sec-Fetch-Site`, which the
@@ -476,6 +475,32 @@ the same suffix is exactly the neighbour being guarded against. A request
 carrying neither header is let through, which is `curl`, the tests, and anything
 that is not a browser — none of which is riding somebody's session, that being
 the whole of what this is about.
+
+**And a page can make itself the same origin, which every check above
+believes.** A site whose DNS answer is switched to 127.0.0.1 after it has loaded
+— DNS rebinding — makes the owner's browser connect from loopback, so the road
+says *this PC*; and to that browser the page and the monitor are now one origin,
+so `Sec-Fetch-Site` says `same-origin` and `Origin` equals `Host`, both being the
+attacker's name. A security audit traced the whole chain: the password written,
+a login, the public address read off `/api/status`, and the Funnel entered with
+video, audio and talk-back. **What that name cannot be is one only this PC
+answers to**, so the setup also asks what the request calls us — `namesThisPC`,
+an address written as a number or `localhost`, which nobody else's DNS resolves.
+The machine's own name is not on the list, being resolved by the router: whoever
+types it at this PC is sent on to the address rather than refused.
+`TestAPageUnderAForeignNameCannotSetThePasswordAtThisPC` failed with the name
+check taken out. **The profiler has the same hole and the same answer**: bound
+to loopback it kept other machines out and not other pages, and it now answers
+421 to any Host that is not a loopback name.
+
+**Nothing may be put in front of the port**, and that is the price of reading
+presence off the socket. A reverse proxy on this PC — a separately installed
+Tailscale client serving `localhost:8080`, for instance — delivers every caller
+from loopback: the setup would take a password from the Internet through it, and
+the limiter would see the whole world as one address. The README says so beside
+`listen_addr`; a one-time token in the URL the tray opens would close it in code,
+and was left for the day somebody needs a proxy, because it has to travel
+through the guided path's first step as well.
 
 **And `/api/setup` hashed before it refused.** argon2id is 64 MiB and about a
 tenth of a second **by choice**, and that choice is a lever for whoever calls the
@@ -505,6 +530,33 @@ client does not follow it and reports a generic failure, that is, the diagnosis
 is lost. It was not a hole — in neither case is the connection upgraded — it was
 the same rule applied by halves, and it showed only when the test for the other
 branch was written. It is now decided by `answersWithAPage`, one function.
+
+**And SameSite did not protect everything behind `requireAuth` either**, which
+this chapter used to assert. It separates sites, not origins: another port on
+this PC, or another node of the owner's tailnet, is the same site, and its
+requests carry the cookie. From there a page could switch the crying detection
+off, delete clips or open the Funnel, with nobody having pressed anything — the
+monitor's one job undone in silence, and write-only, so nothing needs reading.
+Every command behind `requireAuth` now goes through `fromOurOwnPages` too, and
+reads are left alone, because a cross-origin page cannot read what they answer.
+`TestACommandFromASiblingOriginIsRefused` failed with the check taken out.
+
+**A session opened on the home network is not accepted from the Internet.** The
+LAN listener is plain HTTP, so its cookie crosses the Wi-Fi in clear, and there
+was one session store for every road: a cookie read off a shared network also
+opened the public address, from anywhere, and sliding renewal kept it alive
+after its reader had left. The owner's browser never does this by itself — the
+home address and the public name are two hosts with two cookie jars — so what
+is refused is a cookie somebody carried. The tailnet's sessions go everywhere,
+being encrypted end to end, which is the phone with Tailscale switched off on
+the way out of the house. The token is refused, not revoked: revoking would let
+whoever holds a copy log the owner out.
+
+**And the browser's copy slides with the server's.** The renewal was sliding on
+the server and fixed in the browser, whose cookie took its `MaxAge` at login: a
+week later the browser threw away a session the server still held, which is the
+fixed expiry the sliding renewal exists to avoid. The cookie is handed out again
+once it is half its life old.
 
 ### The Funnel does not come up without a password
 

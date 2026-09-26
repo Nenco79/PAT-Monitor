@@ -28,7 +28,7 @@ func TestTheDeviceCountTravelsWithTheStatus(t *testing.T) {
 		t.Fatalf("one open session and Devices=%d", n)
 	}
 
-	if _, err := s.sessions.create("a second phone"); err != nil {
+	if _, err := s.sessions.create("a second phone", anyRoad); err != nil {
 		t.Fatal(err)
 	}
 	if n := s.Status().Devices; n != 2 {

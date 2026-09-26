@@ -38,6 +38,9 @@ func setupReq(t *testing.T, s *Server, remoteAddr string) *httptest.ResponseReco
 	body, _ := json.Marshal(map[string]string{"password": "a-new-password", "confirm": "a-new-password"})
 	r := httptest.NewRequest(http.MethodPost, "/api/setup", strings.NewReader(string(body)))
 	r.Header.Set("Content-Type", "application/json")
+	// A name only this PC answers to, so that what these tests refuse is the
+	// road and never the name: see namesThisPC.
+	r.Host = "localhost:8080"
 	if remoteAddr == "" {
 		// This is how the funnel declares the real visitor: not with a header,
 		// which the caller would write, but in the context starting from the
@@ -115,6 +118,7 @@ func TestTheFirstConfigurationIsDoneAtThisPCOnItsOwnLANAddress(t *testing.T) {
 		r := httptest.NewRequest(http.MethodPost, "/api/setup", strings.NewReader(string(body)))
 		r.Header.Set("Content-Type", "application/json")
 		r.RemoteAddr = c.remote
+		r.Host = "192.168.1.10:8080"
 		r = arrivingOn(r, "192.168.1.10:8080")
 		w := httptest.NewRecorder()
 		s.Handler().ServeHTTP(w, r)

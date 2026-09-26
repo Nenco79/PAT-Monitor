@@ -66,7 +66,7 @@ func serverWithPassword(t *testing.T, password string) (*Server, string) {
 	}
 	t.Cleanup(s.Close)
 
-	token, err := s.sessions.create("test")
+	token, err := s.sessions.create("test", anyRoad)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -140,7 +140,7 @@ func TestWithTheCurrentPasswordItChanges(t *testing.T) {
 // the devices already in alive cancels the reason for the change.
 func TestTheChangeClosesEverySession(t *testing.T) {
 	s, token := serverWithPassword(t, "old-password")
-	other, err := s.sessions.create("another device")
+	other, err := s.sessions.create("another device", anyRoad)
 	if err != nil {
 		t.Fatal(err)
 	}

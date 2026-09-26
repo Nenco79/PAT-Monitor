@@ -46,7 +46,7 @@ func serverWithClip(t *testing.T, content []byte) (*Server, string, *record.Stor
 	}
 	t.Cleanup(s.Close)
 
-	token, err := s.sessions.create("test")
+	token, err := s.sessions.create("test", anyRoad)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -255,7 +255,7 @@ func TestAMissingStoreSaysSo(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(s.Close)
-	token, err := s.sessions.create("test")
+	token, err := s.sessions.create("test", anyRoad)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -148,7 +148,7 @@ is optional.
 
 | key | default | meaning |
 |---|---|---|
-| `listen_addr` | `:8080` | local listening address |
+| `listen_addr` | `:8080` | local listening address, plain HTTP; put no proxy in front of it, since the first setup trusts connections from this PC |
 | `quality` | `high` | video preset: `high` 720p30 2500 kbit/s, `medium` 540p30 1200, `low` 360p15 500 |
 | `target_qp` | `30` | target quantizer for the saving loop, `0` disables it |
 | `camera_device_id` | first usable | camera to use, by the symbolic link `pat-diag` prints |

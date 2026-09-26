@@ -31,6 +31,7 @@ func formPost(path string, fields map[string]string) *http.Request {
 	// first-time setup is accepted from, and so the one place a page somebody
 	// else wrote can try to borrow.
 	r.RemoteAddr = "127.0.0.1:5555"
+	r.Host = "localhost:8080"
 	return r
 }
 
@@ -144,6 +145,7 @@ func TestTheJSONShapeOfTheCrossSiteRefusalIsA403(t *testing.T) {
 	r.Header.Set("Content-Type", "application/json")
 	r.Header.Set("Sec-Fetch-Site", "cross-site")
 	r.RemoteAddr = "127.0.0.1:5555"
+	r.Host = "localhost:8080"
 	w := httptest.NewRecorder()
 	s.Handler().ServeHTTP(w, r)
 
@@ -185,6 +187,7 @@ func TestSetupRefusesBeforeItHashes(t *testing.T) {
 		r := httptest.NewRequest(http.MethodPost, "/api/setup", strings.NewReader(string(body)))
 		r.Header.Set("Content-Type", "application/json")
 		r.RemoteAddr = "127.0.0.1:5555"
+		r.Host = "localhost:8080"
 		w := httptest.NewRecorder()
 		s.Handler().ServeHTTP(w, r)
 		return w.Code

@@ -23,6 +23,38 @@ type session struct {
 	// a phone going from Wi-Fi to a mobile network changes address and would be
 	// disconnected exactly when it is needed.
 	remote string
+	// bornAtHome says the session was opened on the home network, over plain
+	// HTTP: see sessionStore.check for why it is not accepted from the Internet.
+	bornAtHome bool
+	// cookieSet is when the browser was last handed this token.
+	cookieSet time.Time
+}
+
+// sessionCheck is what a token turned out to be.
+type sessionCheck int
+
+const (
+	// sessionInvalid is no session at all: unknown, expired or empty.
+	sessionInvalid sessionCheck = iota
+	sessionValid
+	// sessionValidStaleCookie is valid, and the browser's copy of the cookie is
+	// old enough to be handed out again.
+	sessionValidStaleCookie
+	// sessionWrongRoad is alive, and presented from the Internet although it
+	// was opened on the home network.
+	sessionWrongRoad
+)
+
+// bornAtHome says whether a session opened from this origin travelled the home
+// network in clear. The LAN listener is plain HTTP by design, so its cookie
+// can be read by anybody who can see the traffic; the tailnet and the Funnel
+// are encrypted, and this PC's own connections never reach a wire.
+func bornAtHome(o origin) bool {
+	switch o.Class {
+	case originLocal, originThisPC, originUnknown:
+		return true
+	}
+	return false
 }
 
 // sessionStore keeps the sessions in memory. A restart of the app invalidates
@@ -44,8 +76,8 @@ func newSessionStore(ttl time.Duration) *sessionStore {
 	return s
 }
 
-// create generates a new session token.
-func (s *sessionStore) create(remote string) (string, error) {
+// create generates a new session token for a caller arriving from `from`.
+func (s *sessionStore) create(remote string, from origin) (string, error) {
 	raw := make([]byte, 32)
 	if _, err := rand.Read(raw); err != nil {
 		return "", err
@@ -54,14 +86,36 @@ func (s *sessionStore) create(remote string) (string, error) {
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.m[token] = session{expires: time.Now().Add(s.ttl), remote: remote}
+	now := time.Now()
+	s.m[token] = session{expires: now.Add(s.ttl), remote: remote,
+		bornAtHome: bornAtHome(from), cookieSet: now}
 	return token, nil
 }
 
-// valid checks a token and extends its life.
+// valid says whether a token is a live session for a request from home. It is
+// check with the road left out, for the callers that only ask whether a
+// session survived something — a password change, a reset.
 func (s *sessionStore) valid(token string) bool {
+	return s.check(token, false) != sessionInvalid
+}
+
+// check validates a token for a request that arrived from the Internet or not,
+// and extends its life.
+//
+// **A session opened on the home network is not accepted from the Internet.**
+// The LAN listener is plain HTTP, so its cookie crosses the Wi-Fi in clear, and
+// the session store is one for every road: a cookie read off a shared network
+// was also a key to the public address, and sliding renewal kept it alive after
+// whoever read it had left. A browser never presents one cookie on both roads
+// on its own — the cookie belongs to the host, and the home address and the
+// public one are two hosts — so what this refuses is a cookie that has been
+// carried from one to the other by somebody else.
+//
+// The token is not revoked: it is still the key it always was at home, and a
+// refusal that deleted it would let whoever holds a copy log the owner out.
+func (s *sessionStore) check(token string, public bool) sessionCheck {
 	if token == "" {
-		return false
+		return sessionInvalid
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -76,18 +130,32 @@ func (s *sessionStore) valid(token string) bool {
 		}
 	}
 	if found == "" {
-		return false
+		return sessionInvalid
 	}
 	sess := s.m[found]
-	if time.Now().After(sess.expires) {
+	now := time.Now()
+	if now.After(sess.expires) {
 		delete(s.m, found)
-		return false
+		return sessionInvalid
+	}
+	if public && sess.bornAtHome {
+		return sessionWrongRoad
 	}
 	// Sliding renewal: whoever watches the monitor every night must not have to
 	// authenticate again at a fixed expiry.
-	sess.expires = time.Now().Add(s.ttl)
+	sess.expires = now.Add(s.ttl)
+	// **And the browser's copy has to slide with it**, or the renewal is a
+	// promise only the server keeps: the cookie's MaxAge was fixed at login, so
+	// the browser threw the token away a week later while the server still
+	// held it. Handing it out again every half life keeps the two in step
+	// without a Set-Cookie on every status round.
+	verdict := sessionValid
+	if now.Sub(sess.cookieSet) > s.ttl/2 {
+		sess.cookieSet = now
+		verdict = sessionValidStaleCookie
+	}
 	s.m[found] = sess
-	return true
+	return verdict
 }
 
 func (s *sessionStore) revoke(token string) {

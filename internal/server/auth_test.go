@@ -71,11 +71,11 @@ func TestRevokeAll(t *testing.T) {
 	s := newSessionStore(time.Hour)
 	defer s.close()
 
-	first, err := s.create("192.168.1.10")
+	first, err := s.create("192.168.1.10", origin{Class: originLocal})
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, err := s.create("109.54.184.22")
+	second, err := s.create("109.54.184.22", origin{Class: originInternet})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -38,7 +38,7 @@ func serverWithRecorder(t *testing.T, outcome bool) (*Server, string, *int) {
 	}
 	t.Cleanup(s.Close)
 
-	token, err := s.sessions.create("test")
+	token, err := s.sessions.create("test", anyRoad)
 	if err != nil {
 		t.Fatal(err)
 	}
