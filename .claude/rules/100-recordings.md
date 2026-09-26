@@ -44,6 +44,21 @@ beside the configuration, which we know is writable. And there the line about
 remaining clips does **not** come out: the old folder is the current one, and
 announcing them as lost would be a lie about files that are being served.
 
+**A name with a clip's shape is not proof of a clip.** The store checked the
+shape and then followed whatever was under that name, so a symbolic link called
+like a clip and pointing at any file of the user's was listed, served to a
+viewer through the Funnel, and truncated by the next save under that name. Making
+one wants code already running as the user, so it opens nothing to anybody
+outside. What it closes is a way for the viewer's routes to read files that were
+never clips. `resolve` and the listing now ask `Lstat` for a plain file, which
+refuses a link and a junction alike, `Open` checks that what it opened is what
+it looked at, and `Save` will not write through a name that is not a plain file.
+**It changes nothing for a real clip**: saving under a name that is already a
+plain file still overwrites it, as before. `TestALinkWithAClipsNameIsNotFollowed`
+failed on all four counts against the old store. It skips where a symbolic link
+cannot be made, since Windows wants Developer Mode or a privilege for one; on
+this machine it could be made, so the test ran.
+
 ### The folder is proved by writing in it, and the panel is told where it really is
 
 **Asking Windows for a folder is not being able to write in it.**

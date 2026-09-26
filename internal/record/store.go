@@ -171,6 +171,11 @@ func (s *Store) Save(c Clip) error {
 	name := prefixFor(c.Keep) + c.At.Local().Format(nameLayout) + "-" + c.Code + clipSuffix
 	path := filepath.Join(s.dir, name)
 
+	// A name that is already there and is not a plain file is not written
+	// through: see resolve.
+	if st, err := os.Lstat(path); err == nil && !st.Mode().IsRegular() {
+		return fmt.Errorf("record: %s is not a plain file", name)
+	}
 	f, err := os.Create(path)
 	if err != nil {
 		return err
@@ -212,9 +217,19 @@ func (s *Store) Open(name string) (*os.File, Entry, error) {
 	if err != nil {
 		return nil, Entry{}, err
 	}
+	seen, err := os.Lstat(path)
+	if err != nil {
+		return nil, Entry{}, err
+	}
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, Entry{}, err
+	}
+	// What was opened is what was looked at: a name swapped for a link between
+	// the two is refused rather than followed.
+	if st, err := f.Stat(); err != nil || !os.SameFile(seen, st) {
+		f.Close()
+		return nil, Entry{}, os.ErrNotExist
 	}
 	e, err := entryOf(f, name)
 	if err != nil {
@@ -419,7 +434,7 @@ func (s *Store) list(durations bool) ([]Entry, error) {
 	}
 	var out []Entry
 	for _, v := range entries {
-		if v.IsDir() || !clipName.MatchString(v.Name()) {
+		if !v.Type().IsRegular() || !clipName.MatchString(v.Name()) {
 			continue
 		}
 		e, ok := parseName(v.Name())
@@ -470,7 +485,16 @@ func (s *Store) resolve(name string) (string, error) {
 		return "", ErrBadName
 	}
 	path := filepath.Join(s.dir, name)
-	if st, err := os.Stat(path); err != nil || st.IsDir() {
+	// **A plain file, looked at without following anything.** os.Stat follows
+	// a symbolic link, and a link with a clip's name pointing at any file of the
+	// user's would have been listed, served to a viewer from the Internet and,
+	// on the next Save under that name, truncated. Planting one wants code
+	// running as the user already, so this crosses no boundary somebody outside
+	// can reach; it keeps the viewer's routes from becoming a way to read, over
+	// the Funnel, a file that was never a clip. Lstat reports a symbolic link as
+	// such and a junction or mount point as irregular, and IsRegular refuses
+	// both.
+	if st, err := os.Lstat(path); err != nil || !st.Mode().IsRegular() {
 		return "", os.ErrNotExist
 	}
 	return path, nil
