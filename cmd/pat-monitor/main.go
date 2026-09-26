@@ -119,6 +119,9 @@ var (
 )
 
 func main() {
+	// First of all, before anything can load a DLL: see narrowDLLSearch. The
+	// error is kept for the log, which does not exist yet.
+	dllSearchErr := narrowDLLSearch()
 	flag.Parse()
 
 	// Before anything else, and without touching anything: whoever asks for the
@@ -227,6 +230,10 @@ func main() {
 	// question that comes before all the others is which binary was running: if
 	// it sits at the end, or is not there, it gets reconstructed from memory.
 	log.Info("version", "product", version.Product, "version", version.Full())
+	if dllSearchErr != nil {
+		log.Warn("DLL search path not narrowed: the executable's folder is still searched",
+			"error", dllSearchErr)
+	}
 
 	if logErr != nil {
 		log.Warn("log file unavailable, continuing on the console only",
