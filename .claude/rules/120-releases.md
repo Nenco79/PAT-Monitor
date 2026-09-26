@@ -133,6 +133,18 @@ naming anything else is Unknown — an answer we would not open is an answer we
 did not get. The client also refuses a redirect off https, which Go's default
 follows without a word.
 
+**It was one of two roads from a remote answer to the shell.** The tray's
+"to do" pill opens the link Tailscale's control server composes, which is the
+login address or the one `QueryFeature` answers, and it went to `ShellExecute`
+exactly as it came. `tunnel.openable` holds it to an https page on
+`tailscale.com` and otherwise hands on nothing. The pill then does not appear,
+and Tailscale's own text still says what to do. The check sits where the link
+enters the state and not in `tray.Open`, which legitimately opens folders,
+`ms-settings:` and the home page, so a check there would have needed a list of
+exceptions. `TestOnlyATailscalePageIsHandedToTheShell` failed on a share, a
+`file:` URL, a `search-ms:` handler, plain http and a look-alike host with the
+check taken out.
+
 ### The key ships before anything reads it
 
 `internal/update/pubkey.go` carries an ed25519 public key that **nothing

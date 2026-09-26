@@ -23,6 +23,7 @@ import (
 	"net"
 	"net/http"
 	"net/netip"
+	neturl "net/url"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -800,7 +801,7 @@ func (t *Tunnel) evaluate(ctx context.Context, lc *local.Client, st *ipnstate.St
 		return State{
 			Phase:     PhaseNeedsLogin,
 			Action:    ActionAuthorise,
-			ActionURL: st.AuthURL,
+			ActionURL: openable(st.AuthURL),
 		}, false
 	}
 
@@ -821,7 +822,32 @@ func (t *Tunnel) evaluate(ctx context.Context, lc *local.Client, st *ipnstate.St
 	// answer, and it says a good deal less because it knows neither of those
 	// two things.
 	return State{Phase: PhaseNeedsFunnel, Action: ActionEnableFunnel,
-		ActionText: text, ActionURL: url}, false
+		ActionText: text, ActionURL: openable(url)}, false
+}
+
+// openable returns an action link only if it is an https page on
+// tailscale.com, and nothing otherwise.
+//
+// **The link is handed to ShellExecute by the tray**, which opens whatever it
+// is given: a path to an executable, a UNC share, a `file:` URL, a protocol
+// handler. The two links here come from Tailscale's control server — the login
+// address and the one QueryFeature answers — so the party that writes them is
+// one the node already trusts, and that is not a reason to let it hand the
+// shell something to run. The update check already holds its link to an https
+// release page; this is the second road from a remote answer to the shell.
+//
+// An empty link is a state the pages and the panel already know: the pill does
+// not appear, and Tailscale's own text still says what to do.
+func openable(link string) string {
+	u, err := neturl.Parse(link)
+	if err != nil || u.Scheme != "https" || u.User != nil || u.Opaque != "" {
+		return ""
+	}
+	host := strings.ToLower(u.Hostname())
+	if host != "tailscale.com" && !strings.HasSuffix(host, ".tailscale.com") {
+		return ""
+	}
+	return link
 }
 
 // checkHostname compares the name asked for with the one granted.
