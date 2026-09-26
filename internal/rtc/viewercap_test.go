@@ -98,3 +98,24 @@ func TestAViewerCannotHandTheAgentEndlessCandidates(t *testing.T) {
 		t.Errorf("the capped candidate was counted as pion's refusal (%d -> %d)", before, after)
 	}
 }
+
+// **A seat is given back once, whichever road gets there first.** A failure
+// after the state callback is registered closes the PeerConnection, whose
+// Closed state calls Close, while NewViewer's own cleanup gave the seat back
+// too: two for one, and the cap drifting open by one per failure.
+//
+// **The defect was put back and this test fails with it**: with Close
+// decrementing unconditionally, the count drops by two.
+func TestAViewersSeatIsGivenBackOnce(t *testing.T) {
+	h := readyHub(t)
+	v, _, err := h.NewViewer()
+	if err != nil {
+		t.Fatal(err)
+	}
+	before := h.open.Load()
+	v.giveSeatBack() // NewViewer's cleanup on a late failure
+	v.Close()        // and the Closed state that failure produces
+	if after := h.open.Load(); after != before-1 {
+		t.Errorf("the count went from %d to %d: one seat was given back twice", before, after)
+	}
+}

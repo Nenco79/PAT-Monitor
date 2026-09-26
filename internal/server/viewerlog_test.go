@@ -17,6 +17,9 @@ import (
 // the same person, which is exactly the mistake already paid for on the login
 // rate limiting.
 func TestRequestOrigin(t *testing.T) {
+	// The tailnet node is taken from the range itself and not written out: no
+	// address in that range goes into this repository, not even in a test.
+	tailnode := tailnetRange.Addr().Next().String()
 	cases := []struct {
 		name       string
 		remoteAddr string
@@ -27,7 +30,7 @@ func TestRequestOrigin(t *testing.T) {
 	}{
 		{"loopback", "127.0.0.1:5511", "", "this PC", "127.0.0.1", false},
 		{"home network", "192.168.1.42:5511", "", "local network", "192.168.1.42", false},
-		{"tailnet node", "100.101.102.103:5511", "", "tailnet", "100.101.102.103", false},
+		{"tailnet node", tailnode + ":5511", "", "tailnet", tailnode, false},
 		{"direct public address", "93.184.216.34:5511", "", "Internet", "93.184.216.34", true},
 		{"through the funnel", "127.0.0.1:5511", "203.0.113.9:44321", "Internet (Funnel)", "203.0.113.9", true},
 	}

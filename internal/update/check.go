@@ -255,12 +255,26 @@ func verdict(r release) State {
 //
 // A URL that is not one is Unknown rather than an update with no link: an
 // answer that names a page we would not open is an answer we did not get.
+//
+// **The prefix is compared on the path, and the path must be plain.** A raw
+// string that starts right can walk out again — `/releases/../../somebody/`
+// is under the prefix as text and nowhere near it once a browser resolves it —
+// so a dot segment, an escape, a backslash, a query or a fragment is refused
+// before the comparison: none of them is in a page GitHub names.
 func releasePage(raw string) bool {
 	u, err := url.Parse(raw)
-	if err != nil || u.Scheme != "https" || u.User != nil || u.Host != "github.com" {
+	if err != nil || u.Scheme != "https" || u.User != nil || u.Host != "github.com" ||
+		u.RawPath != "" || u.RawQuery != "" || u.Fragment != "" || u.Opaque != "" ||
+		strings.ContainsAny(raw, `\%`) {
 		return false
 	}
-	return len(raw) > len(releasePages) && strings.EqualFold(raw[:len(releasePages)], releasePages)
+	for seg := range strings.SplitSeq(u.Path, "/") {
+		if seg == "." || seg == ".." {
+			return false
+		}
+	}
+	prefix := strings.TrimPrefix(releasePages, "https://github.com")
+	return len(u.Path) > len(prefix) && strings.EqualFold(u.Path[:len(prefix)], prefix)
 }
 
 // httpsOnly refuses a redirect that leaves https.

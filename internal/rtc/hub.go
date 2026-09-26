@@ -830,8 +830,19 @@ type Viewer struct {
 	// and they are two different faults — the second is ours.
 	candSent, candRefused atomic.Int64
 
+	// seated says this viewer still holds one of the hub's maxOpenViewers
+	// seats. It is given back once, by whichever road gets there first.
+	seated atomic.Bool
+
 	closeOnce sync.Once
 	closed    chan struct{}
+}
+
+// giveSeatBack returns the viewer's seat to the hub, once.
+func (v *Viewer) giveSeatBack() {
+	if v.seated.CompareAndSwap(true, false) {
+		v.hub.open.Add(-1)
+	}
 }
 
 // TalkMid is the m-line the viewer can send their own voice on. Empty when
@@ -883,11 +894,21 @@ func (h *Hub) NewViewer() (*Viewer, *webrtc.SessionDescription, error) {
 		h.open.Add(-1)
 		return nil, nil, ErrTooManyViewers
 	}
+	// **Once the viewer exists the seat is its**, and given back through it:
+	// a failure after OnConnectionStateChange is registered closes the
+	// PeerConnection, whose Closed state calls Close, and a second give-back
+	// here would free a seat nobody had taken.
+	var v *Viewer
 	handedOver := false
 	defer func() {
-		if !handedOver {
-			h.open.Add(-1)
+		if handedOver {
+			return
 		}
+		if v == nil {
+			h.open.Add(-1)
+			return
+		}
+		v.giveSeatBack()
 	}()
 
 	engine := &webrtc.MediaEngine{}
@@ -985,12 +1006,13 @@ func (h *Hub) NewViewer() (*Viewer, *webrtc.SessionDescription, error) {
 		return nil, nil, fmt.Errorf("creating the PeerConnection: %w", err)
 	}
 
-	v := &Viewer{
+	v = &Viewer{
 		pc: pc, hub: h, log: h.log,
 		id:        nextSessionID(),
 		startedAt: time.Now(),
 		closed:    make(chan struct{}),
 	}
+	v.seated.Store(true)
 
 	videoSender, err := pc.AddTrack(video)
 	if err != nil {
@@ -1269,7 +1291,7 @@ func (v *Viewer) CloseUnlessConnected() bool {
 func (v *Viewer) Close() {
 	v.closeOnce.Do(func() {
 		v.rememberICEFacts()
-		v.hub.open.Add(-1)
+		v.giveSeatBack()
 		if v.counted.CompareAndSwap(true, false) {
 			v.hub.Stats.ViewersNow.Add(-1)
 		}

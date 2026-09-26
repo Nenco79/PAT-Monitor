@@ -27,7 +27,7 @@ var (
 	outside = origin{Kind: "Internet (Funnel)", Addr: "203.0.113.7", Class: originInternet}
 	home    = origin{Kind: "local network", Addr: "192.168.1.42", Class: originLocal}
 	thisPC  = origin{Kind: "this PC", Addr: "127.0.0.1", Class: originThisPC}
-	tailnet = origin{Kind: "tailnet", Addr: "100.71.3.9", Class: originTailnet}
+	tailnet = origin{Kind: "tailnet", Addr: tailnetRange.Addr().Next().String(), Class: originTailnet}
 	nowhere = origin{Kind: "unknown origin", Addr: "?", Class: originUnknown}
 )
 

@@ -89,7 +89,7 @@ func requestOrigin(r *http.Request) origin {
 	switch {
 	case addr.IsLoopback(), sameAsLocal(r, addr):
 		return origin{Kind: "this PC", Addr: host, Class: originThisPC}
-	case tailnetRange.Contains(addr):
+	case tailnetRange.Contains(addr), tailnetRange6.Contains(addr):
 		// 100.64.0.0/10 is the space Tailscale assigns to tailnet nodes:
 		// whoever arrives from there is already inside the private network, not
 		// from the Internet.
@@ -101,6 +101,12 @@ func requestOrigin(r *http.Request) origin {
 }
 
 var tailnetRange = netip.MustParsePrefix("100.64.0.0/10")
+
+// tailnetRange6 is the same space in IPv6. It sits inside the private range,
+// so without its own case a tailnet node reached over IPv6 was classed as the
+// local network — and a session opened from there was taken for one that had
+// crossed the Wi-Fi in clear.
+var tailnetRange6 = netip.MustParsePrefix("fd7a:115c:a1e0::/48")
 
 // sameAsLocal says whether the connection came from the address it arrived on,
 // which is what a browser on this PC produces when it opens one of the PC's own

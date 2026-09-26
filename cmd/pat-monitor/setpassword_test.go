@@ -78,3 +78,13 @@ func TestAHeldPortIsDeclaredAsARunningMonitor(t *testing.T) {
 	}
 	ln.Close()
 }
+
+// An address that cannot be bound for another reason — an interface that is
+// down today — is one no monitor can hold, so the change is not refused.
+func TestAnUnbindableAddressIsNotARunningMonitor(t *testing.T) {
+	c, err := holdThePort("192.0.2.1:0") // TEST-NET-1: never this machine's
+	if err != nil {
+		t.Fatalf("an address nobody can bind was declared a running monitor: %v", err)
+	}
+	c.Close()
+}

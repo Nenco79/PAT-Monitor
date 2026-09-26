@@ -86,12 +86,13 @@ func TestTheSetupPageSendsANameOnToTheAddress(t *testing.T) {
 	w := httptest.NewRecorder()
 	s.Handler().ServeHTTP(w, r)
 
-	if w.Code != http.StatusSeeOther || w.Header().Get("Location") != "http://127.0.0.1:8080/setup" {
+	if w.Code != http.StatusSeeOther || w.Header().Get("Location") != "http://localhost:8080/setup" {
 		t.Errorf("answered %d towards %q, wanted 303 to the address", w.Code, w.Header().Get("Location"))
 	}
 }
 
-// statusWith asks for /api/status with a session cookie, from `from`.
+// statusWith asks for /api/status with a session cookie, from wherever
+// prepare puts the request.
 func statusWith(s *Server, token string, prepare func(*http.Request)) int {
 	r := httptest.NewRequest(http.MethodGet, "/api/status", nil)
 	r.AddCookie(&http.Cookie{Name: sessionCookieName, Value: token})
@@ -139,7 +140,7 @@ func TestASessionOpenedAtHomeDoesNotOpenThePublicAddress(t *testing.T) {
 
 	// The encrypted roads carry their sessions everywhere, which is the phone
 	// with Tailscale switched off on the way out of the house.
-	tail, err := s.sessions.create("100.101.102.103", origin{Class: originTailnet})
+	tail, err := s.sessions.create("192.0.2.10", origin{Class: originTailnet})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -264,5 +265,127 @@ func TestTheConnectionDecidesWhatIsSecure(t *testing.T) {
 	s.Handler().ServeHTTP(enc, r)
 	if h := enc.Header().Get("Strict-Transport-Security"); h == "" {
 		t.Error("no HSTS on an encrypted answer")
+	}
+}
+
+// **A tailnet node reached over IPv6 is the tailnet.** Its range sits inside
+// the private one, so it was classed as the local network, and a session
+// opened from there — encrypted end to end — was refused at the Funnel as a
+// cookie carried off the Wi-Fi, with a warning saying so. A phone with
+// Tailscale on, which MagicDNS answers over IPv6, met it on the way out.
+//
+// **The defect was put back and this test fails with it**: without the IPv6
+// range the address is "local network" and the session is refused.
+func TestATailnetNodeOverIPv6IsTheTailnet(t *testing.T) {
+	r := httptest.NewRequest(http.MethodGet, "/", nil)
+	r.RemoteAddr = "[fd7a:115c:a1e0::5]:443"
+	if c := requestOrigin(r).Class; c != originTailnet {
+		t.Fatalf("a tailnet IPv6 address was classed %v", c)
+	}
+	s, _ := serverWithPassword(t, "a-long-password")
+	token, err := s.sessions.create("", requestOrigin(r))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if code := statusWith(s, token, fromTheFunnel); code != http.StatusOK {
+		t.Errorf("a session opened over the tailnet's IPv6 answered %d from the Funnel", code)
+	}
+}
+
+// **A page under a foreign name cannot guess at the login from this PC
+// either.** Refused only at the setup, a rebinding page could still post to
+// /api/login under the owner's own loopback key — locking the owner out and
+// holding the hashing slot kept for the house.
+//
+// **The defect was put back and this test fails with it**: without the name
+// check in credentials, the guess is weighed and charged to 127.0.0.1.
+func TestAPageUnderAForeignNameCannotGuessFromThisPC(t *testing.T) {
+	s, _ := serverWithPassword(t, "a-long-password")
+	r := loginReq("a-wrong-guess", func(r *http.Request) {
+		r.RemoteAddr = "127.0.0.1:5555"
+		r.Host = "not-the-monitor.example:8080"
+		r.Header.Set("Sec-Fetch-Site", "same-origin")
+		r.Header.Set("Origin", "http://not-the-monitor.example:8080")
+	})
+	w := httptest.NewRecorder()
+	s.Handler().ServeHTTP(w, r)
+	if w.Code != http.StatusForbidden {
+		t.Errorf("answered %d, wanted 403", w.Code)
+	}
+	s.limiter.mu.Lock()
+	rec := s.limiter.m["127.0.0.1"]
+	s.limiter.mu.Unlock()
+	if rec != nil {
+		t.Errorf("the guess was charged to this PC's own key: %d failures", rec.failures)
+	}
+}
+
+// The three pages that post credentials are sent on to an address under a
+// name, and a link-local address with a zone, which no URL can carry, becomes
+// localhost.
+func TestTheCredentialPagesSendANameOnToAnAddress(t *testing.T) {
+	for _, c := range []struct {
+		path  string
+		local net.Addr
+		want  string
+	}{
+		{"/onboarding", &net.TCPAddr{IP: net.IPv4(192, 168, 1, 20), Port: 8080}, "http://192.168.1.20:8080/onboarding"},
+		{"/login", &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1), Port: 8080}, "http://localhost:8080/login"},
+		{"/setup", &net.TCPAddr{IP: net.ParseIP("fe80::1"), Port: 8080, Zone: "12"}, "http://localhost:8080/setup"},
+	} {
+		s := serverWithoutPassword(t)
+		r := httptest.NewRequest(http.MethodGet, c.path, nil)
+		r.Host = "desktop-pc:8080"
+		ap := netip.MustParseAddrPort(c.local.String())
+		r.RemoteAddr = ap.String()
+		r = r.WithContext(context.WithValue(r.Context(), http.LocalAddrContextKey, c.local))
+		w := httptest.NewRecorder()
+		s.Handler().ServeHTTP(w, r)
+		if w.Code != http.StatusSeeOther || w.Header().Get("Location") != c.want {
+			t.Errorf("%s from %s: answered %d towards %q, wanted %q",
+				c.path, c.local, w.Code, w.Header().Get("Location"), c.want)
+		}
+	}
+}
+
+// **A refused command does not use up the cookie's renewal.** The half-life
+// was marked when the check answered, so a command refused a moment later
+// sent no cookie and the next renewal came half a life late — after the
+// browser's copy could already have expired.
+func TestARefusedCommandDoesNotUseUpTheRenewal(t *testing.T) {
+	s, _ := serverWithPassword(t, "a-long-password")
+	token, err := s.sessions.create("192.168.1.40", origin{Class: originLocal})
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.sessions.mu.Lock()
+	sess := s.sessions.m[token]
+	sess.cookieSet = time.Now().Add(-s.sessions.ttl)
+	s.sessions.m[token] = sess
+	s.sessions.mu.Unlock()
+
+	if code := commandWith(s, token, map[string]string{"Sec-Fetch-Site": "same-site"}); code != http.StatusForbidden {
+		t.Fatalf("the sibling's command answered %d", code)
+	}
+	r := httptest.NewRequest(http.MethodGet, "/api/status", nil)
+	r.AddCookie(&http.Cookie{Name: sessionCookieName, Value: token})
+	fromTheLAN(r)
+	w := httptest.NewRecorder()
+	s.Handler().ServeHTTP(w, r)
+	if !strings.Contains(w.Header().Get("Set-Cookie"), token) {
+		t.Error("after a refused command the stale cookie was not handed out again")
+	}
+}
+
+// A socket's own IPv6 address keeps all of it: a house hands every device a
+// global address from one /64, and one device's wrong passwords must not lock
+// out the others. The /64 is for the Funnel.
+func TestAHouseOnIPv6IsNotOneCaller(t *testing.T) {
+	a := httptest.NewRequest(http.MethodGet, "/", nil)
+	a.RemoteAddr = "[2001:db8:1:2::10]:5000"
+	b := httptest.NewRequest(http.MethodGet, "/", nil)
+	b.RemoteAddr = "[2001:db8:1:2::11]:5000"
+	if clientKey(a) == clientKey(b) {
+		t.Errorf("two devices of one house share the key %q", clientKey(a))
 	}
 }

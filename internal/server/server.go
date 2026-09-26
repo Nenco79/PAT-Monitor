@@ -14,6 +14,7 @@ import (
 	"math"
 	"net"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"strconv"
 	"strings"
@@ -576,6 +577,7 @@ func (s *Server) requireAuth(next http.Handler) http.Handler {
 
 		if verdict == sessionValidStaleCookie {
 			s.setSessionCookie(w, r, c.Value)
+			s.sessions.cookieSent(c.Value)
 		}
 		next.ServeHTTP(w, r)
 	})
@@ -609,6 +611,11 @@ func (s *Server) pageViewer(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) pageLogin(w http.ResponseWriter, r *http.Request) {
+	// Under a name at this PC the credentials are refused (see credentials),
+	// so the page that would post them is not served there either.
+	if s.sendOnToTheAddress(w, r) {
+		return
+	}
 	if !s.conf().HasPassword() {
 		http.Redirect(w, r, "/setup", http.StatusSeeOther)
 		return
@@ -665,17 +672,8 @@ func (s *Server) pageSetup(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
-	if requestOrigin(r).Class == originThisPC && !namesThisPC(r.Host) {
-		// At this PC, under a name rather than an address — the machine's
-		// own, or one the router hands out. The person is where the setup is
-		// done, so they are sent to the same page by the address they
-		// arrived on rather than told they are somewhere else; a page that
-		// re-pointed a name here gets a navigation to an origin it cannot
-		// read.
-		if local, ok := r.Context().Value(http.LocalAddrContextKey).(net.Addr); ok {
-			http.Redirect(w, r, "http://"+local.String()+"/setup", http.StatusSeeOther)
-			return
-		}
+	if s.sendOnToTheAddress(w, r) {
+		return
 	}
 	if setupNotFromThisPC(r) {
 		// **The one place where the server really writes a sentence**, because
@@ -699,7 +697,44 @@ func (s *Server) pageSetup(w http.ResponseWriter, r *http.Request) {
 // closed door: it is the page itself that jumps to the right point, by looking
 // at the state.
 func (s *Server) pageOnboarding(w http.ResponseWriter, r *http.Request) {
+	if s.sendOnToTheAddress(w, r) {
+		return
+	}
 	s.serveAsset("onboarding.html", "text/html; charset=utf-8")(w, r)
+}
+
+// sendOnToTheAddress redirects a request made at this PC under a name to the
+// same page by an address, and says whether it did.
+//
+// The two pages that set the first password are refused under a name — see
+// namesThisPC — and a person at this PC who typed the machine's name, or one
+// the router hands out, is at the right machine. So they are sent on rather
+// than told they are somewhere else, and a page that re-pointed a name here
+// gets a navigation to an origin it cannot read.
+//
+// **The address is not always the one the connection arrived on.** A name
+// Windows resolves for itself is often a link-local IPv6 address with a zone,
+// and a zone cannot be written in a URL: that one, and loopback, become
+// localhost, which the listener answers whenever it answers loopback at all.
+func (s *Server) sendOnToTheAddress(w http.ResponseWriter, r *http.Request) bool {
+	if requestOrigin(r).Class != originThisPC || namesThisPC(r.Host) {
+		return false
+	}
+	local, ok := r.Context().Value(http.LocalAddrContextKey).(net.Addr)
+	if !ok {
+		return false
+	}
+	ap, err := netip.ParseAddrPort(local.String())
+	if err != nil {
+		return false
+	}
+	host := ap.Addr().Unmap()
+	target := net.JoinHostPort(host.String(), strconv.Itoa(int(ap.Port())))
+	if host.IsLoopback() || host.IsLinkLocalUnicast() || host.Zone() != "" {
+		target = net.JoinHostPort("localhost", strconv.Itoa(int(ap.Port())))
+	}
+	http.Redirect(w, r, "http://"+target+r.URL.Path, http.StatusSeeOther)
+	return true
 }
 
 // apiOnboardingState says whether a password already exists.
@@ -915,6 +950,15 @@ func credentials(w http.ResponseWriter, r *http.Request) (req loginRequest, isFo
 	// this is the check that stops somebody else's site posting a form here,
 	// and the route it protects hardest is /api/setup, which by design accepts
 	// a password from anyone at home while none is set.
+	//
+	// **And at this PC, only under a name only this PC answers to.** A page
+	// that re-pointed its name at loopback is same-origin to the browser and
+	// passes the check below; refused only at the setup, it could still
+	// guess at /api/login under the owner's own loopback key, locking the
+	// owner out and taking the hashing slot kept for the house.
+	if requestOrigin(r).Class == originThisPC && !namesThisPC(r.Host) {
+		return req, !strings.HasPrefix(ct, "application/json"), errCrossSite
+	}
 	if !fromOurOwnPages(r) {
 		return req, !strings.HasPrefix(ct, "application/json"), errCrossSite
 	}

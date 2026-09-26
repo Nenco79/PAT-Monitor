@@ -138,65 +138,103 @@ func isBareTimer(call *ast.CallExpr) bool {
 // packets, and a panic in it would have ended the process with the camera on.
 // The bodies are ours, so each catches for itself with guard.Run.
 //
-// It reads the callbacks registered on a PeerConnection, which in this tree is
-// always a variable or a field called `pc`; a callback registered on a type of
-// ours is not a library's goroutine, and is left to the rule above.
+// It reads every file of the monitor that imports pion/webrtc, and every
+// `X.On…(func …)` in them: a callback registered on a type of ours — a method
+// declared in this tree — is left to the rule above, since calling it is not
+// handing a body to pion. Where a name is both ours and pion's, the receiver
+// decides, and that one assumption is written where it is made. It used to read one named file and a receiver called
+// `pc`, which a review found was the first way guards fail: it protected
+// exactly the code somebody remembered.
+//
+// OnNewPeerConnection is the one exception, by name: an interceptor factory's
+// callback, which pion runs inside NewPeerConnection on the caller's own
+// goroutine, so the guard above the caller already covers it.
 //
 // **The defect was put back and this test fails with it**: with the talk-back
 // callback unwrapped, it names the line.
 func TestEveryCallbackAPeerConnectionRunsIsGuarded(t *testing.T) {
-	const path = "../rtc/hub.go"
-	fset := token.NewFileSet()
-	f, err := parser.ParseFile(fset, path, nil, 0)
-	if err != nil {
-		t.Fatal(err)
+	roots := []string{"..", "../../cmd/pat-monitor"}
+	type file struct {
+		path string
+		f    *ast.File
+		fset *token.FileSet
 	}
-	seen := 0
-	ast.Inspect(f, func(n ast.Node) bool {
-		call, ok := n.(*ast.CallExpr)
-		if !ok || len(call.Args) != 1 {
-			return true
-		}
-		sel, ok := call.Fun.(*ast.SelectorExpr)
-		if !ok || !strings.HasPrefix(sel.Sel.Name, "On") || !namedPC(sel.X) {
-			return true
-		}
-		lit, ok := call.Args[0].(*ast.FuncLit)
-		if !ok {
-			return true
-		}
-		seen++
-		guarded := false
-		if len(lit.Body.List) == 1 {
-			ast.Inspect(lit.Body.List[0], func(n ast.Node) bool {
-				if c, ok := n.(*ast.CallExpr); ok && callsGuard(c, "Run") {
-					guarded = true
+	var files []file
+	ours := map[string]bool{}
+	for _, root := range roots {
+		err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if d.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+				return nil
+			}
+			fset := token.NewFileSet()
+			f, err := parser.ParseFile(fset, path, nil, parser.SkipObjectResolution)
+			if err != nil {
+				return err
+			}
+			for _, d := range f.Decls {
+				if fn, ok := d.(*ast.FuncDecl); ok && fn.Recv != nil {
+					ours[fn.Name.Name] = true
 				}
-				return !guarded
-			})
+			}
+			for _, imp := range f.Imports {
+				if strings.HasPrefix(imp.Path.Value, `"github.com/pion/webrtc`) {
+					files = append(files, file{path, f, fset})
+					break
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatal(err)
 		}
-		if !guarded {
-			t.Errorf("%s: the body handed to %s runs on a goroutine pion started, "+
-				"and it does not catch for itself: its whole body belongs inside "+
-				"guard.Run", fset.Position(call.Pos()), sel.Sel.Name)
-		}
-		return true
-	})
-	if seen < 3 {
-		t.Fatalf("only %d PeerConnection callbacks were read: this guard is no "+
-			"longer looking at the code it was written for", seen)
 	}
-}
 
-// namedPC says whether an expression is `pc` or `something.pc`.
-func namedPC(e ast.Expr) bool {
-	switch e := e.(type) {
-	case *ast.Ident:
-		return e.Name == "pc"
-	case *ast.SelectorExpr:
-		return e.Sel.Name == "pc"
+	seen := 0
+	for _, fl := range files {
+		ast.Inspect(fl.f, func(n ast.Node) bool {
+			call, ok := n.(*ast.CallExpr)
+			if !ok || len(call.Args) != 1 {
+				return true
+			}
+			sel, ok := call.Fun.(*ast.SelectorExpr)
+			if !ok || !strings.HasPrefix(sel.Sel.Name, "On") || sel.Sel.Name == "OnNewPeerConnection" {
+				return true
+			}
+			// A name both pion and this tree declare — Viewer.OnICECandidate
+			// wraps pion's — is told apart by the receiver, the one thing the
+			// syntax has: our PeerConnections are called pc.
+			if ours[sel.Sel.Name] && !namedPC(sel.X) {
+				return true
+			}
+			lit, ok := call.Args[0].(*ast.FuncLit)
+			if !ok {
+				return true
+			}
+			seen++
+			guarded := false
+			if len(lit.Body.List) == 1 {
+				ast.Inspect(lit.Body.List[0], func(n ast.Node) bool {
+					if c, ok := n.(*ast.CallExpr); ok && callsGuard(c, "Run") {
+						guarded = true
+					}
+					return !guarded
+				})
+			}
+			if !guarded {
+				t.Errorf("%s: the body handed to %s runs on a goroutine pion started, "+
+					"and it does not catch for itself: its whole body belongs inside "+
+					"guard.Run", fl.fset.Position(call.Pos()), sel.Sel.Name)
+			}
+			return true
+		})
 	}
-	return false
+	if seen < 3 {
+		t.Fatalf("only %d pion callbacks were read: this guard is no longer "+
+			"looking at the code it was written for", seen)
+	}
 }
 
 // The errgroup is the third way, and its members are the monitor's largest
@@ -260,4 +298,15 @@ func TestEveryMemberOfTheGroupDecidesWhatAPanicCosts(t *testing.T) {
 		t.Fatalf("only %d group members were read: this guard is no longer "+
 			"looking at the list it was written for", seen)
 	}
+}
+
+// namedPC says whether an expression is `pc` or `something.pc`.
+func namedPC(e ast.Expr) bool {
+	switch e := e.(type) {
+	case *ast.Ident:
+		return e.Name == "pc"
+	case *ast.SelectorExpr:
+		return e.Sel.Name == "pc"
+	}
+	return false
 }

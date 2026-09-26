@@ -422,7 +422,7 @@ func TestAnAnswerWithNoTagDoesNotSwitchTheCheckOff(t *testing.T) {
 	}
 
 	// The server is fixed, and the next ask has to be able to see it.
-	f.body = release{TagName: "v99.1.0", HTMLURL: "https://github.com/Nenco79/PAT-Monitor/releases/tag/v99.0.01"}
+	f.body = release{TagName: "v99.1.0", HTMLURL: "https://github.com/Nenco79/PAT-Monitor/releases/tag/v99.1.0"}
 	if st, err = c.Check(context.Background()); err != nil {
 		t.Fatalf("third check: %v", err)
 	}
@@ -537,7 +537,11 @@ func TestTheStateCanBeReadWhileItIsBeingWritten(t *testing.T) {
 // no longer asked, every one of these reaches the panel as the update's link.
 func TestOnlyAReleasePageIsHandedToTheShell(t *testing.T) {
 	for _, bad := range []string{
-		`\somebody.example\share\setup.exe`,
+		`\\somebody.example\share\setup.exe`,
+		"https://github.com/Nenco79/PAT-Monitor/releases/../../../somebody/else/releases/download/v9/x.exe",
+		"https://github.com/Nenco79/PAT-Monitor/releases/%2e%2e/%2e%2e/somebody",
+		"https://github.com/Nenco79/PAT-Monitor/releases/tag/v99.0.0?next=https://example.invalid",
+		"https://github.com:8443/Nenco79/PAT-Monitor/releases/tag/v99.0.0",
 		"file:///C:/Windows/System32/calc.exe",
 		"search-ms:query=setup",
 		"http://github.com/Nenco79/PAT-Monitor/releases/tag/v99.0.0",

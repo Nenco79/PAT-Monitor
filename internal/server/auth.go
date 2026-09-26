@@ -93,11 +93,17 @@ func (s *sessionStore) create(remote string, from origin) (string, error) {
 	return token, nil
 }
 
-// valid says whether a token is a live session for a request from home. It is
-// check with the road left out, for the callers that only ask whether a
-// session survived something — a password change, a reset.
+// valid says whether a token is still a live session, and touches nothing.
+//
+// **It serves the tests, and says so rather than looking dead**: they ask
+// whether a session survived a password change or a reset, and check would
+// answer by renewing the very thing being asked about. requireAuth goes
+// through check.
 func (s *sessionStore) valid(token string) bool {
-	return s.check(token, false) != sessionInvalid
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	sess, ok := s.m[token]
+	return ok && time.Now().Before(sess.expires)
 }
 
 // check validates a token for a request that arrived from the Internet or not,
@@ -149,14 +155,25 @@ func (s *sessionStore) check(token string, public bool) sessionCheck {
 	// promise only the server keeps: the cookie's MaxAge was fixed at login, so
 	// the browser threw the token away a week later while the server still
 	// held it. Handing it out again every half life keeps the two in step
-	// without a Set-Cookie on every status round.
+	// without a Set-Cookie on every status round. When it was handed out is
+	// recorded by cookieSent, by whoever really sent it: a request refused
+	// after this answer sends nothing.
 	verdict := sessionValid
 	if now.Sub(sess.cookieSet) > s.ttl/2 {
-		sess.cookieSet = now
 		verdict = sessionValidStaleCookie
 	}
 	s.m[found] = sess
 	return verdict
+}
+
+// cookieSent records that the browser has just been handed this token again.
+func (s *sessionStore) cookieSent(token string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if sess, ok := s.m[token]; ok {
+		sess.cookieSet = time.Now()
+		s.m[token] = sess
+	}
 }
 
 func (s *sessionStore) revoke(token string) {
@@ -277,11 +294,13 @@ const busyRetry = time.Second
 // in flight is a program. The release must be called when the attempt has been
 // counted, success or failure.
 func (l *limiter) begin(key string) (release func(), wait time.Duration) {
-	if d := l.retryAfter(key); d > 0 {
-		return nil, d
-	}
+	// One critical section for the lockout and the admission: read apart, a
+	// failure recorded between the two let one more attempt in past a lock.
 	l.mu.Lock()
 	defer l.mu.Unlock()
+	if d := l.retryAfterLocked(key); d > 0 {
+		return nil, d
+	}
 	if l.inFlight[key] > 0 {
 		return nil, busyRetry
 	}
@@ -302,7 +321,11 @@ func (l *limiter) begin(key string) (release func(), wait time.Duration) {
 func (l *limiter) retryAfter(key string) time.Duration {
 	l.mu.Lock()
 	defer l.mu.Unlock()
+	return l.retryAfterLocked(key)
+}
 
+// retryAfterLocked is retryAfter for a caller already holding l.mu.
+func (l *limiter) retryAfterLocked(key string) time.Duration {
 	rec := l.m[key]
 	if rec == nil {
 		return 0
@@ -513,17 +536,19 @@ func clientKey(r *http.Request) string {
 	if src, ok := tunnel.SourceAddr(r.Context()); ok {
 		return addressKey(src.Addr())
 	}
+	// A socket's own address keeps all of it: a house on IPv6 hands every
+	// device a global address from one /64, and grouping those would let
+	// one device's wrong passwords lock out the rest. The /64 is for the
+	// Funnel, where a caller's addresses are the Internet's.
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		return r.RemoteAddr
 	}
-	if a, err := netip.ParseAddr(host); err == nil {
-		return addressKey(a)
-	}
 	return host
 }
 
-// addressKey is the unit a lockout is charged to.
+// addressKey is the unit a lockout is charged to, for a visitor through the
+// Funnel.
 //
 // **A public IPv6 address is one of 2^64 in the same subscriber's hands**: a
 // provider hands out a /64 at the least, so an address per attempt costs the

@@ -429,9 +429,11 @@ weighed — the machine's whole hashing rate, from one address. Three things now
   Internet** (`homeSlots`), so an attack through the Funnel slows the Funnel and
   never the parent at home, who takes the kept slot or a shared one, whichever
   frees first;
-- **a public IPv6 address is charged by its /64**, because a subscriber holds
-  2^64 of them and a lockout per address is none. The private ranges keep the
-  whole address, since there a /64 is every node of a tailnet.
+- **a public IPv6 address through the Funnel is charged by its /64**, because a
+  subscriber holds 2^64 of them and a lockout per address is none. A socket's
+  own address keeps all of it: a house on IPv6 hands every device a global
+  address from one /64, and the first version, grouping those too, let one
+  device's wrong passwords lock out the rest.
 
 **What is left is argon2's own rate, and that is a decision.** A caller with
 many addresses is bounded only by the three shared slots: an audit estimated
@@ -527,7 +529,13 @@ video, audio and talk-back. **What that name cannot be is one only this PC
 answers to**, so the setup also asks what the request calls us — `namesThisPC`,
 an address written as a number or `localhost`, which nobody else's DNS resolves.
 The machine's own name is not on the list, being resolved by the router: whoever
-types it at this PC is sent on to the address rather than refused.
+types it at this PC is sent on to the address rather than refused — from
+`/setup`, `/onboarding` and `/login`, the three pages that post credentials — and
+a link-local address with a zone, which no URL can carry, becomes `localhost`.
+**The check sits in `credentials` as well as in the setup**, because a review of
+the fix found the rebinding page could still guess at `/api/login` under the
+owner's loopback key, locking the owner out and holding the house's hashing
+slot.
 `TestAPageUnderAForeignNameCannotSetThePasswordAtThisPC` failed with the name
 check taken out. **The profiler has the same hole and the same answer**: bound
 to loopback it kept other machines out and not other pages, and it now answers
@@ -589,7 +597,10 @@ after its reader had left. The owner's browser never does this by itself — the
 home address and the public name are two hosts with two cookie jars — so what
 is refused is a cookie somebody carried. The tailnet's sessions go everywhere,
 being encrypted end to end, which is the phone with Tailscale switched off on
-the way out of the house. The token is refused, not revoked: revoking would let
+the way out of the house. **The tailnet has an IPv6 range too**, and it sits
+inside the private one: until a review found it, a node reached over IPv6 was
+classed as the local network, and its session refused at the Funnel with a
+warning about a carried cookie. The token is refused, not revoked: revoking would let
 whoever holds a copy log the owner out.
 
 **And the browser's copy slides with the server's.** The renewal was sliding on

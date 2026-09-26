@@ -2254,13 +2254,24 @@ func promptAndSetPassword(cfg *config.Config) error {
 
 // holdThePort takes the monitor's port, or says that a monitor is already
 // holding it.
-func holdThePort(addr string) (net.Listener, error) {
+//
+// **Only "in use" means a monitor.** An address that cannot be bound for any
+// other reason — `listen_addr` naming an interface that is down today — is
+// one no monitor can be holding either, so the change goes ahead with nothing
+// held: refusing it would keep somebody from resetting a password on a
+// machine where nothing is running.
+func holdThePort(addr string) (io.Closer, error) {
 	ln, err := net.Listen("tcp", addr)
-	if err != nil {
+	if errors.Is(err, syscall.Errno(10048)) || errors.Is(err, syscall.EADDRINUSE) {
+		// 10048 is WSAEADDRINUSE: on Windows syscall.EADDRINUSE is not the
+		// number the socket calls answer with.
 		return nil, fmt.Errorf("the monitor's port %s is in use, most likely by a "+
 			"running monitor, which would keep the old password and its sessions: "+
 			"quit it from the notification area first, or change the password from "+
 			"the page (%w)", addr, err)
+	}
+	if err != nil {
+		return io.NopCloser(nil), nil
 	}
 	return ln, nil
 }
