@@ -178,20 +178,31 @@ that corresponds to none is an identifier that lies exactly when somebody is
 trying to find out what they are running. It is cheap to refuse at the build and
 impossible to correct once the archive is on the Internet.
 
-**The job that may write holds nothing to write with, and that cost a
-release.** The archive is cut by a workflow on a tag, in two jobs: the first runs
-this repository's own code — the suite, `build.ps1`, the module graph — with a
-token that can only read, and the second holds nothing but the zip and `gh`, and
-is the only one granted `contents: write`. So the second deliberately has no
-checkout. But `gh` works out which repository it is talking to from the git
-remote of the directory it runs in, and in that directory there is none: the
-first command died with `fatal: not a git repository`, and the guard above it
-threw *could not list the releases* — the message accusing the listing rather
-than the missing context. `GITHUB_REPOSITORY` is set by Actions on every job and
-`gh` does not read it; the repository is handed over as `GH_REPO`. **The absence
-was the point and the repair is one line**, which is the shape to expect whenever
-a job is stripped of everything it does not need: what it no longer has includes
-the things nobody thought to list.
+**A release is cut where the key is, and a workflow no longer builds it.**
+`build.ps1 -Publish` checks the tag against `version.go`, on this commit and on
+GitHub, runs gofmt, vet and the suite, builds the package and the signed
+archive, verifies the signature against the key the binary carries, and leaves
+a draft with the zip and the `.sig` on it. Until 1.2.0 a workflow built the
+archive on the tag and left the draft unsigned, and the signature was made here
+over bytes downloaded from it — a round trip for an archive this machine makes
+anyway. **What the workflow bought was a clean checkout, and `-Release` already
+refuses a dirty tree**, so the trip carried nothing the refusal had not. What
+the cloud still adds is a second machine running the suite, and `check.yml`
+does that at every push to `main`.
+
+**Every refusal runs before anything is built**, because a run that stops
+halfway leaves in `dist\` an archive that looks finished. And the tag on GitHub
+is compared, not assumed: `gh release create` handed a tag GitHub does not have
+makes one, on the tip of the default branch — a release of whatever is there.
+`--verify-tag` refuses that too; the comparison also catches a tag present on
+both sides and moved on one.
+
+**The Store is not automated, and the reason is this chapter's.** Partner Center
+can take a submission from a workflow, given an Entra application with the
+Manager role in the repository's secrets. Whoever takes this GitHub account then
+reaches every Store installation, which updates on its own — the door the
+signature closes on the archive, opened wider on the package. The `.msix`
+`-Publish` leaves in `dist\` is uploaded by hand.
 
 ## A package is a second shape of the same binary, and it updates itself elsewhere
 

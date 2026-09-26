@@ -63,7 +63,7 @@ var (
 	// **Whether this number is a pre-release is asked here and not worked out
 	// by whoever needs it.** `internal/version` owns that fact — `Prerelease`
 	// reads the "-" of semver, and the PE properties already depend on it — and
-	// the release workflow needs the same answer to decide whether GitHub's
+	// `build.ps1 -Publish` needs the same answer to decide whether GitHub's
 	// pre-release checkbox goes on. Left to the caller it would be one
 	// comparison written a second time, in another language, where nothing
 	// would ever compare the two; and getting it wrong there does not produce a

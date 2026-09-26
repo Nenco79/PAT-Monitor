@@ -4,8 +4,8 @@
 # WASAPI, most tests carry //go:build windows, and on anything else the tree
 # builds almost nothing and proves less.
 #
-# Releases are release.yml's business, and neither workflow signs anything —
-# the reason is written there.
+# Releases are not cut here: `build.ps1 -Publish` cuts them on the machine that
+# holds the signing key, and the reason is written there.
 name: check
 
 on:

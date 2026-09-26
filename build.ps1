@@ -35,17 +35,19 @@
 # published beside the archive is published by the same account. The key comes
 # from -Key or from PATMON_SIGNING_KEY, and it is not in this repository.
 #
-# **-Unsigned is for the build that cannot have the key, which is the one in
-# CI**, and it is a switch rather than a fallback on purpose. The key's whole
-# job is to survive this GitHub account being taken, so a key reachable from a
-# workflow would prove the thing it exists to disprove; the archive is therefore
-# built there and signed here, on the machine that holds the half nobody else
-# has. What must not happen is an unsigned release going out by **omission** —
-# the one made in a hurry, with nobody noticing — so silence still refuses, and
-# only this word gets a zip without a signature. What comes out is declared
-# unsigned in the line it prints, and the release it belongs to stays a draft
-# until the .sig is beside it.
-param([switch]$Console, [switch]$Release, [switch]$Msix, [switch]$Unsigned, [string]$Key)
+# **-Publish cuts a release, and it cuts it here rather than on GitHub.** The
+# key's whole job is to survive this GitHub account being taken, so it never
+# goes near a workflow, and the archive is built on the machine that signs it.
+# It used to be built by a workflow on the tag and signed here, which meant
+# downloading an archive this machine makes anyway, signing it and uploading the
+# signature: all the cloud added was a clean checkout, and -Release already
+# refuses a dirty tree. So -Publish checks what that workflow checked — the tag
+# against version.go, gofmt, vet, the suite — builds both shapes one after the
+# other, verifies the signature against the key the binary carries, and leaves
+# a **draft** with the zip and the .sig on it. Publishing stays a click on the
+# page, where the notes are written; the package for the Store is left in dist\
+# and uploaded to Partner Center by hand.
+param([switch]$Console, [switch]$Release, [switch]$Msix, [switch]$Publish, [string]$Key)
 
 $ErrorActionPreference = 'Stop'
 
@@ -65,11 +67,6 @@ try {
     # wrong thing behind is half a refusal.
     if ($Release -and $Console) { throw "-Release builds what ships: use it without -Console" }
 
-    # -Unsigned says something about a release and nothing about any other
-    # build, so on its own it is a word that moves nothing — and a flag that
-    # moves nothing is read by whoever typed it as a flag that worked.
-    if ($Unsigned -and -not $Release) { throw "-Unsigned only says anything about -Release" }
-
     # -Msix builds the shape that goes inside a package, so it refuses -Console
     # for the reason -Release does, and it refuses a dirty tree further down for
     # the reason -Release does: what comes out of here is meant to be submitted.
@@ -84,6 +81,122 @@ try {
     # here rather than further down for the reason written above the first one:
     # a refusal that leaves the wrong thing in bin\ is half a refusal.
     if ($Msix -and $Release) { throw "-Msix and -Release are two shapes: build them one at a time" }
+
+    # --- -Publish: the two shapes, the checks, and a draft ---
+    #
+    # **Everything that can refuse runs before anything is built.** A draft
+    # that stops halfway leaves an archive in dist\ that looks finished, and the
+    # checks cost seconds while the builds cost minutes. The suite runs last
+    # among them only because it is the slow one.
+    #
+    # Its strings are ASCII, like every string in this file: there is no BOM,
+    # Windows PowerShell reads the file as ANSI, and a multi-byte character
+    # inside a string loses the parser its terminator (see "The same character
+    # is harmless in a comment and fatal in a string").
+    if ($Publish) {
+        if ($Console -or $Release -or $Msix) { throw "-Publish builds both shapes itself: use it alone, with -Key" }
+
+        $keyPath = $Key
+        if (-not $keyPath) { $keyPath = $env:PATMON_SIGNING_KEY }
+        if (-not $keyPath) { throw "no signing key: pass -Key or set PATMON_SIGNING_KEY" }
+        if (-not (Test-Path -LiteralPath $keyPath)) { throw "no signing key at $keyPath" }
+
+        if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
+            throw "gh not found: winget install GitHub.cli, then gh auth login"
+        }
+        # Under 'Stop', Windows PowerShell turns a native command's redirected
+        # stderr into a terminating error, and gh reports its status there even
+        # when it is signed in: the exit code is the answer, not the stream.
+        $ErrorActionPreference = 'Continue'
+        & gh auth status *> $null
+        $signedIn = $LASTEXITCODE -eq 0
+        $ErrorActionPreference = 'Stop'
+        if (-not $signedIn) { throw "gh is not signed in: gh auth login" }
+
+        if (& git status --porcelain) { throw "the tree has uncommitted changes: a release must match a commit" }
+
+        # **The tag is the one version.go names, on this commit, and on GitHub
+        # on this commit too.** Asked in that order because each answer is a
+        # different remedy. The last one is not a formality: `gh release create`
+        # given a tag GitHub does not have makes one, on the tip of the default
+        # branch, which is a release of whatever happens to be there.
+        # `--verify-tag` below refuses that as well, and the comparison here
+        # also catches a tag that exists on both sides and was moved on one.
+        $number = (& go run .\cmd\pat-icon -print-version).Trim()
+        if ($LASTEXITCODE -ne 0 -or -not $number) { throw "version lookup failed" }
+        $tag = "v$number"
+        $head = (& git rev-parse HEAD).Trim()
+
+        $local = & git rev-parse -q --verify "refs/tags/$tag^{commit}" 2>$null
+        if ($LASTEXITCODE -ne 0 -or -not $local) {
+            throw "no tag ${tag}: version.go says $number, so tag this commit $tag and push the tag"
+        }
+        if ($local.Trim() -ne $head) { throw "$tag is on another commit: check it out, or move version.go on" }
+
+        # An annotated tag is listed twice, the tag and the commit it peels to
+        # (^{}), and only the second is comparable with HEAD. The glob would
+        # also bring v1.2.0-beta.1 along with v1.2.0, so the names are matched
+        # exactly afterwards.
+        $remote = @(& git ls-remote origin "refs/tags/$tag*")
+        if ($LASTEXITCODE -ne 0) { throw "could not ask origin for its tags" }
+        $peeled = @($remote | Where-Object { $_ -match "\srefs/tags/$([regex]::Escape($tag))\^\{\}$" })
+        if (-not $peeled) { $peeled = @($remote | Where-Object { $_ -match "\srefs/tags/$([regex]::Escape($tag))$" }) }
+        if (-not $peeled) { throw "$tag is not on GitHub: git push origin $tag" }
+        if ((($peeled[0] -split '\s+')[0]) -ne $head) { throw "$tag on GitHub is on another commit than here" }
+
+        # **A second draft for the same tag is the failure this guards.** GitHub
+        # allows several, and two archives from the same commit are not the
+        # same bytes: the one signed and the one published could then be
+        # different files. `gh release list` includes drafts.
+        $existing = & gh release list --limit 1000 --json tagName --jq '.[].tagName'
+        if ($LASTEXITCODE -ne 0) { throw "could not list the releases" }
+        if ($existing -contains $tag) { throw "a release already exists for ${tag}: publish it or delete it, rather than leaving two" }
+
+        # gofmt exits 0 whether or not it found anything, so the check is on
+        # what it prints.
+        $bad = & gofmt -l .
+        if ($bad) { $bad; throw "the files above are not gofmt'd" }
+        & go vet ./...
+        if ($LASTEXITCODE -ne 0) { throw "go vet failed" }
+        & go test ./...
+        if ($LASTEXITCODE -ne 0) { throw "the tests failed" }
+
+        # **The package first and the archive second**, so that the binary left
+        # in bin\ is the plain one: the packaged build never asks about updates,
+        # and left there it is what the next test run would start.
+        & $PSCommandPath -Msix
+        & $PSCommandPath -Release -Key $keyPath
+
+        $zip = "dist\PAT-Monitor-$number-windows-amd64.zip"
+        & go run .\cmd\pat-sign -verify $zip
+        if ($LASTEXITCODE -ne 0) { throw "the signature does not verify against the key the binary carries" }
+
+        # **The pre-release checkbox is set from the version, not by hand.**
+        # `/releases/latest` is the whole of the pre-release policy, and it
+        # excludes what GitHub marks; a beta published without that mark becomes
+        # the latest release and is offered to every installation as a stable
+        # update. internal/doc/prerelease_test.go holds this comparison to the
+        # word pat-icon prints.
+        $pre = (& go run .\cmd\pat-icon -print-prerelease).Trim()
+        if ($LASTEXITCODE -ne 0) { throw "pre-release lookup failed" }
+
+        $notes = Join-Path $env:TEMP "pat-release-notes.md"
+        # ASCII and not UTF8: Windows PowerShell's UTF8 writes a byte-order
+        # mark, and gh would put it at the head of the release body.
+        Set-Content -Path $notes -Encoding ASCII -Value 'Draft: replace these notes with what changed, then publish.'
+        $argv = @($tag, '--draft', '--verify-tag', '--title', $tag, '--notes-file', $notes)
+        if ($pre -eq 'yes') { $argv += '--prerelease' }
+        $argv += @($zip, "$zip.sig")
+        & gh release create @argv
+        if ($LASTEXITCODE -ne 0) { throw "gh release create failed" }
+        Remove-Item -Force $notes
+
+        $pkgver = (& go run .\cmd\pat-icon -print-package-version).Trim()
+        Write-Host "draft: $tag (pre-release: $pre), with $(Split-Path -Leaf $zip) and its .sig"
+        Write-Host "write the notes and publish it on GitHub"
+        Write-Host "for the Store: dist\PAT-Monitor-$pkgver-x64.msix, uploaded to Partner Center by hand"
+        return
+    }
 
     # Rebuilding over a running process, Windows cannot overwrite the
     # executable: it **renames** it to .exe~ and puts the new one in its place.
@@ -275,32 +388,19 @@ try {
         # remembers, the one release that goes out unsigned is the one made in a
         # hurry — and an installation that has learned to accept unsigned
         # archives has learned it for ever. Without a key this says so and stops,
-        # rather than publishing something that looks finished. -Unsigned is the
-        # one way past it, and it is a word somebody typed rather than a key
-        # somebody forgot.
+        # rather than publishing something that looks finished. There is no way
+        # past it: the one build that could not hold the key was the one in CI,
+        # and releases are no longer cut there.
         Remove-Item -Recurse -Force $stage
-        if ($Unsigned) {
-            # No em dash in this string, and that is not a style choice: this
-            # file has no BOM, Windows PowerShell reads it as ANSI, and a
-            # multi-byte character inside a **string** loses the parser its
-            # terminator — measured, "missing string terminator". In a comment
-            # it is harmless, which is why the rest of this file is full of them
-            # and only a string can be broken by one.
-            Write-Host "release: $(Split-Path -Leaf $zip) is NOT SIGNED"
-            Write-Host "sign it where the key is, then upload both:"
-            Write-Host "  go run .\cmd\pat-sign -key <path> $(Split-Path -Leaf $zip)"
+        $keyPath = $Key
+        if (-not $keyPath) { $keyPath = $env:PATMON_SIGNING_KEY }
+        if (-not $keyPath) {
+            throw "no signing key: pass -Key or set PATMON_SIGNING_KEY (pat-sign -generate makes one)"
         }
-        else {
-            $keyPath = $Key
-            if (-not $keyPath) { $keyPath = $env:PATMON_SIGNING_KEY }
-            if (-not $keyPath) {
-                throw "no signing key: pass -Key or set PATMON_SIGNING_KEY (pat-sign -generate makes one), or -Unsigned if this build cannot hold it"
-            }
-            & go run .\cmd\pat-sign -key $keyPath $zip
-            if ($LASTEXITCODE -ne 0) { throw "signing failed" }
+        & go run .\cmd\pat-sign -key $keyPath $zip
+        if ($LASTEXITCODE -ne 0) { throw "signing failed" }
 
-            Write-Host "upload both: $(Split-Path -Leaf $zip) and $(Split-Path -Leaf $zip).sig"
-        }
+        Write-Host "signed: $(Split-Path -Leaf $zip).sig"
     }
 
     if ($Msix) {

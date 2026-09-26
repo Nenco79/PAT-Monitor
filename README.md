@@ -248,7 +248,6 @@ resource.
 uncommitted changes, regenerates `licenses/`, and leaves
 `dist\PAT-Monitor-<version>-windows-amd64.zip` — the binary, `LICENSE`,
 `NOTICE` and `licenses/` inside one folder — with a detached `.sig` beside it.
-Uploading the two to a GitHub release is a separate step, done by hand.
 
 The signature needs a signing key, and a fork needs its own. `go run
 ./cmd/pat-sign -generate -key release.key` writes the private half and prints
@@ -258,11 +257,14 @@ release without it. Keep it out of the repository — `*.key` is in
 `.gitignore` — and back it up: a lost key cannot be replaced for installations
 that already exist.
 
-Pushing a `v*` tag builds the archive on GitHub with `-Release -Unsigned` and
-leaves the release a **draft**: the signature is made where the key is, over the
-bytes that build produced, and uploaded beside the zip before publishing. The
-key is deliberately not a repository secret — it exists to survive this account,
-so a workflow that could reach it would prove the opposite of what it signs.
+`.\build.ps1 -Publish -Key <path>` cuts a release. It wants the commit tagged
+`v<version>` and the tag pushed, and [GitHub CLI](https://cli.github.com/)
+signed in. It runs gofmt, vet and the tests, builds the package and the signed
+archive, checks the signature, and leaves a **draft** release on GitHub with the
+zip and the `.sig` attached; the notes are written and the release published on
+the page. The key is deliberately not a repository secret and releases are not
+built by a workflow: the key exists to survive this account, so a workflow that
+could reach it would prove the opposite of what it signs.
 
 ## Diagnostic tools
 
