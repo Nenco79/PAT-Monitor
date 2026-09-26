@@ -290,8 +290,11 @@ type Server struct {
 	mux      *http.ServeMux
 	assets   fs.FS
 
-	// hashing is how many argon2id hashes may run at once. See hashSlot.
-	hashing chan struct{}
+	// hashing and hashingHome are the argon2id hashes that may run at once:
+	// the first for anybody, the second only for requests from home. See
+	// hashSlot.
+	hashing     chan struct{}
+	hashingHome chan struct{}
 
 	// clipsMissing makes it said once only that the clip store was not attached:
 	// once per request would be a line a second.
@@ -368,14 +371,15 @@ func New(opts Options) (*Server, error) {
 	}
 	ttl := time.Duration(opts.Config.Get().SessionTTLHours) * time.Hour
 	s := &Server{
-		opts:     opts,
-		log:      opts.Log,
-		sessions: newSessionStore(ttl),
-		limiter:  newLimiter(),
-		global:   newGlobalLimiter(),
-		hashing:  make(chan struct{}, hashSlots),
-		mux:      http.NewServeMux(),
-		assets:   assets,
+		opts:        opts,
+		log:         opts.Log,
+		sessions:    newSessionStore(ttl),
+		limiter:     newLimiter(),
+		global:      newGlobalLimiter(),
+		hashing:     make(chan struct{}, hashSlots-homeSlots),
+		hashingHome: make(chan struct{}, homeSlots),
+		mux:         http.NewServeMux(),
+		assets:      assets,
 	}
 	s.routes()
 	return s, nil
@@ -1018,13 +1022,15 @@ func (s *Server) apiLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	key := clientKey(r)
-	if d := s.limiter.retryAfter(key); d > 0 {
+	done, d := s.limiter.begin(key)
+	if d > 0 {
 		w.Header().Set("Retry-After", fmt.Sprint(int(d.Seconds())+1))
 		authErrorRetry(w, r, isForm, "/login", http.StatusTooManyRequests, ErrTooMany, d)
 		return
 	}
+	defer done()
 
-	release, ok := s.hashSlot(r.Context())
+	release, ok := s.hashSlot(r)
 	if !ok {
 		return // the caller has gone: there is nobody to answer
 	}
@@ -1158,12 +1164,14 @@ func (s *Server) apiPassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	key := clientKey(r)
-	if d := s.limiter.retryAfter(key); d > 0 {
+	done, d := s.limiter.begin(key)
+	if d > 0 {
 		w.Header().Set("Retry-After", fmt.Sprint(int(d.Seconds())+1))
 		authErrorRetry(w, r, isForm, "/onboarding", http.StatusTooManyRequests, ErrTooMany, d)
 		return
 	}
-	release, ok := s.hashSlot(r.Context())
+	defer done()
+	release, ok := s.hashSlot(r)
 	if !ok {
 		return
 	}
@@ -1189,7 +1197,7 @@ func (s *Server) apiPassword(w http.ResponseWriter, r *http.Request) {
 	// of milliseconds on purpose, and holding the rest of the server still for
 	// that long would mean that whoever changes the password suspends the status
 	// page of whoever is watching.
-	release, ok = s.hashSlot(r.Context())
+	release, ok = s.hashSlot(r)
 	if !ok {
 		return
 	}
@@ -1247,11 +1255,13 @@ func (s *Server) apiSetup(w http.ResponseWriter, r *http.Request) {
 	// nothing to prove with. What is not by design is that it could be called
 	// without limit.
 	key := clientKey(r)
-	if d := s.limiter.retryAfter(key); d > 0 {
+	done, d := s.limiter.begin(key)
+	if d > 0 {
 		w.Header().Set("Retry-After", fmt.Sprint(int(d.Seconds())+1))
 		authErrorRetry(w, r, isForm, "/setup", http.StatusTooManyRequests, ErrTooMany, d)
 		return
 	}
+	defer done()
 
 	// **The cheap refusal comes before the expensive work, and it used to come
 	// after.** The password already being set is read with a lock and a string
@@ -1272,7 +1282,7 @@ func (s *Server) apiSetup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	release, ok := s.hashSlot(r.Context())
+	release, ok := s.hashSlot(r)
 	if !ok {
 		return
 	}
@@ -1683,22 +1693,44 @@ func codecsIn(sdp string) []string {
 // house produces: the tray, a phone and a laptop are three, and they do not
 // arrive in the same tenth of a second.
 //
-// **It bounds the work without delaying whoever is right**, which is the
-// property the global slowdown is built around and states in as many words: a
-// correct password waits at most for the hashes already running, not for a
-// penalty somebody else earned.
+// **It bounds the work, and on its own it delayed whoever was right**: the
+// queue for a slot is first come first served, so a correct password waited
+// behind every wrong one already queued — measured by an audit at minutes, with
+// a thousand guesses sent at once. One attempt per address (limiter.begin)
+// shortens that queue to one per address, and homeSlots keeps the house out of
+// it altogether.
 const hashSlots = 4
+
+// homeSlots of the hashSlots are kept for requests that did not come from the
+// Internet.
+//
+// **The queue the Internet can fill is not the queue the house waits in.** A
+// caller with many addresses can keep every shared slot busy for as long as it
+// likes, and nothing before the hash can tell that caller from the owner on a
+// phone far away — that is the price of paying only by getting it wrong. What
+// can be told apart is the road: a login from the house, the tailnet or this
+// PC takes the kept slot or a shared one, whichever frees first, so an attack
+// through the Funnel slows the Funnel and never the parent at home.
+const homeSlots = 1
 
 // hashSlot takes one of the hashing slots and hands back the way to give it up.
 //
 // It reports false when the request went away first: at that point there is
 // nobody to answer, and starting a tenth of a second of work for a closed
 // connection is exactly what an attacker asking for a hundred of them wants.
-func (s *Server) hashSlot(ctx context.Context) (release func(), ok bool) {
+func (s *Server) hashSlot(r *http.Request) (release func(), ok bool) {
+	var home chan struct{}
+	if !requestOrigin(r).Public() {
+		home = s.hashingHome
+	}
+	// A nil channel is never ready, so from the Internet the second case is
+	// simply not there.
 	select {
 	case s.hashing <- struct{}{}:
 		return func() { <-s.hashing }, true
-	case <-ctx.Done():
+	case home <- struct{}{}:
+		return func() { <-home }, true
+	case <-r.Context().Done():
 		return func() {}, false
 	}
 }

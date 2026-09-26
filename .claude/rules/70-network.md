@@ -399,8 +399,38 @@ it earlier would make whoever types the right password wait for somebody else,
 which is the property this chapter is built on. So the ceiling is elsewhere —
 `hashSlots`, four — and it bounds the **concurrency** rather than the rate: a
 hundred requests arriving together used to ask this process for 6.4 GB, and four
-slots is 256 MiB, the same order as the frame buffers already in flight. A
-correct password waits at most for the hashes already running.
+slots is 256 MiB, the same order as the frame buffers already in flight.
+
+**"A correct password waits at most for the hashes already running" was written
+here, and it was false.** The queue for a slot is first come first served, so a
+correct password waited behind every wrong one already queued, and a security
+audit put that at minutes with a thousand guesses sent together. The same audit
+found the per-address lockout walked past by the same burst: it was read once,
+before the queue, and the first failure is recorded only after argon2 has run,
+so every request of that tenth of a second found the address clean and was
+weighed — the machine's whole hashing rate, from one address. Three things now:
+
+- **one attempt at a time per address** (`limiter.begin`): the next is admitted
+  once the last has been counted, which is the order the lockout was written
+  for. A person waits for the answer; the only caller with two in flight is a
+  program. `TestABurstFromOneAddressIsWeighedOneAtATime` saw twenty guesses
+  weighed out of twenty with it taken out;
+- **one of the four slots is kept for requests that did not come from the
+  Internet** (`homeSlots`), so an attack through the Funnel slows the Funnel and
+  never the parent at home, who takes the kept slot or a shared one, whichever
+  frees first;
+- **a public IPv6 address is charged by its /64**, because a subscriber holds
+  2^64 of them and a lockout per address is none. The private ranges keep the
+  whole address, since there a /64 is every node of a tailnet.
+
+**What is left is argon2's own rate, and that is a decision.** A caller with
+many addresses is bounded only by the three shared slots: an audit estimated
+ten to forty guesses a second depending on the cores. A global cap before the
+hash would lower it, and it would also be the thing this chapter refuses — a
+queue the Internet can fill ahead of the owner on a phone far away, that is, a
+way of keeping them out. The defence against that caller is the password's
+length, which the page asks for, and the session cookie, which spares whoever
+already signed in from coming through here at all.
 
 ### Administrative commands are given from in front of the machine
 

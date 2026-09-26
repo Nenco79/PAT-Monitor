@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"net"
 	"net/http"
+	"net/netip"
 	"sync"
 	"time"
 
@@ -247,10 +248,54 @@ const maxTrackedAddresses = 4096
 type limiter struct {
 	mu sync.Mutex
 	m  map[string]*attemptRecord
+	// inFlight counts the attempts each address has between begin and its
+	// release. See begin.
+	inFlight map[string]int
 }
 
 func newLimiter() *limiter {
-	return &limiter{m: make(map[string]*attemptRecord)}
+	return &limiter{m: make(map[string]*attemptRecord), inFlight: make(map[string]int)}
+}
+
+// busyRetry is what an address is told when it already has an attempt being
+// weighed: come back in a second, by which time that one has an answer.
+const busyRetry = time.Second
+
+// begin admits one attempt from an address, or says how long to wait.
+//
+// **The lockout was checked once, before the queue for a hash, and a burst
+// walked straight past it.** The first failure is recorded only after argon2
+// has run, so every request that arrived in that tenth of a second found the
+// address clean, took its place in the queue, and was weighed however long the
+// queue grew — a thousand guesses sent together were a thousand guesses, where
+// the lockout promises three and then a wait. An audit measured it at the
+// machine's whole hashing rate from a single address.
+//
+// So an address has **one attempt at a time**: the next is admitted only once
+// the last has been counted, which is the order the lockout was written for. A
+// person types a password and waits for the answer; the only caller with two
+// in flight is a program. The release must be called when the attempt has been
+// counted, success or failure.
+func (l *limiter) begin(key string) (release func(), wait time.Duration) {
+	if d := l.retryAfter(key); d > 0 {
+		return nil, d
+	}
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.inFlight[key] > 0 {
+		return nil, busyRetry
+	}
+	l.inFlight[key]++
+	var once sync.Once
+	return func() {
+		once.Do(func() {
+			l.mu.Lock()
+			defer l.mu.Unlock()
+			if l.inFlight[key]--; l.inFlight[key] <= 0 {
+				delete(l.inFlight, key)
+			}
+		})
+	}, 0
 }
 
 // retryAfter returns how long is left until the unlock; zero if not locked.
@@ -466,11 +511,34 @@ func sleepCtx(ctx context.Context, d time.Duration) {
 // tunnel, and comes from Tailscale, not from a header the caller could write.
 func clientKey(r *http.Request) string {
 	if src, ok := tunnel.SourceAddr(r.Context()); ok {
-		return src.Addr().String()
+		return addressKey(src.Addr())
 	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		return r.RemoteAddr
 	}
+	if a, err := netip.ParseAddr(host); err == nil {
+		return addressKey(a)
+	}
 	return host
+}
+
+// addressKey is the unit a lockout is charged to.
+//
+// **A public IPv6 address is one of 2^64 in the same subscriber's hands**: a
+// provider hands out a /64 at the least, so an address per attempt costs the
+// caller nothing, and a lockout per address is no lockout at all. The /64 is
+// the unit, which is what the address plan itself calls a single network. The
+// private ranges keep the whole address, because there the /64 is somebody
+// else's house — the tailnet's ULA space holds every node of the tailnet, and a
+// link-local prefix every device on the Wi-Fi.
+func addressKey(a netip.Addr) string {
+	a = a.Unmap()
+	if a.Is6() && a.IsGlobalUnicast() && !a.IsPrivate() {
+		p, err := a.Prefix(64)
+		if err == nil {
+			return p.String()
+		}
+	}
+	return a.String()
 }
