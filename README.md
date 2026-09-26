@@ -182,7 +182,7 @@ Command line:
 |---|---|
 | `-config PATH` | use a different configuration file |
 | `-listen ADDR` | override the listening address |
-| `-set-password` | set the password and exit |
+| `-set-password` | set the password and exit; refused while the monitor is running |
 | `-show-config` | print the active configuration and exit |
 | `-version` | print the version and exit |
 | `-v` | debug logging |

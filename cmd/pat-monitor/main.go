@@ -2199,7 +2199,27 @@ func iceServerUsable(s webrtc.ICEServer) error {
 }
 
 // promptAndSetPassword sets the password from the command line.
+//
+// **It refuses while the monitor is running, and it used to say it had
+// worked.** It writes the file, and a running monitor neither reads the file
+// again nor closes the sessions it holds: the old password went on opening the
+// page, every device already in stayed in, and the next setting changed from
+// the page — a camera, a detection toggle — saved the monitor's configuration
+// over the file with the old hash in it. The case this command exists for is a
+// password suspected of having leaked, which is exactly when a change that
+// silently did nothing costs most.
+//
+// The port says whether a monitor is running, as it does at start-up: the
+// listener is the one single-instance check this program has. It is held until
+// the file is written, so a monitor cannot start in between. The page's own
+// change, which closes every session, is the road for a running monitor.
 func promptAndSetPassword(cfg *config.Config) error {
+	ln, err := holdThePort(cfg.ListenAddr)
+	if err != nil {
+		return err
+	}
+	defer ln.Close()
+
 	fmt.Print("New password: ")
 	first, err := term.ReadPassword(int(os.Stdin.Fd()))
 	fmt.Println()
@@ -2226,6 +2246,19 @@ func promptAndSetPassword(cfg *config.Config) error {
 	}
 	fmt.Printf("Password set in %s\n", cfg.Path())
 	return nil
+}
+
+// holdThePort takes the monitor's port, or says that a monitor is already
+// holding it.
+func holdThePort(addr string) (net.Listener, error) {
+	ln, err := net.Listen("tcp", addr)
+	if err != nil {
+		return nil, fmt.Errorf("the monitor's port %s is in use, most likely by a "+
+			"running monitor, which would keep the old password and its sessions: "+
+			"quit it from the notification area first, or change the password from "+
+			"the page (%w)", addr, err)
+	}
+	return ln, nil
 }
 
 // openSetup opens the guided path in the default browser.
