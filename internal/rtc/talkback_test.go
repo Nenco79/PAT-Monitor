@@ -147,16 +147,111 @@ func TestATalkCannotLastForever(t *testing.T) {
 		}
 	}
 
-	// Whoever really does fall silent comes back: it is not a punishment, it is
-	// a pause.
-	if _, ok := tb.acquire(1, t2.Add(talkIdle+time.Second)); !ok {
+	// Whoever really does fall silent comes back once the room has been heard:
+	// it is not a punishment, it is a pause.
+	back := end.Add(talkCooldown + time.Second)
+	if _, ok := tb.acquire(1, back); !ok {
 		t.Error("the floor does not come back even after falling silent")
 	}
 
-	// And another viewer does not pay for them.
+	// And another viewer does not pay for them beyond the room's pause.
 	tb.release(1, "test")
-	if _, ok := tb.acquire(2, t2.Add(2*talkIdle)); !ok {
+	if _, ok := tb.acquire(2, back.Add(talkCooldown)); !ok {
 		t.Error("a second viewer was kept out by the first one's exhaustion")
+	}
+}
+
+// talkFor sends one viewer's packets every twenty milliseconds for d, running
+// the expiry as the ticker would, and says how long of it the room was muted.
+func talkFor(tb *Talkback, viewer int64, from time.Time, d time.Duration) (time.Time, time.Duration) {
+	var muted time.Duration
+	step := 20 * time.Millisecond
+	t2 := from
+	for ; t2.Before(from.Add(d)); t2 = t2.Add(step) {
+		tb.acquire(viewer, t2)
+		tb.expire(t2)
+		if tb.Active() {
+			muted += step
+		}
+	}
+	return t2, muted
+}
+
+// **The cap is the room's, not the turn's.** Two pages handing the floor to
+// each other, or one pausing for a breath before each two minutes, used to
+// keep the room mute indefinitely: the cap was measured on the turn, and each
+// hand-over or each pause started a new one.
+//
+// **The defect was put back and this test fails with it**: with the cap
+// measured on the turn and no cooldown, the two pages keep the room mute for
+// the whole ten minutes, and the page that pauses leaves it heard for thirteen
+// seconds in nearly twelve minutes.
+func TestTheRoomIsHeardBetweenStretchesOfTalk(t *testing.T) {
+	t.Run("two pages taking turns", func(t *testing.T) {
+		tb, _ := newTestTalkback(t)
+		now := time.Now()
+		var total time.Duration
+		// Both send without a break for ten minutes: whoever does not hold the
+		// floor is knocking for it with every packet.
+		step := 20 * time.Millisecond
+		for t2 := now; t2.Before(now.Add(10 * time.Minute)); t2 = t2.Add(step) {
+			tb.acquire(1, t2)
+			tb.acquire(2, t2)
+			tb.expire(t2)
+			if tb.Active() {
+				total += step
+			}
+		}
+		assertHeard(t, total, 10*time.Minute)
+	})
+
+	t.Run("one page pausing for breath", func(t *testing.T) {
+		tb, _ := newTestTalkback(t)
+		now := time.Now()
+		var total time.Duration
+		t2 := now
+		for t2.Before(now.Add(10 * time.Minute)) {
+			var muted time.Duration
+			t2, muted = talkFor(tb, 1, t2, talkMax-5*time.Second)
+			total += muted
+			// Just over the idle limit, so the turn ends on silence rather
+			// than on the cap.
+			t2 = t2.Add(talkIdle + 100*time.Millisecond)
+			tb.expire(t2)
+		}
+		assertHeard(t, total, t2.Sub(now))
+	})
+}
+
+// **A microphone left on stays out after the room's pause, too.** The
+// cooldown refuses every packet for half a minute, and those packets are the
+// only evidence that the microphone is still on: if they are not counted, it
+// comes out of the pause looking silent and takes the floor back.
+//
+// **The defect was put back and this test fails with it**: with the check for
+// the spent viewer after the cooldown's refusal, the floor is taken back the
+// first packet after the pause.
+func TestAMicrophoneLeftOnDoesNotComeBackAfterThePause(t *testing.T) {
+	tb, _ := newTestTalkback(t)
+	now := time.Now()
+	end, _ := talkFor(tb, 1, now, talkMax+time.Second)
+	if tb.Active() {
+		t.Fatal("the stretch was not cut")
+	}
+	if _, muted := talkFor(tb, 1, end, 3*talkCooldown); muted > 0 {
+		t.Errorf("a microphone that never stopped took the floor back for %v", muted)
+	}
+}
+
+// assertHeard asks that of a stretch the room was audible at least one
+// cooldown per talkMax of talk.
+func assertHeard(t *testing.T, muted, over time.Duration) {
+	t.Helper()
+	heard := over - muted
+	stretches := over / (talkMax + talkCooldown)
+	// A second of slack for the packets and ticks that fall on the edges.
+	if want := time.Duration(stretches)*talkCooldown - time.Second; heard < want {
+		t.Errorf("of %v the room was heard for %v, at least %v is wanted", over, heard.Round(time.Second), want)
 	}
 }
 

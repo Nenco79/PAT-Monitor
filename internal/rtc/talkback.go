@@ -50,7 +50,22 @@ const (
 	// talkMax is the absolute cap on one turn. It guards against the case that
 	// ruins the night: a page left open with the microphone on by mistake, which
 	// would keep the room mute until morning.
+	//
+	// **It is counted on the room, not on the turn.** A turn ended by two
+	// seconds of silence used to reset it, and so did another viewer taking
+	// over: one page pausing for a breath before each two minutes, or two pages
+	// handing the floor to each other, kept the room mute indefinitely in
+	// blocks the cap never saw. Turns separated by less than talkCooldown are
+	// one stretch, and the stretch is what is capped.
 	talkMax = 2 * time.Minute
+	// talkCooldown is how long the room is heard after a stretch reaches
+	// talkMax, whoever asks for the floor meanwhile; and how long a gap between
+	// turns has to be for the next one to start a new stretch.
+	//
+	// Half a minute is longer than any pause a person makes mid-sentence, so a
+	// conversation is one stretch, and long enough for a cry in the room to
+	// reach the phone before anybody can talk over it again.
+	talkCooldown = 30 * time.Second
 	// talkOpenRetry is how long to wait before trying to open the audio output
 	// again after a refusal.
 	//
@@ -86,6 +101,13 @@ type Talkback struct {
 	// the one where the packets do not stop.
 	spent     int64
 	spentSeen time.Time
+
+	// stretchSince is when the current stretch of talk began: see talkMax.
+	// lastEnd is the last packet of the turn most recently ended, and
+	// quietUntil is when the floor may be given again after a stretch was cut.
+	stretchSince time.Time
+	lastEnd      time.Time
+	quietUntil   time.Time
 
 	// opening says somebody is opening the audio output right now, outside the
 	// lock. It keeps the other packets out in the meantime.
@@ -144,17 +166,15 @@ func (t *Talkback) acquire(viewer int64, now time.Time) (Player, bool) {
 		t.mu.Unlock()
 		return p, true
 	}
-	// `opening` keeps the second packet out while the first opens the device:
-	// without it, fifty packets a second would open fifty audio outputs, and
-	// fifty voices overlapping with themselves.
-	if t.speaker != 0 || t.opening || now.Before(t.notBefore) {
-		t.mu.Unlock()
-		return nil, false
-	}
 	// Whoever has used up the maximum duration comes back only after falling
 	// silent. The silence is measured on their own packets, which go on arriving
 	// here even while they are refused the floor: it is the only way to separate
 	// "they have finished speaking" from "they left the microphone on".
+	//
+	// **It is asked before any other refusal**, so that every packet refreshes
+	// the silence it is measured on: asked after the room's cooldown, the
+	// packets refused by the cooldown did not count, and a microphone left on
+	// came out of it looking as if it had fallen silent thirty seconds before.
 	if t.spent == viewer {
 		if now.Sub(t.spentSeen) <= talkIdle {
 			t.spentSeen = now
@@ -162,6 +182,13 @@ func (t *Talkback) acquire(viewer int64, now time.Time) (Player, bool) {
 			return nil, false
 		}
 		t.spent, t.spentSeen = 0, time.Time{}
+	}
+	// `opening` keeps the second packet out while the first opens the device:
+	// without it, fifty packets a second would open fifty audio outputs, and
+	// fifty voices overlapping with themselves.
+	if t.speaker != 0 || t.opening || now.Before(t.notBefore) || now.Before(t.quietUntil) {
+		t.mu.Unlock()
+		return nil, false
 	}
 	t.opening = true
 	t.mu.Unlock()
@@ -189,6 +216,9 @@ func (t *Talkback) acquire(viewer int64, now time.Time) (Player, bool) {
 	}
 	t.speaker, t.player = viewer, p
 	t.since, t.lastPkt = now, now
+	if t.lastEnd.IsZero() || now.Sub(t.lastEnd) >= talkCooldown {
+		t.stretchSince = now
+	}
 	t.log.Info("talk-back", "session", viewer, "state", "speaking")
 	return p, true
 }
@@ -202,6 +232,7 @@ func (t *Talkback) release(viewer int64, reason string) {
 	}
 	p, held := t.player, time.Since(t.since)
 	t.speaker, t.player = 0, nil
+	t.lastEnd = t.lastPkt
 	t.mu.Unlock()
 
 	if p != nil {
@@ -219,7 +250,7 @@ func (t *Talkback) release(viewer int64, reason string) {
 // ever.
 func (t *Talkback) expire(now time.Time) {
 	t.mu.Lock()
-	viewer, since, last := t.speaker, t.since, t.lastPkt
+	viewer, stretch, last := t.speaker, t.stretchSince, t.lastPkt
 	t.mu.Unlock()
 	if viewer == 0 {
 		return
@@ -227,9 +258,10 @@ func (t *Talkback) expire(now time.Time) {
 	switch {
 	case now.Sub(last) > talkIdle:
 		t.release(viewer, "silence")
-	case now.Sub(since) > talkMax:
+	case now.Sub(stretch) > talkMax:
 		t.mu.Lock()
 		t.spent, t.spentSeen = viewer, now
+		t.quietUntil = now.Add(talkCooldown)
 		t.mu.Unlock()
 		t.release(viewer, "time limit")
 	}
@@ -288,7 +320,7 @@ func (t *Talkback) Receive(track *webrtc.TrackRemote, viewer int64) {
 		p, ok := t.acquire(viewer, time.Now())
 		if !ok {
 			if !refused {
-				t.log.Info("talk-back refused: someone else already has the floor",
+				t.log.Info("talk-back refused: the floor is not free",
 					"session", viewer, "speaker", t.Speaker())
 				refused = true
 			}

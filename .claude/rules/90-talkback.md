@@ -399,6 +399,25 @@ from "they left the microphone on". **The time is counted by the monitor, not by
 the browser**: a page that closes abruptly, a network that drops, a phone that
 locks — in all three the packets stop and nobody says so.
 
+**And the ceiling was still the turn's, and a turn is cheap to start again.** A
+second audit found two ways round it: two pages handing the floor to each other,
+since `spent` remembers one viewer, and one page pausing for two seconds before
+each two minutes, which ends the turn on silence and starts a fresh one. With
+the old code, ten minutes of the first kept the room mute throughout, and the
+second left it heard for thirteen seconds in twelve minutes. So the two minutes
+now belong to the **room**: turns less than `talkCooldown` apart — thirty
+seconds, longer than any pause mid-sentence — are one stretch, and when a
+stretch reaches two minutes the room is heard for thirty seconds whoever asks.
+**The spent viewer is now asked about first**, before any other refusal, and
+that is not tidiness: behind the cooldown's refusal its packets stopped counting
+as evidence, and a microphone left on came out of the pause looking silent.
+`TestTheRoomIsHeardBetweenStretchesOfTalk` and
+`TestAMicrophoneLeftOnDoesNotComeBackAfterThePause` each failed with their half
+of the old code put back. It needs a signed-in viewer either way, and that same
+viewer can already delete clips or switch detection off, so it was never much
+of an attack. What it was is the ceiling's own accident, a phone left open,
+getting round the ceiling.
+
 ### "Written into the buffer" is not "it was heard"
 
 The playback path can accept the format, consume the queue and throw nothing
