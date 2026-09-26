@@ -297,6 +297,7 @@ func New(cfg Config) *Tunnel {
 	if cfg.Log == nil {
 		cfg.Log = slog.Default()
 	}
+	cfg.Log = slog.New(hideTailnet{cfg.Log.Handler()})
 	return &Tunnel{
 		cfg:     cfg,
 		enabled: make(chan struct{}),

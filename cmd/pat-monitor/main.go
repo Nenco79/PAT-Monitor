@@ -211,7 +211,10 @@ func main() {
 	// question is not "was there a second instance" — two `version` lines an
 	// hour apart already say so — but "whose line is this one", and that is
 	// asked of every line.
-	log := slog.New(slog.NewTextHandler(out, &slog.HandlerOptions{Level: level})).
+	//
+	// And the tailnet's name is written as `<tailnet>` from Info up: this file
+	// is the one people attach to an issue — see tunnel.HideTailnet.
+	log := slog.New(tunnel.HideTailnet(slog.NewTextHandler(out, &slog.HandlerOptions{Level: level}))).
 		With("pid", os.Getpid())
 	slog.SetDefault(log)
 

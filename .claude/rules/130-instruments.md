@@ -271,6 +271,22 @@ instead of read**. No record in the Windows event log: a Go panic exits cleanly.
 - **Reopening continues the file, it does not truncate it.** The lines
   explaining why there was a restart are **before** the restart.
 
+**The owner's tailnet is not written in it.** This is the file people attach to
+an issue, and it carried the public name in full four times at the default
+level: the tunnel coming up, the certificate twice, and the serve configuration,
+which is keyed by it. The reachability probe's errors added more, because
+net/http puts the URL inside them, and so did the server's refusal of a setup
+from the Funnel, whose `Host` is that name. A tailnet name is DNS tied to an
+account, and it is the thing this repository refuses in a commit. So
+`tunnel.HideTailnet` wraps the root handler and writes it as
+`patmon-1a2b3c.<tailnet>.ts.net` from Info up. The node's label stays, because
+it says which installation a line is about, and `-v` keeps the whole name for
+somebody diagnosing on purpose. **It is a handler and not a helper at each
+call site** because the call sites are the list that diverges: the probe's
+error carried the name where nobody thought of it as the address.
+`TestEveryLogHandlerHidesTheTailnet` reads the monitor's source for every slog
+handler it builds.
+
 **A code the reader cannot look up is not a diagnosis.** A microphone unplugged
 while the monitor watches fails the capture loop, and what reached the log was
 `error 2290679812 (FormatMessage failed with: The system cannot find message
