@@ -105,9 +105,11 @@ no one: its warnings appear only on the monitor's PC and on pages that are open.
 
 ## Getting started
 
-1. Download the zip from
-   [Releases](https://github.com/Nenco79/PAT-Monitor/releases), unpack it
-   anywhere, and run `pat-monitor.exe`. The binary is unsigned, so SmartScreen
+1. Install it from the
+   [Microsoft Store](https://apps.microsoft.com/detail/9P8QGWV7DKLZ), which
+   also keeps it updated, and start it from the Start menu. Or download the zip
+   from [Releases](https://github.com/Nenco79/PAT-Monitor/releases), unpack it
+   anywhere, and run `pat-monitor.exe`. That binary is unsigned, so SmartScreen
    shows a warning: choose **More info** and then **Run anyway**.
 2. The guided setup opens at `http://localhost:8080/onboarding`. It asks for a
    password, shows the camera and the microphone level so they can be checked,
