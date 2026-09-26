@@ -355,7 +355,11 @@ To whoever uses it the program is **PAT Monitor**, from *Pet And Toddler*: page
 titles, `productName` in `internal/tray`, the binary `pat-monitor.exe`, data in
 `%APPDATA%\PAT Monitor\` and recordings in `Video\PAT Monitor\` — **two folders
 and the same name**, because application data is opened only by the program and
-clips are opened by whoever lives there. Behind it: the Go module `patmonitor`,
+clips are opened by whoever lives there. The Tailscale node's identity is the one
+piece of data that is not in `%APPDATA%`: it sits in `%LOCALAPPDATA%\PAT
+Monitor\tsnet`, still under the same name, because the roaming profile follows
+the user to other machines and a node's keys must stay on one
+(`tunnel.moveTheNode`). Behind it: the Go module `patmonitor`,
 `cmd/pat-monitor`, the tools `pat-diag`, `pat-capture`, `pat-viewer`,
 `pat-opus`, `pat-wasapi`, `pat-sounds`, the two build generators `pat-icon`
 and `pat-licenses`, and `pat-sign`, which holds the release signing key.

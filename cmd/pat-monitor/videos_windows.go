@@ -47,6 +47,19 @@ func videosDir(log *slog.Logger) string {
 	return dir
 }
 
+// localDataDir is the machine's own application-data folder, asked of Windows:
+// the one that does not roam. Empty if the system does not answer, and then the
+// node's identity stays beside the configuration, where it always was.
+func localDataDir(log *slog.Logger) string {
+	dir, err := windows.KnownFolderPath(windows.FOLDERID_LocalAppData, 0)
+	if err != nil {
+		log.Warn("the local application-data folder could not be asked of the system, "+
+			"the Tailscale node stays next to the configuration", "error", err)
+		return ""
+	}
+	return dir
+}
+
 // provenDir makes the folder, proves it can be written to, and says where it
 // really is.
 //

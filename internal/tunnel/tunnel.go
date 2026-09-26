@@ -24,7 +24,7 @@ import (
 	"net/http"
 	"net/netip"
 	neturl "net/url"
-	"path/filepath"
+	"os"
 	"slices"
 	"strings"
 	"sync"
@@ -241,6 +241,10 @@ type Config struct {
 	// StateDir keeps the node's identity from one start to the next: without
 	// it, every restart would create a new node in the tailnet.
 	StateDir string
+	// FormerStateDir is where the identity used to be kept, if it has moved:
+	// it is carried over to StateDir the first time the tunnel starts. Empty
+	// means nothing has moved. See moveTheNode.
+	FormerStateDir string
 
 	// OnHostname receives the name the tailnet **actually** granted, when it
 	// differs from the one asked for. It may be nil.
@@ -405,7 +409,7 @@ func (t *Tunnel) run(ctx context.Context, handler http.Handler) error {
 	}
 
 	srv := &tsnet.Server{
-		Dir:      filepath.Join(t.cfg.StateDir, "tsnet"),
+		Dir:      moveTheNode(t.cfg.FormerStateDir, t.cfg.StateDir, os.Rename, t.cfg.Log),
 		Hostname: t.cfg.Hostname,
 		AuthKey:  t.cfg.AuthKey,
 		// The backend's logs are verbose and concern Tailscale's own workings:

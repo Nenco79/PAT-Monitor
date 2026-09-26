@@ -135,8 +135,8 @@ Tailscale authentication key is stored there only if you put it there
 yourself, as plain text.</p>
 
 <p>If you turn on access from outside, Tailscale's own data for this PC (its
-keys, its certificate and its log files) is kept in the <code>tsnet</code> folder
-next to the settings.</p>
+keys, its certificate and its log files) is kept in a <code>tsnet</code> folder
+with the program's other files on this PC.</p>
 
 <p>Your browser keeps a sign-in cookie and your language choice.</p>
 
@@ -230,10 +230,12 @@ outside.</p>
   <li><strong>Password</strong>: can be changed at any time, which ends open
       sessions.</li>
   <li><strong>Everything else</strong>: outside the Store, deleting the program
-      file and the <code>%APPDATA%\PAT Monitor</code> folder removes the
-      settings, the log, Tailscale's data and any clips saved there. In the
+      file and the PAT Monitor folders in <code>%APPDATA%</code> and
+      <code>%LOCALAPPDATA%</code> removes the settings, the log, Tailscale's
+      data and any clips saved there. In the
       Store version, uninstalling deletes the app's private folder and what is
-      in it. A <code>%APPDATA%\PAT Monitor</code> folder, if one was used, and
+      in it. A PAT Monitor folder in <code>%APPDATA%</code> or
+      <code>%LOCALAPPDATA%</code>, if one was used, and
       clips in your Videos folder stay until you delete them.</li>
 </ul>
 
@@ -272,6 +274,8 @@ date at the top shows the last change. A change applies from its date. Every
 version is kept as a dated revision in the project's public repository.</p>
 
 <ul>
+  <li><strong>26 September 2026</strong>: where Tailscale's data for this PC is
+  kept.</li>
   <li><strong>26 September 2026</strong>: recording what people say without
   their consent can be a crime even at home, and the people told should know the
   monitor picks up sound.</li>

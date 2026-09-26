@@ -141,7 +141,11 @@ as it runs. It says so in the log and keeps the video going.
 ## Configuration
 
 Outside the Microsoft Store, config file and logs live in
-`%APPDATA%\PAT Monitor\`. Installed from the Store they are there too if that
+`%APPDATA%\PAT Monitor\`, and Tailscale's data for this PC in
+`%LOCALAPPDATA%\PAT Monitor\tsnet`, which is moved there from the first folder
+the first time access from outside starts. The log writes the public address with
+your tailnet's name replaced by `<tailnet>`, except at `-v`, so look a `-v` log
+over before attaching it anywhere. Installed from the Store they are there too if that
 folder already exists; otherwise
 Windows keeps them in the app's private folder under `%LOCALAPPDATA%\Packages`,
 and the log-folder button in the notification-area panel opens the right one

@@ -725,11 +725,13 @@ func run(log *slog.Logger, path string) error {
 	// access on required restarting the program — inside a guided path, the step
 	// at which people give up. `New` opens nothing: it is `Enable` that releases
 	// the brake, and `Run` sleeps until it arrives.
+	nodeDir, formerNodeDir := nodeStateDirs(cfg.Path(), defaultConfigPath(), localDataDir(log))
 	remote := tunnel.New(tunnel.Config{
-		Hostname: cfg.FunnelHostname,
-		AuthKey:  cfg.TailscaleAuthKey,
-		StateDir: filepath.Dir(cfg.Path()),
-		Log:      log,
+		Hostname:       cfg.FunnelHostname,
+		AuthKey:        cfg.TailscaleAuthKey,
+		StateDir:       nodeDir,
+		FormerStateDir: formerNodeDir,
+		Log:            log,
 		// The name the tailnet actually granted is **written down**, not merely
 		// suffered. At the next start what we already have is asked for, and the
 		// node is never renamed again: without that, every start repeats the

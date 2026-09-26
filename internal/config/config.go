@@ -249,8 +249,10 @@ func DefaultFunnelHostname() string {
 	return "patmon-" + hex.EncodeToString(sum[:3])
 }
 
-// dataDir is the data folder under %APPDATA%: configuration, log and `tsnet/`,
-// that is, the identity of the Tailscale node.
+// dataDir is the data folder under %APPDATA%, for the configuration and the
+// log, and under %LOCALAPPDATA% for `tsnet/`, the identity of the Tailscale
+// node, which must not roam: see tunnel.moveTheNode. A configuration named with
+// `-config` keeps its node beside it instead.
 const dataDir = "PAT Monitor"
 
 // DefaultPath is the default path of the configuration file.
@@ -261,6 +263,11 @@ func DefaultPath() (string, error) {
 	}
 	return filepath.Join(dir, dataDir, "config.yaml"), nil
 }
+
+// DataDirIn is the program's own folder under root: the same name in the
+// roaming profile and in the local one, so that whoever looks for either finds
+// it by the product's name.
+func DataDirIn(root string) string { return filepath.Join(root, dataDir) }
 
 // Load reads the configuration; if the file does not exist it returns the
 // defaults without an error, so the first run works on its own.
