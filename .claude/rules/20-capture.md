@@ -244,6 +244,17 @@ out of three. **A guard whose green covers more than it read is worse than a
 missing guard**, because the next person reads the claim and not the code — the
 same shape as the list of known words this file already refuses elsewhere.
 
+**A library's callback is a fourth, and a security audit found it where it
+mattered.** Pion calls what is registered with `pc.OnTrack` and its siblings on
+goroutines of its own, which no `guard.Go` started: the talk-back's receive loop
+ran there, fed by a viewer's packets through the decoder and the resampler, and
+a panic in it would have ended the process with the camera on — the accessory
+this chapter names by name. The bodies are ours, so each catches for itself with
+`guard.Run`, and `TestEveryCallbackAPeerConnectionRunsIsGuarded` reads them; it
+named all three with the wrapping taken out. What the chapter below says about
+a panic in a library's own code is unchanged: that one is still nobody's to
+catch.
+
 **`-simulate-panic` is the instrument**, and it exists for the same reason
 `-simulate-fault` does: a fault does not happen on command, and checking what
 the monitor does about one on the night it happens is not checking. Its four

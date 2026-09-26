@@ -189,6 +189,7 @@ function connect() {
       const reasons = {
         'not-ready': 'viewer.state.waiting-video',
         sdp: 'viewer.state.negotiation-failed',
+        'too-many-viewers': 'viewer.state.too-many',
       };
       setState(T(reasons[msg.reason] || 'viewer.state.connection-failed'), 'err');
       teardown();

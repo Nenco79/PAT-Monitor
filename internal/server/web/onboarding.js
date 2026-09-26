@@ -505,6 +505,7 @@ function openPreview() {
       const reasons = {
         'not-ready': 'onb.prev.not-ready',
         sdp: 'onb.prev.sdp',
+        'too-many-viewers': 'onb.prev.too-many',
       };
       state.textContent = T('onb.prev.failed') + ': ' +
         (reasons[m.reason] ? T(reasons[m.reason])

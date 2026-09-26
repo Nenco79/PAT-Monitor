@@ -1414,6 +1414,9 @@ const (
 	reasonNotReady = "not-ready"
 	// reasonSDP: the browser's answer was not accepted.
 	reasonSDP = "sdp"
+	// reasonTooMany: as many viewer sessions are open as the house's uplink
+	// is allowed to carry. See rtc.ErrTooManyViewers.
+	reasonTooMany = "too-many-viewers"
 )
 
 type signalMessage struct {
@@ -1480,7 +1483,11 @@ func (s *Server) wsSignaling(w http.ResponseWriter, r *http.Request) {
 	viewer, offer, err := s.opts.Hub.NewViewer()
 	if err != nil {
 		s.refuseViewer(from, err)
-		_ = wsWrite(ctx, conn, signalMessage{Type: "error", Reason: reasonNotReady})
+		reason := reasonNotReady
+		if errors.Is(err, rtc.ErrTooManyViewers) {
+			reason = reasonTooMany
+		}
+		_ = wsWrite(ctx, conn, signalMessage{Type: "error", Reason: reason})
 		return
 	}
 	s.viewerAdmitted()

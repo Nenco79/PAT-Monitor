@@ -204,6 +204,11 @@ staying too low costs only sharpness.
   reviving four times. Above **10%** it comes down without asking the estimate's
   permission, removing half the lost fraction — threshold and factor from
   libwebrtc's loss-based controller.
+- **Only the video's report block is video loss.** With BUNDLE one receiver
+  report can carry a block per stream, and every block used to be counted: audio
+  lost on the way read as the picture being too big for the link. The block
+  names its SSRC, so `aboutTheVideo` asks — and with no SSRC to compare every
+  block still counts, because a missing number is not "nothing was lost".
 - **The worst loss must expire, and reports from those who are fine must not
   keep it alive.** `recordLoss` recorded the instant of the last report
   **received** instead of the value **held**: the PC's zeros refreshed the

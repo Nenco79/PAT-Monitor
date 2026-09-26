@@ -1,6 +1,10 @@
 package server
 
 import (
+	"go/ast"
+	"go/parser"
+	"go/token"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -126,8 +130,16 @@ func withoutPhaseMap(src string) string {
 //
 // The pages have to name every code; `pat-viewer` does not, because it prints
 // them bare — it is a tool, not an interface.
+//
+// **The codes are read from the source**, and they used to be a list in this
+// test: a third reason added to server.go would have been watched by nobody,
+// which is the first way guards fail.
 func TestBothPagesKnowEverySignallingReason(t *testing.T) {
-	reasons := []string{reasonNotReady, reasonSDP}
+	reasons := signallingReasons(t)
+	if len(reasons) < 3 {
+		t.Fatalf("only %d signalling reasons were read from server.go: this guard "+
+			"is no longer looking at the declarations", len(reasons))
+	}
 	for _, name := range []string{"app.js", "onboarding.js"} {
 		src := readAsset(t, name)
 		for _, m := range reasons {
@@ -140,4 +152,36 @@ func TestBothPagesKnowEverySignallingReason(t *testing.T) {
 			}
 		}
 	}
+}
+
+// signallingReasons reads every `reason…` constant server.go declares, by its
+// value.
+func signallingReasons(t *testing.T) []string {
+	t.Helper()
+	fset := token.NewFileSet()
+	f, err := parser.ParseFile(fset, "server.go", nil, parser.SkipObjectResolution)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out []string
+	for _, d := range f.Decls {
+		gen, ok := d.(*ast.GenDecl)
+		if !ok || gen.Tok != token.CONST {
+			continue
+		}
+		for _, spec := range gen.Specs {
+			vs := spec.(*ast.ValueSpec)
+			for i, n := range vs.Names {
+				if !strings.HasPrefix(n.Name, "reason") || i >= len(vs.Values) {
+					continue
+				}
+				if lit, ok := vs.Values[i].(*ast.BasicLit); ok && lit.Kind == token.STRING {
+					if v, err := strconv.Unquote(lit.Value); err == nil {
+						out = append(out, v)
+					}
+				}
+			}
+		}
+	}
+	return out
 }

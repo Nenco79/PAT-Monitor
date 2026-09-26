@@ -255,6 +255,16 @@ signalling channel dropping does not touch a view that is working. The ping
 alone makes the fault rarer, the second makes it harmless. Whoever really leaves
 is reported by ICE, which loses consent within a few seconds.
 
+**And a session that outlives its signalling can be stacked.** Each one sends
+the whole stream up the house's uplink, and nothing but a count bounds how many
+somebody holding a session can open: a dozen saturate an ordinary home
+connection, and every viewer's picture goes with it. `maxOpenViewers` is ten —
+more than a house watches with, and room for pages reloaded faster than ICE
+notices the old ones have gone — and the refusal travels as its own code,
+`too-many-viewers`, so the page says why instead of "connection failed". A
+viewer may also send at most `maxRemoteCandidates`, sixty-four: a browser sends a
+handful, and past that the agent is probing addresses on somebody's behalf.
+
 ### An encoder is judged only if the request was the constraint
 
 The watchdog asks "I asked for less and did the output fall?". The question

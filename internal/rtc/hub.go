@@ -209,6 +209,10 @@ type Hub struct {
 	// while they do. Nil when there is no OpenPlayer.
 	talk *Talkback
 
+	// open counts the viewer sessions between NewViewer and Close: see
+	// maxOpenViewers.
+	open atomic.Int64
+
 	mu         sync.RWMutex
 	videoTrack *webrtc.TrackLocalStaticSample
 	audioTrack *webrtc.TrackLocalStaticSample
@@ -839,6 +843,25 @@ func (v *Viewer) TalkMid() string {
 	return v.talkTr.Mid()
 }
 
+// maxOpenViewers is how many viewer sessions may be open at once.
+//
+// **Every one of them sends the whole stream up the house's uplink**, and a
+// session outlives its signalling on purpose — the media goes on after the
+// WebSocket drops — so nothing but this bounds how many can be stacked by
+// whoever holds a session: a dozen saturate an ordinary home connection and
+// every viewer's picture goes with it. Ten is more than a house watches with
+// and leaves room for pages reloaded faster than ICE notices the old ones
+// have gone.
+const maxOpenViewers = 10
+
+// maxRemoteCandidates is how many candidates one viewer may send. A browser
+// sends a handful; past this the agent is being asked to probe addresses for
+// somebody, which is work with nothing to gain.
+const maxRemoteCandidates = 64
+
+// ErrTooManyViewers is NewViewer's refusal when maxOpenViewers are open.
+var ErrTooManyViewers = errors.New("too many viewer sessions open")
+
 // NewViewer creates a PeerConnection with the shared tracks and produces the
 // offer.
 //
@@ -853,6 +876,19 @@ func (h *Hub) NewViewer() (*Viewer, *webrtc.SessionDescription, error) {
 	if video == nil || audio == nil {
 		return nil, nil, errors.New("stream not ready yet: no keyframe received")
 	}
+
+	// The seat is taken before the work and given back on every road out but
+	// the one that hands the viewer over, whose Close gives it back instead.
+	if h.open.Add(1) > maxOpenViewers {
+		h.open.Add(-1)
+		return nil, nil, ErrTooManyViewers
+	}
+	handedOver := false
+	defer func() {
+		if !handedOver {
+			h.open.Add(-1)
+		}
+	}()
 
 	engine := &webrtc.MediaEngine{}
 	if err := engine.RegisterCodec(webrtc.RTPCodecParameters{
@@ -985,11 +1021,19 @@ func (h *Hub) NewViewer() (*Viewer, *webrtc.SessionDescription, error) {
 			return nil, nil, fmt.Errorf("talk-back track: %w", err)
 		}
 		v.talkTr = tr
+		// **Pion runs this callback on a goroutine of its own**, which no
+		// guard.Go started and so nothing catches: a panic in the talk-back —
+		// fed by a viewer's packets, through the decoder and the resampler —
+		// would end the process with the camera on, which the rule on panics
+		// forbids of an accessory by name. The body is ours, so it is ours to
+		// catch; the same holds for the two callbacks below.
 		pc.OnTrack(func(track *webrtc.TrackRemote, _ *webrtc.RTPReceiver) {
-			if track.Kind() != webrtc.RTPCodecTypeAudio {
-				return
-			}
-			h.talk.Receive(track, v.id)
+			_ = guard.Run(h.log, "the talk-back receiver", func() error {
+				if track.Kind() == webrtc.RTPCodecTypeAudio {
+					h.talk.Receive(track, v.id)
+				}
+				return nil
+			})
 		})
 	}
 
@@ -1006,21 +1050,24 @@ func (h *Hub) NewViewer() (*Viewer, *webrtc.SessionDescription, error) {
 	guard.Go(h.log, "the audio RTCP drain", func() { v.drainRTCP(audioSender, false) })
 
 	pc.OnConnectionStateChange(func(s webrtc.PeerConnectionState) {
-		v.log.Info("viewer connection state", "session", v.id, "state", s.String())
-		switch s {
-		case webrtc.PeerConnectionStateConnected:
-			// Having been counted is **remembered**, not read back from the
-			// connection's state: see counted.
-			if v.counted.CompareAndSwap(false, true) {
-				h.Stats.ViewersNow.Add(1)
-				h.Stats.ViewersTotal.Add(1)
+		_ = guard.Run(h.log, "the viewer's state change", func() error {
+			v.log.Info("viewer connection state", "session", v.id, "state", s.String())
+			switch s {
+			case webrtc.PeerConnectionStateConnected:
+				// Having been counted is **remembered**, not read back from the
+				// connection's state: see counted.
+				if v.counted.CompareAndSwap(false, true) {
+					h.Stats.ViewersNow.Add(1)
+					h.Stats.ViewersTotal.Add(1)
+				}
+			case webrtc.PeerConnectionStateDisconnected, webrtc.PeerConnectionStateClosed:
+				v.Close()
+			case webrtc.PeerConnectionStateFailed:
+				h.Stats.ConnectFailure.Add(1)
+				v.Close()
 			}
-		case webrtc.PeerConnectionStateDisconnected, webrtc.PeerConnectionStateClosed:
-			v.Close()
-		case webrtc.PeerConnectionStateFailed:
-			h.Stats.ConnectFailure.Add(1)
-			v.Close()
-		}
+			return nil
+		})
 	})
 
 	offer, err := pc.CreateOffer(nil)
@@ -1065,6 +1112,7 @@ func (h *Hub) NewViewer() (*Viewer, *webrtc.SessionDescription, error) {
 		h.bwe[v] = viewerEstimate{bwe: estimator, since: time.Now()}
 		h.bweMu.Unlock()
 	}
+	handedOver = true
 	return v, pc.LocalDescription(), nil
 }
 
@@ -1099,11 +1147,30 @@ func (v *Viewer) drainRTCP(sender *webrtc.RTPSender, video bool) {
 			// disturb the session report, which keeps its own counters.
 			if rr, ok := p.(*rtcp.ReceiverReport); ok {
 				for _, r := range rr.Reports {
+					if !aboutTheVideo(r.SSRC, v.videoSSRC) {
+						continue
+					}
 					v.hub.recordLoss(float64(r.FractionLost)/256, time.Now())
 				}
 			}
 		}
 	}
+}
+
+// aboutTheVideo says whether a reception report block speaks of the video
+// stream.
+//
+// **With BUNDLE one receiver report can carry a block per stream**, and every
+// block used to be counted as video loss: audio lost on the way was read as
+// the picture being too big for the link, and the loop took bits from a stream
+// that had lost none. The block names its stream, so it is asked.
+//
+// A sender with no SSRC yet answers zero, and then every block counts, as
+// before: ignoring the losses because a number was missing would switch off
+// the one piece of evidence that brings the bitrate down on its own, and "I do
+// not know" is not "nothing was lost".
+func aboutTheVideo(reported, video uint32) bool {
+	return video == 0 || reported == video
 }
 
 // SetAnswer applies the browser's SDP answer.
@@ -1125,7 +1192,11 @@ func (v *Viewer) SetAnswer(answer webrtc.SessionDescription) error {
 // taken here rather than read back from the agent afterwards: see ICEFacts.
 func (v *Viewer) AddICECandidate(c webrtc.ICECandidateInit) error {
 	v.log.Debug("remote candidate", "candidate", c.Candidate)
-	v.candSent.Add(1)
+	if v.candSent.Add(1) > maxRemoteCandidates {
+		// Not counted as refused: that count says pion would not take what a
+		// browser sent, which is a fault of ours, and this is not one.
+		return errors.New("too many remote candidates")
+	}
 	if err := v.pc.AddICECandidate(c); err != nil {
 		v.candRefused.Add(1)
 		return err
@@ -1136,13 +1207,16 @@ func (v *Viewer) AddICECandidate(c webrtc.ICECandidateInit) error {
 // OnICECandidate registers the callback for the local candidates (trickle ICE).
 func (v *Viewer) OnICECandidate(fn func(*webrtc.ICECandidate)) {
 	v.pc.OnICECandidate(func(c *webrtc.ICECandidate) {
-		if c != nil {
-			v.log.Debug("local candidate",
-				"type", c.Typ.String(),
-				"proto", c.Protocol.String(),
-				"address", net.JoinHostPort(c.Address, strconv.Itoa(int(c.Port))))
-		}
-		fn(c)
+		_ = guard.Run(v.log, "sending a local candidate", func() error {
+			if c != nil {
+				v.log.Debug("local candidate",
+					"type", c.Typ.String(),
+					"proto", c.Protocol.String(),
+					"address", net.JoinHostPort(c.Address, strconv.Itoa(int(c.Port))))
+			}
+			fn(c)
+			return nil
+		})
 	})
 }
 
@@ -1195,6 +1269,7 @@ func (v *Viewer) CloseUnlessConnected() bool {
 func (v *Viewer) Close() {
 	v.closeOnce.Do(func() {
 		v.rememberICEFacts()
+		v.hub.open.Add(-1)
 		if v.counted.CompareAndSwap(true, false) {
 			v.hub.Stats.ViewersNow.Add(-1)
 		}
