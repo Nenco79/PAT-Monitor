@@ -297,8 +297,15 @@ func Load(path string) (Config, error) {
 	return cfg, nil
 }
 
-// Save writes the configuration to disk with restrictive permissions: the file
-// holds the password hash and, where configured, the Tailscale auth key.
+// Save writes the configuration to disk: the file holds the password hash and,
+// where configured, the Tailscale auth key.
+//
+// **The modes below say nothing on Windows**, where Go maps a permission to
+// the read-only attribute and no more; they are kept for the platforms where
+// they mean something. What keeps other accounts out here is the folder's own
+// ACL — `%APPDATA%` is the user's and nobody else's — so a `-config` pointed
+// outside the profile, at a folder every account may write, carries that
+// folder's openness with it.
 func (c Config) Save() error {
 	if c.path == "" {
 		return errors.New("configuration path not set")

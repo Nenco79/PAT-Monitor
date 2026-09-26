@@ -21,8 +21,10 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"flag"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -66,21 +68,36 @@ func run(generate, verify bool, keyPath string, args []string) error {
 // **It refuses to overwrite.** A second `-generate` over an existing key would
 // silently strand every installation carrying the first one, and it would do so
 // at the exact moment somebody is in a hurry — which is when a command gets run
-// twice. The file is written 0600, and the printed constant is meant to be
-// pasted into internal/update/pubkey.go: two halves that are replaced together
-// or not at all.
+// twice. The refusal is the create itself, which fails if the file exists, so
+// nothing can slip in between a check and a write. The printed constant is
+// meant to be pasted into internal/update/pubkey.go: two halves that are
+// replaced together or not at all.
+//
+// **The key is plain hex, and the 0600 below is not what protects it.** On
+// Windows a file mode is the read-only attribute and nothing else; what keeps
+// other accounts away is the folder's ACL. So the key belongs under the
+// profile, or on removable or encrypted media — never in a folder at the root
+// of a drive, where every account on the machine may read it.
 func makeKey(path string) error {
 	if path == "" {
 		return fmt.Errorf("-generate needs -key, to say where to write it")
-	}
-	if _, err := os.Stat(path); err == nil {
-		return fmt.Errorf("%s already exists: a new key strands every installation carrying the old one", path)
 	}
 	pub, priv, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(path, []byte(hex.EncodeToString(priv)+"\n"), 0o600); err != nil {
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	if errors.Is(err, fs.ErrExist) {
+		return fmt.Errorf("%s already exists: a new key strands every installation carrying the old one", path)
+	}
+	if err != nil {
+		return err
+	}
+	if _, err := f.WriteString(hex.EncodeToString(priv) + "\n"); err != nil {
+		f.Close()
+		return err
+	}
+	if err := f.Close(); err != nil {
 		return err
 	}
 

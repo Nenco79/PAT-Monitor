@@ -905,6 +905,12 @@ func credentials(w http.ResponseWriter, r *http.Request) (req loginRequest, isFo
 	const maxBody = 4 << 10
 	ct := r.Header.Get("Content-Type")
 
+	// Four kilobytes are allowed, and without a deadline they could be sent
+	// one byte a minute, holding the connection for as long as the caller
+	// liked on the three routes anybody can reach. Where the writer cannot set
+	// one — a test's recorder — nothing is lost that was there before.
+	_ = http.NewResponseController(w).SetReadDeadline(time.Now().Add(10 * time.Second))
+
 	// **Credentials are taken only from our own pages.** See fromOurOwnPages:
 	// this is the check that stops somebody else's site posting a form here,
 	// and the route it protects hardest is /api/setup, which by design accepts

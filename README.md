@@ -161,7 +161,7 @@ is optional.
 | `update_check` | `true` | ask GitHub once a day whether a newer release exists |
 | `funnel_enabled` | `false` | publish on the Internet through Tailscale |
 | `funnel_hostname` | `patmon-` plus a per-machine fingerprint | node name in the tailnet |
-| `tailscale_auth_key` | empty | pre-authorise the node instead of approving it from the browser |
+| `tailscale_auth_key` | empty | pre-authorise the node instead of approving it from the browser; used at the first login only and kept in plain text, so remove it once the node is in |
 | `detect_cry`, `detect_bark`, `detect_motion` | `true` | which events to look and listen for |
 | `clips_max_mb` | `1000` | disk quota for the event clips, `0` means no limit |
 | `clips_max_days` | `14` | how long a clip is kept, `0` means no expiry |

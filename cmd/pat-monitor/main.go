@@ -967,6 +967,10 @@ func run(log *slog.Logger, path string) error {
 		Addr:              cfg.ListenAddr,
 		Handler:           srv.Handler(),
 		ReadHeaderTimeout: 10 * time.Second,
+		// See the Funnel's server in internal/tunnel: an idle keep-alive is let
+		// go, and a WebSocket, being hijacked, is not idle.
+		IdleTimeout:    2 * time.Minute,
+		MaxHeaderBytes: 64 << 10,
 		// No WriteTimeout: the signalling WebSockets stay open for the whole
 		// duration of the viewing.
 	}
@@ -2019,7 +2023,7 @@ func startProfiler(log *slog.Logger, addr string) error {
 		// DefaultServeMux is where `net/http/pprof` registers itself. The
 		// monitor's server has its own mux, so these routes do not touch it.
 		srv := &http.Server{Handler: loopbackNamesOnly(http.DefaultServeMux),
-			ReadHeaderTimeout: 10 * time.Second}
+			ReadHeaderTimeout: 10 * time.Second, IdleTimeout: 2 * time.Minute}
 		if err := srv.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Warn("profiler stopped", "error", err)
 		}

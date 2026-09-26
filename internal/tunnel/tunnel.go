@@ -490,7 +490,14 @@ func (t *Tunnel) run(ctx context.Context, handler http.Handler) error {
 		// makes the answer evidence rather than an assertion.
 		Handler:           t.serveReach(handler),
 		ReadHeaderTimeout: 10 * time.Second,
-		ConnContext:       withFunnelSource,
+		// A keep-alive connection that sends nothing more is let go after two
+		// minutes: without it one held open costs a goroutine and a netstack
+		// endpoint for as long as the caller likes, and this listener faces
+		// the Internet. A hijacked WebSocket is not idle in this sense and is
+		// not touched.
+		IdleTimeout:    2 * time.Minute,
+		MaxHeaderBytes: 64 << 10,
+		ConnContext:    withFunnelSource,
 	}
 	guard.Go(t.cfg.Log, "the shutdown of public access", func() {
 		<-ctx.Done()
