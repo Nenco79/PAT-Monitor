@@ -52,6 +52,11 @@ var (
 	fmp4Out   = flag.String("fmp4", "", "write a fragmented MP4 to this file, to exercise the muxer")
 	testTone  = flag.Bool("tone", false, "use a test tone instead of the microphone")
 	camWanted = flag.String("cam", "", "measure on the camera whose name or link contains this text")
+	// micWanted is the microphone's twin of -cam. The monitor captures the one
+	// in mic_device_id, and without this the tool could only measure the
+	// default: on a machine where the two differ, the report would describe a
+	// microphone the monitor does not use.
+	micWanted = flag.String("mic", "", "measure on this microphone endpoint ID, the value of mic_device_id (empty = the default one)")
 	pliEvery  = flag.Duration("pli", 0, "ask for a keyframe this often and measure how long it takes to arrive")
 )
 
@@ -294,6 +299,7 @@ func main() {
 		PreferEncoder:           *preferEnc,
 		PinNativeFormat:         *pinNative,
 		KeepFrameRateConversion: *keepFRC,
+		MicDeviceID:             *micWanted,
 		MicGainDB:               *micGain,
 		AudioTestTone:           *testTone,
 		Trace:                   trace,
@@ -591,6 +597,14 @@ func main() {
 	fmt.Println(strings.Repeat("=", 76))
 	fmt.Printf("  VERDICT — %.1fs actual\n", elapsed.Seconds())
 	fmt.Println(strings.Repeat("=", 76))
+	// The microphone is named here and not in the header, because which one
+	// opened is known only once the capture has run; the header names the
+	// camera for the same reason the monitor's details do.
+	if mic := p.Microphone(); mic.Name != "" {
+		fmt.Printf("  microphone: %s\n", mic.Name)
+	} else if !*testTone {
+		fmt.Printf("  microphone: none opened\n")
+	}
 
 	vFrames := p.Stats.VideoFrames.Load()
 	keys := p.Stats.Keyframes.Load()

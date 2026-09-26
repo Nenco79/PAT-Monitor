@@ -92,6 +92,9 @@ func (p *pliProbe) report() (n int, avg, worst time.Duration, missed int) {
 }
 
 var (
+	// On this PC the address has to be localhost or a number: under any other
+	// name the monitor refuses the login as a page that might have rebound a
+	// name onto this machine (see namesThisPC).
 	addr     = flag.String("addr", "http://localhost:8080", "monitor address")
 	password = flag.String("password", "", "login password")
 	duration = flag.Duration("d", 12*time.Second, "test duration")
@@ -115,6 +118,8 @@ type signalMessage struct {
 	// developer reads it, and turning it into a sentence would be one more
 	// dictionary to keep aligned for nobody.
 	Reason string `json:"reason,omitempty"`
+	// ICEServers are the STUN servers the monitor hands out with the offer.
+	ICEServers []webrtc.ICEServer `json:"iceServers,omitempty"`
 }
 
 func main() {
@@ -201,6 +206,31 @@ func newPeerConnection(profileLevelID string) (*webrtc.PeerConnection, error) {
 	}
 	api := webrtc.NewAPI(webrtc.WithMediaEngine(engine), webrtc.WithInterceptorRegistry(ir))
 	return api.NewPeerConnection(webrtc.Configuration{})
+}
+
+// takeICEServers adopts the STUN servers the monitor sent with its offer, as
+// the page does.
+//
+// **Without them this viewer gathers only host candidates**, which is the
+// defect "The STUN servers must be handed to the browser too" records for the
+// page: at home it changes nothing, and from another network — which is where
+// this tool is run to test the Funnel — no path is found, and the tool reports
+// a failure the page would not have. It was written before the servers
+// travelled with the offer, and nothing about a run at home says so.
+//
+// It has to come before the remote description: gathering starts with the
+// local one, and the servers must be in place by then.
+func takeICEServers(pc *webrtc.PeerConnection, servers []webrtc.ICEServer) error {
+	if len(servers) == 0 {
+		return nil
+	}
+	cfg := pc.GetConfiguration()
+	cfg.ICEServers = servers
+	if err := pc.SetConfiguration(cfg); err != nil {
+		return fmt.Errorf("adopting the monitor's STUN servers: %w", err)
+	}
+	fmt.Printf("  STUN servers from the monitor: %d\n", len(servers))
+	return nil
 }
 
 // checkUnauthenticated verifies that the protected endpoints refuse access.
@@ -430,6 +460,10 @@ func watch(ctx context.Context, jar *cookiejar.Jar, base, profileLevelID string,
 					continue
 				}
 				fmt.Println("  SDP offer received")
+				if err := takeICEServers(pc, msg.ICEServers); err != nil {
+					done <- err
+					return
+				}
 				if err := pc.SetRemoteDescription(*msg.SDP); err != nil {
 					done <- fmt.Errorf("SetRemoteDescription: %w", err)
 					return

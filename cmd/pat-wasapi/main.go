@@ -21,6 +21,7 @@ import (
 	"patmonitor/internal/audiocodec"
 	"patmonitor/internal/detect"
 	"patmonitor/internal/diag"
+	"patmonitor/internal/wincom"
 )
 
 var (
@@ -30,7 +31,12 @@ var (
 )
 
 func main() {
+	// As the monitor does, and first: see wincom.NarrowDLLSearch.
+	dllSearchErr := wincom.NarrowDLLSearch()
 	flag.Parse()
+	if dllSearchErr != nil {
+		fmt.Fprintf(os.Stderr, "WARNING: DLL search path not narrowed as the monitor does it: %v\n", dllSearchErr)
+	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()

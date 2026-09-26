@@ -28,8 +28,8 @@ import "golang.org/x/sys/windows"
 // transform that loads a DLL of its own by bare name from its own folder is the
 // case to look for if it stops opening.
 //
-// **The tools call it too**, first thing in main, because pat-diag and
-// pat-capture answer for the monitor: an encoder they open with the old search
+// **The tools call it too**, first thing in main, because pat-diag,
+// pat-capture and pat-wasapi answer for the monitor: an encoder they open with the old search
 // order and the monitor cannot open with the new one would be a diagnosis of a
 // different program.
 func NarrowDLLSearch() error {

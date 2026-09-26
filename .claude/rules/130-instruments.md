@@ -186,6 +186,15 @@ was right, look suspect. What dismantled them was whoever was watching the page
 the image was fluid, and 15 fps is not. **A tool that stops measuring and does
 not say so makes what it measures look broken**: the truncation is now declared.
 
+**And it adopts the STUN servers the monitor sends with the offer**, which it
+did not: it was written before they travelled there, gathered host candidates
+only, and so worked at home and could not have found a path from another
+network — the place it is run to test the Funnel — while the page would have.
+It is the chapter on the page's own STUN servers, met in the instrument, and
+nothing about a run at home shows it. On this PC it has to be pointed at
+`localhost` or a number: under the machine's name the login is refused as a
+possibly rebound page.
+
 **`pat-viewer -pli 1s`** sends keyframe requests on command and measures how
 long one takes to arrive — the only way to test the PLI response without really
 losing packets. A wait around one second, that is, half the GOP, means nobody
@@ -226,6 +235,12 @@ declared per vendor while the declaration is worth nothing — AMD answers
 `E_NOTIMPL` to `IsModifiable` and honours it perfectly. Measured on AMD from this
 road: **24 asked, 24 answered within five frames, median 27 ms**, which agrees
 with the 48 ms measured through `pat-viewer` on the same chip.
+
+**And a fourth, `-mic`, for the same reason as `-cam`**: the monitor captures
+the microphone in `mic_device_id`, and the tool could only measure the default,
+so where the two differed the report described a microphone the monitor does
+not use — with nothing in it saying which one it was. The verdict now names the
+microphone that opened, which is known only once the capture has run.
 
 **A request counts as answered inside the pipeline's own window, five frames**,
 and that is not a detail: beyond it what arrives is the periodic keyframe, so a

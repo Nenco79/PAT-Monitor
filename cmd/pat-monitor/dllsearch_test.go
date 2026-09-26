@@ -16,7 +16,7 @@ import (
 // **The defect was put back and this test fails with it**: with the call moved
 // below flag.Parse, it names the statement in front.
 func TestTheDLLSearchIsNarrowedFirst(t *testing.T) {
-	for _, path := range []string{"main.go", "../pat-diag/main.go", "../pat-capture/main.go"} {
+	for _, path := range []string{"main.go", "../pat-diag/main.go", "../pat-capture/main.go", "../pat-wasapi/main.go"} {
 		fset := token.NewFileSet()
 		f, err := parser.ParseFile(fset, path, nil, parser.SkipObjectResolution)
 		if err != nil {
