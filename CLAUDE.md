@@ -447,10 +447,12 @@ does is `SetDefaultDllDirectories(LOAD_LIBRARY_SEARCH_SYSTEM32)`, because the
 release is a ZIP, and a ZIP gets run from Downloads. Every DLL we load ourselves
 already comes from System32, so this is for the loads Windows components make on
 our behalf. It was run on the AMD machine across the capture, the hardware
-encoder, both audio directions and the stream. **The tray's `ShellExecute` and
-the Intel and NVIDIA encoders were not run**: a vendor transform loading a DLL
-of its own by bare name is what to suspect if one of them stops opening
-(`cmd/pat-monitor/dllsearch_windows.go`).
+encoder, both audio directions, the stream and the tray's `ShellExecute`, and
+on the NVIDIA machine through the encoder with a real camera. `pat-diag` and
+`pat-capture` narrow it too, so that they answer for the program they diagnose.
+**The Intel encoder was not run**: a vendor transform loading a DLL of its own
+by bare name is what to suspect if it stops opening
+(`internal/wincom/dllsearch_windows.go`).
 
 The capture reference measurements are in `baselines/capture-intel.txt` and
 `baselines/capture-amd.txt`, and they answer "has it got worse?", which without

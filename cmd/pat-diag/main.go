@@ -37,7 +37,13 @@ var (
 )
 
 func main() {
+	// As the monitor does, and first: see wincom.NarrowDLLSearch. An encoder
+	// this tool opens has to be one the monitor can open.
+	dllSearchErr := wincom.NarrowDLLSearch()
 	flag.Parse()
+	if dllSearchErr != nil {
+		fmt.Printf("WARNING: DLL search path not narrowed as the monitor does it: %v\n", dllSearchErr)
+	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()

@@ -26,6 +26,7 @@ import (
 	"patmonitor/internal/media"
 	"patmonitor/internal/mf"
 	"patmonitor/internal/pipeline"
+	"patmonitor/internal/wincom"
 )
 
 var (
@@ -104,7 +105,12 @@ func bitrateTookHold(before, after, asked float64) (held, judgeable bool) {
 }
 
 func main() {
+	// As the monitor does, and first: see wincom.NarrowDLLSearch.
+	dllSearchErr := wincom.NarrowDLLSearch()
 	flag.Parse()
+	if dllSearchErr != nil {
+		fmt.Fprintf(os.Stderr, "WARNING: DLL search path not narrowed as the monitor does it: %v\n", dllSearchErr)
+	}
 
 	level := slog.LevelInfo
 	if *verbose {
