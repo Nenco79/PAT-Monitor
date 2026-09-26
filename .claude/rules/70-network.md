@@ -371,9 +371,26 @@ through `sayOnce`, which suppresses **consecutive** repeats by comparing the
 formatted text and not the format: two lines differing by a value are two pieces
 of news.
 
+**And the same shape was waiting behind the two public routes.** `/api/login`
+and `/api/setup` refuse a foreign page's post, and `/api/setup` anybody not at
+this PC, before the limiter is consulted — rightly, since a refused submission
+never reaches argon2 — and each refusal was a Warn carrying the caller's
+`Origin`, `Sec-Fetch-Site` or `Host` whole. A header may be 64 KB and slog
+quotes without cutting, so about five hundred padded posts through the Funnel
+were the 32 MB the log keeps, and they rotated away the lines that said who had
+been guessing passwords. A second audit found it. `refusalRun` gives them
+refuseViewer's shape with one difference: nobody is admitted after these, so the
+run closes on a minute of silence rather than on an admission. And every value
+the caller wrote goes through `forLog`, which keeps 128 bytes of it.
+`TestAFloodOfPublicRefusalsWritesOneShortLine` failed on both halves with the
+old `Warn` put back. Measured on the running monitor with `-v`, three hundred
+posts carrying a 60 KB `Origin` wrote 110 KB of Debug lines; the uncut Warn
+would have been some 18 MB, and at the default level there is one line.
+
 The direction to remember is that the volume of the log is not decided by
 whoever writes the line: it is decided by whoever makes it be written. It holds
-for a viewer that retries, for an audio sender, and for a dependency.
+for a viewer that retries, for an audio sender, for a dependency, and for a
+stranger on the Internet.
 
 ### Access is slowed down, never blocked
 

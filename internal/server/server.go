@@ -305,6 +305,11 @@ type Server struct {
 	refusalsMu    sync.Mutex
 	refusals      int
 	refusalsSince time.Time
+
+	// crossSite and setupElsewhere are the two public refusals, written as
+	// runs: see refusalRun.
+	crossSite      *refusalRun
+	setupElsewhere *refusalRun
 }
 
 // refuseViewer writes a viewer's refusal **as an alert, not as an event**.
@@ -382,6 +387,8 @@ func New(opts Options) (*Server, error) {
 		mux:         http.NewServeMux(),
 		assets:      assets,
 	}
+	s.crossSite = newRefusalRun(s.log, "credentials refused: the submission did not come from our own pages")
+	s.setupElsewhere = newRefusalRun(s.log, "first-time setup refused: request not from this PC")
 	s.routes()
 	return s, nil
 }
@@ -396,7 +403,11 @@ func (s *Server) conf() config.Config { return s.opts.Config.Get() }
 // because when the local interface arrives the place to write is already
 // prepared — but until it does, the code for doing it must not be there.
 
-func (s *Server) Close() { s.sessions.close() }
+func (s *Server) Close() {
+	s.sessions.close()
+	s.crossSite.stop()
+	s.setupElsewhere.stop()
+}
 
 // Handler returns the complete HTTP handler.
 func (s *Server) Handler() http.Handler {
@@ -569,8 +580,8 @@ func (s *Server) requireAuth(next http.Handler) http.Handler {
 		if r.Method != http.MethodGet && r.Method != http.MethodHead && !fromOurOwnPages(r) {
 			s.log.Warn("command refused: it did not come from our own pages",
 				"path", r.URL.Path, "from", from.Addr,
-				"origin", r.Header.Get("Origin"),
-				"sec_fetch_site", r.Header.Get("Sec-Fetch-Site"))
+				"origin", forLog(r.Header.Get("Origin")),
+				"sec_fetch_site", forLog(r.Header.Get("Sec-Fetch-Site")))
 			writeJSONError(w, http.StatusForbidden, ErrCrossSite)
 			return
 		}
@@ -1280,8 +1291,7 @@ func (s *Server) apiPassword(w http.ResponseWriter, r *http.Request) {
 func (s *Server) apiSetup(w http.ResponseWriter, r *http.Request) {
 	if setupNotFromThisPC(r) {
 		o := requestOrigin(r)
-		s.log.Warn("first-time setup refused: request not from this PC",
-			"from", o.Kind, "address", o.Addr, "host", r.Host)
+		s.setupElsewhere.refuse("from", o.Kind, "address", o.Addr, "host", forLog(r.Host))
 		writeJSONError(w, http.StatusForbidden, ErrSetupNotThisPC)
 		return
 	}
@@ -1506,7 +1516,7 @@ type signalMessage struct {
 
 func (s *Server) wsSignaling(w http.ResponseWriter, r *http.Request) {
 	if err := checkOrigin(r); err != nil {
-		s.log.Warn("WebSocket refused", "reason", err, "origin", r.Header.Get("Origin"))
+		s.log.Warn("WebSocket refused", "reason", err, "origin", forLog(r.Header.Get("Origin")))
 		http.Error(w, "origin not allowed", http.StatusForbidden)
 		return
 	}
@@ -1616,7 +1626,7 @@ func (s *Server) wsSignaling(w http.ResponseWriter, r *http.Request) {
 					"error", err,
 					"h264_we_offered", s.opts.Hub.ProfileLevelID(),
 					"codecs_the_browser_accepted", codecsIn(msg.SDP.SDP),
-					"user_agent", r.Header.Get("User-Agent"))
+					"user_agent", forLog(r.Header.Get("User-Agent")))
 				_ = wsWrite(ctx, conn, signalMessage{Type: "error", Reason: reasonSDP})
 				return
 			}
@@ -1802,10 +1812,9 @@ func (s *Server) hashSlot(r *http.Request) (release func(), ok bool) {
 // it happened.
 func (s *Server) refuseCredentials(w http.ResponseWriter, r *http.Request, isForm bool, page string, err error) {
 	if errors.Is(err, errCrossSite) {
-		s.log.Warn("credentials refused: the submission did not come from our own pages",
-			"path", r.URL.Path, "from", clientKey(r),
-			"origin", r.Header.Get("Origin"),
-			"sec_fetch_site", r.Header.Get("Sec-Fetch-Site"))
+		s.crossSite.refuse("path", r.URL.Path, "from", clientKey(r),
+			"origin", forLog(r.Header.Get("Origin")),
+			"sec_fetch_site", forLog(r.Header.Get("Sec-Fetch-Site")))
 		authError(w, r, isForm, page, http.StatusForbidden, ErrCrossSite)
 		return
 	}
@@ -1886,7 +1895,7 @@ func checkOrigin(r *http.Request) error {
 		return fmt.Errorf("origin cannot be parsed")
 	}
 	if !strings.EqualFold(u.Host, r.Host) {
-		return fmt.Errorf("origin %q differs from host %q", u.Host, r.Host)
+		return fmt.Errorf("origin %q differs from host %q", forLog(u.Host), forLog(r.Host))
 	}
 	return nil
 }
