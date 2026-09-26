@@ -121,6 +121,18 @@ tag is unreadable too. `version.Readable` now answers the question `Newer`
 cannot: **"not newer" and "not a version" are the same answer and not the same
 fact.**
 
+**The release's URL is executed, not displayed, and it was believed as it
+came.** The panel hands `html_url` to the shell's `open`, which starts whatever
+it names: a browser for an https page, and for a path, a share or a registered
+protocol handler, whatever that is. The answer arrives over TLS, which is why a
+security audit rated it low; a machine behind an inspecting proxy trusts
+whatever that proxy says, and this is the one string in the package that is run
+rather than shown. `releasePage` asks that it be an https page under this
+repository's releases, which is all a release's page ever is, and an answer
+naming anything else is Unknown — an answer we would not open is an answer we
+did not get. The client also refuses a redirect off https, which Go's default
+follows without a word.
+
 ### The key ships before anything reads it
 
 `internal/update/pubkey.go` carries an ed25519 public key that **nothing
@@ -159,6 +171,19 @@ install by hand. That is a backup problem, and it is somebody's actual job. A
 second offline rotation key is deliberately **not** kept: one key with a real
 backup is honest, two keys with one backup is theatre, and the spare would sit
 unused for years and be lost the same way.
+
+**The signature binds the bytes and not the version, and the downloader must
+make up the difference.** `pat-sign` signs the archive and nothing else, so an
+old signed archive is still a valid signature — whoever takes the account can
+attach last year's zip and its `.sig` to a higher tag, and a downloader that
+checks only the signature installs a downgrade to a release with a known fault.
+Nothing downloads today, so nothing is exploitable; the requirement is written
+here so the day something does, it is met. Either the downloader reads the
+version from inside the verified archive — the executable carries its own,
+stamped by the linker — and refuses anything not newer than the one running, or
+the format moves to a signed manifest naming product, version, file and hash.
+Freezing is not in reach of any signature: pinning "latest" to an old release is
+the same act as deleting the new ones.
 
 **An all-zero key is not a key**, which is why `IsSigned` exists. A verifier
 handed the placeholder would refuse every signature — from outside, exactly what

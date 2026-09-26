@@ -68,7 +68,7 @@ func notModified(t *testing.T) {
 // A newer release is offered, with the number and the page GitHub named.
 func TestANewerReleaseIsOffered(t *testing.T) {
 	notModified(t)
-	f := &fake{body: release{TagName: "v99.0.0", HTMLURL: "https://example.invalid/r/99"}}
+	f := &fake{body: release{TagName: "v99.0.0", HTMLURL: "https://github.com/Nenco79/PAT-Monitor/releases/tag/v99.0.0"}}
 	c := f.start(t)
 
 	st, err := c.Check(context.Background())
@@ -81,7 +81,7 @@ func TestANewerReleaseIsOffered(t *testing.T) {
 	if st.Version != "99.0.0" {
 		t.Errorf("version %q: the tag's leading v must not survive", st.Version)
 	}
-	if st.URL != "https://example.invalid/r/99" {
+	if st.URL != "https://github.com/Nenco79/PAT-Monitor/releases/tag/v99.0.0" {
 		t.Errorf("url %q is not the one the release named", st.URL)
 	}
 }
@@ -95,7 +95,7 @@ func TestTheRunningVersionAndOlderOnesAreCurrent(t *testing.T) {
 	notModified(t)
 	for _, tag := range []string{"v" + version.Number, version.Number, "v0.0.1"} {
 		t.Run(tag, func(t *testing.T) {
-			f := &fake{body: release{TagName: tag, HTMLURL: "https://example.invalid/r"}}
+			f := &fake{body: release{TagName: tag, HTMLURL: "https://github.com/Nenco79/PAT-Monitor/releases/latest"}}
 			st, err := f.start(t).Check(context.Background())
 			if err != nil {
 				t.Fatalf("check failed: %v", err)
@@ -125,7 +125,7 @@ func TestAPrereleaseIsNeverOffered(t *testing.T) {
 		{"draft", release{TagName: "v99.0.0", Draft: true}},
 	} {
 		t.Run(c.name, func(t *testing.T) {
-			c.rel.HTMLURL = "https://example.invalid/r/99"
+			c.rel.HTMLURL = "https://github.com/Nenco79/PAT-Monitor/releases/tag/v99.0.0"
 			st, err := (&fake{body: c.rel}).start(t).Check(context.Background())
 			if err != nil {
 				t.Fatalf("check failed: %v", err)
@@ -154,7 +154,7 @@ func TestNoFailureIsEverReportedAsCurrent(t *testing.T) {
 		{"rate limited", &fake{status: http.StatusForbidden}},
 		{"server error", &fake{status: http.StatusInternalServerError}},
 		{"not json", &fake{raw: "<html>no</html>"}},
-		{"no tag", &fake{body: release{HTMLURL: "https://example.invalid/r"}}},
+		{"no tag", &fake{body: release{HTMLURL: "https://github.com/Nenco79/PAT-Monitor/releases/latest"}}},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			st, _ := c.f.start(t).Check(context.Background())
@@ -190,7 +190,7 @@ func TestNoNetworkIsUnknown(t *testing.T) {
 // that has not gone anywhere.
 func TestAFailedAttemptDoesNotForgetWhatWasFound(t *testing.T) {
 	notModified(t)
-	f := &fake{body: release{TagName: "v99.0.0", HTMLURL: "https://example.invalid/r/99"}}
+	f := &fake{body: release{TagName: "v99.0.0", HTMLURL: "https://github.com/Nenco79/PAT-Monitor/releases/tag/v99.0.0"}}
 	c := f.start(t)
 
 	if st, err := c.Check(context.Background()); err != nil || st.Code != Available {
@@ -216,7 +216,7 @@ func TestAFailedAttemptDoesNotForgetWhatWasFound(t *testing.T) {
 func TestTheSecondAskIsConditional(t *testing.T) {
 	notModified(t)
 	f := &fake{
-		body: release{TagName: "v99.0.0", HTMLURL: "https://example.invalid/r/99"},
+		body: release{TagName: "v99.0.0", HTMLURL: "https://github.com/Nenco79/PAT-Monitor/releases/tag/v99.0.0"},
 		etag: `W/"abc123"`,
 	}
 	c := f.start(t)
@@ -254,7 +254,7 @@ func TestAnUnreadableAnswerDoesNotSwitchTheCheckOff(t *testing.T) {
 	}
 	// The server is fixed; the next ask must be able to see it.
 	f.raw = ""
-	f.body = release{TagName: "v99.0.0", HTMLURL: "https://example.invalid/r/99"}
+	f.body = release{TagName: "v99.0.0", HTMLURL: "https://github.com/Nenco79/PAT-Monitor/releases/tag/v99.0.0"}
 
 	st, err := c.Check(context.Background())
 	if err != nil {
@@ -296,7 +296,7 @@ func TestAModifiedBuildNeverReportsAnUpdate(t *testing.T) {
 	version.Modified = "yes"
 	t.Cleanup(func() { version.Modified = was })
 
-	f := &fake{body: release{TagName: "v99.0.0", HTMLURL: "https://example.invalid/r/99"}}
+	f := &fake{body: release{TagName: "v99.0.0", HTMLURL: "https://github.com/Nenco79/PAT-Monitor/releases/tag/v99.0.0"}}
 	c := f.start(t)
 
 	st, err := c.Check(context.Background())
@@ -398,7 +398,7 @@ func TestAHugeAnswerIsBounded(t *testing.T) {
 func TestAnAnswerWithNoTagDoesNotSwitchTheCheckOff(t *testing.T) {
 	notModified(t)
 	f := &fake{
-		body: release{TagName: "v99.0.0", HTMLURL: "https://example.invalid/r/99"},
+		body: release{TagName: "v99.0.0", HTMLURL: "https://github.com/Nenco79/PAT-Monitor/releases/tag/v99.0.0"},
 		etag: `W/"abc123"`,
 	}
 	c := f.start(t)
@@ -410,7 +410,7 @@ func TestAnAnswerWithNoTagDoesNotSwitchTheCheckOff(t *testing.T) {
 	// The server now answers 200 with a document carrying no tag, and a new
 	// ETag with it — which is what makes the trap: stored, it is sent back and
 	// answered 304 for ever.
-	f.body = release{HTMLURL: "https://example.invalid/r"}
+	f.body = release{HTMLURL: "https://github.com/Nenco79/PAT-Monitor/releases/latest"}
 	f.etag = `W/"def456"`
 
 	st, err := c.Check(context.Background())
@@ -422,7 +422,7 @@ func TestAnAnswerWithNoTagDoesNotSwitchTheCheckOff(t *testing.T) {
 	}
 
 	// The server is fixed, and the next ask has to be able to see it.
-	f.body = release{TagName: "v99.1.0", HTMLURL: "https://example.invalid/r/991"}
+	f.body = release{TagName: "v99.1.0", HTMLURL: "https://github.com/Nenco79/PAT-Monitor/releases/tag/v99.0.01"}
 	if st, err = c.Check(context.Background()); err != nil {
 		t.Fatalf("third check: %v", err)
 	}
@@ -447,7 +447,7 @@ func TestAnAnswerWithNoTagDoesNotSwitchTheCheckOff(t *testing.T) {
 func TestATagThatIsNotAVersionDoesNotBecomeCurrent(t *testing.T) {
 	notModified(t)
 	f := &fake{
-		body: release{TagName: "v99.0.0", HTMLURL: "https://example.invalid/r/99"},
+		body: release{TagName: "v99.0.0", HTMLURL: "https://github.com/Nenco79/PAT-Monitor/releases/tag/v99.0.0"},
 		etag: `W/"abc123"`,
 	}
 	c := f.start(t)
@@ -456,7 +456,7 @@ func TestATagThatIsNotAVersionDoesNotBecomeCurrent(t *testing.T) {
 	}
 
 	for _, tag := range []string{"v1.0", "latest", "2026-09-16", "release-final", "1.0.0.1"} {
-		f.body = release{TagName: tag, HTMLURL: "https://example.invalid/r"}
+		f.body = release{TagName: tag, HTMLURL: "https://github.com/Nenco79/PAT-Monitor/releases/latest"}
 		f.etag = `W/"` + tag + `"`
 
 		st, err := c.Check(context.Background())
@@ -487,7 +487,7 @@ func TestATagThatIsNotAVersionDoesNotBecomeCurrent(t *testing.T) {
 // another.
 func TestTheStateCanBeReadWhileItIsBeingWritten(t *testing.T) {
 	notModified(t)
-	f := &fake{body: release{TagName: "v99.0.0", HTMLURL: "https://example.invalid/r/99"}}
+	f := &fake{body: release{TagName: "v99.0.0", HTMLURL: "https://github.com/Nenco79/PAT-Monitor/releases/tag/v99.0.0"}}
 	c := f.start(t)
 
 	stop := make(chan struct{})
@@ -515,7 +515,7 @@ func TestTheStateCanBeReadWhileItIsBeingWritten(t *testing.T) {
 
 	for i := range 200 {
 		if i%2 == 0 {
-			f.body = release{TagName: "v99.0.0", HTMLURL: "https://example.invalid/r/99"}
+			f.body = release{TagName: "v99.0.0", HTMLURL: "https://github.com/Nenco79/PAT-Monitor/releases/tag/v99.0.0"}
 		} else {
 			f.body = release{TagName: "v0.0.1", HTMLURL: "https://example.invalid/r/1"}
 		}
@@ -525,4 +525,52 @@ func TestTheStateCanBeReadWhileItIsBeingWritten(t *testing.T) {
 	}
 	close(stop)
 	<-done
+}
+
+// **The release's URL is executed, not displayed**: the panel hands it to the
+// shell's "open", which starts whatever it names — a browser for a page, and
+// for a path, a share or a protocol handler, whatever that is. So an answer
+// naming anything but a page under this repository's releases is an answer
+// not received.
+//
+// **The defect was put back and this test fails with it**: with releasePage
+// no longer asked, every one of these reaches the panel as the update's link.
+func TestOnlyAReleasePageIsHandedToTheShell(t *testing.T) {
+	for _, bad := range []string{
+		`\somebody.example\share\setup.exe`,
+		"file:///C:/Windows/System32/calc.exe",
+		"search-ms:query=setup",
+		"http://github.com/Nenco79/PAT-Monitor/releases/tag/v99.0.0",
+		"https://github.com.example/Nenco79/PAT-Monitor/releases/tag/v99.0.0",
+		"https://github.com/somebody-else/PAT-Monitor/releases/tag/v99.0.0",
+		"https://github.com/Nenco79/PAT-Monitor/archive/refs/tags/v99.0.0.zip",
+		"https://user@github.com/Nenco79/PAT-Monitor/releases/tag/v99.0.0",
+		"https://github.com/Nenco79/PAT-Monitor/releases/",
+		"",
+	} {
+		st := verdict(release{TagName: "v99.0.0", HTMLURL: bad})
+		if st.Code != Unknown || st.URL != "" {
+			t.Errorf("%q: verdict %q with URL %q, wanted Unknown", bad, st.Code, st.URL)
+		}
+	}
+	good := "https://github.com/Nenco79/PAT-Monitor/releases/tag/v99.0.0"
+	if st := verdict(release{TagName: "v99.0.0", HTMLURL: good}); st.Code != Available || st.URL != good {
+		t.Errorf("the real release page gave %q with %q", st.Code, st.URL)
+	}
+}
+
+// A redirect off https is refused, and the monitor's client is the one that
+// refuses it.
+func TestTheCheckDoesNotFollowARedirectOffHTTPS(t *testing.T) {
+	plain, _ := http.NewRequest(http.MethodGet, "http://api.github.com/x", nil)
+	if httpsOnly(plain, nil) == nil {
+		t.Error("a redirect to plain http was followed")
+	}
+	enc, _ := http.NewRequest(http.MethodGet, "https://api.github.com/x", nil)
+	if err := httpsOnly(enc, nil); err != nil {
+		t.Errorf("a redirect that stays on https was refused: %v", err)
+	}
+	if defaultClient.CheckRedirect == nil {
+		t.Error("the monitor's client follows redirects wherever they go")
+	}
 }

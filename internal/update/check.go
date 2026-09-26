@@ -26,6 +26,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -73,7 +74,12 @@ const (
 	// whole of the pre-release policy: a release marked pre-release on GitHub is
 	// invisible here, with no code of ours deciding it and no second list to
 	// keep in step. A version that should not be offered is a checkbox.
-	endpoint = "https://api.github.com/repos/Nenco79/PAT-Monitor/releases/latest"
+	endpoint = "https://api.github.com/repos/" + repository + "/releases/latest"
+
+	// repository is whose releases these are, and releasePages is where their
+	// pages live: see releasePage.
+	repository   = "Nenco79/PAT-Monitor"
+	releasePages = "https://github.com/" + repository + "/releases/"
 
 	// timeout bounds one attempt. The check is a background courtesy with
 	// nobody waiting on it, so it gives up quickly rather than holding a
@@ -114,8 +120,9 @@ const (
 // guarded; this one was the exception.
 type Checker struct {
 	// Client is the HTTP client. Nil means the default one, which is what the
-	// monitor uses: this request travels the road any browser travels and has
-	// no reason to be special.
+	// monitor uses: this request travels the road any browser travels, proxy
+	// included, and its one difference is refusing a redirect off https — see
+	// httpsOnly.
 	Client *http.Client
 	// URL overrides the endpoint. For the tests.
 	URL string
@@ -224,12 +231,55 @@ func verdict(r release) State {
 	if !version.Newer(version.Number, tag) {
 		return State{Code: Current}
 	}
+	if !releasePage(r.HTMLURL) {
+		return State{}
+	}
 	return State{
 		Code:    Available,
 		Version: strings.TrimPrefix(tag, "v"),
 		URL:     r.HTMLURL,
 	}
 }
+
+// releasePage says whether a URL is a page of this program's releases.
+//
+// **The URL goes to the shell, and the shell opens whatever it is given.** The
+// panel's "update" row hands it to ShellExecute's "open", which for an https
+// address starts a browser — and for a file path, a share on somebody's server
+// or any registered protocol handler, starts whatever that is. The value comes
+// from an answer over TLS, which is why this was never urgent; it is also the
+// one string in this package that is executed rather than displayed, and a
+// machine behind an inspecting proxy trusts whatever that proxy says. So it
+// has to be what the question asked about: an https page under this
+// repository's releases, which is all a release's html_url ever is.
+//
+// A URL that is not one is Unknown rather than an update with no link: an
+// answer that names a page we would not open is an answer we did not get.
+func releasePage(raw string) bool {
+	u, err := url.Parse(raw)
+	if err != nil || u.Scheme != "https" || u.User != nil || u.Host != "github.com" {
+		return false
+	}
+	return len(raw) > len(releasePages) && strings.EqualFold(raw[:len(releasePages)], releasePages)
+}
+
+// httpsOnly refuses a redirect that leaves https.
+//
+// Go's client follows up to ten redirects and does not mind a step from https
+// to plain http, where the rest of the answer could be written by anybody on
+// the way. GitHub has no reason to send one, so one is a refusal.
+func httpsOnly(req *http.Request, via []*http.Request) error {
+	if req.URL.Scheme != "https" {
+		return fmt.Errorf("redirected off https to %s", req.URL.Redacted())
+	}
+	if len(via) >= 10 {
+		return errors.New("stopped after 10 redirects")
+	}
+	return nil
+}
+
+// defaultClient is the monitor's: the default one, with httpsOnly.
+var defaultClient = &http.Client{CheckRedirect: httpsOnly}
 
 // fetch asks GitHub, and reports whether the answer was "nothing changed".
 //
@@ -241,11 +291,11 @@ func (c *Checker) fetch(ctx context.Context) (rel release, etag string, unchange
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	url := c.URL
-	if url == "" {
-		url = endpoint
+	target := c.URL
+	if target == "" {
+		target = endpoint
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
 	if err != nil {
 		return rel, "", false, err
 	}
@@ -269,7 +319,7 @@ func (c *Checker) fetch(ctx context.Context) (rel release, etag string, unchange
 
 	client := c.Client
 	if client == nil {
-		client = http.DefaultClient
+		client = defaultClient
 	}
 	resp, err := client.Do(req)
 	if err != nil {
