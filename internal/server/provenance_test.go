@@ -278,7 +278,7 @@ func TestTheConnectionDecidesWhatIsSecure(t *testing.T) {
 // range the address is "local network" and the session is refused.
 func TestATailnetNodeOverIPv6IsTheTailnet(t *testing.T) {
 	r := httptest.NewRequest(http.MethodGet, "/", nil)
-	r.RemoteAddr = "[fd7a:115c:a1e0::5]:443"
+	r.RemoteAddr = netip.AddrPortFrom(tailnetRange6.Addr().Next(), 443).String()
 	if c := requestOrigin(r).Class; c != originTailnet {
 		t.Fatalf("a tailnet IPv6 address was classed %v", c)
 	}

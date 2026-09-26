@@ -125,9 +125,11 @@ func TestAnIPv6LockoutIsChargedToTheSubscriber(t *testing.T) {
 		r.RemoteAddr = remote
 		return clientKey(r)
 	}
+	node1 := tailnetRange6.Addr().Next()
+	node2 := node1.Next()
 	for _, pair := range [][2]string{
-		{"[fd7a:115c:a1e0::1]:4000", "[fd7a:115c:a1e0::2]:4000"}, // two tailnet nodes
-		{"[fe80::1]:4000", "[fe80::2]:4000"},                     // two devices on the Wi-Fi
+		{netip.AddrPortFrom(node1, 4000).String(), netip.AddrPortFrom(node2, 4000).String()}, // two tailnet nodes
+		{"[fe80::1]:4000", "[fe80::2]:4000"},                                                 // two devices on the Wi-Fi
 	} {
 		if a, b := keyFrom(pair[0]), keyFrom(pair[1]); a == b {
 			t.Errorf("%s and %s share one key %q: somebody else's house is not one caller",
