@@ -18,6 +18,12 @@ on:
 permissions:
   contents: read
 
+# The actions are named by major tag and not pinned to a commit, and that is a
+# decision. A pin buys protection against a tag moved under us, and what a
+# moved tag could reach here is a read-only token and a test run: no secret is
+# in this workflow and no release is built by it. A pin nobody updates ages
+# into an old action run for ever, which is the cost that would be paid.
+
 jobs:
   check:
     runs-on: windows-latest
@@ -26,6 +32,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          # Nothing after the checkout talks to GitHub, so the token is not
+          # left in the repository's git config for the steps that follow.
+          persist-credentials: false
           # **Not the default of 1.** The build stamps the commit count into the
           # binary as `r`, and in a shallow clone `git rev-list --count` answers
           # 1 — with no error, on every build, for ever. An identifier that lies
