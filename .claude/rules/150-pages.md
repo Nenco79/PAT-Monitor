@@ -1479,6 +1479,14 @@ both pages that ask for one are walked at home — step 4 shows Tailscale's
 authorisation address and step 7 the public one, and both are read off a screen
 that is here.
 
+**That held for the guided path and not for the viewer**, which shows the
+public address's code in its details: a phone opening the monitor by its public
+address is the ordinary case, and it got a 403 and, on an iPhone, an empty box.
+From the Internet the route now answers whoever holds a session, which is what
+the refusal was guarding against in the first place — a code engraved for
+anybody — and a session opened at home is refused there as it is everywhere
+else.
+
 **A QR encoder is built to fail silently**, and that is why the verification was
 done the way it was. The matrix looks right in every part — finders, timing,
 quiet zone — even when the data inside is rubbish, and no reread notices. So it

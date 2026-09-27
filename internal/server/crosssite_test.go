@@ -238,3 +238,48 @@ func TestTheQRCodeIsNotEngravedForTheInternet(t *testing.T) {
 		t.Errorf("at home /qr answered %d: the guided path shows this at two steps", w.Code)
 	}
 }
+
+// **From the Internet the code is engraved for whoever has signed in.** The
+// viewer's details show the public address's code, and a phone opening the
+// monitor by that address got a 403 and an empty box. Without a session it is
+// still refused, and a session opened at home is refused from the Funnel here
+// as it is everywhere.
+//
+// **The defect was put back and this test fails with it**: with the refusal
+// for every request from the Internet, the signed-in phone gets a 403.
+func TestTheQRCodeIsEngravedForASignedInViewerFromTheInternet(t *testing.T) {
+	s, _ := serverWithPassword(t, "a-long-password")
+	ask := func(cookie string) int {
+		r := httptest.NewRequest(http.MethodGet, "/qr?u=https://patmon.quercia-lieve.ts.net", nil)
+		fromTheFunnel(r)
+		if cookie != "" {
+			r.AddCookie(&http.Cookie{Name: sessionCookieName, Value: cookie})
+		}
+		w := httptest.NewRecorder()
+		s.Handler().ServeHTTP(w, r)
+		return w.Code
+	}
+
+	outside := httptest.NewRequest(http.MethodGet, "/", nil)
+	fromTheFunnel(outside)
+	token, err := s.sessions.create("", requestOrigin(outside))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if code := ask(token); code != http.StatusOK {
+		t.Errorf("a signed-in viewer from the Internet got %d, wanted 200", code)
+	}
+	if code := ask(""); code != http.StatusForbidden {
+		t.Errorf("without a session from the Internet: %d, wanted 403", code)
+	}
+
+	home := httptest.NewRequest(http.MethodGet, "/", nil)
+	fromTheLAN(home)
+	homeToken, err := s.sessions.create("", requestOrigin(home))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if code := ask(homeToken); code != http.StatusForbidden {
+		t.Errorf("a session opened at home, presented from the Funnel: %d, wanted 403", code)
+	}
+}

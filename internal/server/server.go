@@ -812,7 +812,20 @@ func (s *Server) apiQR(w http.ResponseWriter, r *http.Request) {
 	// leading wherever the caller wrote. The two pages that ask for one are
 	// both walked at home: step 4 shows Tailscale's authorisation address and
 	// step 7 the public one, and both are read off a screen that is here.
-	if requestOrigin(r).Public() {
+	//
+	// **From the Internet it is engraved for whoever has signed in**, which is
+	// the half the first version left out. The viewer's details show the public
+	// address's code, and a phone opening the monitor by its public address is
+	// the ordinary case: it asked for the image, got a 403, and on an iPhone the
+	// box stayed empty. What the refusal guards against is a code engraved for
+	// anybody, and somebody holding a session is not anybody.
+	from := requestOrigin(r)
+	signedIn := false
+	if c, err := r.Cookie(sessionCookieName); err == nil {
+		v := s.sessions.check(c.Value, from.Public())
+		signedIn = v == sessionValid || v == sessionValidStaleCookie
+	}
+	if from.Public() && !signedIn {
 		http.Error(w, "the code is engraved for whoever is in the house",
 			http.StatusForbidden)
 		return
