@@ -1963,7 +1963,10 @@ while the same claim is made in Go: `pat-capture` printed `[FAIL] audio in
 WASAPI raw mode (OEM effects bypassed): false` on a machine where no microphone
 had ever opened — the identical sentence over an absence, on the instrument
 whose transcripts go into `baselines/`, where it reads as an OEM filter to go
-and disable. It now states it only if the run captured samples.
+and disable. It now states it only if the run captured samples. **And a test tone is
+samples with no microphone behind them**: `-tone` opens no endpoint, so every
+run with it ended on that FAIL and on "Pipeline NOT working", over a pipeline
+that had worked — found on the Intel machine, and stated now as not stated.
 
 **The sensor there is the run's own measurement and not `AudioActive`**, and
 this is the part that cannot be read off the diff: by the time `pat-capture`

@@ -24,9 +24,11 @@ import "golang.org/x/sys/windows"
 // folder, a page and a settings address all worked as before. On an RTX 4080,
 // driver 32.0.16.1714, pat-diag activated and configured the NVIDIA H.264
 // Encoder MFT on Direct3D, and ten seconds of pat-capture encoded 136 frames of
-// a real camera through it. **The Intel encoder was not run**, and a vendor
-// transform that loads a DLL of its own by bare name from its own folder is the
-// case to look for if it stops opening.
+// a real camera through it. On an Arc 140V, driver 32.0.101.8826, pat-diag
+// configured the Quick Sync H.264 Encoder MFT on Direct3D and scaled through
+// four sizes, and twelve seconds of pat-capture encoded 335 frames of the
+// integrated camera. A vendor transform that loads a DLL of its own by bare
+// name from its own folder is the case to look for if one stops opening.
 //
 // **The tools call it too**, first thing in main, because pat-diag,
 // pat-capture and pat-wasapi answer for the monitor: an encoder they open with the old search

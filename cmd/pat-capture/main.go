@@ -873,9 +873,17 @@ func main() {
 	// answer no after a perfect run, that is, it would delete the check
 	// instead of guarding it. `total.Samples` is a fact about the run and
 	// cannot go stale.
-	if total.Samples > 0 {
+	//
+	// **And the test tone is samples with no microphone behind them**, so the
+	// count alone let it through: `-tone` never opens an endpoint, and every
+	// run with it ended on a FAIL line about an OEM filter and "Pipeline NOT
+	// working" over a pipeline that had worked. Found on the Intel machine.
+	switch {
+	case *testTone:
+		fmt.Println("  [    ] raw mode: not stated, the audio was a test tone")
+	case total.Samples > 0:
 		check(p.RawAudioMode(), "audio in WASAPI raw mode (OEM effects bypassed): %v", p.RawAudioMode())
-	} else {
+	default:
 		fmt.Println("  [    ] raw mode: not stated, no audio was captured")
 	}
 
