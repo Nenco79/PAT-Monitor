@@ -50,3 +50,36 @@ func TestTheTailnetNameStaysOutOfTheLog(t *testing.T) {
 		t.Error("the debug line lost the name too")
 	}
 }
+
+// **The account's email does not reach the log at any level.** tsnet writes
+// the signed-in account at Debug, so a `-v` log carried the owner's address to
+// wherever it was attached; the tailnet's name is kept at Debug for diagnosis,
+// the email is not, because nothing is diagnosed with it.
+//
+// **The defect was put back and this test fails with it**: with Debug passed
+// through untouched, the address is in the first line.
+func TestTheAccountsEmailStaysOutOfTheLogAtEveryLevel(t *testing.T) {
+	var buf bytes.Buffer
+	log := slog.New(HideTailnet(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})))
+
+	log.Debug("active login: somebody.else@example.com")
+	log.Debug("login", "account", "Somebody.Else+tag@mail.example.co.uk")
+	log.Info("profile", "error", errors.New("user somebody@example.org is not an admin"))
+	log.With("who", "a.b@example.net").Debug("bound in advance")
+
+	for _, line := range strings.SplitAfter(buf.String(), "\n") {
+		if strings.Contains(line, "@example") {
+			t.Errorf("an email address reached the log: %s", line)
+		}
+	}
+	if strings.Count(buf.String(), "<email>") != 4 {
+		t.Errorf("wanted four addresses hidden:\n%s", buf.String())
+	}
+
+	// What looks like one and is not stays as it is.
+	buf.Reset()
+	log.Debug("pion", "at", "go@v1.26", "peer", "user@host")
+	if !strings.Contains(buf.String(), "go@v1.26") || !strings.Contains(buf.String(), "user@host") {
+		t.Errorf("text that is not an address was hidden:\n%s", buf.String())
+	}
+}

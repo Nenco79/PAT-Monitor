@@ -302,6 +302,14 @@ error carried the name where nobody thought of it as the address.
 `TestEveryLogHandlerHidesTheTailnet` reads the monitor's source for every slog
 handler it builds.
 
+**Nor the account's email, at any level.** A scan through the Funnel found it in
+a `-v` log: tsnet writes the signed-in Tailscale account at Debug, `active
+login:` and the address. The same handler writes every email address as
+`<email>`, and at Debug too, which is where it differs from the tailnet's name:
+that one is kept for whoever is diagnosing, while nothing is diagnosed with an
+email. The pattern wants a dot in the domain, so a `user@host` or a module
+`@v1.2` stays as it is.
+
 **A code the reader cannot look up is not a diagnosis.** A microphone unplugged
 while the monitor watches fails the capture loop, and what reached the log was
 `error 2290679812 (FormatMessage failed with: The system cannot find message
