@@ -635,7 +635,7 @@ func run(log *slog.Logger, path string) error {
 	// `detect_bark` and `detect_motion`. A second switch would say the same thing
 	// in another place, and the two would diverge.
 	rec := record.NewRecorder(record.RecorderConfig{Log: log})
-	clips := clipStore(cfg, clipsFolder(videosDir(log), cfg.Path(), provenDir, log), log)
+	clips := clipStore(cfg, clipsFolder(videosDir(log), cfg.Path(), provenDir, log), diskFree, log)
 	guard.Go(log, "the recordings", func() { serveClips(ctx, clips, rec.Clips(), log) })
 	// The folder is declared **always**, not only with a detector on: since the
 	// "Clip" button exists a clip can be had with the three switches off too, and
@@ -810,6 +810,7 @@ func run(log *slog.Logger, path string) error {
 			// one: the bar's button does not colour on being pressed, it waits
 			// for this answer. See `Status.Recording`.
 			Recording:      rec.Recording(),
+			DiskFull:       errors.Is(clips.Room(), record.ErrDiskFull),
 			VideoFrames:    p.Stats.VideoFrames.Load(),
 			Keyframes:      p.Stats.Keyframes.Load(),
 			KeyframeReqs:   hub.Stats.KeyframeReqs.Load(),
@@ -1539,6 +1540,11 @@ func micDenied(s server.Status) bool { return s.MicrophoneDenied }
 // the fact.
 func cameraOther(s server.Status) bool { return s.CameraFallback }
 
+// diskFull: clips are not being saved, the disk that holds them being nearly
+// full. The store says so, and it is read here for the banner and the icon
+// alike.
+func diskFull(s server.Status) bool { return s.DiskFull }
+
 // remoteDown: remote access does not work. **It is not a fault of the monitor**
 // — at home it can be seen perfectly well — but whoever is outside would notice
 // only by trying to open it, so it has to be said.
@@ -1639,6 +1645,9 @@ func activeFaults(s server.Status, startedAt, now time.Time) []alerts.Code {
 	}
 	if remoteDown(s) {
 		out = append(out, alerts.RemoteDown)
+	}
+	if diskFull(s) {
+		out = append(out, alerts.DiskFull)
 	}
 	return out
 }
@@ -1836,6 +1845,14 @@ func trayStatus(s server.Status, cfg config.Config, startedAt time.Time, dict *i
 	case s.Remote.Warning != "":
 		out.Phase = tray.PhaseCheck
 		out.Fault = tray.FaultRemoteNoIngress
+
+	// No clip is being saved, the disk being nearly full. **It sits below the
+	// camera and remote access**, because those are about watching now and
+	// this is about keeping what was watched; and above the rest, because it
+	// is the one thing here only somebody at this machine can fix.
+	case diskFull(s):
+		out.Phase = tray.PhaseCheck
+		out.Note = tray.NoteDiskFull
 
 	// Remote access is open and it is still being proved that one can get in
 	// from outside. **It is not a phase of its own and must not be**: the colour

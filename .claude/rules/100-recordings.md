@@ -130,6 +130,40 @@ comes back expanded — `C:\Users\SOMEBO~1.DOM\…` against
 the same mechanism a package redirection travels by. **Nobody has run this
 inside an MSIX package**, and that is the open half.
 
+### The kept clips have no ceiling, so the disk has a floor
+
+Neither the quota nor the expiry touches a clip somebody asked to keep, and
+that is right: freeing is always possible, getting an expired clip back is not.
+It also means nothing stopped them — a viewer pressing "Clip" over and over, a
+script doing it for them, or a disk filling for reasons of its own — and the
+disk that runs out is the whole PC's. A security audit named it as the one
+repeated action here with no bound.
+
+**The floor is on the disk and not on the clips**, which is what keeps the
+promise intact: `record.MinFreeBytes`, a gigabyte, under which no clip is
+written, kept or not, whoever caused the shortage. It is some two hundred clips
+and a sliver of any disk this runs on, enough for Windows to go on working and
+never enough to be missed. The free space is the figure `GetDiskFreeSpaceEx`
+gives **this user**, so a disk quota counts; and it is handed to the store,
+because a test that saves a clip would otherwise ask the disk of whoever runs
+it.
+
+**It is an alert, a Notice, and it is said where the others are.** The monitor
+is watching and can be heard; what has stopped is the record, which somebody is
+counting on finding in the morning, so `disk-full` sits beside `camera-other`
+and `remote-down` rather than with the faults, and a brick icon would teach
+whoever walks past to read a working monitor as broken. In the tray it comes
+below those two, because they are about watching now and this is about keeping
+what was watched; and it is there at all because the remedy is on this machine.
+The **Clip** button refuses before recording, with its own code, since a clip
+taken and then not written is a knob that moves nothing. The store writes the
+refusal and the recovery once each, and `serveClips` does not add a line per
+refused event, which on a full disk would be one per event all night.
+
+**A disk that cannot be asked is not a full one.** Refusing on an unanswered
+question would switch the recordings off for a failure that has nothing to do
+with space, so the clip is written and the disk answers for itself.
+
 ### A clip asked for by hand is born kept, and the lock works both ways
 
 The "Clip" button in the bar asks for the current clip without waiting for an

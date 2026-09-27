@@ -1307,10 +1307,10 @@ async function askForClip() {
       paintRecord(true);
       return;
     }
-    // **The refusal is shown to whoever pressed.** There is only one and it
-    // passes by itself — the ring is empty until the first keyframe arrives,
-    // after startup or after the capture restarts — but a command that does
-    // nothing and does not say so is a knob that moves nothing.
+    // **The refusal is shown to whoever pressed.** The ring is empty until the
+    // first keyframe arrives, after startup or after the capture restarts, and
+    // a nearly full disk would not keep the clip; a command that does nothing
+    // and does not say so is a knob that moves nothing.
     const body = await res.json().catch(() => ({}));
     showWarning('recording', TErr(body.error));
     // **And it goes away by itself.** It is not a state anybody can contradict:

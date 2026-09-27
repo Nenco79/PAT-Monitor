@@ -247,6 +247,7 @@ a heading to its file, `grep -rn` the heading.
 - **Recordings are the watcher's files, not the application's data**
   - The folder is proved by writing in it, and the panel is told where it
     really is
+  - The kept clips have no ceiling, so the disk has a floor
   - A clip asked for by hand is born kept, and the lock works both ways
   - The red that means something is in the glyph, not in the pill
   - A row of the list is one area

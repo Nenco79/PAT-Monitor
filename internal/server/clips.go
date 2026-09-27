@@ -165,14 +165,19 @@ func errIsMissingClip(err error) bool {
 // asked for and reported, the same division as `EnableRemote` and
 // `UseMicrophone`.
 //
-// **There is one refusal and it has to be said to whoever pressed**: in the
-// first seconds after the start, or after a capture restart, the ring is empty
-// because the first keyframe has not arrived, and there is nothing to save. A
-// command that does nothing and does not say so is a knob that moves nothing,
-// and whoever turns it concludes the program does not answer.
+// **There are two refusals and both have to be said to whoever pressed**: in
+// the first seconds after the start, or after a capture restart, the ring is
+// empty because the first keyframe has not arrived, and there is nothing to
+// save; and on a nearly full disk the clip would be recorded and then not
+// written. A command that does nothing and does not say so is a knob that
+// moves nothing, and whoever turns it concludes the program does not answer.
 func (s *Server) apiRecord(w http.ResponseWriter, r *http.Request) {
 	if s.opts.Record == nil {
 		writeJSONError(w, http.StatusNotImplemented, ErrRecordUnavailable)
+		return
+	}
+	if s.opts.Clips != nil && errors.Is(s.opts.Clips.Room(), record.ErrDiskFull) {
+		writeJSONError(w, http.StatusInsufficientStorage, ErrDiskFull)
 		return
 	}
 	if !s.opts.Record() {

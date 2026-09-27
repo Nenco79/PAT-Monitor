@@ -193,6 +193,10 @@ const (
 	// screen and can do nothing about it; whoever is in front of the machine is
 	// standing next to the socket the webcam goes into.
 	NoteCameraOther Note = "camera-other"
+	// NoteDiskFull: the disk that holds the clips is nearly full, and none is
+	// being saved. It is in the tray for NoteCameraOther's reason: the remedy
+	// is on this machine, freeing space on its disk.
+	NoteDiskFull Note = "disk-full"
 	// NoteVerifying: remote access is open and it is still being proved that
 	// one can actually get in from outside.
 	//
@@ -235,7 +239,7 @@ func AllFaults() []Fault {
 func AllNotes() []Note {
 	return []Note{
 		NoteNoPassword, NoteStarting, NoteRemoteDown, NoteVerifying,
-		NoteCameraOther, NoteUpdate,
+		NoteCameraOther, NoteDiskFull, NoteUpdate,
 	}
 }
 

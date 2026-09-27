@@ -75,8 +75,26 @@ type StoreConfig struct {
 	MaxBytes int64
 	// MaxAge is how long a prunable clip may live. Zero: no expiry.
 	MaxAge time.Duration
-	Log    *slog.Logger
+	// FreeSpace says how many bytes this user may still write on the disk that
+	// holds dir. Nil: nobody asks, and no clip is refused for space — which is
+	// what the tests see unless they hand one in.
+	FreeSpace func(dir string) (uint64, error)
+	Log       *slog.Logger
 }
+
+// MinFreeBytes is the space a clip is never written into.
+//
+// **The kept clips have no ceiling, by design, and this is the floor under
+// them.** Neither the quota nor the expiry touches a clip somebody asked to
+// keep — freeing is always possible, getting an expired clip back is not — so
+// a viewer pressing "Clip" over and over, or a disk filling for reasons of its
+// own, would reach the end of it, and the disk is the whole PC's. A gigabyte is
+// some two hundred clips and a sliver of any disk this runs on: enough for
+// Windows to go on working, and never enough to be missed.
+const MinFreeBytes = 1 << 30
+
+// ErrDiskFull is the refusal of a clip because the disk is nearly full.
+var ErrDiskFull = errors.New("record: less than 1 GB free on the disk that holds the clips")
 
 // Store is the folder of clips.
 //
@@ -91,6 +109,10 @@ type Store struct {
 	cfg StoreConfig
 
 	mu sync.RWMutex
+
+	// full remembers that the last clip was refused for space, so that the
+	// refusal and the recovery are written once each and not once per event.
+	full bool
 }
 
 // NewStore prepares the store. The folder is created on the first clip.
@@ -139,6 +161,53 @@ type Entry struct {
 	Duration time.Duration `json:"-"`
 }
 
+// Room says whether a clip could be written now: nil, or ErrDiskFull.
+//
+// It is for whoever is asked for a clip and has to answer the person who asked,
+// before the clip exists; Save asks the same question again when it writes.
+func (s *Store) Room() error {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if free, ok := s.free(); ok && free < MinFreeBytes {
+		return ErrDiskFull
+	}
+	return nil
+}
+
+// free asks FreeSpace, and says whether it got an answer.
+func (s *Store) free() (uint64, bool) {
+	if s.cfg.FreeSpace == nil {
+		return 0, false
+	}
+	free, err := s.cfg.FreeSpace(s.dir)
+	return free, err == nil
+}
+
+// room refuses a clip on a nearly full disk, and writes it down when that
+// starts and when it stops. It is called with the write lock held.
+//
+// **A disk that cannot be asked is not a full disk.** Refusing on an unanswered
+// question would switch the recordings off for a failure that has nothing to do
+// with space, so the clip is written and the disk says for itself whether it
+// fits.
+func (s *Store) room() error {
+	free, ok := s.free()
+	if !ok || free >= MinFreeBytes {
+		if s.full {
+			s.full = false
+			s.cfg.Log.Info("clips are saved again: there is room on the disk",
+				"free_mb", free>>20)
+		}
+		return nil
+	}
+	if !s.full {
+		s.full = true
+		s.cfg.Log.Warn("clips are not saved: less than 1 GB free on the disk",
+			"dir", s.dir, "free_mb", free>>20)
+	}
+	return ErrDiskFull
+}
+
 // Save writes a clip and prunes the folder.
 func (s *Store) Save(c Clip) error {
 	s.mu.Lock()
@@ -152,6 +221,9 @@ func (s *Store) Save(c Clip) error {
 	}
 	if err := os.MkdirAll(s.dir, 0o700); err != nil {
 		return fmt.Errorf("record: creating %s: %w", s.dir, err)
+	}
+	if err := s.room(); err != nil {
+		return err
 	}
 	// The name carries the **event's instant**, not the one the file was closed
 	// at: whoever looks for a clip looks for when something happened.

@@ -195,6 +195,11 @@ type Status struct {
 	// room being recorded, not their page. For the same reason the button does
 	// not colour itself when pressed: it waits for this answer.
 	Recording bool `json:"recording"`
+	// DiskFull says clips are not being saved because the disk that holds them
+	// has less than record.MinFreeBytes free. The monitor goes on watching;
+	// what it does not do is keep anything, and whoever relies on the clips
+	// has to be told rather than find the folder empty in the morning.
+	DiskFull bool `json:"diskFull"`
 
 	Alerts []alerts.Alert `json:"alerts"`
 	// Remote describes access from outside the house: whether it is active, and

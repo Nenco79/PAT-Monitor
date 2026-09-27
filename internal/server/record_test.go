@@ -159,3 +159,31 @@ func TestThePageKnowsTheManualClipCode(t *testing.T) {
 		t.Error("clips.js does not ask for the word for a clip asked for by hand")
 	}
 }
+
+// **On a nearly full disk the press is refused and says why**, before anything
+// is recorded: the clip would be taken and then not written, which is a knob
+// that moves nothing. The code is the one the page has a sentence for.
+//
+// **The defect was put back and this test fails with it**: without the check
+// the recorder is asked and the answer says it is recording.
+func TestOnANearlyFullDiskTheClipIsRefusedAndSaysWhy(t *testing.T) {
+	s, token, asked := serverWithRecorder(t, true)
+	s.opts.Clips = record.NewStore(t.TempDir(), record.StoreConfig{
+		FreeSpace: func(string) (uint64, error) { return record.MinFreeBytes - 1, nil },
+	})
+
+	w := request(t, s, token, http.MethodPost, "/api/record", "")
+	if w.Code != http.StatusInsufficientStorage {
+		t.Fatalf("code %d instead of 507", w.Code)
+	}
+	if *asked != 0 {
+		t.Errorf("the recorder was asked %d times for a clip that could not be kept", *asked)
+	}
+	var response map[string]string
+	if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil {
+		t.Fatalf("unreadable response: %v", err)
+	}
+	if response["error"] != string(ErrDiskFull) {
+		t.Errorf("refusal code %q instead of %q", response["error"], ErrDiskFull)
+	}
+}

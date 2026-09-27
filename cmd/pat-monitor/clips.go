@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -160,11 +161,16 @@ func tellAboutOldClips(dir string, now *record.Store, log *slog.Logger) {
 // It used to take the videos folder and compose the rest; it takes the whole
 // folder now, because choosing it stopped being a join and became a proof — see
 // `clipsFolder`.
-func clipStore(cfg config.Config, dir string, log *slog.Logger) *record.Store {
+//
+// **The free space is handed in for the same reason**: asked from in here, a
+// test that saves a clip would ask the disk of whoever runs it, and fail on a
+// machine that happens to be short of space.
+func clipStore(cfg config.Config, dir string, free func(string) (uint64, error), log *slog.Logger) *record.Store {
 	return record.NewStore(dir, record.StoreConfig{
-		MaxBytes: int64(cfg.ClipsMaxMB) << 20,
-		MaxAge:   time.Duration(cfg.ClipsMaxDays) * 24 * time.Hour,
-		Log:      log,
+		MaxBytes:  int64(cfg.ClipsMaxMB) << 20,
+		MaxAge:    time.Duration(cfg.ClipsMaxDays) * 24 * time.Hour,
+		FreeSpace: free,
+		Log:       log,
 	})
 }
 
@@ -203,7 +209,10 @@ func serveClips(ctx context.Context, store *record.Store, clips <-chan record.Cl
 			if !ok {
 				return
 			}
-			if err := store.Save(c); err != nil {
+			// A full disk is written by the store when it starts and when it
+			// stops, and is the disk-full alert meanwhile: one line per clip
+			// refused would be one per event all night.
+			if err := store.Save(c); err != nil && !errors.Is(err, record.ErrDiskFull) {
 				log.Warn("cannot save the clip", "code", c.Code, "error", err)
 			}
 		case <-tick.C:

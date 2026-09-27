@@ -165,7 +165,7 @@ func TestTheRetentionKeysReachTheStore(t *testing.T) {
 		cfg := config.Default()
 		cfg.SetPath(filepath.Join(dir, "config.yaml"))
 		cfg.ClipsMaxMB, cfg.ClipsMaxDays = 2, 0
-		s := clipStore(cfg, dir, slog.New(slog.DiscardHandler))
+		s := clipStore(cfg, dir, nil, slog.New(slog.DiscardHandler))
 		insideTheTest(t, s, dir)
 
 		a := fill(t, s.Dir(), 1, 512)
@@ -188,7 +188,7 @@ func TestTheRetentionKeysReachTheStore(t *testing.T) {
 		cfg := config.Default()
 		cfg.SetPath(filepath.Join(dir, "config.yaml"))
 		cfg.ClipsMaxMB, cfg.ClipsMaxDays = 0, 2
-		s := clipStore(cfg, dir, slog.New(slog.DiscardHandler))
+		s := clipStore(cfg, dir, nil, slog.New(slog.DiscardHandler))
 		insideTheTest(t, s, dir)
 
 		old := fill(t, s.Dir(), 1, 10)
@@ -209,7 +209,7 @@ func TestTheRetentionKeysReachTheStore(t *testing.T) {
 		cfg := config.Default()
 		cfg.SetPath(filepath.Join(dir, "config.yaml"))
 		cfg.ClipsMaxMB, cfg.ClipsMaxDays = 0, 0
-		s := clipStore(cfg, dir, slog.New(slog.DiscardHandler))
+		s := clipStore(cfg, dir, nil, slog.New(slog.DiscardHandler))
 		insideTheTest(t, s, dir)
 
 		fill(t, s.Dir(), 1, 4096)

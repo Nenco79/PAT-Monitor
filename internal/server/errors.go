@@ -87,6 +87,10 @@ const (
 	// first keyframe has not arrived. It lasts a few seconds after the start or
 	// after a capture restart, and passes by itself.
 	ErrNothingToRecord errCode = "nothing-to-record"
+	// The disk that holds the clips is nearly full, so the clip would not be
+	// saved. The same fact is the disk-full alert; this is the answer to the
+	// person who pressed, who is owed one of their own.
+	ErrDiskFull errCode = "disk-full"
 	// The recorder is not attached to this server. Like `remote-unavailable`:
 	// it is not a refusal, it is a piece that is not here — the tests see it,
 	// because they do not build the recorder.
@@ -108,7 +112,7 @@ func AllErrCodes() []string {
 		string(ErrNoSuchClip), string(ErrClipBusy), string(ErrClipUnreadable),
 		string(ErrNoSuchMic), string(ErrMicListFailed),
 		string(ErrNoSuchCam), string(ErrCamListFailed),
-		string(ErrNothingToRecord), string(ErrRecordUnavailable),
+		string(ErrNothingToRecord), string(ErrDiskFull), string(ErrRecordUnavailable),
 	}
 }
 

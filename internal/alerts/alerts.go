@@ -91,6 +91,10 @@ const (
 	// RemoteDown: access from outside the house has stopped working. Whoever is
 	// out would only find out by trying to open it.
 	RemoteDown Code = "remote-down"
+	// DiskFull: the disk that holds the clips is nearly full, so none is being
+	// saved. The room is still watched and heard; what goes is the record of
+	// it, which somebody is counting on finding in the morning.
+	DiskFull Code = "disk-full"
 	// Motion: something is moving in the room. **It is not a fault**: it is the
 	// thing the monitor exists for.
 	Motion Code = "motion"
@@ -135,9 +139,12 @@ var levels = map[Code]Level{
 	// shape: half of what was asked for is missing and the rest works.
 	CameraOther: Notice,
 	RemoteDown:  Notice,
-	Motion:      Event,
-	Cry:         Event,
-	Bark:        Event,
+	// A Notice for the same reason: the monitor is doing its job, and one of
+	// the things it does beside it has stopped.
+	DiskFull: Notice,
+	Motion:   Event,
+	Cry:      Event,
+	Bark:     Event,
 }
 
 // AllCodes lists every code, in a stable order.
