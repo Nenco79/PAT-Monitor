@@ -134,6 +134,13 @@ func TestTheManifestDeclaresWhatTheProgramNeeds(t *testing.T) {
 // comparing the whole string would demand `zh.json` be called `zh-hans.json`,
 // which is the one name that catalogue cannot have.
 //
+// **A catalogue named with its region is the exception, and it is compared
+// whole.** `pt-pt.json` exists because `i18n.pick` tries the whole tag before
+// cutting it, so a browser asking for `pt-PT` reaches it; the manifest must then
+// name `pt-pt` itself, since `pt-br` covers `pt.json` and says nothing about
+// Portugal. A declared tag is accepted if a catalogue answers to it whole or to
+// its language.
+//
 // **Verified to catch**, in both directions: with the Chinese resource removed
 // it names the missing language, and with a `<Resource Language="nl-nl" />`
 // added it names the catalogue that does not exist.
@@ -142,11 +149,14 @@ func TestTheManifestNamesEveryLanguageTheProgramHas(t *testing.T) {
 	if err != nil {
 		t.Fatalf("the manifest cannot be read: %v", err)
 	}
-	declared := map[string]bool{}
+	declared := map[string]bool{}  // the tags as written
+	languages := map[string]bool{} // the part before the hyphen
 	for _, m := range regexp.MustCompile(
 		`<Resource Language="([A-Za-z0-9-]+)"`).FindAllStringSubmatch(string(data), -1) {
-		tag, _, _ := strings.Cut(strings.ToLower(m[1]), "-")
+		tag := strings.ToLower(m[1])
 		declared[tag] = true
+		language, _, _ := strings.Cut(tag, "-")
+		languages[language] = true
 	}
 	if len(declared) == 0 {
 		t.Fatal("no <Resource Language> found: the guard is reading nothing")
@@ -158,13 +168,14 @@ func TestTheManifestNamesEveryLanguageTheProgramHas(t *testing.T) {
 	}
 	var missing, extra []string
 	for l := range have {
-		if !declared[l] {
+		if strings.Contains(l, "-") && !declared[l] || !strings.Contains(l, "-") && !languages[l] {
 			missing = append(missing, l)
 		}
 	}
-	for l := range declared {
-		if !have[l] {
-			extra = append(extra, l)
+	for tag := range declared {
+		language, _, _ := strings.Cut(tag, "-")
+		if !have[tag] && !have[language] {
+			extra = append(extra, tag)
 		}
 	}
 	sort.Strings(missing)

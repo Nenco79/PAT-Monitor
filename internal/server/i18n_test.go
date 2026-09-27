@@ -638,6 +638,29 @@ func TestTheDictionaryCarriesTheLanguageNames(t *testing.T) {
 	}
 }
 
+// **The page receives the languages in the selector's order**, which is the
+// half a map cannot carry: `json.Marshal` of the names would sort them by tag
+// again, and every entry would still be present, so the test above stays
+// green over it.
+//
+// **The defect was put back and this test fails with it**: serialised as a
+// map, 日本語 arrives between Italiano and Português.
+func TestTheDictionaryListsTheLanguagesInTheSelectorsOrder(t *testing.T) {
+	s := serverWithoutPassword(t)
+	body := askDictionary(t, s, "en").Body.String()
+	last := -1
+	for _, l := range i18n.Menu() {
+		at := strings.Index(body, `"`+l.Tag+`":"`+l.Name+`"`)
+		if at < 0 {
+			t.Fatalf("%s is missing from the list of languages", l.Tag)
+		}
+		if at < last {
+			t.Errorf("%s arrives before the language it follows in the selector", l.Tag)
+		}
+		last = at
+	}
+}
+
 func askDictionary(t *testing.T, s *Server, accept string) *httptest.ResponseRecorder {
 	t.Helper()
 	r := httptest.NewRequest(http.MethodGet, "/dictionary.js", nil)

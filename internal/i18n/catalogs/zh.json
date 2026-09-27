@@ -11,7 +11,7 @@
   "clips.empty": "还没有录像。房间里每发生一次事件就会存一段，你在监护器页面上每要一次，也会存一段。",
   "clips.keep": "保留",
   "clips.keep.off": "保留它：自动清理不会删掉它。",
-  "clips.keep.on": "已保留。再按一次，把它放回会过期的那些里。",
+  "clips.keep.on": "已保留。再按一次，把它放回会过期的录像里。",
   "clips.manual": "手动录制",
   "clips.note": {
     "other": "{n} 段录像 · {mb}\u00a0MB · 已保留：{kept}"
@@ -38,7 +38,7 @@
   "err.remote-unavailable": "这个版本里没有外网访问。",
   "err.save-failed": "保存失败。",
   "err.session-failed": "无法打开会话。",
-  "err.setup-not-this-pc": "首次配置要在运行监视器的电脑上完成。",
+  "err.setup-not-this-pc": "首次配置要在运行监护器的电脑上完成。",
   "err.too-many": {
     "other": "尝试次数太多。{n} 秒后再试。"
   },
@@ -102,7 +102,7 @@
   "onb.reset.submit": "设置密码",
   "onb.reset.title": "选一个新密码",
   "onb.s0.art": "监护器窗口旁边一把锁着的锁",
-  "onb.s0.caption": "每一台你用来看房间的设备都会问它。",
+  "onb.s0.caption": "每一台你用来看房间的设备都会要求输入它。",
   "onb.s0.change": "改密码",
   "onb.s0.change-note": "改了密码，已连接的设备会被断开。这个页面会自己重新登录。",
   "onb.s0.confirm": "再输一次密码",
@@ -181,13 +181,13 @@
   "onb.s4.eyebrow": "第 5 步 · Tailscale",
   "onb.s4.from-tailscale": "上面这条消息来自 Tailscale，不是我们写的：它随你的账号和你在这张网里的角色而变。",
   "onb.s4.lead": "这台电脑已经在你的 Tailscale 网里了，但这张网还不允许从互联网上来访。这是整张网的一个设置，给一次就行。",
-  "onb.s4.member": "<strong>这种情况出现在你用的账号属于别人的网</strong>，通常是单位的网。如果监护器是家里的事，最省事的办法是退出来，用个人账号重新登录：网就是你的了，许可就由你自己给。",
+  "onb.s4.member": "<strong>这种情况出现在你用的账号属于别人的网时</strong>，通常是单位的网。如果监护器是家里的事，最省事的办法是退出来，用个人账号重新登录：网就是你的了，许可就由你自己给。",
   "onb.s4.message": "来自 Tailscale 的消息",
-  "onb.s4.missing-permission": "Tailscale 网上缺一个许可。",
+  "onb.s4.missing-permission": "Tailscale 网络里缺一个许可。",
   "onb.s4.open-panel": "打开管理面板",
   "onb.s4.or": "或者",
   "onb.s4.skip": "跳过这一步",
-  "onb.s4.skip-tail": "只在家里用监护器。",
+  "onb.s4.skip-tail": "改为只在家里用监护器。",
   "onb.s4.title-admin": "缺一个许可，点一下就行",
   "onb.s4.title-member": "缺一个许可，而且不能由你来给",
   "onb.s4.waiting": "正在等。许可一到，这个页面就自己往下走。",
@@ -278,7 +278,7 @@
   "tray.menu.update": "新版本 {version}(&N)",
   "tray.menu.videos": "视频文件夹(&V)",
   "tray.note.camera-other": "你选的摄像头用不了：现在看的是另一个。",
-  "tray.note.disk-full": "磁盘快满了：录像没有保存。",
+  "tray.note.disk-full": "磁盘快满了：录像不会保存。",
   "tray.note.no-password": "还没有密码：监护器谁也连不上。",
   "tray.note.remote-down": "家里正常；从外面不行。",
   "tray.note.starting": "正在启动：摄像头在打开。",
@@ -308,7 +308,7 @@
   "tunnel.action.enable-funnel": "这个 tailnet 还没有启用 Funnel。",
   "tunnel.action.failed": "外网访问没有打开：{step}。",
   "tunnel.action.other-user": "Tailscale 节点正被这台电脑的另一个用户使用。",
-  "tunnel.action.wait-certificate": "什么都不用做：这可能要花上一分钟。",
+  "tunnel.action.wait-certificate": "什么都不用做：最多可能要一分钟。",
   "tunnel.step.certificate": "签发安全连接",
   "tunnel.step.funnel-listen": "打开公开访问",
   "tunnel.step.funnel-serve": "提供公开访问服务",
@@ -322,7 +322,7 @@
   "viewer.alert.camera-other": "你选的摄像头用不了",
   "viewer.alert.capture-stopped": "摄像头没有画面",
   "viewer.alert.cry": "有孩子在哭",
-  "viewer.alert.disk-full": "录像没有保存：磁盘快满了",
+  "viewer.alert.disk-full": "录像不会保存：磁盘快满了",
   "viewer.alert.mic-denied": "电脑上麦克风的权限是关着的",
   "viewer.alert.mic-missing": "麦克风不见了",
   "viewer.alert.mic-muted": "电脑上的麦克风被静音了",
@@ -397,10 +397,10 @@
   "viewer.remote.reachable": "在这个地址上，任何网络都能连上。要输密码。",
   "viewer.remote.unreachable": "这个地址从互联网上没有回应。要是监护器刚开，过几分钟再试。",
   "viewer.since.hours": {
-    "other": " · 已 {n} 小时"
+    "other": " · 已持续 {n} 小时"
   },
   "viewer.since.minutes": {
-    "other": " · 已 {n} 分钟"
+    "other": " · 已持续 {n} 分钟"
   },
   "viewer.state.connecting": "正在连接……",
   "viewer.state.connection-failed": "连接失败",
@@ -414,7 +414,7 @@
   "viewer.stats.camera": "摄像头",
   "viewer.stats.camera-default": "第一个可用的摄像头",
   "viewer.stats.camera-gone": "选中的摄像头 · 用不了",
-  "viewer.stats.camera-other": "正在拍摄 {name}",
+  "viewer.stats.camera-other": "正在显示 {name} 的画面",
   "viewer.stats.delivered": " · 送出 {n}/秒",
   "viewer.stats.devices": "已注册设备",
   "viewer.stats.dropped": "丢帧",
@@ -440,7 +440,7 @@
   "viewer.talk.failed": "你的声音没有传到房间里。过几秒再试。",
   "viewer.talk.speaking": "你正在对着房间说话。房间的声音暂时停住了。",
   "viewer.talk.start": "对着房间说话",
-  "viewer.talk.stop": "不再对着房间说话",
+  "viewer.talk.stop": "停止对着房间说话",
   "viewer.viewers": {
     "other": "· {n} 人在看"
   },

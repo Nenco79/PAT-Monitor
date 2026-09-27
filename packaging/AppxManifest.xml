@@ -51,7 +51,9 @@
     named by the language alone - `zh.json` serves `zh-CN`, `zh-SG` and every
     other region, because `i18n.pick` cuts at the first hyphen. What is held is
     therefore the part before that hyphen, which is the only part the two
-    documents agree about. See TestTheManifestNamesEveryLanguageTheProgramHas.
+    documents agree about. The exception is a catalogue named with its region,
+    `pt-pt.json`, which `i18n.pick` reaches by trying the whole tag first: that
+    one is declared whole. See TestTheManifestNamesEveryLanguageTheProgramHas.
   -->
   <Resources>
     <Resource Language="en-us" />
@@ -60,6 +62,9 @@
     <Resource Language="fr-fr" />
     <Resource Language="es-es" />
     <Resource Language="zh-hans" />
+    <Resource Language="pt-br" />
+    <Resource Language="pt-pt" />
+    <Resource Language="ja-jp" />
   </Resources>
 
   <!--

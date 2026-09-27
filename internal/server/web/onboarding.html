@@ -777,10 +777,15 @@
 
     <p class="small" id="funnel-waiting" data-i18n="onb.s4.waiting"></p>
     <!-- `onboarding.js` looks the button up by id: it marks itself, and the text
-         around it lives in two fragments of its own. -->
-    <p class="escape"><span data-i18n="onb.s4.or"></span>
-      <button type="button" id="skip-funnel" data-i18n="onb.s4.skip"></button>
-      <span data-i18n="onb.s4.skip-tail"></span></p>
+         around it lives in two fragments of its own.
+
+         **The three are written with nothing between them, and that is the
+         point.** The line breaks that used to separate them rendered as spaces,
+         which is right in a language that separates its words and wrong in one
+         that does not: in Chinese and Japanese the sentence came out with a
+         blank in the middle of it. The gap is drawn by `.joined` instead, and
+         taken away for the two scripts that do not want it. -->
+    <p class="escape joined"><span data-i18n="onb.s4.or"></span><button type="button" id="skip-funnel" data-i18n="onb.s4.skip"></button><span data-i18n="onb.s4.skip-tail"></span></p>
   </section>
 
   <!-- ============ 5 · secure connection ============ -->

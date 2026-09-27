@@ -843,6 +843,15 @@ is wider than a letter and a Chinese sentence is far shorter in glyphs, and the
 second effect is the larger. **The instrument was checked against this table
 before the row was added**, and it reproduced 447, 434 and 408 to the pixel.
 
+**Portuguese sits with the Latin five and Japanese with Chinese**, which is the
+same split in two new places: `remote-no-ingress` 371 and 222, `no-password` 303
+and 213, `mic-filtered` 230 and 224, Portuguese first; European Portuguese
+gives 371, 314 and 230. The Japanese numbers are
+the second writing: the first had `no-password` at 257, which wrapped with two
+syllables alone on the second row, and 30-codes.md says how that was found.
+The instrument reproduced 447, 434, 408 and Chinese's 212 before it was
+believed.
+
 **That last row said 236 — *exactly* the room — and it was wrong**, which is
 worth more than the row. The guard that produced it built `fontGhost` at
 `tBody`, two points above the `tUI` the panel draws it with, so it measured a
@@ -974,12 +983,12 @@ seen.
 **Measured at 96 dpi in the 236 px of a row, in every language**, rows needed of
 the three there are:
 
-| | de | en | es | fr | it | zh |
-|---|---|---|---|---|---|---|
-| `wait-certificate`, `enable-funnel`, `failed` | 2 | 2 | 2 | 2 | 2 | **1** |
-| `authorise` | 2 | 2 | 2 | 2 | 2 | 2 |
-| `other-user` | **3** | 2 | 2 | 2 | 2 | 2 |
-| `approve` | 6 | 5 | 5 | 6 | 6 | **4** |
+| | de | en | es | fr | it | ja | pt | pt-pt | zh |
+|---|---|---|---|---|---|---|---|---|---|
+| `wait-certificate`, `enable-funnel`, `failed` | 2 | 2 | 2 | 2 | 2 | 2 | 2 | 2 | **1** |
+| `authorise` | 2 | 2 | 2 | 2 | 2 | 2 | 2 | 2 | 2 |
+| `other-user` | **3** | 2 | 2 | 2 | 2 | 2 | 2 | 2 | 2 |
+| `approve` | 6 | 5 | 5 | 6 | 6 | 5 | 5 | 5 | **4** |
 
 **Five of the six fit everywhere, German's `other-user` fits exactly** — one word
 more and it does not — and `approve` is the one exception, named in the guard

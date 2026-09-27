@@ -296,6 +296,38 @@ that sits **inside** the figure, so it measured the next one and reported
 somebody else's words. **A tool that names what it measured is a tool that can
 be caught.**
 
+**A second pass over all nine, each read against the other eight, changed a
+hundred and seventy-seven entries — a hundred and thirty-nine of them in the
+six catalogues that had been green for months**, and the kinds are the lesson rather than the count. Not one was a
+guard's business, and most were invisible from the language itself:
+
+- **meaning that no longer matched the others**: Spanish `en breve`, which is
+  *soon* and not *briefly*, on the link that opens the explainer; the Spanish
+  unlocked-clip tooltip saying *kept*, the same word as the locked one; French
+  `en cours` for *in use*; the camera's own name read as the thing being filmed
+  in Italian, Chinese and Japanese (`sta riprendendo {name}`);
+- **the reader given a gender** in Italian, which had carried `Benvenuto` and
+  `te lo dai da solo` after the rule was written for Spanish and Portuguese;
+- **one word for two things**: Italian `disattivato` for both a muted
+  microphone and a permission taken away, two causes with two remedies; German
+  `Aufnahme` for the capture and for the recordings; French `garder` for saving
+  and for keeping;
+- **calques** from the language each catalogue had been written against —
+  French and German both said *given once* for a permission, English said *we
+  pay it now* for a wait, from Italian;
+- **rules written down and not applied**: the non-breaking space before a tray
+  figure, missing in the three newest catalogues, which is now a guard; German's
+  capital after a colon.
+
+**Nine readers in parallel, and each finding checked against the key's context
+before anything changed**: one proposal was refused because it would have made
+the talk-back claim to have been heard, which that chapter forbids, and one
+English correction was undone by `TestEveryLanguageHasDistinctMenuAccelerators`,
+which holds the pending step's three labels on one letter. **Reading a
+catalogue against English finds what English says; reading it against eight
+finds what the language says wrongly** — which is the whole of the method this
+chapter keeps asking for, applied once to what had already shipped.
+
 ##### German: the decisions, because nobody here can check the sentences
 
 The third language arrived into a mechanism that needed nothing: adding a
@@ -313,8 +345,9 @@ does not read German** — twenty decisions somebody can check are worth more th
   Italian's: German has the anchoring pair, so the bare term is not the bare
   adverb *fuori* was. Twenty-five of the thirty occurrences are `von außerhalb`;
   the five that are not are three sentence openings and **the two captions of one
-  drawing**, where the pair is `der Monitor, zu Hause` against `du, außerhalb` and
-  repeating the preposition is what would read wrong.
+  drawing**, where the pair is `der Monitor, zu Hause` against `der Zuschauer,
+  außerhalb` and repeating the preposition is what would read wrong. (`du,
+  außerhalb` is the caption of another drawing, step 5's.)
 - **`der Monitor` stays, ambiguity and all.** In German *Monitor* is first of all
   a screen. It is kept because it is the product's name shortened, and because
   Italian carries exactly the same ambiguity and has carried it fine.
@@ -335,6 +368,13 @@ does not read German** — twenty decisions somebody can check are worth more th
   start of a sentence, with a third-person verb after it.
 - **`ß` where the spelling wants it, and no apostrophes at all**, which costs
   nothing: the guard that forbids the straight mark had nothing to say.
+- **After a colon, a capital when a whole sentence follows**, which is the
+  official rule (§ 81): `Behalte sie: Die automatische Aufräumung löscht sie
+  nicht.` A fragment stays lower case — the tray's readouts, `Kamera: keine
+  Bilder`, and a list after a colon. The catalogue did it both ways for a year,
+  three strings with the capital and thirty-six without, and a second-pass
+  review found it; nothing checks it, because telling a sentence from a fragment
+  means reading them.
 
 **The trap German has and the other two do not is the dangling pronoun**, and it
 is the one thing here that found real defects. German pronouns agree in gender,
@@ -346,10 +386,12 @@ as a doc comment on the wrong declaration**, in a language where the mistake is
 grammatical rather than typographic, and what finds it is reading the sentence
 rather than checking the key.
 
-**The menu accelerators are per language and German needed its own eight.** They
-are `E L V Z T B N U`, and the one that had to move is *Zu tun*, whose obvious `Z`
-belongs to *zurücksetzen*: it carries `Z&u`. The guard catches this, and it
-catches it because it reads the catalogue.
+**The menu accelerators are per language and German needed its own.** They are
+`L W B Z T E N V`, plus `R` shared by the three labels of Tailscale's pending
+step, of which only one is ever shown — *Ge&räteliste*, *Ge&rät*, *aktivie&ren*.
+The letters this paragraph first listed belonged to an older menu; the guard
+catches a collision, and it catches it because it reads the catalogue, which is
+also why the list here is the part that goes stale.
 
 **What it cost in layout is one number.** The tooltip's worst case is 105
 characters of the 127 against English's 100; the tray panel drawing has 21 px of
@@ -383,8 +425,9 @@ on the first run — and what it found was two lists somebody had written by han
   says `Accessible depuis n'importe quel réseau` in the same family of words.
 - **`Mo` and not `MB`**: the one place where a unit in a catalogue is a
   translation and not a copy.
-- **Eight accelerators, distinct**: `j` journaux, `q` Quitter, `r` Réinitialiser,
-  `e` Déconnecter, `g` guidée, `f` faire, `n` Nouvelle, `v` vidéos.
+- **Accelerators, distinct**: `j` journaux, `o` Ouvrir, `q` Quitter, `r`
+  Réinitialiser, `e` Déconnecter, `g` guidée, `n` Nouvelle, `v` vidéos, and `a`
+  shared by the pending step's three.
 - **`Muet` for the mute command**, the word Windows uses and the shorter of the
   two candidates: one label's length in the bar is a number, and `Silence` is two
   characters more.
@@ -482,8 +525,9 @@ language to walk through them with nothing to fix.
 - **`router` and not `enrutador`**: the word whoever owns the house uses, which
   is the reason the German section gives for its own choices — the alternative
   is the one in the dictionary and the one nobody has in the living room.
-- **Eight accelerators, distinct**: `r` registros, `s` Salir, `c` contraseña,
-  `d` Desconectar, `g` guiada, `p` Pendientes, `n` Nueva, `v` vídeos.
+- **Accelerators, distinct**: `r` registros, `a` Abrir, `s` Salir, `c`
+  contraseña, `d` Desconectar, `g` guiada, `n` Nueva, `v` vídeos, and `t` shared
+  by the pending step's three.
 
 **And the bar's number moved, which had not happened since German.** The
 boundary — the width below which the middle group **moves when "Talk"
@@ -623,6 +667,229 @@ measure which of them a Chinese machine has: **a font list written from a machin
 that cannot render it is a preference expressed in ignorance**, and the generic
 at the end already asks the system, which is this project's answer to that shape
 of question everywhere else.
+
+##### Portuguese: the decisions, and a singular that also counts nothing
+
+The seventh language was written against six rather than against English, and
+the difference showed at once: two defects in catalogues that had been green for
+months, neither visible from the base. `zh.json` called the monitor `监视器` —
+the screen word its own section refuses — in `err.setup-not-this-pc`, the one
+entry that decision had missed; and the English `you, away from home` under the
+step-5 drawing ran to 530 in a viewBox of 520, so the page showed *away from ho*:
+the long form the English drift paragraph above had retired everywhere except
+where a clip hid it. It is `you, outside` now, the pair of `the viewer,
+outside` in the drawing beside it. What found the second is the caption probe
+of the fork, widened to every drawing.
+
+- **Brazilian, and the file is `pt.json`.** `pick` cuts at the first hyphen, so
+  every Portuguese tag but one lands here — `pt`, `pt-BR`, `pt-AO`, `pt-MZ` —
+  and the selector says which it is, `Português (Brasil)`. The one that does not
+  is `pt-PT`, which has a catalogue of its own; see the next section. The words are Brazil's where the two differ: `senha`, `arquivo`,
+  `tela`, `baixar`, `excluir`, `câmera`, `bebê`, `cachorro`, `roteador`. The
+  last is the German `router` reason turned round: in Brazil the dictionary word
+  *is* the one in the living room.
+- **`você`, and it is the familiar form**, not a step up from the others' *tu*:
+  in Brazil `você` with a third-person verb is how people speak to each other,
+  and Microsoft's pt-BR guide asks for exactly that — *"the 2nd person of the
+  singular, in non-formal form ('você' form)"*. The same guide asks for the
+  reader to be addressed **instead of** a passive, and that turned five
+  sentences the first draft had written the Italian way: `O acesso se reativa
+  em Configurações` is `Você pode reativar o acesso em Configurações`.
+- **Nothing agrees with the reader.** `Para começar` and not `Bem-vindo`, as in
+  Spanish; `Entendi` is the reader's own voice, as `Ho capito` is. The one that
+  got through the first draft was `a permissão você mesmo dá` — *mesmo* agrees
+  with the reader's gender — and it is `é você quem dá a permissão`; the guide's
+  rule against gendered pronouns in generic references says the same thing from
+  the other side.
+- **`o monitor`, ambiguity and all.** The Brazilian market has a category word,
+  `babá eletrônica`, and its camera listings use it even for pets. It was
+  refused because it is the category and not this product's name, because it is
+  a baby's word first, and because it is twice the length in a tooltip.
+  Japanese is where the other road is taken, and for a reason Portuguese lacks.
+- **`de fora de casa`, the long form, for Italian's reason and not English's**:
+  `de fora` on its own is the bare adverb *fuori* was. Where the sentence already
+  says *casa* a word moves instead — `Em casa funciona; de fora, não.` — and the
+  fork's captions are `só em casa · já está pronto` against `de fora de casa
+  também · 5 minutos`, **290-496 inside 276-510**, the widest of the seven and
+  still inside the card.
+- **`ambiente` for the room.** `quarto` is a bedroom and a dog lives in the
+  kitchen; `cômodo` is the dictionary's. `ambiente` is what the Brazilian baby-
+  and pet-camera listings say — *movimento no ambiente*, *fale com quem está no
+  ambiente* — so it is the word the reader already read on the box.
+- **The failures use Microsoft's standard openings**: `Não é possível …` for
+  what cannot be done, `Não foi possível …` for what was tried and did not work,
+  `Falha na …` for the short status fragments. The guide lists them so that the
+  same failure is not written three ways, which is the apostrophe defect at the
+  level of a sentence.
+- **`Mudo`**, the Windows pt-BR word, and a short one: the bar's boundary comes
+  out at **970**, level with French, so 1020 holds with room.
+- **The certificate is not named** — `Quem a emite é uma entidade externa`, the
+  *a* being the secure connection.
+- **No space before `:` `;` `?` `!`, no opening marks, `MB`, no apostrophe.**
+- **Nine accelerators for eleven labels**: `l` logs, `w` Windows, `s` Sair, `r`
+  Redefinir, `d` Desconectar, `g` guiada, `a` for the step's three, `n` Nova,
+  `v` vídeos.
+
+**The plural is where Portuguese differs from every catalogue before it, and it
+is a property of the platform, not of the text.** CLDR gives Portuguese `one`
+for `i = 0..1`: `Intl.PluralRules('pt')` answers `one` for 0 and for 1.5, where
+English, Italian and Spanish answer `other` — and `pt-PT` answers `other` for 0
+too, but the page asks as `pt`. So a `one` form here must read right for nothing,
+or never be asked about nothing. **Every call site was checked instead of every
+sentence being bent**: `clips.note` is only drawn when there is at least one
+clip, `viewer.viewers` from two, `viewer.since.minutes` from one,
+`onb.about-minutes` hands anything under a minute to `onb.under-a-minute`, and
+`err.too-many` is only reached with a lock in force, whose wait
+`retryAfterSeconds` rounds up. **None of them can pass zero today, and a call
+site added tomorrow that can is the case this paragraph exists for.**
+
+##### European Portuguese: the decisions, and the first catalogue named with its region
+
+`pt-pt.json` is the first catalogue whose name carries a hyphen, and it works
+because `pick` tries the **whole** tag before cutting it: a browser or a Windows
+asking for `pt-PT` finds `pt-pt`, and every other Portuguese finds `pt`. That is
+the difference from Traditional Chinese, which this chapter calls unreachable —
+browsers ask for `zh-TW`, not `zh-hant`, so a `zh-hant.json` would be named for
+a tag nobody sends, while `pt-PT` is exactly what Lisbon sends. It overlays
+English like every catalogue, not Brazilian: an overlay of an overlay would be a
+second fallback chain, and the cost of a whole file is 434 strings of which most
+differ by a word.
+
+- **No `você` and no `tu`: the subject is left out.** Microsoft's pt-PT guide says
+  it in one line — *usage of the word "você" should be avoided by rephrasing the
+  sentence* — and in Portugal `tu` to a stranger is too much. So the verb is in
+  the third person with no pronoun, the imperative is the polite one (`Abra`,
+  `Prima`, `Introduza`), and the reader, where a sentence needs one, is `si`:
+  `a permissão passa a depender só de si`. It is the Japanese answer in a Latin
+  language: where the platform has no neutral *you*, take the form its own
+  system uses. The first draft of that sentence said the permission was given
+  *by whoever runs the network*, the opposite of the English; reading it
+  against Italian's `te lo dai da solo` is what caught it.
+- **`estar a` + infinitive, never the gerund**: `A iniciar`, `a ligar…`, `A
+  preparar a ligação segura`, `a funcionar`. The Brazilian `Iniciando` is the
+  one form a Portuguese reader marks as foreign at once.
+- **Windows' words for Portugal**: `Definições` (not *Configurações*), `Iniciar
+  sessão`, `Repor a palavra-passe`, `aplicações de ambiente de trabalho`,
+  `Predefinição do Windows`. And the country's: `palavra-passe`, `telemóvel`,
+  `ecrã` (masculine, so `o último ecrã`), `ficheiro`, `transferir`, `eliminar`,
+  `guardar`, `câmara`, `bebé`, `cão`, `browser`, `portátil`, `placa gráfica`,
+  `fotogramas`, `registados`, `contactar`, `em direto`, `Clip`.
+- **`divisão` for the room**, the Portuguese word for any room of a house. It is
+  feminine where Brazilian `ambiente` is masculine, so every sentence that
+  agreed with it was rewritten rather than substituted: `A divisão está calma
+  outra vez`, `uma divisão muda`.
+- **`desligar` is kept away from sessions.** In Portugal it is *disconnect* and
+  *switch off* at once, so "disconnect every device" would read as turning them
+  off: the command is `Terminar todas as sessões…`, the notice `Sessões
+  terminadas`, and the viewer whose session ends `perde a ligação`. The first
+  writing of the menu entry was 273 px in a row of 236, and
+  `TestEveryCommandLabelFitsThePanel` refused it, naming `pt-pt`.
+- **`Sem som` for mute**, and the bar's boundary comes out at **935**, the
+  lowest of the Latin languages.
+- **The plural is simpler than Brazil's**: `Intl.PluralRules('pt-PT')` answers
+  `one` for 1 alone, so the zero case the Brazilian section guards against does
+  not arise here.
+- **Nine accelerators**: `r` registos, `w` Windows, `s` Sair, `p` palavra-passe,
+  `t` Terminar, `g` guiada, `a` for the step's three, `n` Nova, `v` vídeos.
+
+**And the drawing's clip came back in the new language.** `quem vê, fora de
+casa` under the step-5 figure ran to 530 in its 520, the same overflow the
+English caption had one day earlier; the caption probe named it, and it is
+`quem vê, fora`, the pair of the figure that explains the meeting point.
+
+**The manifest guard had to learn the shape**: it compared only the part before
+the hyphen, so `pt-pt` read as a catalogue no language declared. A catalogue
+named with its region is now compared whole, the manifest declares `pt-pt`
+beside `pt-br`, and the guard was shown to fail with that line removed.
+
+##### Japanese: the decisions, and punctuation the other way round from Chinese
+
+The eighth language is the second CJK one, and what it showed is that "CJK" is
+not one set of rules: on punctuation it takes the opposite side from Chinese,
+and on the word for the monitor it takes the road Portuguese refused.
+
+- **`見守りカメラ` for *the monitor*.** On a PC, `モニター` is the display in
+  front of the reader, and `見守りを止める` rather than `モニターを止める` is
+  the difference between stopping the monitor and turning the screen off.
+  `見守りカメラ` is the category Japanese shops, reviews and apps use for exactly
+  this product — a camera that watches a baby, a pet or an elderly parent from
+  another room or from outside — and unlike `babá eletrônica` it is nobody's in
+  particular, which is why Japanese takes it and Portuguese does not. It is the
+  Chinese `监护器` decision reached from a different word: the language offers a
+  way out, and it is taken.
+- **`外出先から` for from outside**, and `自宅で` for at home: `外出先` is where
+  one is when one has gone out, and it is the term every Japanese camera and NAS
+  uses for this very access. The German `router` reason again.
+- **です/ます in the sentences, and nothing where a label is.** Microsoft's
+  Japanese guide sets it out by surface: polite style in explanatory text,
+  plain style in check boxes — `泣き声が聞こえたら知らせる` is its own
+  example's shape, `新しい Bluetooth デバイスが見つかったら知らせる` — and noun
+  phrases for buttons, menus and labels. The tray's readouts are labels, so
+  they are nominal or plain throughout: `カメラ: 映像なし`, `マイク: 音が聞こえ
+  ない`. The first writing had mixed the two in one block, the persona defect in
+  a language where the mistake is register.
+- **There is no *tu* to choose, and the reader is not named.** The guide asks
+  for the subject to be omitted wherever Japanese allows, which is nearly
+  everywhere, and for `あなた` to be used only when it cannot be avoided; where
+  the reader has to be named it is `ご自分`. The instructions take the polite
+  forms the guide lists — `もう一度お試しください`, `ご確認ください` — rather
+  than `再試行してください`, which it gives as the mechanical one.
+- **The program does not say `私`**, which Japanese makes easy; the authors'
+  *we* stays as `私たち`, the guide's word for it: `Tailscale にも私たちにも見え
+  ません`.
+- **`?` `!` `:` are half width, and so is the ellipsis `...`.** This is the
+  point where Japanese and Chinese disagree, and the Chinese section's
+  full-width `：？！` is right for Chinese and wrong here: Microsoft's Japanese
+  guide writes `変更を保存しますか?`, `フォント:`, `その他...`, and the Japanese
+  Windows the panel sits in does the same. `。` and `、` stay full width.
+- **Spaces follow the half-width/full-width rule**: a half-width space between
+  a Japanese character and Latin letters or digits — `Windows の設定`, `8 文字
+  以上`, `5 分` — none before `? ! :` or inside brackets, and one between the
+  katakana halves of an English compound — `ログ フォルダー`, `デスクトップ
+  アプリ`, `タスク バー`, as Windows writes them.
+- **The long vowel is written**: `フォルダー`, `ブラウザー`, `サーバー`,
+  `ルーター`, `エンコーダー` — Microsoft's rule for *-er*, *-or*, *-ar* since
+  2008, and therefore what the reader's own Windows says.
+- **Windows' names go in `[ ]`**: `[設定] › [プライバシーとセキュリティ] ›
+  [カメラ]`, the guide's form for UI elements, so that a path reads as three
+  places and not as a sentence.
+- **`保護` for keeping a clip.** It is the word Japanese cameras and phones have
+  always used for locking a file against deletion, and it says what the lock
+  does; `保存` would have said *save*, which every clip already is.
+- **`話しかける` for talk-back**, what Japanese pet cameras call speaking to the
+  room. It is the widest left-hand label of the eight in characters and the
+  narrowest in the bar that matters: the middle group **never moves above 880
+  px**, so Japanese holds no part of the 1020.
+- **No plural forms**, as in Chinese, and the three flat counters written in
+  full.
+- **Accelerators in the Windows Japanese form**, `ログ フォルダー(&L)`, the same
+  nine letters as Portuguese.
+
+**What CJK cost here was one line, and it is the Chinese defect again.**
+`tray.fault.no-password` first read `初回セットアップ未完了: パスワードがありま
+せん`, 257 px in a row of 236, and GDI broke it inside the verb and left `せん`
+alone on the second row — the orphan Chinese calls 孤字 and Japanese
+typesetters call ぶら下がり. No guard sees it, for the reason that section
+gives. What found it this time is not a photograph but a throwaway measurement
+of **where** each row breaks, run over every line the panel draws in the three
+languages that wrap without spaces; the line is `パスワードなし` now, 213 px, one
+row, and the same pass took `remote-no-ingress` to one row at 222.
+
+**And it was Japanese that showed the selector had no order, only an
+accident.** The names reached the page as a Go map, `json.Marshal` sorts map
+keys, and so the menu followed the tags — which read as alphabetical for six
+languages only because every name began with its tag's letter, and put
+日本語 between Italiano and Português the day it arrived. Nobody had chosen
+either. `i18n.Menu` now says what the order is: the names written in the Latin
+alphabet first, alphabetically by the name the reader knows, then the others by
+tag, since across scripts there is no alphabet to compare in. The server writes
+the object in that order, because `Object.entries` keeps it, and two guards
+hold the halves a map would lose — the rule, with names chosen so that tag
+order and name order disagree at every step, and the dictionary the page
+receives. **The comparison is lower case and nothing more**, which is enough
+while every Latin name begins with a plain letter; `Čeština` would sort after
+`z`, and `TestALatinNameBeginsWithAPlainLetter` fails naming it the day it
+arrives, so that where it goes is decided rather than fallen into.
 
 ### Alerts are the set of what is wrong now, not a list of events
 

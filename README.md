@@ -79,10 +79,10 @@ controls floating on the picture:
   packet loss, and standalone measurement tools.
 
 The interface takes its language from the browser — English, Italian, German,
-French, Spanish or Simplified Chinese, English being what everything else falls
-back to — with a selector in the top right corner for when the browser gets it
-wrong. Traditional Chinese is not there: a browser asking for `zh-TW` gets the
-Simplified catalogue.
+French, Spanish, Simplified Chinese, Portuguese (Brazil and Portugal) or
+Japanese, English being what everything else falls back to — with a selector in
+the top right corner for when the browser gets it wrong. Traditional Chinese is
+not there: a browser asking for `zh-TW` gets the Simplified catalogue.
 
 <p align="center">
   <img src="images/recordings.png" width="100%"

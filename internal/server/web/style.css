@@ -2062,6 +2062,11 @@ body.day .stats .pick option:focus {
    samples underneath — 39.4 px of shift in German at 925, 1.8 at 1000 —
    against the 40.6 at 920 and the 10.6 at 980 written above.
 
+   **Portuguese and Japanese left it where it was.** Portuguese comes out at
+   970, level with French, and Japanese never moves above 880 — the same
+   probe, rebuilt and checked first against 975 for Italian and 970 for French,
+   which it gave to the pixel.
+
    **What moved it is one word, and it is named here so that nobody looks for it
    elsewhere.** `Silenciar` is nine letters where French has `Muet` and German
    `Stumm`: measured, putting `Mudo` there instead takes the boundary from 1015

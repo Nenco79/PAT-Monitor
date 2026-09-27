@@ -27,6 +27,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode"
 )
 
 //go:embed catalogs/*.json
@@ -245,6 +246,60 @@ func names(fsys fs.FS) map[string]string {
 			out[l] = n
 		}
 	}
+	return out
+}
+
+// Language is one entry of the selector: the tag the cookie carries and the
+// name the reader looks for.
+type Language struct {
+	Tag, Name string
+}
+
+// Menu is the languages the selector offers, **in the order it shows them**:
+// the names written in the Latin alphabet first, alphabetically, then the others
+// by tag.
+//
+// **The order used to be an accident of the serialiser.** The names travelled
+// as a Go map, `json.Marshal` sorts map keys, and so the selector followed the
+// tags — de, en, es, fr, it — which read as alphabetical only because every
+// name then began with the same letter as its tag. Japanese is where the two
+// part: by tag 日本語 sits between Italiano and Português.
+//
+// **The order is the reader's, and a name is what the reader knows**, so the
+// names are compared, not the tags. Across scripts there is no alphabet to
+// compare in, and whoever reads a Latin name finds it among the others while
+// whoever looks for 日本語 finds it among the few that are not — the convention
+// sites that list languages by their own names follow. Among the non-Latin
+// ones the tag decides, because it is the one stable thing they share.
+//
+// The comparison is lower case and nothing more. It is right while every Latin
+// name begins with an ASCII letter, which `TestALatinNameBeginsWithAPlainLetter`
+// holds: a name beginning with an accented capital would sort after `z`, and
+// the day one arrives is the day to decide where it goes.
+func Menu() []Language { return menu(names(FS)) }
+
+func menu(n map[string]string) []Language {
+	out := make([]Language, 0, len(n))
+	for tag, name := range n {
+		out = append(out, Language{tag, name})
+	}
+	latin := func(s string) bool {
+		for _, r := range s {
+			return unicode.Is(unicode.Latin, r)
+		}
+		return false
+	}
+	sort.Slice(out, func(i, j int) bool {
+		a, b := out[i], out[j]
+		if la, lb := latin(a.Name), latin(b.Name); la != lb {
+			return la
+		} else if la {
+			if x, y := strings.ToLower(a.Name), strings.ToLower(b.Name); x != y {
+				return x < y
+			}
+		}
+		return a.Tag < b.Tag
+	})
 	return out
 }
 

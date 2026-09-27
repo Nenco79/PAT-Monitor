@@ -566,6 +566,12 @@ p.small { font-size: var(--t-ui); color: var(--muted); }
   /* Like .progress-count: outside the cards. */
   color: var(--ink-2);
 }
+/* The space between fragments that are written side by side in the markup, so
+   that a script with no spaces between its words does not get one: the page's
+   `lang` is set by `i18n.js`, which is what `:lang()` reads. */
+.joined > * + * { margin-inline-start: 0.25em; }
+:lang(zh) .joined > * + *,
+:lang(ja) .joined > * + * { margin-inline-start: 0; }
 .escape button {
   border: 0;
   background: none;

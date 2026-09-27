@@ -168,6 +168,11 @@ a heading to its file, `grep -rn` the heading.
       - French: the decisions, and two guards that had been written by hand
       - Spanish: the decisions, and the bar's threshold moving
       - Chinese: the decisions, and the first script with no spaces in it
+      - Portuguese: the decisions, and a singular that also counts nothing
+      - European Portuguese: the decisions, and the first catalogue named with
+        its region
+      - Japanese: the decisions, and punctuation the other way round from
+        Chinese
   - Alerts are the set of what is wrong now, not a list of events
   - Motion is measured on the merged frame, with the camera's breathing removed
   - Crying and barking are recognised by shape, and the floor is measured by the

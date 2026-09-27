@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 	"testing/fstest"
+	"unicode"
 )
 
 // The made-up catalogues are there to test things the two real ones cannot
@@ -134,6 +135,101 @@ func TestALanguageWithoutItsOwnNameIsNotOffered(t *testing.T) {
 	}
 	if _, there := n["de"]; there {
 		t.Error("a language without lang.name must not appear in the list")
+	}
+}
+
+// **A figure in a tray line is not separable from the label that names it.**
+// The panel wraps these lines, and an ordinary space before `{viewers}` lets
+// the row end on the label and start the next with a lone digit, which reads
+// as a fault rather than as a count. 140-windows.md decided it for every
+// catalogue; Japanese and the two Portuguese arrived with ordinary spaces
+// there, and nothing said so until a review read the rule.
+//
+// **The defect was put back and this test fails with it**: with the spaces
+// that `ja.json` first carried, it names the language, the key and the
+// placeholder.
+func TestAFigureInATrayLineIsNotSeparableFromItsLabel(t *testing.T) {
+	seen := 0
+	for language := range Languages() {
+		cat, err := read(FS, language)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for key, v := range cat {
+			s, ok := v.(string)
+			if !ok || !strings.HasPrefix(key, "tray.line.") {
+				continue
+			}
+			seen++
+			for i := strings.Index(s, "{"); i >= 0; {
+				if i > 0 && s[i-1] == ' ' {
+					end := strings.Index(s[i:], "}")
+					t.Errorf("%s: %s breaks before %s: the space in front of a figure "+
+						"is written non-breaking", language, key, s[i:i+end+1])
+				}
+				next := strings.Index(s[i+1:], "{")
+				if next < 0 {
+					break
+				}
+				i += next + 1
+			}
+		}
+	}
+	if seen < 2*len(Languages()) {
+		t.Fatalf("%d tray lines seen: the guard is reading nothing", seen)
+	}
+}
+
+// **The selector lists Latin names alphabetically, then the others by tag.**
+// The names here are chosen so that the tag order and the name order disagree
+// at every step that matters: `ja` sorts before `pt` by tag and after it by
+// script, `el` before `en` by tag and after it by name, and a capital does not
+// beat a lower-case letter.
+//
+// **The defect was put back and this test fails with it**: ordered by tag, as
+// the serialiser did, 日本語 lands between two Latin names.
+func TestTheSelectorListsLatinNamesAlphabeticallyThenTheOthers(t *testing.T) {
+	got := menu(map[string]string{
+		"zh": "简体中文",
+		"pt": "Português (Brasil)",
+		"ja": "日本語",
+		"en": "English",
+		"el": "Ελληνικά",
+		"de": "Deutsch",
+		"it": "italiano",
+		"es": "Español",
+	})
+	var order []string
+	for _, l := range got {
+		order = append(order, l.Tag)
+	}
+	want := []string{"de", "en", "es", "it", "pt", "el", "ja", "zh"}
+	if strings.Join(order, " ") != strings.Join(want, " ") {
+		t.Errorf("the selector's order is %v, want %v", order, want)
+	}
+}
+
+// **The comparison is lower case and nothing more, and this is what keeps that
+// enough.** A Latin name beginning with an accented letter — Čeština, Ísland —
+// would sort after every plain one, because the byte of an accented letter is
+// larger than `z`. None does today; the day one arrives this fails naming it,
+// and where it goes is a decision somebody makes then, rather than an accident
+// nobody sees.
+func TestALatinNameBeginsWithAPlainLetter(t *testing.T) {
+	seen := 0
+	for tag, name := range Names() {
+		r := []rune(name)[0]
+		if !unicode.Is(unicode.Latin, r) {
+			continue
+		}
+		seen++
+		if r > unicode.MaxASCII {
+			t.Errorf("%s: %q begins with %q, which the selector's comparison would "+
+				"put after every plain letter", tag, name, r)
+		}
+	}
+	if seen < 2 {
+		t.Fatalf("%d Latin names seen: the guard is reading nothing", seen)
 	}
 }
 

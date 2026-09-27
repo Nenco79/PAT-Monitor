@@ -113,10 +113,7 @@ func (s *Server) serveDictionary(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	list, err := json.Marshal(i18n.Names())
-	if err != nil {
-		list = []byte("null")
-	}
+	list := languageList(i18n.Menu())
 
 	_, _ = w.Write([]byte("window.__I18N="))
 	_, _ = w.Write(data)
@@ -124,6 +121,27 @@ func (s *Server) serveDictionary(w http.ResponseWriter, r *http.Request) {
 		";window.__I18N_LANGS="))
 	_, _ = w.Write(list)
 	_, _ = w.Write([]byte(";\n"))
+}
+
+// languageList writes the selector's languages as a JSON object **in the order
+// given**, which a Go map cannot carry: `json.Marshal` sorts its keys. The page
+// walks the object with `Object.entries`, which keeps insertion order for keys
+// that are not numbers, so the order written here is the order shown.
+func languageList(menu []i18n.Language) []byte {
+	var b strings.Builder
+	b.WriteByte('{')
+	for i, l := range menu {
+		if i > 0 {
+			b.WriteByte(',')
+		}
+		tag, _ := json.Marshal(l.Tag)
+		name, _ := json.Marshal(l.Name)
+		b.Write(tag)
+		b.WriteByte(':')
+		b.Write(name)
+	}
+	b.WriteByte('}')
+	return []byte(b.String())
 }
 
 // phrase translates a key into the language of whoever made the request.
