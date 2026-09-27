@@ -38,6 +38,11 @@
 .gitattributes  text eol=lf
 .gitignore      text eol=lf
 
+# The fuzz corpus: `go test` reads each file as seeds, and they are written by
+# the fuzzer with LF and no extension, so they too would fall back to
+# core.autocrlf.
+**/testdata/fuzz/** text eol=lf
+
 # The two artefacts we ship without producing them: libopus compiled to
 # WebAssembly, and the recogniser's weights. Git already treats them as binary
 # and today it is right -- it looks for a NUL in the first bytes -- so nothing

@@ -11,7 +11,7 @@ import (
 
 // readyHub is a hub with its two tracks laid, which is all NewViewer needs to
 // make an offer; no frame ever goes through it.
-func readyHub(t *testing.T) *Hub {
+func readyHub(t testing.TB) *Hub {
 	t.Helper()
 	h := New(Config{Log: slog.New(slog.NewTextHandler(io.Discard, nil))})
 	video, err := webrtc.NewTrackLocalStaticSample(webrtc.RTPCodecCapability{
