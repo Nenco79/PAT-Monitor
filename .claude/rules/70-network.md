@@ -558,6 +558,42 @@ check taken out. **The profiler has the same hole and the same answer**: bound
 to loopback it kept other machines out and not other pages, and it now answers
 421 to any Host that is not a loopback name.
 
+**And the check stood at loopback alone, while the same page can re-point its
+name at the PC's address on the Wi-Fi or on the tailnet.** A phone at home with
+that page open then guessed at `/api/login`: the lockout landed on the owner's
+phone, the guesses ran in the house's hashing slot, and a right guess gave a
+session under the attacker's name, from which `/api/status` reads the public
+address. From every road but the Funnel and this PC a password is now taken
+only under a name this PC owns — an address, `localhost`, or one of `ownName`'s
+— and there the machine's name is let in, unlike at this PC, because a person
+at home types it:
+the PC's names as Windows gives them, the same under `.local` and under each
+suffix the router handed an adapter, and the node's MagicDNS name, all asked of
+the system and the tunnel at each login rather than written down. **What makes
+that safe is who answers for those names**: the router, mDNS and Tailscale, so
+leading one of them here takes somebody already answering on the house's
+network or the tailnet, who could post to the monitor directly. What is still
+refused is an alias somebody put in the router under another name, and the
+refusal's log line carries the Host so that it can be recognised. The addresses
+the monitor hands out are unchanged, so nobody using them meets any of this.
+`TestAPageUnderAForeignNameCannotGuessFromTheHouseOrTheTailnet` failed on both
+roads with the check at loopback alone. **The first version named the two roads
+and so left a third**, which a review found: a phone on a dual-stack Wi-Fi that
+reaches the PC's global IPv6 address is classed as the Internet without having
+come through the Funnel, and a source that will not parse is classed as
+nothing, and both skipped the check. The Funnel is therefore recognised by what
+Tailscale put on the connection, not by the class, and everything else asks.
+The same test failed on those two with the named roads put back.
+
+**Tried from another node of the tailnet, and the first run refused the PC's
+own MagicDNS name.** A Tailscale client sets the tailnet's domain on its own
+adapter, and `GetAdaptersAddresses` asked with the address and DNS-server parts
+skipped gave that adapter back with no suffix at all; asked whole, it carries
+it. With that, from the other node: the address, the short name, the full
+MagicDNS name and `.local` signed in, and a foreign name, the PC's name under a
+foreign domain and the full MagicDNS name with a foreign domain after it were
+refused with a 403, the first as a Warn naming the Host and the rest at Debug.
+
 **Nothing may be put in front of the port**, and that is the price of reading
 presence off the socket. A reverse proxy on this PC — a separately installed
 Tailscale client serving `localhost:8080`, for instance — delivers every caller

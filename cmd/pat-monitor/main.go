@@ -968,7 +968,14 @@ func run(log *slog.Logger, path string) error {
 		// way because releasing is always possible, getting an expired clip back
 		// is not.
 		Record: func() bool { return rec.TriggerKept(record.CodeManual, time.Now()) },
-		Log:    log,
+		// Asked at every login rather than once, because a laptop changes
+		// network and the tunnel learns its name after start-up. A login is
+		// rare, and the two questions are cheap.
+		OwnNames: func() []string {
+			return ownNames(computerNames(), dnsSuffixes(),
+				remote.State().PublicURL, store.Get().FunnelHostname)
+		},
+		Log: log,
 	})
 	if err != nil {
 		return err

@@ -160,6 +160,37 @@ func namesThisPC(host string) bool {
 	return err == nil
 }
 
+// ownName says whether a Host header is one of this PC's names, as the house
+// and the tailnet reach it: an address, localhost, or a name in OwnNames.
+//
+// **The machine's name is let in here and not at this PC, and the difference
+// is who controls the answer.** A page re-pointing a name at the PC needs a
+// name whose answers are its own, which is a domain in public DNS; the
+// machine's name, the same under the router's suffix, `.local` and the node's
+// MagicDNS name are answered by the router, the network and Tailscale. To make
+// one of those lead here, somebody has to be answering on the house's network
+// or the tailnet already, and from there they could post to the monitor
+// directly. At this PC the first password is set, and there the stricter rule
+// stays.
+func (s *Server) ownName(host string) bool {
+	if namesThisPC(host) {
+		return true
+	}
+	if s.opts.OwnNames == nil {
+		return false
+	}
+	if h, _, err := net.SplitHostPort(host); err == nil {
+		host = h
+	}
+	host = strings.TrimSuffix(host, ".")
+	for _, n := range s.opts.OwnNames() {
+		if n = strings.TrimSuffix(n, "."); n != "" && strings.EqualFold(host, n) {
+			return true
+		}
+	}
+	return false
+}
+
 // watchSession follows a session and writes its report.
 //
 // The periodic lines sit at debug level and the opening and closing ones at

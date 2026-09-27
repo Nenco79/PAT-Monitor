@@ -278,7 +278,17 @@ type Options struct {
 	// to do" is visible only to whoever holds the ring, and whoever pressed the
 	// button has a right to know it.
 	Record func() bool
-	Log    *slog.Logger
+	// OwnNames lists the names this PC answers to on the house's network and
+	// on the tailnet, besides its addresses and localhost: the computer's own,
+	// the same under the suffixes the network hands out, the node's MagicDNS
+	// name. A password is taken from those roads only under one of them.
+	//
+	// It is a function because the answer is the system's and it moves — a
+	// laptop changes network and its suffix with it, the tunnel learns its
+	// name after start-up. Nil means no names at all: only an address or
+	// localhost is let through, which is what the tests see unless they ask.
+	OwnNames func() []string
+	Log      *slog.Logger
 }
 
 // Server is the application's web server.
@@ -947,7 +957,7 @@ type loginRequest struct {
 // executed, the password travels in a POST and not in the query string.
 // isForm tells the two apart in order to decide how to answer: whoever has no
 // JavaScript expects a redirect, not JSON.
-func credentials(w http.ResponseWriter, r *http.Request) (req loginRequest, isForm bool, err error) {
+func (s *Server) credentials(w http.ResponseWriter, r *http.Request) (req loginRequest, isForm bool, err error) {
 	const maxBody = 4 << 10
 	ct := r.Header.Get("Content-Type")
 
@@ -967,8 +977,27 @@ func credentials(w http.ResponseWriter, r *http.Request) (req loginRequest, isFo
 	// passes the check below; refused only at the setup, it could still
 	// guess at /api/login under the owner's own loopback key, locking the
 	// owner out and taking the hashing slot kept for the house.
-	if requestOrigin(r).Class == originThisPC && !namesThisPC(r.Host) {
-		return req, !strings.HasPrefix(ct, "application/json"), errCrossSite
+	//
+	// **From every other road but the Funnel, only under a name this PC owns.**
+	// The same page can re-point its name at the PC's address on the Wi-Fi,
+	// from a phone at home, and guess from there: the lockout then lands on the
+	// owner's phone and the guesses take the house's slot. There the name a
+	// person types is often the machine's, so those are let through too — see
+	// ownName. The Funnel alone needs no check, TLS having pinned the name, and
+	// it is recognised by what Tailscale put on the connection rather than by
+	// the class: a public IPv6 address reaching the house's listener is
+	// "Internet" too, and a phone on a dual-stack Wi-Fi arrives from one.
+	_, viaFunnel := tunnel.SourceAddr(r.Context())
+	switch o := requestOrigin(r); {
+	case viaFunnel:
+	case o.Class == originThisPC:
+		if !namesThisPC(r.Host) {
+			return req, !strings.HasPrefix(ct, "application/json"), errCrossSite
+		}
+	default:
+		if !s.ownName(r.Host) {
+			return req, !strings.HasPrefix(ct, "application/json"), errCrossSite
+		}
 	}
 	if !fromOurOwnPages(r) {
 		return req, !strings.HasPrefix(ct, "application/json"), errCrossSite
@@ -1071,7 +1100,7 @@ func authErrorRetry(w http.ResponseWriter, r *http.Request, isForm bool, page st
 }
 
 func (s *Server) apiLogin(w http.ResponseWriter, r *http.Request) {
-	req, isForm, err := credentials(w, r)
+	req, isForm, err := s.credentials(w, r)
 	if err != nil {
 		s.refuseCredentials(w, r, isForm, "/login", err)
 		return
@@ -1210,7 +1239,7 @@ func (s *Server) RevokeAllSessions() int {
 // back in on their own with the new one, so the price is paid by whoever should
 // not have been there.
 func (s *Server) apiPassword(w http.ResponseWriter, r *http.Request) {
-	req, isForm, err := credentials(w, r)
+	req, isForm, err := s.credentials(w, r)
 	if err != nil {
 		s.refuseCredentials(w, r, isForm, "/onboarding", err)
 		return
@@ -1295,7 +1324,7 @@ func (s *Server) apiSetup(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusForbidden, ErrSetupNotThisPC)
 		return
 	}
-	req, isForm, err := credentials(w, r)
+	req, isForm, err := s.credentials(w, r)
 	if err != nil {
 		s.refuseCredentials(w, r, isForm, "/setup", err)
 		return
@@ -1813,6 +1842,7 @@ func (s *Server) hashSlot(r *http.Request) (release func(), ok bool) {
 func (s *Server) refuseCredentials(w http.ResponseWriter, r *http.Request, isForm bool, page string, err error) {
 	if errors.Is(err, errCrossSite) {
 		s.crossSite.refuse("path", r.URL.Path, "from", clientKey(r),
+			"host", forLog(r.Host),
 			"origin", forLog(r.Header.Get("Origin")),
 			"sec_fetch_site", forLog(r.Header.Get("Sec-Fetch-Site")))
 		authError(w, r, isForm, page, http.StatusForbidden, ErrCrossSite)

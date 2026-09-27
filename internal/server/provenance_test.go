@@ -102,7 +102,12 @@ func statusWith(s *Server, token string, prepare func(*http.Request)) int {
 	return w.Code
 }
 
-func fromTheLAN(r *http.Request) { r.RemoteAddr = "192.168.1.40:5555" }
+// fromTheLAN is a phone on the Wi-Fi opening the monitor by its home address,
+// which is the name a password is taken under from there.
+func fromTheLAN(r *http.Request) {
+	r.RemoteAddr = "192.168.1.40:5555"
+	r.Host = "192.168.1.20:8080"
+}
 
 func fromTheFunnel(r *http.Request) {
 	*r = *r.WithContext(tunnel.WithSourceAddr(r.Context(),
@@ -317,6 +322,71 @@ func TestAPageUnderAForeignNameCannotGuessFromThisPC(t *testing.T) {
 	s.limiter.mu.Unlock()
 	if rec != nil {
 		t.Errorf("the guess was charged to this PC's own key: %d failures", rec.failures)
+	}
+}
+
+// **Nor from a phone at home, nor from the tailnet.** The same page can
+// re-point its name at the PC's address on the Wi-Fi or on the tailnet, and the
+// name check stood at loopback alone: from there the guesses were weighed,
+// charged to the owner's phone and run in the house's hashing slot. The names
+// a person really types there — the PC's, the router's, the node's — still
+// sign in.
+//
+// **The defect was put back and this test fails with it**: with the check at
+// loopback alone, the foreign name is weighed on both roads.
+func TestAPageUnderAForeignNameCannotGuessFromTheHouseOrTheTailnet(t *testing.T) {
+	const password = "a-long-password"
+	fromTheTailnet := netip.AddrPortFrom(tailnetRange6.Addr().Next(), 5555).String()
+	names := func() []string {
+		return []string{"desktop-pc", "desktop-pc.local", "desktop-pc.fritz.box",
+			"patmon-1a2b3c.quercia-lieve.ts.net", "patmon-1a2b3c"}
+	}
+	login := func(s *Server, from, host, guess string) int {
+		r := loginReq(guess, func(r *http.Request) {
+			r.RemoteAddr = from
+			r.Host = host
+			r.Header.Set("Sec-Fetch-Site", "same-origin")
+			r.Header.Set("Origin", "http://"+host)
+		})
+		w := httptest.NewRecorder()
+		s.Handler().ServeHTTP(w, r)
+		return w.Code
+	}
+
+	// A phone on a dual-stack Wi-Fi reaching the PC's global IPv6 address is
+	// classed as the Internet without having come through the Funnel, and an
+	// address that will not parse is classed as nothing; neither may skip it.
+	for _, from := range []string{"192.168.1.40:5555", fromTheTailnet, "[2001:db8::40]:5555", "not-an-address"} {
+		for _, host := range []string{"not-the-monitor.example:8080", "desktop-pc.example:8080"} {
+			s, _ := serverWithPassword(t, password)
+			s.opts.OwnNames = names
+			if code := login(s, from, host, "a-wrong-guess"); code != http.StatusForbidden {
+				t.Errorf("from %s under %q: answered %d, wanted 403", from, host, code)
+			}
+			s.limiter.mu.Lock()
+			n := len(s.limiter.m)
+			s.limiter.mu.Unlock()
+			if n != 0 {
+				t.Errorf("from %s under %q: the guess was weighed and charged", from, host)
+			}
+		}
+	}
+
+	for _, c := range []struct{ from, host string }{
+		{"192.168.1.40:5555", "192.168.1.20:8080"},
+		{"192.168.1.40:5555", "DESKTOP-PC:8080"},
+		{"192.168.1.40:5555", "desktop-pc.local:8080"},
+		{"192.168.1.40:5555", "desktop-pc.fritz.box.:8080"},
+		{fromTheTailnet, "patmon-1a2b3c.quercia-lieve.ts.net"},
+		{fromTheTailnet, "patmon-1a2b3c"},
+		{"[2001:db8::40]:5555", "[2001:db8::20]:8080"},
+		{"[2001:db8::40]:5555", "desktop-pc:8080"},
+	} {
+		s, _ := serverWithPassword(t, password)
+		s.opts.OwnNames = names
+		if code := login(s, c.from, c.host, password); code != http.StatusOK {
+			t.Errorf("from %s under %q: the right password answered %d", c.from, c.host, code)
+		}
 	}
 }
 

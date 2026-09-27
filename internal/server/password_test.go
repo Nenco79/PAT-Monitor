@@ -80,6 +80,9 @@ func change(t *testing.T, s *Server, token, current, next string) *httptest.Resp
 		"current": current, "password": next, "confirm": next,
 	})
 	r := httptest.NewRequest(http.MethodPost, "/api/password", strings.NewReader(string(body)))
+	// The monitor called by its address, as the page is: a name that is not
+	// the PC's is refused before the password is weighed.
+	r.Host = "192.168.1.20:8080"
 	r.Header.Set("Content-Type", "application/json")
 	if token != "" {
 		r.AddCookie(&http.Cookie{Name: sessionCookieName, Value: token})
@@ -166,6 +169,7 @@ func TestTheTwoNewOnesHaveToMatch(t *testing.T) {
 		"current": "old-password", "password": "one-password", "confirm": "another-one",
 	})
 	r := httptest.NewRequest(http.MethodPost, "/api/password", strings.NewReader(string(body)))
+	r.Host = "192.168.1.20:8080"
 	r.Header.Set("Content-Type", "application/json")
 	r.AddCookie(&http.Cookie{Name: sessionCookieName, Value: token})
 	w := httptest.NewRecorder()
