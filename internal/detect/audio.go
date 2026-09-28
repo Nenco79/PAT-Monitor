@@ -38,7 +38,8 @@ type Block struct {
 	// comparison per sample: multiplied by the sample rate and divided by two
 	// it gives an estimate of the dominant component. It tells a thud — a door,
 	// a footstep, the dog jumping off the sofa, all energy below 200 Hz — from
-	// a cry or a bark, which sit between 400 and 1600. Real frequency analysis
+	// a cry or a bark, which sit between 120 and 1640 Hz — see Sound, which
+	// holds that band. Real frequency analysis
 	// would say a great deal more and cost a great deal more: here it is enough
 	// to know which decade we are in.
 	CrossRate float64
@@ -250,6 +251,7 @@ func (a *Accumulator) Add(b []byte) Block {
 	// first correction with nothing failing. CrossRate is crossings over these
 	// same n samples, so the count comes back exactly.
 	a.crossings += int(math.Round(blk.CrossRate * float64(n)))
+	joined := false
 	for i := range n {
 		v := int16(uint16(b[2*i]) | uint16(b[2*i+1])<<8)
 		if v == 0 {
@@ -257,10 +259,15 @@ func (a *Accumulator) Add(b []byte) Block {
 		}
 		// The one crossing the block cannot see is the join with the block
 		// before: AnalyzeS16LE starts afresh every time and never counts its
-		// first sample, while the accumulation is one stream. It is the only
-		// place the rule is repeated, and it is repeated for one pair.
-		if i == 0 && v != 0 && a.prev != 0 && (v > 0) != (a.prev > 0) {
-			a.crossings++
+		// first non-zero sample, while the accumulation is one stream. It is
+		// the only place the rule is repeated, and it is repeated for one pair
+		// — **the first non-zero sample, not the first sample**: a block
+		// opening on an exact zero used to skip the join altogether.
+		if !joined && v != 0 {
+			joined = true
+			if a.prev != 0 && (v > 0) != (a.prev > 0) {
+				a.crossings++
+			}
 		}
 		if v != 0 {
 			a.prev = v

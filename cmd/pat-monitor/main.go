@@ -971,7 +971,7 @@ func run(log *slog.Logger, path string) error {
 	})
 	statusFn := func() server.Status {
 		st := snapshot(configNow())
-		st.Alerts = registry.Active(time.Now())
+		st.Alerts = registry.Active()
 		return st
 	}
 

@@ -906,9 +906,8 @@ reloads the page remembers nothing.
   goes would announce itself once.
 - **`Update` takes the whole photograph**, not an on/off pair. The caller
   recomputes every fault each round, which makes impossible the class of defect
-  where an alert stays lit because a branch forgot to clear it. The only
-  exception is expiring alerts — the test one — which no observation can
-  contradict.
+  where an alert stays lit because a branch forgot to clear it. There is no
+  exception: the test alert and the expiry it needed went together.
 - **Fault predicates live in one place** and are read by two, the tray for
   colour and the alerts for the banner: written twice they diverge at the first
   touch, and then the icon says one thing and the page another about the same

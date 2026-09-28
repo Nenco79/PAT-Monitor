@@ -26,12 +26,12 @@ func codesOf(as []Alert) []Code {
 func TestALastingFaultKeepsItsID(t *testing.T) {
 	r := NewRegistry()
 	r.Update(t0, []Code{CaptureStopped})
-	first := r.Active(t0)[0].ID
+	first := r.Active()[0].ID
 
 	for i := 1; i < 10; i++ {
 		r.Update(t0.Add(time.Duration(i)*time.Second), []Code{CaptureStopped})
 	}
-	after := r.Active(t0.Add(10 * time.Second))
+	after := r.Active()
 	if len(after) != 1 {
 		t.Fatalf("active alerts = %d, wanted 1", len(after))
 	}
@@ -48,15 +48,15 @@ func TestALastingFaultKeepsItsID(t *testing.T) {
 func TestAReturningFaultIsNewsAgain(t *testing.T) {
 	r := NewRegistry()
 	r.Update(t0, []Code{MicSilent})
-	first := r.Active(t0)[0].ID
+	first := r.Active()[0].ID
 
 	r.Update(t0.Add(time.Second), nil)
-	if n := len(r.Active(t0.Add(time.Second))); n != 0 {
+	if n := len(r.Active()); n != 0 {
 		t.Fatalf("the fault did not recover: %d active", n)
 	}
 
 	r.Update(t0.Add(2*time.Second), []Code{MicSilent})
-	if id := r.Active(t0.Add(2 * time.Second))[0].ID; id == first {
+	if id := r.Active()[0].ID; id == first {
 		t.Errorf("id reused (%d): the second fault would not be announced", id)
 	}
 }
@@ -67,12 +67,12 @@ func TestAReturningFaultIsNewsAgain(t *testing.T) {
 func TestWhatIsGoneClearsItself(t *testing.T) {
 	r := NewRegistry()
 	r.Update(t0, []Code{CaptureStopped, MicMissing, RemoteDown})
-	if n := len(r.Active(t0)); n != 3 {
+	if n := len(r.Active()); n != 3 {
 		t.Fatalf("active = %d, wanted 3", n)
 	}
 
 	r.Update(t0.Add(time.Second), []Code{MicMissing})
-	got := codesOf(r.Active(t0.Add(time.Second)))
+	got := codesOf(r.Active())
 	if len(got) != 1 || got[0] != MicMissing {
 		t.Errorf("active = %v, wanted mic-missing only", got)
 	}
@@ -85,7 +85,7 @@ func TestTheWorstComesFirst(t *testing.T) {
 	r.Update(t0, []Code{RemoteDown})
 	r.Update(t0.Add(time.Second), []Code{RemoteDown, CaptureStopped})
 
-	got := codesOf(r.Active(t0.Add(time.Second)))
+	got := codesOf(r.Active())
 	if got[0] != CaptureStopped {
 		t.Errorf("first = %v, wanted capture-stopped: the notice covered the fault", got[0])
 	}
@@ -98,7 +98,7 @@ func TestSameLevelMostRecentFirst(t *testing.T) {
 	r.Update(t0, []Code{MicMissing})
 	r.Update(t0.Add(time.Second), []Code{MicMissing, CaptureStopped})
 
-	if got := codesOf(r.Active(t0.Add(time.Second)))[0]; got != CaptureStopped {
+	if got := codesOf(r.Active())[0]; got != CaptureStopped {
 		t.Errorf("first = %v, wanted the most recent one", got)
 	}
 }
@@ -116,7 +116,7 @@ func TestAnEventRanksBesideANotice(t *testing.T) {
 	r.Update(t0.Add(time.Second), []Code{Motion, RemoteDown})
 
 	// The notice is the more recent of two codes of equal standing, so it leads.
-	if got := codesOf(r.Active(t0.Add(time.Second)))[0]; got != RemoteDown {
+	if got := codesOf(r.Active())[0]; got != RemoteDown {
 		t.Errorf("first = %v, wanted remote-down: the event was ranked as its own severity", got)
 	}
 
@@ -125,7 +125,7 @@ func TestAnEventRanksBesideANotice(t *testing.T) {
 	r2 := NewRegistry()
 	r2.Update(t0, []Code{RemoteDown})
 	r2.Update(t0.Add(time.Second), []Code{RemoteDown, Motion})
-	if got := codesOf(r2.Active(t0.Add(time.Second)))[0]; got != Motion {
+	if got := codesOf(r2.Active())[0]; got != Motion {
 		t.Errorf("first = %v, wanted motion: the notice was ranked above the event", got)
 	}
 
@@ -133,7 +133,7 @@ func TestAnEventRanksBesideANotice(t *testing.T) {
 	r3 := NewRegistry()
 	r3.Update(t0, []Code{CaptureStopped})
 	r3.Update(t0.Add(time.Second), []Code{CaptureStopped, Motion, RemoteDown})
-	if got := codesOf(r3.Active(t0.Add(time.Second)))[0]; got != CaptureStopped {
+	if got := codesOf(r3.Active())[0]; got != CaptureStopped {
 		t.Errorf("first = %v, wanted capture-stopped", got)
 	}
 }

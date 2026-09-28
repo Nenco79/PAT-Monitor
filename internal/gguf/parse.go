@@ -241,10 +241,18 @@ func Parse(b []byte) (*File, error) {
 		if err != nil {
 			return nil, fmt.Errorf("gguf: tensor %q: %w", d.name, err)
 		}
+		// **The offset is checked before it is added**, and without overflow:
+		// converted as it came, one near the top of a uint64 went negative and
+		// read the tensor out of the header, and one near the top of an int
+		// wrapped the sum and passed the check into a panicking slice.
+		if d.off > uint64(len(b)) {
+			return nil, fmt.Errorf("gguf: tensor %q starts at offset %d, past the end of a %d byte file",
+				d.name, d.off, len(b))
+		}
 		from := base + int(d.off)
-		if from < 0 || from+n > len(b) {
-			return nil, fmt.Errorf("gguf: tensor %q runs from %d to %d, past the end of a %d byte file",
-				d.name, from, from+n, len(b))
+		if from > len(b) || n > len(b)-from {
+			return nil, fmt.Errorf("gguf: tensor %q runs from %d for %d bytes, past the end of a %d byte file",
+				d.name, from, n, len(b))
 		}
 		t.data = b[from : from+n]
 		f.tensors[d.name] = t

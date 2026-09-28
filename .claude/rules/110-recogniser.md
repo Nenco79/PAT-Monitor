@@ -66,8 +66,9 @@ sample in 512 wrong with nothing saying so.
 
 For the same reason **the half-precision conversion has a test written on the
 hard cases, not the easy ones**. The denormals: the first version counted shifts
-from a counter starting at -1 and was wrong by **a factor of four**, and wrong
-**only there** — the normal weights stayed right. In a quantised network the
+from a counter starting at -1 and was wrong by **a factor of two** — every
+small weight doubled, measured by putting that counter back after three accounts
+of it had disagreed — and wrong **only there**: the normal weights stayed right. In a quantised network the
 small weights are the majority: what would have come out is a model that runs
 and answers badly, with everything green.
 

@@ -59,6 +59,16 @@ func TestACrossingOnTheBlockBoundaryIsCounted(t *testing.T) {
 		t.Errorf("CrossRate %.4f, wanted %.4f: the crossing between two blocks "+
 			"was lost, so a tone split across blocks reads lower than it is", got, want)
 	}
+
+	// **And when the second block opens on an exact zero.** The join was looked
+	// for on the block's first sample only, so a zero there hid it — and gated
+	// or quiet signals are the ones full of zeros. Put back and watched failing.
+	var b Accumulator
+	b.Add(pcm(1000, 1000))
+	b.Add(pcm(0, -1000))
+	if got, want := b.Result().CrossRate, 1.0/4.0; math.Abs(got-want) > 1e-9 {
+		t.Errorf("CrossRate %.4f, wanted %.4f: a block opening on a zero hid the join", got, want)
+	}
 }
 
 // And the rule the per-block analysis already keeps: an exact zero is not a

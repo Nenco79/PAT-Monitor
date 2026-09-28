@@ -194,8 +194,9 @@ type Alert struct {
 
 // Registry keeps the alerts in progress and hands out the identifiers.
 //
-// It is queried by the loop that builds the status, once a second from one
-// goroutine, and updated from another: the lock is not stylistic caution.
+// It is updated by the watching round, once a second from one goroutine, and
+// read by whoever asks for the status — the page's requests and the tray — from
+// others: the lock is not stylistic caution.
 type Registry struct {
 	mu     sync.Mutex
 	next   int64
@@ -203,9 +204,8 @@ type Registry struct {
 }
 
 type entry struct {
-	id      int64
-	since   time.Time
-	expires time.Time // zero: does not expire by itself
+	id    int64
+	since time.Time
 }
 
 func NewRegistry() *Registry {
@@ -218,9 +218,6 @@ func NewRegistry() *Registry {
 // recomputes everything from scratch on every turn: handing it the snapshot
 // makes impossible the class of fault where an alert stays lit because somebody
 // forgot to switch it off along one branch.
-//
-// Alerts with an expiry — the ones added with Add — are left alone: they do not
-// come from an observed condition, so no observation can contradict them.
 //
 // **It returns what changed**, and that is for the log on file: the page redoes
 // the comparison on its own — it has to, because whoever reloads remembers
@@ -241,13 +238,12 @@ func (r *Registry) Update(now time.Time, present []Code) (appeared []Alert, reco
 		r.active[c] = &entry{id: r.next, since: now}
 		appeared = append(appeared, Alert{ID: r.next, Code: c, Level: LevelOf(c), Since: now.UnixMilli()})
 	}
-	for c, v := range r.active {
-		if v.expires.IsZero() && !seen[c] {
+	for c := range r.active {
+		if !seen[c] {
 			delete(r.active, c)
 			recovered = append(recovered, c)
 		}
 	}
-	r.expire(now)
 	return appeared, recovered
 }
 
@@ -256,10 +252,9 @@ func (r *Registry) Update(now time.Time, present []Code) (appeared []Alert, reco
 // The order is part of the contract: the page has room for one banner, and **a
 // colour can say one thing only, so it has to say the worst one.** It is the
 // same rule that governs the icon in the notification area.
-func (r *Registry) Active(now time.Time) []Alert {
+func (r *Registry) Active() []Alert {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.expire(now)
 
 	out := make([]Alert, 0, len(r.active))
 	for c, v := range r.active {
@@ -272,14 +267,4 @@ func (r *Registry) Active(now time.Time) []Alert {
 		return out[i].ID > out[j].ID
 	})
 	return out
-}
-
-// expire drops the timed alerts that have run out. It is called with the lock
-// already held.
-func (r *Registry) expire(now time.Time) {
-	for c, v := range r.active {
-		if !v.expires.IsZero() && now.After(v.expires) {
-			delete(r.active, c)
-		}
-	}
 }

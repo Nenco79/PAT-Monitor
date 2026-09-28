@@ -156,7 +156,8 @@ func TestAnIntegerIsReadWhateverItsWidth(t *testing.T) {
 // **The half-precision cases that matter are the denormals**, not the normal
 // one: in a network the small weights are the majority, and a conversion that
 // gets them wrong produces a model that runs and answers badly. Written with a
-// counter starting at -1 it was off by a factor of four, and only here.
+// counter starting at -1 it was off by a factor of two — the small weights
+// doubled, measured by putting that counter back — and only here.
 func TestHalfPrecisionCoversTheHardCases(t *testing.T) {
 	cases := []struct {
 		h    uint16
@@ -345,6 +346,24 @@ func TestCraftedNumbersDoNotGetThrough(t *testing.T) {
 			if f, err := Parse(raw); err == nil {
 				x, _ := f.Tensor("x")
 				t.Errorf("got through, and the tensor declares %d values", x.Count())
+			}
+		})
+	}
+
+	// **The tensor's offset is a number of the file's too.** One near the top
+	// of an int wrapped the sum and panicked on the slice; one near the top of
+	// a uint64 converted to a negative that cancelled the data's start, and the
+	// tensor was read out of the header. Put back and watched failing.
+	const offsetAt = 24 + 8 + 1 + 4 + 8 + 4 // header, name, dims count, one dim, type
+	for name, off := range map[string]uint64{
+		"an offset that wraps the sum":      0x7FFFFFFFFFFFFFFF - 64 - 8, // from lands 8 below the top, and 16 bytes go past it
+		"an offset that aliases the header": ^uint64(0) - 63,
+	} {
+		t.Run(name, func(t *testing.T) {
+			bad := append([]byte(nil), good...)
+			binary.LittleEndian.PutUint64(bad[offsetAt:], off)
+			if _, err := Parse(bad); err == nil {
+				t.Error("got through")
 			}
 		})
 	}

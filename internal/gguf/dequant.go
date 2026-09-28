@@ -59,9 +59,9 @@ func f16(h uint16) float32 {
 		}
 		// Denormal: it is normalised by shifting until the implicit bit falls
 		// out, and the exponent follows **how many** shifts that took. Written
-		// with a counter starting at -1 the count is off by two, and it is off
+		// with a counter starting at -1 the count is one short, and it is short
 		// only here: the normal weights stay right and the small ones come out
-		// at half their value.
+		// at twice their value — measured, by putting that counter back.
 		k := uint32(0)
 		for frac&0x0400 == 0 {
 			frac <<= 1
