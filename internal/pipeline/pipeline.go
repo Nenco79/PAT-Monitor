@@ -27,6 +27,7 @@ import (
 	"patmonitor/internal/audiocodec"
 	"patmonitor/internal/devices"
 	"patmonitor/internal/diag"
+	"patmonitor/internal/encoder"
 	"patmonitor/internal/guard"
 	"patmonitor/internal/media"
 	"patmonitor/internal/mf"
@@ -170,17 +171,18 @@ func (c *Config) applyDefaults() {
 	if c.AudioBitrateKbps == 0 {
 		c.AudioBitrateKbps = DefaultAudioBitrateKbps
 	}
+	def := encoder.Presets[0]
 	if c.Width == 0 {
-		c.Width = 1280
+		c.Width = def.Width
 	}
 	if c.Height == 0 {
-		c.Height = 720
+		c.Height = def.Height
 	}
 	if c.FPS == 0 {
-		c.FPS = 30
+		c.FPS = def.FPS
 	}
 	if c.BitrateKbps == 0 {
-		c.BitrateKbps = 2500
+		c.BitrateKbps = def.BitrateKbps
 	}
 	if c.Log == nil {
 		c.Log = slog.Default()
@@ -202,8 +204,12 @@ type Sinks struct {
 	// without asking anyone else — a rule somebody has to remember breaks at the
 	// first new caller.
 	Motion func(frame []byte, srcW, srcH int)
-	// Level receives s16le mono PCM at AnalysisSampleRate.
-	Level func(pcm []byte)
+	// Level receives mono 16-bit PCM at AnalysisSampleRate.
+	//
+	// **The slice is the pipeline's, and it is rewritten after the call**: it is
+	// one buffer reused for every block, so whoever wants the samples later
+	// copies them — as ced.Stream does into its ring.
+	Level func(pcm []int16)
 }
 
 // Stats exposes counters for diagnostics and for the status page.
@@ -555,8 +561,20 @@ type Pipeline struct {
 	// reconfigured with a pair nobody ever asked for.
 	// Nil means nothing to do.
 	wantFormat atomic.Pointer[videoFormat]
-	// The format in force, for whoever is looking at the status page.
-	videoWidth, videoHeight, videoFPS atomic.Int64
+	// sentFormat is the format in force, for whoever is looking at the status
+	// page and for the hub, which realigns the scale on it. FPS is the
+	// **delivered** cadence, that is how many frames the gate lets through: the
+	// scale commands it, and it is the only one that says whether we are taking
+	// pictures away on purpose. Declared is what is declared to the encoder, and
+	// it chases the camera: in the dark it drops to 10 without anyone dropping
+	// anything. Showing the declared one in place of the delivered turns the
+	// reduced-cadence warning on every evening, and would leave it off in the
+	// one case it exists for.
+	//
+	// **One pointer, for the reason wantFormat carries**: size and cadence read
+	// from separate atomics could be caught mid-write, and the hub would compare
+	// a new size with an old cadence. Nil until the first session.
+	sentFormat atomic.Pointer[videoFormat]
 	// startSize is the size the capture **starts from**: the preset, lowered to
 	// what this camera really declares.
 	//
@@ -576,16 +594,6 @@ type Pipeline struct {
 	// governor whose steps match nothing that arrives, plus a rebuild announced
 	// with a size that never existed. Nil until the first open.
 	startFormat atomic.Pointer[videoFormat]
-	// videoDelivered is the **delivered** cadence, that is how many frames the
-	// gate lets through: the scale commands it, and it is the only one of the
-	// three that says whether we are taking pictures away on purpose.
-	//
-	// It is not videoFPS. That one is what is **declared** to the encoder, and
-	// it chases the camera: in the dark it drops to 10 without anyone dropping
-	// anything. Showing the declared one in its place turns the reduced-cadence
-	// warning on every evening, and would leave it off in the one case it exists
-	// for.
-	videoDelivered atomic.Int64
 	// wantReconfig is the bitrate to impose by reconfiguring the transform. Zero
 	// means nothing to do. Like everything that touches the encoder, the video
 	// loop applies it: see ReconfigureBitrate.
@@ -696,18 +704,16 @@ func (p *Pipeline) MicrophoneMuted() bool { return p.micMuted.Load() }
 
 // AudioActive says whether the microphone is capturing right now.
 func (p *Pipeline) AudioActive() bool {
-	if p.audioOK.Load() {
-		return true
-	}
 	// **A planned reopen is not an absence.** See micRecheckGrace.
-	return time.Now().UnixNano() < p.micGraceUntil.Load()
+	return p.audioOK.Load() || p.inMicGrace()
 }
 
 // inMicGrace says whether we are inside a planned reopen.
 //
-// It serves the two warnings the open writes: inside the grace they are repeats
-// of news nobody has seen go away, and the log would collect a thousand and a
-// half of them a night.
+// It is the second half of AudioActive, and on its own it serves the two
+// warnings the open writes: inside the grace they are repeats of news nobody
+// has seen go away, and the log would collect a thousand and a half of them a
+// night.
 func (p *Pipeline) inMicGrace() bool {
 	return time.Now().UnixNano() < p.micGraceUntil.Load()
 }
@@ -1033,6 +1039,60 @@ func (p *Pipeline) SetVideoFormat(w, h, delivered, declared int) {
 	p.wantFormat.Store(&videoFormat{W: w, H: h, FPS: delivered, Declared: declared})
 }
 
+// qpReadings takes one frame's two quantiser readings, from the stream and
+// from the sample attribute, into the counts and the statistics.
+//
+// **The quantiser is read from the stream where the stream says it, and from
+// the attribute where it does not.**
+//
+// The stream is the portable road — it is what the decoder reads, and on AMD,
+// which does not expose the attribute, it is the only one there is. But on Quick
+// Sync the **slice** quantiser is a constant: 26.0 exactly over 696 frames while
+// the attribute moved between 26 and 42, because that chip does its control per
+// macroblock.
+//
+// It is not our parser, and the proof is not a re-reading: the same parser and
+// the same machine with the software encoder, where the stream reads a real
+// distribution and agrees with the attribute to a bias of **+0.0**. A broken
+// parser does not produce zero bias on one encoder and +6.5 on the other.
+//
+// So the attribute is preferred **where there is one**: not because the encoder
+// is more credible than the stream — this project has learnt the opposite — but
+// because where the stream is a constant the attribute is the only one of the
+// two that measures anything, and where both measure they agree.
+//
+// The safety net for encoders never seen is `qpMeasured`: a reading enters only
+// after having changed value at least once. A 26 nailed down with a target of 30
+// would send the loop to the floor for ever.
+//
+// It asks nobody anything: the encoder's answers are taken where there is still
+// an encoder to ask, and handed in.
+func (p *Pipeline) qpReadings(streamQP int, streamOK bool, declared int, attrOK bool) {
+	if streamOK {
+		widen(&p.qpStreamMin, &p.qpStreamMax, int64(streamQP))
+		if attrOK {
+			p.qpAttrOK.Add(1)
+			if d := declared - streamQP; d != 0 {
+				p.qpDivergences.Add(1)
+				p.qpAttrBias.Add(int64(d))
+				if d < 0 {
+					d = -d
+				}
+				p.qpAttrDeviation.Add(int64(d))
+			}
+		} else {
+			p.qpAttrKO.Add(1)
+		}
+	}
+	switch {
+	case attrOK:
+		p.qpFromAttr.Store(true)
+		p.qpMeasured(declared)
+	case streamOK:
+		p.qpMeasured(streamQP)
+	}
+}
+
 // qpMeasured records a sample of the reading in use, but lets it into the
 // statistics **only after having seen it change at least once**.
 //
@@ -1054,15 +1114,20 @@ func (p *Pipeline) qpMeasured(qp int) {
 	if qp <= 0 || qp > 51 {
 		return
 	}
-	v := int64(qp)
-	if p.qpUsedMin.Load() == 0 || v < p.qpUsedMin.Load() {
-		p.qpUsedMin.Store(v)
-	}
-	if v > p.qpUsedMax.Load() {
-		p.qpUsedMax.Store(v)
-	}
+	widen(&p.qpUsedMin, &p.qpUsedMax, int64(qp))
 	if p.qpUsedMax.Load() > p.qpUsedMin.Load() {
 		p.qpSeen(qp)
+	}
+}
+
+// widen stretches the range [lo, hi] to take in v. A zero in lo stands for
+// "nothing seen yet", so the first value is both ends at once.
+func widen(lo, hi *atomic.Int64, v int64) {
+	if lo.Load() == 0 || v < lo.Load() {
+		lo.Store(v)
+	}
+	if v > hi.Load() {
+		hi.Store(v)
 	}
 }
 
@@ -1140,21 +1205,7 @@ func (p *Pipeline) TakeRecentQP() (int, bool) {
 	if p.qpWinCount == 0 {
 		return 0, false
 	}
-	// The threshold rounds **up** and never falls below one: with few samples
-	// the truncation would give zero, and a cumulative count starting from zero
-	// is already >= 0 at the first value of the histogram — that is, it would
-	// answer with the lowest quantiser in the window exactly when the worst one
-	// is being asked for.
-	threshold := max((p.qpWinCount*qpWinPercentile+99)/100, 1)
-	qp := 0
-	var cum int64
-	for q := 1; q <= 51; q++ {
-		cum += p.qpWinHist[q]
-		if cum >= threshold {
-			qp = q
-			break
-		}
-	}
+	qp := histPercentile(&p.qpWinHist, p.qpWinCount, qpWinPercentile)
 	p.qpWinHist = [52]int64{}
 	p.qpWinCount = 0
 	return qp, qp > 0
@@ -1182,18 +1233,28 @@ func (p *Pipeline) QP() QPStats {
 		Mean:    float64(p.qpSum) / float64(p.qpCount),
 		Max:     p.qpMax,
 	}
-	// Rounded up and never zero, as in TakeRecentQP: truncated, one sample
-	// gave a threshold of zero and a p95 of 1 whatever was measured.
-	threshold := max((p.qpCount*95+99)/100, 1)
+	s.P95 = histPercentile(&p.qpHist, p.qpCount, 95)
+	return s
+}
+
+// histPercentile is the lowest quantiser at or below which pct per cent of the
+// count samples in hist sit, or zero for an empty histogram.
+//
+// The threshold rounds **up** and never falls below one: with few samples the
+// truncation would give zero, and a cumulative count starting from zero is
+// already >= 0 at the first value of the histogram — that is, it would answer
+// with the lowest quantiser exactly when the worst one is being asked for.
+// Truncated, one sample gave a p95 of 1 whatever was measured.
+func histPercentile(hist *[52]int64, count, pct int64) int {
+	threshold := max((count*pct+99)/100, 1)
 	var cum int64
 	for q := 1; q <= 51; q++ {
-		cum += p.qpHist[q]
+		cum += hist[q]
 		if cum >= threshold {
-			s.P95 = q
-			break
+			return q
 		}
 	}
-	return s
+	return 0
 }
 
 // currentBitrate is the last bitrate commanded, or the preset's if the
@@ -1211,7 +1272,22 @@ func (p *Pipeline) currentBitrate() int {
 // is **the cadence** that changes, and a picture that updates every two seconds
 // with nothing saying so reads as a camera that has wedged.
 func (p *Pipeline) VideoFormat() (w, h, fps int) {
-	return int(p.videoWidth.Load()), int(p.videoHeight.Load()), int(p.videoFPS.Load())
+	f := p.sentFormat.Load()
+	if f == nil {
+		return 0, 0, 0
+	}
+	return f.W, f.H, f.Declared
+}
+
+// SentFormat is the size in force with the **delivered** cadence, out of one
+// load: whoever compares the two with a step of the scale must not get a size
+// from one format and a cadence from the next. See sentFormat.
+func (p *Pipeline) SentFormat() (w, h, delivered int) {
+	f := p.sentFormat.Load()
+	if f == nil {
+		return 0, 0, 0
+	}
+	return f.W, f.H, f.FPS
 }
 
 // pickSize is mf.PickCameraSize's shape, taken as a parameter because that
@@ -1285,7 +1361,12 @@ func (p *Pipeline) setStartSize(w, h, fps int) {
 // when they are not is the only moment the difference has to be told to whoever
 // is watching — a picture that updates every two seconds with nothing declaring
 // it is indistinguishable from a wedged camera.
-func (p *Pipeline) DeliveredFPS() int { return int(p.videoDelivered.Load()) }
+func (p *Pipeline) DeliveredFPS() int {
+	if f := p.sentFormat.Load(); f != nil {
+		return f.FPS
+	}
+	return 0
+}
 
 // The two roads for changing the bitrate, and why both are needed.
 //
@@ -2108,23 +2189,39 @@ func (p *Pipeline) Run(ctx context.Context, sinks Sinks) error {
 				"ran_for", ran.Round(time.Millisecond), "waiting", backoff)
 		}
 
-		select {
-		case <-time.After(backoff):
-		case <-p.camWake:
-			// A choice does not wait for the backoff: whoever made it has
-			// already had their answer, and thirty seconds of a still picture
-			// after a command reads as a command that did not work.
-			backoff = minBackoff
-		case <-ctx.Done():
+		// camWake cuts the wait short. A choice does not wait for the backoff:
+		// whoever made it has already had their answer, and thirty seconds of a
+		// still picture after a command reads as a command that did not work.
+		var ok bool
+		if backoff, ok = nextBackoff(ctx, p.camWake, backoff, minBackoff, maxBackoff); !ok {
 			return nil
 		}
-		if backoff < maxBackoff {
-			backoff *= 2
-			if backoff > maxBackoff {
-				backoff = maxBackoff
-			}
-		}
 	}
+}
+
+// nextBackoff sleeps one supervisor's backoff and returns the next one, or
+// false once ctx is cancelled.
+//
+// A signal on wake ends the sleep early and brings the wait back to lo. Either
+// way the wait then doubles, capped at hi — so after a wake the next one is
+// 2*lo, not lo, which is what both supervisors did when each wrote this loop
+// for itself.
+//
+// It holds no state, and that is the point: the two supervisors keep their own
+// loop, context, channel and constants, because audio and video must not be
+// able to switch each other off. What they share is arithmetic.
+func nextBackoff(ctx context.Context, wake <-chan struct{}, backoff, lo, hi time.Duration) (time.Duration, bool) {
+	select {
+	case <-time.After(backoff):
+	case <-wake:
+		backoff = lo
+	case <-ctx.Done():
+		return backoff, false
+	}
+	if backoff < hi {
+		backoff = min(backoff*2, hi)
+	}
+	return backoff, true
 }
 
 // runOnce runs a single video capture session.
@@ -2297,8 +2394,11 @@ var errMicSwitch = errors.New("microphone changed on request")
 // log with identical lines and hide everything else. The audio's return, on the
 // other hand, is always announced, because that is news.
 func (p *Pipeline) superviseAudio(ctx context.Context, sinks Sinks) {
-	const maxBackoff = 30 * time.Second
-	backoff := time.Second
+	const (
+		minBackoff = time.Second
+		maxBackoff = 30 * time.Second
+	)
+	backoff := minBackoff
 	var lastErr string
 
 	for ctx.Err() == nil {
@@ -2338,7 +2438,7 @@ func (p *Pipeline) superviseAudio(ctx context.Context, sinks Sinks) {
 		// other side, in the open, which does **announce** a choice.
 		if errors.Is(err, errMicRecheck) || errors.Is(err, errMicSwitch) {
 			p.micGraceUntil.Store(time.Now().Add(micRecheckGrace).UnixNano())
-			backoff = time.Second
+			backoff = minBackoff
 			continue
 		}
 		// The microphone's half of what Run reads for the camera, and by the
@@ -2364,21 +2464,12 @@ func (p *Pipeline) superviseAudio(ctx context.Context, sinks Sinks) {
 			}
 		}
 
-		select {
-		case <-time.After(backoff):
-		case <-p.micWake:
-			// A choice does not wait for the backoff: whoever made it has
-			// already had their answer, and thirty seconds of silence after a
-			// command reads as a command that did not work.
-			backoff = time.Second
-		case <-ctx.Done():
+		// micWake cuts the wait short. A choice does not wait for the backoff:
+		// whoever made it has already had their answer, and thirty seconds of
+		// silence after a command reads as a command that did not work.
+		var ok bool
+		if backoff, ok = nextBackoff(ctx, p.micWake, backoff, minBackoff, maxBackoff); !ok {
 			return
-		}
-		if backoff < maxBackoff {
-			backoff *= 2
-			if backoff > maxBackoff {
-				backoff = maxBackoff
-			}
 		}
 	}
 }
@@ -2811,6 +2902,19 @@ func (p *Pipeline) runVideo(ctx context.Context, sinks Sinks) error {
 	if err != nil {
 		return fmt.Errorf("no usable H.264 encoder: %w", err)
 	}
+	v := &videoSession{
+		p:          p,
+		sinks:      sinks,
+		reader:     reader,
+		enc:        enc,
+		newEncoder: newEncoder,
+		qp:         &media.QPReader{},
+		camFPS:     fps,
+		startW:     w,
+		startH:     h,
+		cur:        videoFormat{W: w, H: h, FPS: fps, Declared: fps},
+		motion:     newMotionScaler(w, h),
+	}
 	// **The bitrate the encoder is born with is a request like any other, and it
 	// belongs in the watch's reference.**
 	//
@@ -2873,7 +2977,7 @@ func (p *Pipeline) runVideo(ctx context.Context, sinks Sinks) error {
 	// own is cancelled by the other three too.
 	defer func() {
 		p.encMu.Lock()
-		last := enc
+		last := v.enc
 		p.control.Store(nil)
 		p.encMu.Unlock()
 		if ending.Err() != nil {
@@ -2884,27 +2988,24 @@ func (p *Pipeline) runVideo(ctx context.Context, sinks Sinks) error {
 		last.Close()
 	}()
 
-	p.encoderName.Store(enc.Name)
-	p.videoWidth.Store(int64(w))
-	p.videoHeight.Store(int64(h))
-	p.hardware.Store(dev != nil && enc.UsesDevice())
-	p.control.Store(enc)
+	p.encoderName.Store(v.enc.Name)
+	v.publish()
+	p.hardware.Store(dev != nil && v.enc.UsesDevice())
+	p.control.Store(v.enc)
 	p.cfg.Log.Info("capture started",
-		"encoder", enc.Name,
+		"encoder", v.enc.Name,
 		"video", fmt.Sprintf("%dx%d@%d", w, h, fps),
 		"bitrate", p.cfg.BitrateKbps)
-	if !enc.CodecSettingsAccepted() {
-		p.cfg.Log.Warn("some encoder settings were not accepted", "detail", enc.CodecNotes())
+	if !v.enc.CodecSettingsAccepted() {
+		p.cfg.Log.Warn("some encoder settings were not accepted", "detail", v.enc.CodecNotes())
 	}
 
 	// The assembler keeps state between chunks (NALs straddling buffers), so it
 	// lives for the whole session. The declared level is brought back to the
 	// minimum really needed: encoders overstate it and browsers refuse a level
 	// higher than the one they announce.
-	var asm media.AUAssembler
-	asm.TargetLevelIDC = media.MinLevelIDC(w, h, fps, p.cfg.BitrateKbps)
+	v.asm.TargetLevelIDC = media.MinLevelIDC(w, h, fps, p.cfg.BitrateKbps)
 
-	motion := newMotionScaler(w, h)
 	// The detection does not need every frame: one every so often is enough, and
 	// subsampling here costs less than dropping downstream.
 	//
@@ -2926,376 +3027,6 @@ func (p *Pipeline) runVideo(ctx context.Context, sinks Sinks) error {
 	// there is.
 	motionGate := newMotionGate(fps)
 
-	// The quantiser reader lives as long as the capture: it keeps SPS and PPS
-	// between one frame and the next and re-examines them when they change,
-	// which happens on every rebuild of the encoder — that is, at every step of
-	// the scale.
-	qpFromStream := &media.QPReader{}
-
-	take := func() error {
-		for {
-			got, err := enc.Take(func(b []byte) error {
-				for _, au := range asm.Write(b) {
-					frames := p.Stats.VideoFrames.Add(1)
-					p.simulatePanic("video", frames)
-					if au.Keyframe {
-						p.Stats.Keyframes.Add(1)
-					}
-					p.keyframeSeen(frames, au.Keyframe)
-					p.bitrateSeen(len(au.Data))
-					p.Stats.VideoBytes.Add(int64(len(au.Data)))
-
-					// **The quantiser is read from the stream where the stream
-					// says it, and from the attribute where it does not.**
-					//
-					// The stream is the portable road — it is what the decoder
-					// reads, and on AMD, which does not expose the attribute, it
-					// is the only one there is. But on Quick Sync the **slice**
-					// quantiser is a constant: 26.0 exactly over 696 frames
-					// while the attribute moved between 26 and 42, because that
-					// chip does its control per macroblock.
-					//
-					// It is not our parser, and the proof is not a re-reading:
-					// the same parser and the same machine with the software
-					// encoder, where the stream reads a real distribution and
-					// agrees with the attribute to a bias of **+0.0**. A broken
-					// parser does not produce zero bias on one encoder and +6.5
-					// on the other.
-					//
-					// So the attribute is preferred **where there is one**: not
-					// because the encoder is more credible than the stream —
-					// this project has learnt the opposite — but because where
-					// the stream is a constant the attribute is the only one of
-					// the two that measures anything, and where both measure
-					// they agree.
-					//
-					// The safety net for encoders never seen is `qpMeasured`,
-					// just below: a reading enters only after having changed
-					// value at least once. A 26 nailed down with a target of 30
-					// would send the loop to the floor for ever.
-					// **The reserve, offered every frame and taken almost never.**
-					// It is what the encoder declares, and the reader refuses it
-					// as soon as the stream has spoken — which on every encoder
-					// seen here is the first keyframe. Offering it from here
-					// rather than at the three places that build an encoder is
-					// what makes it impossible to forget, and it is also the
-					// only place where the header exists: the encoder has none
-					// until it has produced a frame.
-					qpFromStream.Seed(enc.SequenceHeader())
-					qp, streamOK := qpFromStream.Feed(au.Data)
-					// **The counts live on the pipeline, not on the encoder.**
-					// The report is printed after the capture has stopped, and
-					// at shutdown the encoder is taken out of the way: reading
-					// them from there gives zero and zero, which looks like "the
-					// attribute is not there" and is "there is nobody left to
-					// ask".
-					declared, attrOK := enc.LastQP()
-					// The inventory is photographed here, while there is still
-					// an encoder to ask. Once only: it does not change within
-					// the life of one transform.
-					if p.sampleAttrs.Load() == nil {
-						if k, q := enc.SampleAttributes(); len(k) > 0 {
-							p.sampleAttrs.Store(&attrInventory{keys: k, withQP: q})
-						}
-					}
-					if streamOK {
-						if v := int64(qp); v > p.qpStreamMax.Load() {
-							p.qpStreamMax.Store(v)
-						}
-						if v := int64(qp); p.qpStreamMin.Load() == 0 || v < p.qpStreamMin.Load() {
-							p.qpStreamMin.Store(v)
-						}
-						if attrOK {
-							p.qpAttrOK.Add(1)
-							if d := declared - qp; d != 0 {
-								p.qpDivergences.Add(1)
-								p.qpAttrBias.Add(int64(d))
-								if d < 0 {
-									d = -d
-								}
-								p.qpAttrDeviation.Add(int64(d))
-							}
-						} else {
-							p.qpAttrKO.Add(1)
-						}
-					}
-					switch {
-					case attrOK:
-						p.qpFromAttr.Store(true)
-						p.qpMeasured(declared)
-					case streamOK:
-						p.qpMeasured(qp)
-					}
-					p.Stats.LastVideoUnix.Store(time.Now().Unix())
-					if sinks.Video != nil {
-						sinks.Video(au)
-					}
-				}
-				return nil
-			})
-			if err != nil {
-				return err
-			}
-			// On an asynchronous transform every METransformHaveOutput
-			// authorises exactly one collection: insisting answers E_UNEXPECTED.
-			if !got || enc.Async() {
-				return nil
-			}
-		}
-	}
-
-	// The size we started at, which is also the scale's cap.
-	startW, startH := w, h
-	// The cadence in force. It starts from the camera's, which is the cap.
-	// curFPS is how many frames are delivered, curDeclared how many are declared
-	// to the encoder. At start-up they coincide with the camera's cadence.
-	curFPS, curDeclared := fps, fps
-	gate := &cadenceGate{}
-	p.videoWidth.Store(int64(w))
-	p.videoHeight.Store(int64(h))
-	p.videoFPS.Store(int64(curDeclared))
-	p.videoDelivered.Store(int64(curFPS))
-
-	// The requested size is applied **in here**, not from where it is asked for.
-	//
-	// It is not fussiness: the change touches three things that have to move
-	// together — the Source Reader, the encoder's format and the reducer for
-	// motion detection, which is sized on the incoming pixels. Applied from the
-	// governor's thread, for an instant the reducer would be reading frames of a
-	// size other than the one it was built for.
-	applyFormat := func() {
-		want := p.wantFormat.Swap(nil)
-		if want == nil {
-			return
-		}
-		nw, nh, nf, nd := want.W, want.H, want.FPS, want.Declared
-		// The starting size is a **cap**, like the preset's bitrate: congestion
-		// can only bring it down, never above what the user chose.
-		//
-		// It is not only a matter of will: the H.264 level announced in the SDP
-		// is fixed on this size, and a larger stream would require one higher
-		// than the one declared — which is the way to make decoding fail in
-		// silence. Measured trying to climb from 360p to 720p: the stream went
-		// on declaring level 3.0, which at 720p30 is not enough.
-		if nw > startW || nh > startH {
-			nw, nh = startW, startH
-		}
-		// The starting cadence is a cap too, for the same reason the size is:
-		// it is what the camera delivers, and asking for more does not make it
-		// go any faster.
-		if nf > fps {
-			nf = fps
-		}
-		// The declared one follows the same cap, for the same reason: announcing
-		// to the encoder more frames than the camera produces at all is a budget
-		// divided by a number that does not exist.
-		if nd <= 0 {
-			nd = nf
-		}
-		if nd > fps {
-			nd = fps
-		}
-		if nw == w && nh == h && nf == curFPS && nd == curDeclared {
-			return
-		}
-		// **The Source Reader stays at the camera's cadence.** The extra frames
-		// are dropped by the cadence gate below, instead of asking the camera to
-		// slow down: a cadence asked of the device can be refused or rounded to
-		// a value that is not the one, and the real cadence is known only to us
-		// who count the frames. It is the same reason the size is verified on
-		// the frame's bytes and not on what the reader declares.
-		if nw != w || nh != h {
-			if err := reader.SetOutputSize(nw, nh, fps); err != nil {
-				p.cfg.Log.Warn("the camera does not deliver this size",
-					"size", fmt.Sprintf("%dx%d", nw, nh), "error", err)
-				return
-			}
-			// **The processor is told not to invent frames, at every size
-			// change.**
-			//
-			// A size change is what puts it in the chain, and by default it
-			// converts the cadence to match the output type — where we write the
-			// scale's 30 while a dim room gives the camera 13.7. What it makes
-			// up the difference with is repeated frames, and we encode and send
-			// them. Measured on three machines, at a size change, against this
-			// same call left out:
-			//
-			//	NVIDIA + Brio, camera at 13.7   1500 -> 1040 kbit/s, 12% repeats -> 0
-			//	AMD + ACER, camera at 17.5      1579 -> 1269 kbit/s
-			//	Intel, camera at 27.0           2369 -> 2383, nothing to gain
-			//
-			// The gain is what the camera is missing from the cadence we
-			// declare, so it is largest **in the dark** — which is when this
-			// program works — and zero in daylight. It cost 1.2 points of
-			// quantiser on the first machine, which is the picture unchanged.
-			//
-			// **It is asked for after the size change, not before**, because the
-			// transform does not exist until then; the documentation asks for it
-			// before streaming begins, which we cannot do, so what says it took
-			// is the frames and not the HRESULT.
-			if !p.cfg.KeepFrameRateConversion {
-				if n, err := reader.DisableFrameRateConversion(); err != nil {
-					p.cfg.Log.Warn("frame-rate conversion was not switched off", "error", err)
-				} else {
-					p.cfg.Log.Debug("frame-rate conversion switched off", "transforms", n)
-				}
-			}
-		}
-		// The encoder is **rebuilt**, not reconfigured.
-		//
-		// Reconfiguring the running one does not take, and it is the most
-		// insidious fault met so far because every declaration said the
-		// opposite: SetOutputType answered S_OK, GetOutputCurrentType read the
-		// new size back, the Source Reader really did deliver the new pixels —
-		// and the only witness telling the truth was the SPS in the stream,
-		// always the old one. A pipeline in that state sends the browser frames
-		// that do not match the parameters it decodes them with.
-		//
-		// At start-up the size is always exact, so that is where it restarts
-		// from. `nd` is declared to the encoder, not `nf`: what it needs is how
-		// many frames to divide the budget by, and the frames reaching it are
-		// the ones the gate lets through.
-		// **The rebuild is timed, because the one time it did not come back the
-		// log had nothing to say about it.**
-		//
-		// Between the line the governor writes — "video format changed", with
-		// the cadence it wants — and the one at the bottom of this function
-		// there are two calls into Media Foundation and nothing else: building
-		// the new transform and releasing the old one. When one of the two does
-		// not return, the file shows a pair of lines with the second missing,
-		// further requests nobody answers, and a monitor with the camera lit and
-		// no picture. Which of the two it was cannot be recovered afterwards,
-		// and that is the whole cost: a log that says "we went in" and not "we
-		// came out".
-		//
-		// **A duration is not a cure and is not meant as one.** A call that
-		// never returns writes no line however well it is timed — for that
-		// there is the stack dump the stall raises, in cmd/pat-monitor. What
-		// this buys is the case one step before: a rebuild that takes seconds
-		// and comes back names itself, instead of being read off the gap
-		// between two timestamps by whoever thinks to look.
-		builtAt := time.Now()
-		fresh, err := newEncoder(nw, nh, nd, p.currentBitrate())
-		built := time.Since(builtAt)
-		// refused is the time spent inside the attempt that was turned down, and
-		// it is zero on every rebuild that does not make one.
-		var refused time.Duration
-		// **If the new cadence is not accepted, that is what is given up, not
-		// the change.** A very low cadence in the output format is the sort of
-		// thing an encoder can refuse, and we do not know which ones do: the
-		// project's rule is that no feature depends on the manufacturer in front
-		// of us. Giving up only the cadence, on those machines the bottom steps
-		// simply do not exist and everything else goes on working — which is
-		// degrading, not breaking.
-		if err != nil && nd != curDeclared {
-			p.cfg.Log.Warn("the encoder refuses this cadence, only the size changes",
-				"cadence", nd, "error", err)
-			nd = curDeclared
-			// **The clock restarts and the refusal is kept**, because those are
-			// two different questions. What `build` reports is how long the
-			// encoder we kept took to build, and measured from before the
-			// attempt that failed it would charge one encoder with the time of
-			// two — the whole reason these are separate fields is that they
-			// accuse different people. What the refusal must not do is vanish:
-			// the picture waited for it too, and rebuildWasSlow is where that
-			// is argued.
-			refused = built
-			builtAt = time.Now()
-			fresh, err = newEncoder(nw, nh, nd, p.currentBitrate())
-			built = time.Since(builtAt)
-		}
-		if err != nil {
-			p.cfg.Log.Warn("no encoder for the new format, staying where we were",
-				"format", fmt.Sprintf("%dx%d@%d", nw, nh, nd), "error", err)
-			if nw != w || nh != h {
-				_ = reader.SetOutputSize(w, h, fps)
-			}
-			return
-		}
-		// The replacement happens under the write lock, so whoever is commanding
-		// the encoder — the congestion control every second, a PLI on every loss
-		// — cannot find the old one in their hands. The old one is closed
-		// **after** letting the lock go: by then nobody can have taken it any
-		// more, and closing is the one operation worth not doing while holding
-		// everything else still.
-		old := enc
-		p.encMu.Lock()
-		enc = fresh
-		p.control.Store(enc)
-		p.encMu.Unlock()
-		closedAt := time.Now()
-		old.Close()
-		closed := time.Since(closedAt)
-		// The three are reported separately because they accuse different
-		// people: building is the driver being asked for a new session, closing
-		// is it being asked to let the old one go, and a refusal is it being
-		// asked for a cadence it will not take. A single "the rebuild took 4s"
-		// would leave the next reader exactly where this one was — and a
-		// `refused=0s` is itself an answer, which is why it is written whether
-		// or not there was a second attempt.
-		if rebuildWasSlow(refused, built, closed) {
-			p.cfg.Log.Warn("rebuilding the encoder was slow",
-				"refused", refused.Round(time.Millisecond),
-				"build", built.Round(time.Millisecond),
-				"close", closed.Round(time.Millisecond),
-				"format", fmt.Sprintf("%dx%d@%d", nw, nh, nd),
-				"note", "no frame is encoded while this runs")
-		}
-		w, h = nw, nh
-		curFPS, curDeclared = nf, nd
-		// **The gate is commanded by the delivery, never by the declaration.**
-		// Driving it from the declaration, and computing the declaration from
-		// the measured cadence, gives a closed loop: the gate lowers the
-		// measurement, the measurement lowers the declaration again, and there
-		// is no way out.
-		gate.setFPS(nf, fps)
-		motion = newMotionScaler(w, h)
-		// The declared level is **not** touched: the SDP announces one only and
-		// whoever is watching has already configured the decoder on it. It stays
-		// the one for the full pixels, which is always enough for a smaller size.
-		p.videoWidth.Store(int64(w))
-		p.videoHeight.Store(int64(h))
-		// The status page shows "measured/declared", so the declared one goes
-		// here: it is the number the measured one is compared with.
-		p.videoFPS.Store(int64(curDeclared))
-		p.videoDelivered.Store(int64(curFPS))
-		// Read back from the reader, not inferred from what it was asked for: a
-		// refused assignment would leave it delivering the old size, and the
-		// encoder would receive frames of a size other than the one it is
-		// configured for. It proves that the assignment took, and nothing about
-		// the pixels — a camera too small to fill the frame is upscaled and the
-		// size read back agrees all the same.
-		rw, rh, _, _, _, rerr := reader.CurrentFormat()
-		p.cfg.Log.Info("video format changed",
-			"video", fmt.Sprintf("%dx%d@%d", w, h, curFPS),
-			"declared", curDeclared,
-			"reader", fmt.Sprintf("%dx%d", rw, rh), "error", rerr)
-	}
-
-	// The bitrate reconfiguration, which is the only thing that modifies the
-	// transform instead of replacing it. In here nobody is calling Feed or
-	// ProcessOutput on it at the same instant, which is the only condition under
-	// which stopping and restarting it is safe.
-	applyReconfig := func() error {
-		want := int(p.wantReconfig.Swap(0))
-		if want <= 0 {
-			return nil
-		}
-		p.brMu.Lock()
-		p.lastReconfig = time.Now()
-		p.brMu.Unlock()
-		// **A failed reconfiguration is a capture fault, and it was said not
-		// to be.** It stops the transform before it renegotiates, and every
-		// failure after the stop leaves it stopped: carrying on meant five
-		// seconds waiting for an encoder that would ask for nothing, and then
-		// a restart with a message about a stall. Returning restarts at once,
-		// with the reason.
-		if err := enc.ReconfigureBitrate(want); err != nil {
-			return fmt.Errorf("bitrate reconfiguration to %d kbit/s left the encoder stopped: %w", want, err)
-		}
-		return nil
-	}
-
 	// **Nothing else reconfigures the encoder live, and nothing downstream
 	// should reach for it.** Two more such engines used to live here — one
 	// changed the quantiser floor for the automatic tuning, the other the
@@ -3308,12 +3039,12 @@ func (p *Pipeline) runVideo(ctx context.Context, sinks Sinks) error {
 	// and `RateControl` still hold, and are not changed live.
 
 	for ctx.Err() == nil {
-		applyFormat()
-		if err := applyReconfig(); err != nil {
+		v.applyFormat()
+		if err := v.applyReconfig(); err != nil {
 			return err
 		}
 
-		ev, err := enc.NextEvent(5 * time.Second)
+		ev, err := v.enc.NextEvent(5 * time.Second)
 		if err != nil {
 			return err
 		}
@@ -3351,15 +3082,15 @@ func (p *Pipeline) runVideo(ctx context.Context, sinks Sinks) error {
 				}
 
 				if sinks.Motion != nil && motionGate.due(time.Now()) {
-					if err := motion.fromSample(s, func(gray []byte) {
-						sinks.Motion(gray, motion.w, motion.h)
+					if err := v.motion.fromSample(s, func(gray []byte) {
+						sinks.Motion(gray, v.motion.w, v.motion.h)
 					}); err != nil {
 						s.Release()
 						return err
 					}
 				}
 
-				if gate.due(time.Now()) {
+				if v.gate.due(time.Now()) {
 					sample = s
 					break
 				}
@@ -3367,7 +3098,7 @@ func (p *Pipeline) runVideo(ctx context.Context, sinks Sinks) error {
 				p.Stats.VideoDropped.Add(1)
 			}
 
-			err = enc.Feed(sample)
+			err = v.enc.Feed(sample)
 			sample.Release()
 			if errors.Is(err, mf.ErrNotAccepting) {
 				// A request issued before a reconfiguration arrived after it.
@@ -3381,19 +3112,363 @@ func (p *Pipeline) runVideo(ctx context.Context, sinks Sinks) error {
 				return err
 			}
 			// Only the synchronous ones deliver immediately after receiving.
-			if !enc.Async() {
-				if err := take(); err != nil {
+			if !v.enc.Async() {
+				if err := v.take(); err != nil {
 					return err
 				}
 			}
 
 		case mf.EventHaveOutput:
-			if err := take(); err != nil {
+			if err := v.take(); err != nil {
 				return err
 			}
 		}
 	}
 	return nil
+}
+
+// videoSession is what one open of the camera carries between the frame loop in
+// runVideo and the three things that loop does besides reading frames: take,
+// applyFormat and applyReconfig. It lives and dies with the session, on the
+// thread runVideo locked, so nothing in it is guarded except what other
+// goroutines reach through the Pipeline.
+type videoSession struct {
+	p      *Pipeline
+	sinks  Sinks
+	reader *mf.SourceReader
+	// enc is the encoder in force. applyFormat replaces it, under encMu, at
+	// every step of the scale, so it is always read through v and never kept
+	// in a local: a copy taken before a rebuild is an encoder already closed.
+	enc        *mf.VideoEncoder
+	newEncoder func(w, h, fps, kbps int) (*mf.VideoEncoder, error)
+	asm        media.AUAssembler
+	// qp, the quantiser reader, lives as long as the capture: it keeps SPS and
+	// PPS between one frame and the next and re-examines them when they change,
+	// which happens on every rebuild of the encoder — that is, at every step of
+	// the scale.
+	qp *media.QPReader
+	// camFPS is the camera's cadence, which is both the cap on the cadence in
+	// force and the rate the Source Reader is kept at.
+	camFPS int
+	// startW and startH are the size we started at, which is also the scale's
+	// cap.
+	startW, startH int
+	// cur is the format in force. Its cadence starts from the camera's, which
+	// is the cap. cur.FPS is how many frames are delivered, cur.Declared how
+	// many are declared to the encoder. At start-up they coincide with the
+	// camera's cadence.
+	cur    videoFormat
+	gate   cadenceGate
+	motion *motionScaler
+}
+
+// take collects what the encoder has ready and hands it on, one access unit at
+// a time: the counters and the hooks that watch the encoder first, the
+// quantiser next, and the sink last.
+func (v *videoSession) take() error {
+	p := v.p
+	for {
+		got, err := v.enc.Take(func(b []byte) error {
+			for _, au := range v.asm.Write(b) {
+				frames := p.Stats.VideoFrames.Add(1)
+				p.simulatePanic("video", frames)
+				if au.Keyframe {
+					p.Stats.Keyframes.Add(1)
+				}
+				p.keyframeSeen(frames, au.Keyframe)
+				p.bitrateSeen(len(au.Data))
+				p.Stats.VideoBytes.Add(int64(len(au.Data)))
+
+				// **The reserve, offered every frame and taken almost never.**
+				// It is what the encoder declares, and the reader refuses it
+				// as soon as the stream has spoken — which on every encoder
+				// seen here is the first keyframe. Offering it from here
+				// rather than at the three places that build an encoder is
+				// what makes it impossible to forget, and it is also the
+				// only place where the header exists: the encoder has none
+				// until it has produced a frame.
+				v.qp.Seed(v.enc.SequenceHeader())
+				qp, streamOK := v.qp.Feed(au.Data)
+				// **The counts live on the pipeline, not on the encoder.**
+				// The report is printed after the capture has stopped, and
+				// at shutdown the encoder is taken out of the way: reading
+				// them from there gives zero and zero, which looks like "the
+				// attribute is not there" and is "there is nobody left to
+				// ask".
+				declared, attrOK := v.enc.LastQP()
+				// The inventory is photographed here, while there is still
+				// an encoder to ask. Once only: it does not change within
+				// the life of one transform.
+				if p.sampleAttrs.Load() == nil {
+					if k, q := v.enc.SampleAttributes(); len(k) > 0 {
+						p.sampleAttrs.Store(&attrInventory{keys: k, withQP: q})
+					}
+				}
+				p.qpReadings(qp, streamOK, declared, attrOK)
+				p.Stats.LastVideoUnix.Store(time.Now().Unix())
+				if v.sinks.Video != nil {
+					v.sinks.Video(au)
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+		// On an asynchronous transform every METransformHaveOutput
+		// authorises exactly one collection: insisting answers E_UNEXPECTED.
+		if !got || v.enc.Async() {
+			return nil
+		}
+	}
+}
+
+// applyFormat applies the requested size **in the frame loop**, not from where
+// it is asked for.
+//
+// It is not fussiness: the change touches three things that have to move
+// together — the Source Reader, the encoder's format and the reducer for
+// motion detection, which is sized on the incoming pixels. Applied from the
+// governor's thread, for an instant the reducer would be reading frames of a
+// size other than the one it was built for.
+func (v *videoSession) applyFormat() {
+	p := v.p
+	want := p.wantFormat.Swap(nil)
+	if want == nil {
+		return
+	}
+	nw, nh, nf, nd := want.W, want.H, want.FPS, want.Declared
+	// The starting size is a **cap**, like the preset's bitrate: congestion
+	// can only bring it down, never above what the user chose.
+	//
+	// It is not only a matter of will: the H.264 level announced in the SDP
+	// is fixed on this size, and a larger stream would require one higher
+	// than the one declared — which is the way to make decoding fail in
+	// silence. Measured trying to climb from 360p to 720p: the stream went
+	// on declaring level 3.0, which at 720p30 is not enough.
+	if nw > v.startW || nh > v.startH {
+		nw, nh = v.startW, v.startH
+	}
+	// The starting cadence is a cap too, for the same reason the size is:
+	// it is what the camera delivers, and asking for more does not make it
+	// go any faster.
+	if nf > v.camFPS {
+		nf = v.camFPS
+	}
+	// The declared one follows the same cap, for the same reason: announcing
+	// to the encoder more frames than the camera produces at all is a budget
+	// divided by a number that does not exist.
+	if nd <= 0 {
+		nd = nf
+	}
+	if nd > v.camFPS {
+		nd = v.camFPS
+	}
+	if nw == v.cur.W && nh == v.cur.H && nf == v.cur.FPS && nd == v.cur.Declared {
+		return
+	}
+	// **The Source Reader stays at the camera's cadence.** The extra frames
+	// are dropped by the cadence gate in the frame loop, instead of asking the
+	// camera to slow down: a cadence asked of the device can be refused or
+	// rounded to a value that is not the one, and the real cadence is known
+	// only to us who count the frames. It is the same reason the size is
+	// verified on the frame's bytes and not on what the reader declares.
+	if nw != v.cur.W || nh != v.cur.H {
+		if err := v.reader.SetOutputSize(nw, nh, v.camFPS); err != nil {
+			p.cfg.Log.Warn("the camera does not deliver this size",
+				"size", fmt.Sprintf("%dx%d", nw, nh), "error", err)
+			return
+		}
+		// **The processor is told not to invent frames, at every size
+		// change.**
+		//
+		// A size change is what puts it in the chain, and by default it
+		// converts the cadence to match the output type — where we write the
+		// scale's 30 while a dim room gives the camera 13.7. What it makes
+		// up the difference with is repeated frames, and we encode and send
+		// them. Measured on three machines, at a size change, against this
+		// same call left out:
+		//
+		//	NVIDIA + Brio, camera at 13.7   1500 -> 1040 kbit/s, 12% repeats -> 0
+		//	AMD + ACER, camera at 17.5      1579 -> 1269 kbit/s
+		//	Intel, camera at 27.0           2369 -> 2383, nothing to gain
+		//
+		// The gain is what the camera is missing from the cadence we
+		// declare, so it is largest **in the dark** — which is when this
+		// program works — and zero in daylight. It cost 1.2 points of
+		// quantiser on the first machine, which is the picture unchanged.
+		//
+		// **It is asked for after the size change, not before**, because the
+		// transform does not exist until then; the documentation asks for it
+		// before streaming begins, which we cannot do, so what says it took
+		// is the frames and not the HRESULT.
+		if !p.cfg.KeepFrameRateConversion {
+			if n, err := v.reader.DisableFrameRateConversion(); err != nil {
+				p.cfg.Log.Warn("frame-rate conversion was not switched off", "error", err)
+			} else {
+				p.cfg.Log.Debug("frame-rate conversion switched off", "transforms", n)
+			}
+		}
+	}
+	// The encoder is **rebuilt**, not reconfigured.
+	//
+	// Reconfiguring the running one does not take, and it is the most
+	// insidious fault met so far because every declaration said the
+	// opposite: SetOutputType answered S_OK, GetOutputCurrentType read the
+	// new size back, the Source Reader really did deliver the new pixels —
+	// and the only witness telling the truth was the SPS in the stream,
+	// always the old one. A pipeline in that state sends the browser frames
+	// that do not match the parameters it decodes them with.
+	//
+	// At start-up the size is always exact, so that is where it restarts
+	// from. `nd` is declared to the encoder, not `nf`: what it needs is how
+	// many frames to divide the budget by, and the frames reaching it are
+	// the ones the gate lets through.
+	// **The rebuild is timed, because the one time it did not come back the
+	// log had nothing to say about it.**
+	//
+	// Between the line the governor writes — "video format changed", with
+	// the cadence it wants — and the one at the bottom of this function
+	// there are two calls into Media Foundation and nothing else: building
+	// the new transform and releasing the old one. When one of the two does
+	// not return, the file shows a pair of lines with the second missing,
+	// further requests nobody answers, and a monitor with the camera lit and
+	// no picture. Which of the two it was cannot be recovered afterwards,
+	// and that is the whole cost: a log that says "we went in" and not "we
+	// came out".
+	//
+	// **A duration is not a cure and is not meant as one.** A call that
+	// never returns writes no line however well it is timed — for that
+	// there is the stack dump the stall raises, in cmd/pat-monitor. What
+	// this buys is the case one step before: a rebuild that takes seconds
+	// and comes back names itself, instead of being read off the gap
+	// between two timestamps by whoever thinks to look.
+	builtAt := time.Now()
+	fresh, err := v.newEncoder(nw, nh, nd, p.currentBitrate())
+	built := time.Since(builtAt)
+	// refused is the time spent inside the attempt that was turned down, and
+	// it is zero on every rebuild that does not make one.
+	var refused time.Duration
+	// **If the new cadence is not accepted, that is what is given up, not
+	// the change.** A very low cadence in the output format is the sort of
+	// thing an encoder can refuse, and we do not know which ones do: the
+	// project's rule is that no feature depends on the manufacturer in front
+	// of us. Giving up only the cadence, on those machines the bottom steps
+	// simply do not exist and everything else goes on working — which is
+	// degrading, not breaking.
+	if err != nil && nd != v.cur.Declared {
+		p.cfg.Log.Warn("the encoder refuses this cadence, only the size changes",
+			"cadence", nd, "error", err)
+		nd = v.cur.Declared
+		// **The clock restarts and the refusal is kept**, because those are
+		// two different questions. What `build` reports is how long the
+		// encoder we kept took to build, and measured from before the
+		// attempt that failed it would charge one encoder with the time of
+		// two — the whole reason these are separate fields is that they
+		// accuse different people. What the refusal must not do is vanish:
+		// the picture waited for it too, and rebuildWasSlow is where that
+		// is argued.
+		refused = built
+		builtAt = time.Now()
+		fresh, err = v.newEncoder(nw, nh, nd, p.currentBitrate())
+		built = time.Since(builtAt)
+	}
+	if err != nil {
+		p.cfg.Log.Warn("no encoder for the new format, staying where we were",
+			"format", fmt.Sprintf("%dx%d@%d", nw, nh, nd), "error", err)
+		if nw != v.cur.W || nh != v.cur.H {
+			_ = v.reader.SetOutputSize(v.cur.W, v.cur.H, v.camFPS)
+		}
+		return
+	}
+	// The replacement happens under the write lock, so whoever is commanding
+	// the encoder — the congestion control every second, a PLI on every loss
+	// — cannot find the old one in their hands. The old one is closed
+	// **after** letting the lock go: by then nobody can have taken it any
+	// more, and closing is the one operation worth not doing while holding
+	// everything else still.
+	old := v.enc
+	p.encMu.Lock()
+	v.enc = fresh
+	p.control.Store(v.enc)
+	p.encMu.Unlock()
+	closedAt := time.Now()
+	old.Close()
+	closed := time.Since(closedAt)
+	// The three are reported separately because they accuse different
+	// people: building is the driver being asked for a new session, closing
+	// is it being asked to let the old one go, and a refusal is it being
+	// asked for a cadence it will not take. A single "the rebuild took 4s"
+	// would leave the next reader exactly where this one was — and a
+	// `refused=0s` is itself an answer, which is why it is written whether
+	// or not there was a second attempt.
+	if rebuildWasSlow(refused, built, closed) {
+		p.cfg.Log.Warn("rebuilding the encoder was slow",
+			"refused", refused.Round(time.Millisecond),
+			"build", built.Round(time.Millisecond),
+			"close", closed.Round(time.Millisecond),
+			"format", fmt.Sprintf("%dx%d@%d", nw, nh, nd),
+			"note", "no frame is encoded while this runs")
+	}
+	v.cur = videoFormat{W: nw, H: nh, FPS: nf, Declared: nd}
+	// **The gate is commanded by the delivery, never by the declaration.**
+	// Driving it from the declaration, and computing the declaration from
+	// the measured cadence, gives a closed loop: the gate lowers the
+	// measurement, the measurement lowers the declaration again, and there
+	// is no way out.
+	v.gate.setFPS(nf, v.camFPS)
+	v.motion = newMotionScaler(nw, nh)
+	// The declared level is **not** touched: the SDP announces one only and
+	// whoever is watching has already configured the decoder on it. It stays
+	// the one for the full pixels, which is always enough for a smaller size.
+	// The status page shows "measured/declared", so the declared one goes
+	// in too: it is the number the measured one is compared with.
+	v.publish()
+	// Read back from the reader, not inferred from what it was asked for: a
+	// refused assignment would leave it delivering the old size, and the
+	// encoder would receive frames of a size other than the one it is
+	// configured for. It proves that the assignment took, and nothing about
+	// the pixels — a camera too small to fill the frame is upscaled and the
+	// size read back agrees all the same.
+	rw, rh, _, _, _, rerr := v.reader.CurrentFormat()
+	p.cfg.Log.Info("video format changed",
+		"video", fmt.Sprintf("%dx%d@%d", v.cur.W, v.cur.H, v.cur.FPS),
+		"declared", v.cur.Declared,
+		"reader", fmt.Sprintf("%dx%d", rw, rh), "error", rerr)
+}
+
+// applyReconfig applies the bitrate reconfiguration, which is the only thing
+// that modifies the transform instead of replacing it. It is called from the
+// frame loop, where nobody is calling Feed or ProcessOutput on it at the same
+// instant, which is the only condition under which stopping and restarting it
+// is safe.
+func (v *videoSession) applyReconfig() error {
+	p := v.p
+	want := int(p.wantReconfig.Swap(0))
+	if want <= 0 {
+		return nil
+	}
+	p.brMu.Lock()
+	p.lastReconfig = time.Now()
+	p.brMu.Unlock()
+	// **A failed reconfiguration is a capture fault, and it was said not
+	// to be.** It stops the transform before it renegotiates, and every
+	// failure after the stop leaves it stopped: carrying on meant five
+	// seconds waiting for an encoder that would ask for nothing, and then
+	// a restart with a message about a stall. Returning restarts at once,
+	// with the reason.
+	if err := v.enc.ReconfigureBitrate(want); err != nil {
+		return fmt.Errorf("bitrate reconfiguration to %d kbit/s left the encoder stopped: %w", want, err)
+	}
+	return nil
+}
+
+// publish makes the format in force the one the status reads. It stores a copy,
+// because v.cur goes on changing and a reader holding the pointer must not see
+// the size of one format with the cadence of the next.
+func (v *videoSession) publish() {
+	f := v.cur
+	v.p.sentFormat.Store(&f)
 }
 
 // readFrame keeps at it until the camera delivers a frame.
@@ -3504,11 +3579,11 @@ func (p *Pipeline) runAudio(ctx context.Context, sinks Sinks) error {
 	wanted := p.micWantedID()
 
 	var (
-		enc      audiocodec.Encoder
+		enc      *audiocodec.Encoder
 		format   audio.StreamFormat
 		mono     []int16 // mono samples waiting to make up an Opus frame
 		levelAcc []int16 // samples already reduced to the analysis rate
-		levelOut []byte
+		levelOut []int16
 		conv     []int16
 		decim    int
 		carry    []int16 // the remainder of the average that did not make a sample
@@ -3711,7 +3786,7 @@ func (p *Pipeline) runAudio(ctx context.Context, sinks Sinks) error {
 					"reason", "the ratio is not a whole number of samples to average")
 			}
 			levelN = AnalysisSampleRate * int(levelBlockDuration/time.Millisecond) / 1000
-			levelOut = make([]byte, 0, levelN*2)
+			levelOut = make([]int16, 0, levelN)
 			// The endpoint gain is applied by the audio engine only in shared
 			// mode: in exclusive it arrives here still to be done, and without it
 			// the audio sounds much quieter while not being filtered at all.
@@ -3805,8 +3880,12 @@ func (p *Pipeline) runAudio(ctx context.Context, sinks Sinks) error {
 				for _, v := range conv[:n] {
 					levelF32 = append(levelF32, float32(v)/32768)
 				}
+				// **The saturation is needed**: the resampler has a filter, and
+				// a filter can produce a value just beyond the peak it had at its
+				// input — without it that value wraps around and becomes a sample
+				// of the opposite sign, that is a click.
 				for _, v := range levelRS.Write(levelF32) {
-					levelAcc = append(levelAcc, toS16(float64(v)*32768))
+					levelAcc = append(levelAcc, audio.SaturateS16(float64(v)*32768))
 				}
 			} else {
 				// The average is also the low-pass filter the subsampling
@@ -3831,10 +3910,7 @@ func (p *Pipeline) runAudio(ctx context.Context, sinks Sinks) error {
 				carry = append(carry[:0], carry[i:]...)
 			}
 			for len(levelAcc) >= levelN {
-				levelOut = levelOut[:0]
-				for _, s := range levelAcc[:levelN] {
-					levelOut = append(levelOut, byte(s), byte(s>>8))
-				}
+				levelOut = append(levelOut[:0], levelAcc[:levelN]...)
 				levelAcc = append(levelAcc[:0], levelAcc[levelN:]...)
 				sinks.Level(levelOut)
 			}
@@ -3889,34 +3965,12 @@ func analysisPlan(captureRate int) (decim int, resampled bool) {
 	return 1, true
 }
 
+// applyGain multiplies the samples by gain in place, saturating at full scale.
 func applyGain(s []int16, gain float64) {
 	for i, v := range s {
-		x := float64(v) * gain
-		switch {
-		case x > 32767:
-			s[i] = 32767
-		case x < -32768:
-			s[i] = -32768
-		default:
-			s[i] = int16(x)
-		}
+		s[i] = audio.SaturateS16(float64(v) * gain)
 	}
 }
 
 // dbToLinear converts a gain in decibels into the factor to multiply by.
 func dbToLinear(db float64) float64 { return math.Pow(10, db/20) }
-
-// toS16 brings a floating-point sample back to 16-bit integers, clipping at the
-// extremes. **The clip is needed**: the resampler has a filter, and a filter can
-// produce a value just beyond the peak it had at its input — without the clip
-// that value wraps around and becomes a sample of the opposite sign, that is a
-// click.
-func toS16(v float64) int16 {
-	switch {
-	case v > 32767:
-		return 32767
-	case v < -32768:
-		return -32768
-	}
-	return int16(v)
-}

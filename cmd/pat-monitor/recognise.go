@@ -189,7 +189,7 @@ const recogniseInterval = 5 * time.Second
 // that is heard in a test rather than in the log: recognise_test.go feeds
 // through here and waits for a verdict, and with the rate put wrong it gets
 // none.
-func (r *recogniser) Feed(pcm []byte) {
+func (r *recogniser) Feed(pcm []int16) {
 	if r == nil {
 		return
 	}

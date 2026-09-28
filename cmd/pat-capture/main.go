@@ -31,10 +31,10 @@ import (
 
 var (
 	duration  = flag.Duration("d", 15*time.Second, "test duration")
-	width     = flag.Int("w", 1280, "width")
-	height    = flag.Int("h", 720, "height")
-	fps       = flag.Int("fps", 30, "framerate")
-	bitrate   = flag.Int("br", 2500, "video bitrate in kbit/s")
+	width     = flag.Int("w", encoder.Presets[0].Width, "width")
+	height    = flag.Int("h", encoder.Presets[0].Height, "height")
+	fps       = flag.Int("fps", encoder.Presets[0].FPS, "framerate")
+	bitrate   = flag.Int("br", encoder.Presets[0].BitrateKbps, "video bitrate in kbit/s")
 	bitrate2  = flag.Int("br2", 0, "halfway through, ask for this bitrate and measure whether the command bites")
 	brMode    = flag.String("brmode", "command", "how to change the bitrate: command (SetValue) or reconfigure")
 	height2   = flag.Int("h2", 0, "halfway through, drop to this height and measure whether the pixels change")
@@ -178,10 +178,6 @@ func main() {
 		}
 	}
 
-	settings := encoder.DefaultSettings()
-	settings.Width, settings.Height, settings.FPS = *width, *height, *fps
-	settings.BitrateKbps = *bitrate
-
 	fmt.Println(strings.Repeat("=", 76))
 	fmt.Printf("  webcam:    %s\n", cam.Name)
 	// Asked for by hand and infrared: it is reached, and it is declared. An
@@ -242,7 +238,7 @@ func main() {
 		prevGray       []byte
 		motionScoreMax float64
 	)
-	videoDelivery := fullRun(time.Second / time.Duration(settings.FPS))
+	videoDelivery := fullRun(time.Second / time.Duration(*fps))
 	audioDelivery := fullRun(opusFrameDuration)
 	// The analysis PCM is born of the same captured block that feeds the Opus.
 	// Comparing the two deliveries says whether an irregularity comes from the
@@ -259,7 +255,7 @@ func main() {
 	// counts is that an independent player can open the result.
 	var rec *fmp4Recorder
 	if *fmp4Out != "" {
-		rec, err = newFMP4Recorder(*fmp4Out, time.Second/time.Duration(settings.FPS))
+		rec, err = newFMP4Recorder(*fmp4Out, time.Second/time.Duration(*fps))
 		if err != nil {
 			fatal("%v", err)
 		}
@@ -284,14 +280,14 @@ func main() {
 		// upscale. An instrument that quietly changes what it measures is worse
 		// than one that measures the wrong thing loudly.
 		KeepRequestedSize: true,
-		Width:             settings.Width,
-		Height:            settings.Height,
-		FPS:               settings.FPS,
-		BitrateKbps:       settings.BitrateKbps,
-		// From the settings: the report below computes how many keyframes the
-		// run should have produced from the same field, and a literal here would
+		Width:             *width,
+		Height:            *height,
+		FPS:               *fps,
+		BitrateKbps:       *bitrate,
+		// From the constant: the report below computes how many keyframes the
+		// run should have produced from the same one, and a literal here would
 		// let the two part company.
-		GOPSeconds:              settings.KeyframeSecs,
+		GOPSeconds:              encoder.KeyframeSecs,
 		RateControl:             rc,
 		Quality:                 *qLevel,
 		MinQP:                   *minQP,
@@ -404,7 +400,7 @@ func main() {
 			}
 			prevGray = append(prevGray[:0], frame...)
 		},
-		Level: func(pcm []byte) {
+		Level: func(pcm []int16) {
 			mu.Lock()
 			defer mu.Unlock()
 			pcmDelivery.Mark(time.Now())
@@ -650,7 +646,7 @@ func main() {
 		}
 	}
 	check(keys > 0, "keyframes: %d (expected ~%.0f with a %ds GOP)",
-		keys, elapsed.Seconds()/float64(settings.KeyframeSecs), settings.KeyframeSecs)
+		keys, elapsed.Seconds()/float64(encoder.KeyframeSecs), encoder.KeyframeSecs)
 
 	if pliAsked > 0 {
 		slices.Sort(pliDelays)

@@ -24,6 +24,7 @@ import (
 
 	"patmonitor/internal/audio"
 	"patmonitor/internal/devices"
+	"patmonitor/internal/encoder"
 	"patmonitor/internal/mf"
 	"patmonitor/internal/rtc"
 	"patmonitor/internal/wincom"
@@ -31,10 +32,10 @@ import (
 
 var (
 	prefer      = flag.String("prefer", "", "narrow the choice to encoders whose name contains this text")
-	width       = flag.Int("w", 1280, "test width")
-	height      = flag.Int("h", 720, "test height")
-	fps         = flag.Int("fps", 30, "test frame rate")
-	bitrateKbps = flag.Int("b", 2500, "test bitrate in kbit/s")
+	width       = flag.Int("w", encoder.Presets[0].Width, "test width")
+	height      = flag.Int("h", encoder.Presets[0].Height, "test height")
+	fps         = flag.Int("fps", encoder.Presets[0].FPS, "test frame rate")
+	bitrateKbps = flag.Int("b", encoder.Presets[0].BitrateKbps, "test bitrate in kbit/s")
 	micWanted   = flag.String("mic", "", "probe this microphone endpoint ID, the value of mic_device_id (empty = the default one)")
 )
 

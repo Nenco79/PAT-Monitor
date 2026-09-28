@@ -31,12 +31,29 @@ type Preset struct {
 // Presets are ordered from the heaviest to the lightest.
 //
 // The resolutions match modes common webcams expose natively, so capture needs
-// no rescaling.
+// no rescaling. **The first is the default**, the one `config.Default` names,
+// and this is the only place its numbers are written: the pipeline's zero-value
+// defaults and the instruments' flags read them from here rather than carrying
+// a copy of their own.
 var Presets = []Preset{
 	{"high", 1280, 720, 30, 2500},
 	{"medium", 960, 540, 30, 1200},
 	{"low", 640, 360, 15, 500},
 }
+
+// KeyframeSecs is the distance between keyframes, in seconds.
+//
+// It reaches the encoder through `pipeline.Config.GOPSeconds`, which both
+// callers fill from here. They used to write the literal 2 while a settings
+// field also held 2, so it was a knob that moved nothing and no reading could
+// tell the two shapes apart. The other place that reads it, pat-capture's
+// report of how many keyframes the run should have produced, would have gone
+// on expecting the old distance and accused the capture of its own arithmetic.
+//
+// With Media Foundation a keyframe can also be asked for on demand, in response
+// to a PLI for instance, so this value is the background rhythm rather than the
+// only way to get one.
+const KeyframeSecs = 2
 
 // PresetByName looks a preset up by name.
 func PresetByName(name string) (Preset, error) {
@@ -46,13 +63,4 @@ func PresetByName(name string) (Preset, error) {
 		}
 	}
 	return Preset{}, fmt.Errorf("unknown quality preset %q", name)
-}
-
-// Settings turns the preset into encoder parameters.
-func (p Preset) Settings() Settings {
-	s := DefaultSettings()
-	s.Width, s.Height = p.Width, p.Height
-	s.FPS = p.FPS
-	s.BitrateKbps = p.BitrateKbps
-	return s
 }

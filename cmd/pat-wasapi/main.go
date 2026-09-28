@@ -156,20 +156,20 @@ func measure(ctx context.Context, mode captureMode, d time.Duration) (detect.Blo
 	return acc.Result(), stream, nil
 }
 
-// toS16Channel0 extracts the first channel and converts it to s16le, the format
-// the analyser expects.
+// toS16Channel0 extracts the first channel and converts it to 16-bit samples,
+// the form the analyser expects.
 //
 // One channel is taken rather than averaging them: averaging channels whose
 // noise is uncorrelated would lower the level by about 3 dB and falsify the
 // count of exact zeros, which is precisely the figure under examination.
-func toS16Channel0(b []byte, f audio.StreamFormat) []byte {
+func toS16Channel0(b []byte, f audio.StreamFormat) []int16 {
 	bytesPerSample := f.BitsPerSample / 8
 	frame := f.Channels * bytesPerSample
 	if frame <= 0 || bytesPerSample <= 0 {
 		return nil
 	}
 	frames := len(b) / frame
-	out := make([]byte, 0, frames*2)
+	out := make([]int16, 0, frames)
 
 	for i := range frames {
 		off := i * frame // channel 0
@@ -186,7 +186,7 @@ func toS16Channel0(b []byte, f audio.StreamFormat) []byte {
 		default:
 			return nil
 		}
-		out = append(out, byte(v), byte(v>>8))
+		out = append(out, v)
 	}
 	return out
 }

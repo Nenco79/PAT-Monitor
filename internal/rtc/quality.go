@@ -208,6 +208,48 @@ func newQualityGovernor(targetQP, start int) *qualityGovernor {
 	return &qualityGovernor{targetQP: targetQP, current: start, wasFullSize: true}
 }
 
+// rollingMean is the one arithmetic behind the four rolling windows of this
+// package — `note` and `noteQP` here, `sentWindow.add`, `scaleGovernor.noteQP`
+// — and it holds only the arithmetic. What differs between them is a decision,
+// and each decision is argued on the method that makes it, not here:
+//
+//	keep   how many samples the window holds
+//	speak  from how many it answers; below that it says zero, "I do not know"
+//	ages   whether a missing reading (v <= 0) removes the oldest sample, or
+//	       is only left out
+//	round  whether the mean is rounded half up instead of truncated
+//
+// It is a value applied to the caller's slice rather than a type that owns
+// one, so the windows stay plain `[]int` fields with their zero values. A speak
+// below one is taken as one.
+type rollingMean struct {
+	keep, speak int
+	ages, round bool
+}
+
+// add records v in w and returns the window and its mean.
+func (m rollingMean) add(w []int, v int) ([]int, int) {
+	if v > 0 {
+		w = append(w, v)
+		if len(w) > m.keep {
+			w = w[len(w)-m.keep:]
+		}
+	} else if m.ages && len(w) > 0 {
+		w = w[1:]
+	}
+	if len(w) < max(m.speak, 1) {
+		return w, 0
+	}
+	s := 0
+	for _, x := range w {
+		s += x
+	}
+	if m.round {
+		return w, (s + len(w)/2) / len(w)
+	}
+	return w, s / len(w)
+}
+
 // note records a throughput sample and returns the window's average, or **zero
 // until the window is full**.
 //
@@ -223,20 +265,9 @@ func newQualityGovernor(targetQP, start int) *qualityGovernor {
 // know" too, and averaging them would say the encoder produced little instead of
 // saying we do not know.
 func (g *qualityGovernor) note(produced int) int {
-	if produced > 0 {
-		g.throughput = append(g.throughput, produced)
-		if len(g.throughput) > qualityThroughputWindow {
-			g.throughput = g.throughput[len(g.throughput)-qualityThroughputWindow:]
-		}
-	}
-	if len(g.throughput) < qualityThroughputWindow {
-		return 0
-	}
-	s := 0
-	for _, v := range g.throughput {
-		s += v
-	}
-	return s / len(g.throughput)
+	var mean int
+	g.throughput, mean = rollingMean{keep: qualityThroughputWindow, speak: qualityThroughputWindow}.add(g.throughput, produced)
+	return mean
 }
 
 // atCap is what is asked for when there is nothing to decide about quality: the
@@ -300,34 +331,21 @@ func (g *qualityGovernor) atCap(capKbps, meanThroughput int, now time.Time) (int
 // the cut. A systematic error of half a point on a dead zone of one point is half
 // a dead zone thrown away, and always on the same side.
 func (g *qualityGovernor) noteQP(qp int) int {
-	if qp > 0 {
-		g.qp = append(g.qp, qp)
-		if len(g.qp) > qualityQPWindow {
-			g.qp = g.qp[len(g.qp)-qualityQPWindow:]
-		}
-	} else if len(g.qp) > 0 {
-		// **A missing reading ages the window**, it does not leave it intact.
-		// Discarding it and no more is enough while the window is not full; once
-		// full, a `TakeRecentQP` answering `!ok` — capture restart, an encoder
-		// emitting nothing — would leave **the previous average answering for
-		// ever**, that is deciding on a scene that is no longer there. Measured
-		// with an obedient encoder and an average stuck below the target: 1512 →
-		// 1200 → 952 → 756 → 600, down to the floor, without a single reading.
-		//
-		// An isolated gap therefore costs one tick at the cap — the window is no
-		// longer full, and not full means "I do not know" — and four in a row
-		// empty it. It is the rule written at the top of this file: **the saving
-		// is lost, never the picture.**
-		g.qp = g.qp[1:]
-	}
-	if len(g.qp) < qualityQPWindow {
-		return 0
-	}
-	s := 0
-	for _, v := range g.qp {
-		s += v
-	}
-	return (s + len(g.qp)/2) / len(g.qp)
+	// **A missing reading ages the window**, it does not leave it intact.
+	// Discarding it and no more is enough while the window is not full; once
+	// full, a `TakeRecentQP` answering `!ok` — capture restart, an encoder
+	// emitting nothing — would leave **the previous average answering for
+	// ever**, that is deciding on a scene that is no longer there. Measured
+	// with an obedient encoder and an average stuck below the target: 1512 →
+	// 1200 → 952 → 756 → 600, down to the floor, without a single reading.
+	//
+	// An isolated gap therefore costs one tick at the cap — the window is no
+	// longer full, and not full means "I do not know" — and four in a row
+	// empty it. It is the rule written at the top of this file: **the saving
+	// is lost, never the picture.**
+	var mean int
+	g.qp, mean = rollingMean{keep: qualityQPWindow, speak: qualityQPWindow, ages: true, round: true}.add(g.qp, qp)
+	return mean
 }
 
 // target says how much to ask the encoder for.

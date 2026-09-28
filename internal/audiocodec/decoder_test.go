@@ -102,7 +102,10 @@ func TestALostPacketIsConcealedNotSilenced(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer enc.Close()
-	dec, err := NewOpusDecoder(48000, 1)
+	// What the concealment is judged against is what the decoder was built
+	// for, so it is named once and handed to both.
+	const rate, channels = 48000, 1
+	dec, err := NewOpusDecoder(rate, channels)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,11 +145,11 @@ func TestALostPacketIsConcealedNotSilenced(t *testing.T) {
 	// that is 120 ms for a 20 ms packet, and those extra 100 ms per loss went
 	// into a playback queue capped at 400 ms, where what is dropped is
 	// deliberately the oldest: the start of the sentence.
-	if want := FrameSamplesAt(dec.SampleRate()) * dec.Channels(); len(concealed) != want {
+	if want := FrameSamplesAt(rate) * channels; len(concealed) != want {
 		t.Errorf("the concealment is %d samples (%d ms) where a packet is %d (%d ms): "+
 			"it queues in front of the voice instead of standing in for it",
-			len(concealed), len(concealed)*1000/dec.SampleRate(),
-			want, want*1000/dec.SampleRate())
+			len(concealed), len(concealed)*1000/rate,
+			want, want*1000/rate)
 	}
 	var sum float64
 	for _, s := range concealed {

@@ -1,26 +1,17 @@
 package ced
 
 import (
-	"encoding/binary"
 	"sync"
 	"testing"
 	"time"
 )
 
-func s16(vs ...int16) []byte {
-	b := make([]byte, len(vs)*2)
-	for i, v := range vs {
-		binary.LittleEndian.PutUint16(b[i*2:], uint16(v))
-	}
-	return b
-}
-
-func ramp(from, n int) []byte {
+func ramp(from, n int) []int16 {
 	vs := make([]int16, n)
 	for i := range vs {
 		vs[i] = int16(from + i)
 	}
-	return s16(vs...)
+	return vs
 }
 
 // **The ring is circular, and from outside it has to look like a queue.** More

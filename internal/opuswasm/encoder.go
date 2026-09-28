@@ -3,6 +3,8 @@ package opuswasm
 import (
 	"context"
 	"fmt"
+
+	"github.com/tetratelabs/wazero/api"
 )
 
 // Encoder compresses 16-bit mono or stereo PCM into Opus packets.
@@ -14,14 +16,9 @@ import (
 type Encoder struct {
 	in       *instance
 	statePtr uint32
-	encode   callable
-	setBR    callable
+	encode   api.Function
+	setBR    api.Function
 	channels int
-}
-
-// callable holds only what we need of a module function.
-type callable = interface {
-	Call(ctx context.Context, params ...uint64) ([]uint64, error)
 }
 
 // NewEncoder prepares an encoder at the given rate.
@@ -32,52 +29,20 @@ type callable = interface {
 // happening in the room. It is not a parameter because it is not the caller's
 // decision: changing it is changing the product.
 func NewEncoder(ctx context.Context, sampleRate, channels int) (*Encoder, error) {
-	if channels != 1 && channels != 2 {
-		return nil, fmt.Errorf("opuswasm: %d channels, expected 1 or 2", channels)
-	}
-	in, err := open(ctx, channels, MaxFrameSamples, maxPacketBytes)
+	in, state, err := openCodec(ctx, "encoder", channels,
+		uint64(int32(sampleRate)), uint64(int32(channels)), uint64(int32(appAudio)))
 	if err != nil {
 		return nil, err
 	}
-	e := &Encoder{in: in, channels: channels}
-
-	getSize, err := in.function("opus_encoder_get_size")
+	e := &Encoder{in: in, statePtr: state, channels: channels}
+	if e.encode, err = in.function("opus_encode"); err == nil {
+		e.setBR, err = in.function("bridge_encoder_set_bitrate")
+	}
 	if err != nil {
-		return nil, e.closeOnError(ctx, err)
-	}
-	initF, err := in.function("opus_encoder_init")
-	if err != nil {
-		return nil, e.closeOnError(ctx, err)
-	}
-	if e.encode, err = in.function("opus_encode"); err != nil {
-		return nil, e.closeOnError(ctx, err)
-	}
-	if e.setBR, err = in.function("bridge_encoder_set_bitrate"); err != nil {
-		return nil, e.closeOnError(ctx, err)
-	}
-
-	r, err := getSize.Call(ctx, uint64(channels))
-	if err != nil {
-		return nil, e.closeOnError(ctx, fmt.Errorf("opuswasm: opus_encoder_get_size: %w", err))
-	}
-	if e.statePtr, err = in.alloc(ctx, uint32(r[0])); err != nil {
-		return nil, e.closeOnError(ctx, err)
-	}
-	r, err = initF.Call(ctx, uint64(e.statePtr), uint64(int32(sampleRate)), uint64(int32(channels)), uint64(int32(appAudio)))
-	if err != nil {
-		return nil, e.closeOnError(ctx, fmt.Errorf("opuswasm: opus_encoder_init: %w", err))
-	}
-	if c := int32(r[0]); c != opusOK {
-		return nil, e.closeOnError(ctx, Status(c))
+		_ = in.close(ctx)
+		return nil, err
 	}
 	return e, nil
-}
-
-// closeOnError frees the module and returns the error that caused the retreat:
-// a constructor that fails must not leave a module alive.
-func (e *Encoder) closeOnError(ctx context.Context, err error) error {
-	_ = e.in.close(ctx)
-	return err
 }
 
 // SetBitrate fixes the bitrate in bits per second.

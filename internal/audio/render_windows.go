@@ -344,26 +344,12 @@ func openRenderDevice(enum *wca.IMMDeviceEnumerator, id string) (*wca.IMMDevice,
 		return dev, nil
 	}
 
-	var coll *wca.IMMDeviceCollection
-	if err := enum.EnumAudioEndpoints(wca.ERender, wca.DEVICE_STATE_ACTIVE, &coll); err != nil {
-		return nil, fmt.Errorf("EnumAudioEndpoints: %w", describeAudclnt(err))
-	}
-	defer coll.Release()
-
-	var n uint32
-	if err := coll.GetCount(&n); err != nil {
-		return nil, fmt.Errorf("GetCount: %w", describeAudclnt(err))
-	}
-	for i := uint32(0); i < n; i++ {
-		var dev *wca.IMMDevice
-		if err := coll.Item(i, &dev); err != nil {
-			continue
-		}
+	dev, err := eachEndpoint(enum, wca.ERender, "EnumAudioEndpoints", func(dev *wca.IMMDevice) bool {
 		var got string
-		if err := dev.GetId(&got); err == nil && got == id {
-			return dev, nil
-		}
-		dev.Release()
+		return dev.GetId(&got) == nil && got == id
+	})
+	if err != nil || dev != nil {
+		return dev, err
 	}
 	// **There is no silent fallback to the default.** Whoever wrote an id in
 	// the configuration chose a speaker: talking out of a different one,

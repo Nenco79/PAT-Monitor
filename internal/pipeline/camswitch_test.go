@@ -260,8 +260,8 @@ func TestASessionDoesNotInheritTheOtherCamerasStepRequest(t *testing.T) {
 
 	// **The question is who *writes* it, and the first version of this guard
 	// asked the wrong one**: it looked for the name `wantFormat` anywhere in
-	// runVideo, and `applyFormat` — which lives inside runVideo — reads it on
-	// every frame. So the guard passed with the line removed, that is, it
+	// runVideo, and `applyFormat` — which lived inside runVideo then — reads it
+	// on every frame. So the guard passed with the line removed, that is, it
 	// absolved exactly the defect it is named after. It now wants a `Store`.
 	var read, cleared bool
 	for _, d := range f.Decls {

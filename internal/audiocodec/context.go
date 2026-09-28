@@ -18,7 +18,7 @@ import "context"
 // with.
 //
 // bg is the context handed to those calls. wazero wants one on every
-// invocation, and this package's interfaces do not have one: an audio frame
+// invocation, and this package's methods do not take one: an audio frame
 // lasts twenty milliseconds and is not an operation anybody should be able to
 // cancel halfway. Carrying one down to here would mean changing the signature
 // of Encode and dragging it through the hub and the pipeline for a value nobody

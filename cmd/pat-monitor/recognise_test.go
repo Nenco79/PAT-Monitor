@@ -29,12 +29,11 @@ func TestNothingIsAskedWithBothSwitchesOff(t *testing.T) {
 	defer r.Close()
 
 	// A whole window of noise, so that the stream is ready in either case.
-	win := make([]byte, 2*16000)
+	win := make([]int16, 16000)
 	x := uint32(7)
-	for i := 0; i+1 < len(win); i += 2 {
+	for i := range win {
 		x = x*1664525 + 1013904223
-		v := int16(x >> 20)
-		win[i], win[i+1] = byte(uint16(v)), byte(uint16(v)>>8)
+		win[i] = int16(x >> 20)
 	}
 	for range 12 {
 		r.Feed(win)

@@ -174,20 +174,12 @@ func (t *transform) processInput(s *Sample) error {
 // looking at whether the enumeration answers sensibly.
 func (t *transform) availableInputTypes() []string {
 	var out []string
-	for i := range uint32(32) {
-		var mt *MediaType
-		r, _, _ := syscall.SyscallN(t.vtbl().GetInputAvailableType,
-			uintptr(unsafe.Pointer(t)), 0, uintptr(i), uintptr(unsafe.Pointer(&mt)))
-		if hresult(r).failed() {
-			if i == 0 {
-				out = append(out, fmt.Sprintf("enumeration failed: HRESULT 0x%08X", uint32(r)))
-			}
-			break
-		}
-		if g, err := mt.Subtype(); err == nil {
-			out = append(out, SubtypeName(g))
-		}
-		mt.Release()
+	_, refused := t.availableType(t.vtbl().GetInputAvailableType, func(g ole.GUID) bool {
+		out = append(out, SubtypeName(g))
+		return false
+	})
+	if refused != 0 {
+		out = append(out, fmt.Sprintf("enumeration failed: HRESULT 0x%08X", uint32(refused)))
 	}
 	if len(out) == 0 {
 		out = append(out, "nothing")
@@ -198,18 +190,8 @@ func (t *transform) availableInputTypes() []string {
 // inputTypeFor returns the input type declared by the transform that matches
 // the requested subtype. The caller completes it and releases it.
 func (t *transform) inputTypeFor(subtype *ole.GUID) (*MediaType, error) {
-	for i := range uint32(32) {
-		var mt *MediaType
-		r, _, _ := syscall.SyscallN(t.vtbl().GetInputAvailableType,
-			uintptr(unsafe.Pointer(t)), 0, uintptr(i), uintptr(unsafe.Pointer(&mt)))
-		if hresult(r).failed() {
-			break
-		}
-		g, err := mt.Subtype()
-		if err == nil && ole.IsEqualGUID(&g, subtype) {
-			return mt, nil
-		}
-		mt.Release()
+	if mt, _ := t.availableType(t.vtbl().GetInputAvailableType, subtypeIs(subtype)); mt != nil {
+		return mt, nil
 	}
 	return nil, fmt.Errorf("the encoder does not accept %s as input", SubtypeName(*subtype))
 }
@@ -221,20 +203,40 @@ func (t *transform) inputTypeFor(subtype *ole.GUID) (*MediaType, error) {
 // encoder enumerates carries attributes we do not know we are supposed to give
 // it. Building one by hand with the same fields is not equivalent.
 func (t *transform) outputTypeFor(subtype *ole.GUID) (*MediaType, error) {
+	if mt, _ := t.availableType(t.vtbl().GetOutputAvailableType, subtypeIs(subtype)); mt != nil {
+		return mt, nil
+	}
+	return nil, fmt.Errorf("the encoder declares no %s output", SubtypeName(*subtype))
+}
+
+// availableType walks the types the transform declares on one side — method is
+// GetInputAvailableType or GetOutputAvailableType — and returns the first one
+// whose subtype keep accepts, still referenced; every other is released after
+// keep has seen it, and a type whose subtype cannot be read is skipped.
+// refused is the HRESULT when the very first index fails: the enumeration
+// itself answered nothing, while a failure further on is the end of the list.
+func (t *transform) availableType(method uintptr, keep func(subtype ole.GUID) bool) (found *MediaType, refused uintptr) {
 	for i := range uint32(32) {
 		var mt *MediaType
-		r, _, _ := syscall.SyscallN(t.vtbl().GetOutputAvailableType,
+		r, _, _ := syscall.SyscallN(method,
 			uintptr(unsafe.Pointer(t)), 0, uintptr(i), uintptr(unsafe.Pointer(&mt)))
 		if hresult(r).failed() {
-			break
+			if i == 0 {
+				return nil, r
+			}
+			return nil, 0
 		}
-		g, err := mt.Subtype()
-		if err == nil && ole.IsEqualGUID(&g, subtype) {
-			return mt, nil
+		if g, err := mt.Subtype(); err == nil && keep(g) {
+			return mt, 0
 		}
 		mt.Release()
 	}
-	return nil, fmt.Errorf("the encoder declares no %s output", SubtypeName(*subtype))
+	return nil, 0
+}
+
+// subtypeIs is the keep for availableType that looks for one subtype.
+func subtypeIs(want *ole.GUID) func(ole.GUID) bool {
+	return func(g ole.GUID) bool { return ole.IsEqualGUID(&g, want) }
 }
 
 func (t *transform) inputStatus() (uint32, error) {

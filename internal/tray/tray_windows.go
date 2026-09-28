@@ -1127,27 +1127,15 @@ func Open(target string) error {
 	if err != nil {
 		return fmt.Errorf("%q cannot be given to the shell: %w", target, err)
 	}
-	const swShowNormal = 1
-	code, _, _ := procShellExecuteW.Call(0,
-		uintptr(unsafe.Pointer(verb)), uintptr(unsafe.Pointer(p)), 0, 0, swShowNormal)
-	return shellResult(code)
-}
-
-// shellResult reads what ShellExecute returned.
-//
-// **The documentation has it compared to 32, and says not to read it as
-// anything else**: the return is an HINSTANCE only for backward compatibility
-// with 16-bit Windows, and what it really carries is "greater than 32" for a
-// success and one of the SE_ERR_* codes — access denied, no association, and the
-// rest — for a failure. It is a reading of its own, and it is written down
-// because a tidy-up that replaced it with `if err != nil` would report a browser
-// that opened as a failure: `Proc.Call` returns what `syscall.SyscallN` gave it,
-// an `Errno` that is non-nil even when it is zero.
-func shellResult(code uintptr) error {
-	if code <= 32 {
-		return fmt.Errorf("the shell returned %d, which is its failure range", code)
-	}
-	return nil
+	// **The return is compared to 32, and x/sys does the comparing**: it is an
+	// HINSTANCE only for compatibility with 16-bit Windows, "greater than 32"
+	// is a success and the rest are the SE_ERR_* codes. The error x/sys hands
+	// back is the thread's last error, or EINVAL when there is none, and not
+	// that code: the log line loses the number and keeps the failure. What not
+	// to do is call the proc by hand and test its `Errno`:
+	// non-nil even when it is zero, it reports a browser that opened as a
+	// failure.
+	return windows.ShellExecute(0, verb, p, nil, nil, windows.SW_SHOWNORMAL)
 }
 
 // open opens an address or a folder with the default program, and writes the

@@ -146,21 +146,13 @@ const scaleQPWindow = 4
 
 // noteQP records a reading and returns the window's average, or zero if there is
 // nothing.
+//
+// A missing reading is only left out here: the ageing is done by `target`,
+// because on that turn the veto must get zero and not the mean of what remains.
 func (g *scaleGovernor) noteQP(qp int) int {
-	if qp > 0 {
-		g.recentQP = append(g.recentQP, qp)
-		if len(g.recentQP) > scaleQPWindow {
-			g.recentQP = g.recentQP[len(g.recentQP)-scaleQPWindow:]
-		}
-	}
-	if len(g.recentQP) == 0 {
-		return 0
-	}
-	s := 0
-	for _, v := range g.recentQP {
-		s += v
-	}
-	return s / len(g.recentQP)
+	var mean int
+	g.recentQP, mean = rollingMean{keep: scaleQPWindow, speak: 1}.add(g.recentQP, qp)
+	return mean
 }
 
 // scaleConfirmSamples is for how many consecutive samples the bandwidth has to

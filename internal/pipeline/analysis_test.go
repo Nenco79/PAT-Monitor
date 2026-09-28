@@ -108,18 +108,3 @@ func TestTheTwoRoadsAgreeWhereBothExist(t *testing.T) {
 		t.Errorf("the resampler gives %.2f dB against the average: the two roads diverge", d)
 	}
 }
-
-func TestTheClampKeepsSamplesInRange(t *testing.T) {
-	for _, c := range []struct {
-		in   float64
-		want int16
-	}{
-		{0, 0}, {100.4, 100}, {-100.4, -100},
-		{40000, 32767}, {-40000, -32768},
-		{32767.9, 32767}, {-32768.9, -32768},
-	} {
-		if got := toS16(c.in); got != c.want {
-			t.Errorf("toS16(%v) = %d, want %d", c.in, got, c.want)
-		}
-	}
-}

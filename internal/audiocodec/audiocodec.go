@@ -63,19 +63,7 @@ func FrameSamplesAt(rate int) int {
 //
 // It is not safe for concurrent use: the encoder carries the stream's state,
 // and every consumer needs one of their own.
-type Encoder interface {
-	// Encode returns the compressed packet. pcm must hold exactly
-	// FrameSamples() samples. A frame the encoder chose not to transmit comes
-	// back as a one-byte packet, the TOC alone, as libopus writes it: it is not
-	// an error, and it is sent like any other.
-	Encode(pcm []int16) ([]byte, error)
-	// FrameSamples is the frame length this encoder insists on, which depends
-	// on the rate it was created with.
-	FrameSamples() int
-	Close() error
-}
-
-type opusEncoder struct {
+type Encoder struct {
 	enc    *opuswasm.Encoder
 	buf    []byte
 	frame  int
@@ -92,7 +80,7 @@ type opusEncoder struct {
 // The application is "audio" and not "voip" because ambient sound matters here
 // too, and speech-oriented profiles tend to penalise what is not voice — that
 // is, exactly the sounds that say what is happening in the room.
-func NewOpus(sampleRate, bitrateKbps int) (Encoder, error) {
+func NewOpus(sampleRate, bitrateKbps int) (*Encoder, error) {
 	if sampleRate == 0 {
 		sampleRate = SampleRate
 	}
@@ -111,7 +99,7 @@ func NewOpus(sampleRate, bitrateKbps int) (Encoder, error) {
 	if err != nil {
 		return nil, fmt.Errorf("audiocodec: creating the Opus encoder at %d Hz: %w", sampleRate, err)
 	}
-	return &opusEncoder{
+	return &Encoder{
 		enc:    enc,
 		buf:    make([]byte, maxPacketBytes),
 		frame:  FrameSamplesAt(sampleRate),
@@ -119,9 +107,15 @@ func NewOpus(sampleRate, bitrateKbps int) (Encoder, error) {
 	}, nil
 }
 
-func (e *opusEncoder) FrameSamples() int { return e.frame }
+// FrameSamples is the frame length this encoder insists on, which depends on
+// the rate it was created with.
+func (e *Encoder) FrameSamples() int { return e.frame }
 
-func (e *opusEncoder) Encode(pcm []int16) ([]byte, error) {
+// Encode returns the compressed packet. pcm must hold exactly FrameSamples()
+// samples. A frame the encoder chose not to transmit comes back as a one-byte
+// packet, the TOC alone, as libopus writes it: it is not an error, and it is
+// sent like any other.
+func (e *Encoder) Encode(pcm []int16) ([]byte, error) {
 	if len(pcm) != e.frame {
 		return nil, fmt.Errorf("audiocodec: expected %d samples at %d Hz, got %d",
 			e.frame, e.sample, len(pcm))
@@ -144,4 +138,4 @@ func (e *opusEncoder) Encode(pcm []int16) ([]byte, error) {
 // codec, not closing it means keeping one alive for every restart of the
 // capture — and the capture restarts every time the microphone goes away and
 // comes back.
-func (e *opusEncoder) Close() error { return e.enc.Close(bg) }
+func (e *Encoder) Close() error { return e.enc.Close(bg) }

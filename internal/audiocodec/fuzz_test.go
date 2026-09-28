@@ -46,7 +46,7 @@ func FuzzDecodeWhatAViewerSends(f *testing.F) {
 		f.Fatal(err)
 	}
 	f.Cleanup(func() { dec.Close() })
-	limit := opuswasm.MaxFrameSamples * dec.Channels()
+	limit := opuswasm.MaxFrameSamples * Channels
 
 	f.Fuzz(func(t *testing.T, packet []byte) {
 		out, err := dec.Decode(packet)
@@ -54,8 +54,8 @@ func FuzzDecodeWhatAViewerSends(f *testing.F) {
 			if len(out) > limit {
 				t.Fatalf("%d samples from one packet, over the %d of the longest frame", len(out), limit)
 			}
-			if len(out)%dec.Channels() != 0 {
-				t.Fatalf("%d samples is not a whole number of %d-channel frames", len(out), dec.Channels())
+			if len(out)%Channels != 0 {
+				t.Fatalf("%d samples is not a whole number of %d-channel frames", len(out), Channels)
 			}
 			return
 		}

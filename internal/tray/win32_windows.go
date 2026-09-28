@@ -61,7 +61,6 @@ var (
 	procSetClipboardData = user32.NewProc("SetClipboardData")
 
 	procShellNotifyIconW = shell32.NewProc("Shell_NotifyIconW")
-	procShellExecuteW    = shell32.NewProc("ShellExecuteW")
 
 	procCreateDIBSection = gdi32.NewProc("CreateDIBSection")
 	procCreateBitmap     = gdi32.NewProc("CreateBitmap")

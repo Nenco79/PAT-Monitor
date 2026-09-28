@@ -222,29 +222,14 @@ func ListCaptureDevices() ([]CaptureDevice, error) {
 			def.Release()
 		}
 
-		var coll *wca.IMMDeviceCollection
-		if err := enum.EnumAudioEndpoints(wca.ECapture, wca.DEVICE_STATE_ACTIVE, &coll); err != nil {
-			return fmt.Errorf("EnumAudioEndpoints: %w", describeAudclnt(err))
-		}
-		defer coll.Release()
-
-		var count uint32
-		if err := coll.GetCount(&count); err != nil {
-			return fmt.Errorf("GetCount: %w", describeAudclnt(err))
-		}
-		for i := uint32(0); i < count; i++ {
-			var dev *wca.IMMDevice
-			if err := coll.Item(i, &dev); err != nil {
-				continue
-			}
+		_, err = eachEndpoint(enum, wca.ECapture, "EnumAudioEndpoints", func(dev *wca.IMMDevice) bool {
 			var id string
 			_ = dev.GetId(&id)
 			name := deviceFriendlyName(dev)
-			dev.Release()
-
 			out = append(out, CaptureDevice{ID: id, Name: name, IsDefault: id != "" && id == defaultID})
-		}
-		return nil
+			return false
+		})
+		return err
 	})
 	return out, err
 }
@@ -318,11 +303,12 @@ const (
 // name lead straight to the documentation — and this error is read when the
 // monitor has gone silent, which is not the moment to start converting bases.
 func describeAudclnt(err error) error {
-	var oe *ole.OleError
-	if !errors.As(err, &oe) {
+	// wincom.Code answers zero for an error that is not an OleError, and no
+	// OleError carries zero: go-ole makes one only from a failed HRESULT.
+	code := uint32(wincom.Code(err))
+	if code == 0 {
 		return err
 	}
-	code := uint32(oe.Code())
 	// **E_ACCESSDENIED leaves here as a value, not as a sentence.** It is the
 	// one code in this function that whoever is upstream has to be able to
 	// *decide* on rather than merely print: a microphone the user has taken
@@ -558,8 +544,7 @@ func sensitivityGain(currentDB, maxDB float64, alreadyApplied bool) float64 {
 }
 
 func isNotAligned(err error) bool {
-	var oe *ole.OleError
-	return errors.As(err, &oe) && uint32(oe.Code()) == 0x88890019 // AUDCLNT_E_BUFFER_SIZE_NOT_ALIGNED
+	return wincom.Code(err) == 0x88890019 // AUDCLNT_E_BUFFER_SIZE_NOT_ALIGNED
 }
 
 // deviceFormat reads the device's native format from
@@ -974,9 +959,32 @@ func openDevice(enum *wca.IMMDeviceEnumerator, id string) (*wca.IMMDevice, error
 		return firstActiveCapture(enum)
 	}
 
+	dev, err := eachEndpoint(enum, wca.ECapture, "EnumAudioEndpoints", func(dev *wca.IMMDevice) bool {
+		var got string
+		_ = dev.GetId(&got)
+		return got == id
+	})
+	if err != nil || dev != nil {
+		return dev, err
+	}
+	return openDevice(enum, "")
+}
+
+// eachEndpoint walks the active endpoints of one flow, in Windows's order, and
+// hands each to keep. The first one keep answers true for is returned still
+// referenced; every other is released after keep has seen it, and an endpoint
+// whose Item fails is skipped. With none kept it returns nil and no error.
+//
+// enumFails is what the error says when the enumeration itself is refused,
+// because that sentence is the caller's: firstActiveCapture reaches here only
+// after Windows has named no default, and its error says so.
+func eachEndpoint(
+	enum *wca.IMMDeviceEnumerator, flow uint32, enumFails string,
+	keep func(dev *wca.IMMDevice) bool,
+) (*wca.IMMDevice, error) {
 	var coll *wca.IMMDeviceCollection
-	if err := enum.EnumAudioEndpoints(wca.ECapture, wca.DEVICE_STATE_ACTIVE, &coll); err != nil {
-		return nil, fmt.Errorf("EnumAudioEndpoints: %w", describeAudclnt(err))
+	if err := enum.EnumAudioEndpoints(flow, wca.DEVICE_STATE_ACTIVE, &coll); err != nil {
+		return nil, fmt.Errorf("%s: %w", enumFails, describeAudclnt(err))
 	}
 	defer coll.Release()
 
@@ -989,14 +997,12 @@ func openDevice(enum *wca.IMMDeviceEnumerator, id string) (*wca.IMMDevice, error
 		if err := coll.Item(i, &dev); err != nil {
 			continue
 		}
-		var got string
-		_ = dev.GetId(&got)
-		if got == id {
+		if keep(dev) {
 			return dev, nil
 		}
 		dev.Release()
 	}
-	return openDevice(enum, "")
+	return nil, nil
 }
 
 // firstActiveCapture returns the first active capture endpoint.
@@ -1006,23 +1012,11 @@ func openDevice(enum *wca.IMMDeviceEnumerator, id string) (*wca.IMMDevice, error
 // listening to nothing. Whoever wants to decide can fix mic_device_id in the
 // configuration, and the name of the chosen endpoint ends up in the log anyway.
 func firstActiveCapture(enum *wca.IMMDeviceEnumerator) (*wca.IMMDevice, error) {
-	var coll *wca.IMMDeviceCollection
-	if err := enum.EnumAudioEndpoints(wca.ECapture, wca.DEVICE_STATE_ACTIVE, &coll); err != nil {
-		return nil, fmt.Errorf("no default microphone, and EnumAudioEndpoints "+
-			"fails: %w", describeAudclnt(err))
-	}
-	defer coll.Release()
-
-	var count uint32
-	if err := coll.GetCount(&count); err != nil {
-		return nil, fmt.Errorf("GetCount: %w", describeAudclnt(err))
-	}
-	for i := uint32(0); i < count; i++ {
-		var dev *wca.IMMDevice
-		if err := coll.Item(i, &dev); err != nil {
-			continue
-		}
-		return dev, nil
+	dev, err := eachEndpoint(enum, wca.ECapture,
+		"no default microphone, and EnumAudioEndpoints fails",
+		func(*wca.IMMDevice) bool { return true })
+	if err != nil || dev != nil {
+		return dev, err
 	}
 	// Before declaring that there is no microphone, look at **where we are**.
 	//

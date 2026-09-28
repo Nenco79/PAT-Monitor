@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/binary"
 	"flag"
 	"fmt"
 	"math"
@@ -154,7 +153,7 @@ func normalise(w []float32, targetDB float64) {
 func blocksOf(w []float32) []detect.Block {
 	n := analysisRate * int(blockDuration/time.Millisecond) / 1000
 	var out []detect.Block
-	buf := make([]byte, n*2)
+	buf := make([]int16, n)
 	for i := 0; i+n <= len(w); i += n {
 		for k, v := range w[i : i+n] {
 			s := v * 32768
@@ -164,9 +163,9 @@ func blocksOf(w []float32) []detect.Block {
 			if s < -32768 {
 				s = -32768
 			}
-			binary.LittleEndian.PutUint16(buf[k*2:], uint16(int16(s)))
+			buf[k] = int16(s)
 		}
-		out = append(out, detect.AnalyzeS16LE(buf))
+		out = append(out, detect.AnalyzeS16(buf))
 	}
 	return out
 }
@@ -181,7 +180,7 @@ func blocksOf(w []float32) []detect.Block {
 func settled(floorDB float64) *detect.Sound {
 	s := detect.NewSound(analysisRate)
 	n := analysisRate * int(blockDuration/time.Millisecond) / 1000
-	buf := make([]byte, n*2)
+	buf := make([]int16, n)
 	amp := math.Pow(10, floorDB/20) * 32768 * math.Sqrt(3) // uniform noise
 	seed := uint32(1)
 	now := time.Unix(0, 0)
@@ -190,10 +189,10 @@ func settled(floorDB float64) *detect.Sound {
 		for k := range n {
 			seed = seed*1664525 + 1013904223
 			v := (float64(seed>>8)/float64(1<<24) - 0.5) * 2 * amp
-			binary.LittleEndian.PutUint16(buf[k*2:], uint16(int16(v)))
+			buf[k] = int16(v)
 		}
 		now = now.Add(blockDuration)
-		s.Feed(detect.AnalyzeS16LE(buf), now)
+		s.Feed(detect.AnalyzeS16(buf), now)
 	}
 	return s
 }

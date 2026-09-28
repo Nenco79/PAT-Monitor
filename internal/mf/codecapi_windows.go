@@ -200,11 +200,30 @@ func (c *codecAPI) vtbl() *codecAPIVtbl {
 	return (*codecAPIVtbl)(unsafe.Pointer(c.RawVTable))
 }
 
-func (c *codecAPI) setUINT32(key *ole.GUID, value uint32) error {
-	v := ole.NewVariant(ole.VT_UI4, int64(value))
+// setValue is ICodecAPI::SetValue. **The VARIANT's type is the caller's to
+// choose**, from the property's declaration and not from what it means: a
+// yes-or-no property declared VT_UI4 and sent as VT_BOOL is answered S_OK and
+// ignored. ui4 and variantBool build the two types this package sends.
+func (c *codecAPI) setValue(key *ole.GUID, v ole.VARIANT) error {
 	r, _, _ := syscall.SyscallN(c.vtbl().SetValue,
 		uintptr(unsafe.Pointer(c)), uintptr(unsafe.Pointer(key)), uintptr(unsafe.Pointer(&v)))
 	return check("SetValue", r)
+}
+
+// ui4 is a VT_UI4 VARIANT.
+func ui4(value uint32) ole.VARIANT {
+	return ole.NewVariant(ole.VT_UI4, int64(value))
+}
+
+// variantBool is a VT_BOOL VARIANT.
+func variantBool(value bool) ole.VARIANT {
+	// VARIANT_TRUE is -1, not 1: it is the Visual Basic legacy, and a 1 here is
+	// read as "true" by some encoders and ignored by others.
+	var raw int64
+	if value {
+		raw = -1
+	}
+	return ole.NewVariant(ole.VT_BOOL, raw)
 }
 
 // isSupported and isModifiable question the encoder about a property instead of
@@ -225,19 +244,6 @@ func (c *codecAPI) isSupported(key *ole.GUID) error {
 
 func (c *codecAPI) isModifiable(key *ole.GUID) error {
 	return c.query(c.vtbl().IsModifiable, key)
-}
-
-func (c *codecAPI) setBool(key *ole.GUID, value bool) error {
-	// VARIANT_TRUE is -1, not 1: it is the Visual Basic legacy, and a 1 here is
-	// read as "true" by some encoders and ignored by others.
-	var raw int64
-	if value {
-		raw = -1
-	}
-	v := ole.NewVariant(ole.VT_BOOL, raw)
-	r, _, _ := syscall.SyscallN(c.vtbl().SetValue,
-		uintptr(unsafe.Pointer(c)), uintptr(unsafe.Pointer(key)), uintptr(unsafe.Pointer(&v)))
-	return check("SetValue", r)
 }
 
 // applyCodecSettings configures the bitrate control.
@@ -273,31 +279,31 @@ func (e *VideoEncoder) applyCodecSettings(cfg VideoEncoderConfig) error {
 		// The quality is fixed and the bitrate follows the scene — but with the
 		// cap, otherwise a sudden movement would produce a spike the network
 		// cannot carry.
-		note("rate control mode", e.codec.setUINT32(codecRateControlMode, rateControlQuality))
+		note("rate control mode", e.codec.setValue(codecRateControlMode, ui4(rateControlQuality)))
 		q := cfg.Quality
 		if q <= 0 || q > 100 {
 			q = DefaultQuality
 		}
-		note("quality", e.codec.setUINT32(codecQuality, uint32(q)))
-		note("max bitrate", e.codec.setUINT32(codecMaxBitRate, bps))
+		note("quality", e.codec.setValue(codecQuality, ui4(uint32(q))))
+		note("max bitrate", e.codec.setValue(codecMaxBitRate, ui4(bps)))
 	case RateCapped:
 		// The three pieces go together and none of them does the job alone: the
 		// mode because it is the only one where the cap holds, the cap because
 		// it is the network's limit, and the quantiser floor because it is the
 		// quality beyond which spending makes no sense.
-		note("rate control mode", e.codec.setUINT32(codecRateControlMode, rateControlPeakConstrainedVBR))
-		note("mean bitrate", e.codec.setUINT32(codecMeanBitRate, bps))
-		note("max bitrate", e.codec.setUINT32(codecMaxBitRate, bps))
+		note("rate control mode", e.codec.setValue(codecRateControlMode, ui4(rateControlPeakConstrainedVBR)))
+		note("mean bitrate", e.codec.setValue(codecMeanBitRate, ui4(bps)))
+		note("max bitrate", e.codec.setValue(codecMaxBitRate, ui4(bps)))
 		q := cfg.MinQP
 		if q <= 0 || q > 51 {
 			q = DefaultMinQP
 		}
-		note("min quantiser", e.codec.setUINT32(codecMinQP, uint32(q)))
+		note("min quantiser", e.codec.setValue(codecMinQP, ui4(uint32(q))))
 	default:
 		// Constant bitrate: on a link with a given bandwidth it is what fills
 		// the pipe without bursting it.
-		note("rate control mode", e.codec.setUINT32(codecRateControlMode, rateControlCBR))
-		note("mean bitrate", e.codec.setUINT32(codecMeanBitRate, bps))
+		note("rate control mode", e.codec.setValue(codecRateControlMode, ui4(rateControlCBR)))
+		note("mean bitrate", e.codec.setValue(codecMeanBitRate, ui4(bps)))
 	}
 
 	// The leaky-bucket reservoir is worth one second of stream. Bigger absorbs
@@ -308,15 +314,15 @@ func (e *VideoEncoder) applyCodecSettings(cfg VideoEncoderConfig) error {
 	// certain point and overshoot the bitrate to hold the quality — measured on
 	// AMD, 4295 kbit/s with 2500 requested and the quantiser never above 29.
 	if cfg.MaxQP > 0 && cfg.MaxQP <= 51 {
-		note("max quantiser", e.codec.setUINT32(codecMaxQP, uint32(cfg.MaxQP)))
+		note("max quantiser", e.codec.setValue(codecMaxQP, ui4(uint32(cfg.MaxQP))))
 	}
 
-	note("buffer size", e.codec.setUINT32(codecBufferSize, bps))
+	note("buffer size", e.codec.setValue(codecBufferSize, ui4(bps)))
 
 	// Without low latency the encoder may accumulate several frames to work on
 	// them in parallel: excellent for a file, terrible for a monitor. One frame
 	// in, one frame out.
-	note("low latency", e.codec.setBool(codecLowLatencyMode, true))
+	note("low latency", e.codec.setValue(codecLowLatencyMode, variantBool(true)))
 
 	// **The stream has to stay readable, and a default is not a guarantee.**
 	// We ask for Baseline, which forbids both of these, but a profile is a
@@ -340,11 +346,11 @@ func (e *VideoEncoder) applyCodecSettings(cfg VideoEncoderConfig) error {
 	// encoder that uses it, ParsePPS refuses the PPS and the quantiser reading
 	// dies for the whole session: one line at capture start is cheap against a
 	// silence that lasts all night.
-	note("entropy coding", e.codec.setBool(codecCABAC, false))
-	note("B frames", e.codec.setUINT32(codecBPictureCount, 0))
+	note("entropy coding", e.codec.setValue(codecCABAC, variantBool(false)))
+	note("B frames", e.codec.setValue(codecBPictureCount, ui4(0)))
 
 	if cfg.GOPFrames > 0 {
-		note("keyframe distance", e.codec.setUINT32(codecGOPSize, uint32(cfg.GOPFrames)))
+		note("keyframe distance", e.codec.setValue(codecGOPSize, ui4(uint32(cfg.GOPFrames))))
 	}
 
 	// The keyframe on request is not set here — it is asked for when it is
@@ -425,7 +431,7 @@ func (e *VideoEncoder) SetBitrate(kbps int) error {
 	// bits a frame may spend, and leaving it sized for the old value would be
 	// incoherent. On its own, though, it **is not enough** — tried: with Quick
 	// Sync the throughput does not shift by a single kbit.
-	if err := e.codec.setUINT32(codecBufferSize, bps); err != nil {
+	if err := e.codec.setValue(codecBufferSize, ui4(bps)); err != nil {
 		return err
 	}
 
@@ -435,18 +441,18 @@ func (e *VideoEncoder) SetBitrate(kbps int) error {
 	// carry. It is the kind of slip that gives no error and shows up only as
 	// lost packets.
 	if e.rateControl == RateQuality {
-		return e.kept(kbps, e.codec.setUINT32(codecMaxBitRate, bps))
+		return e.kept(kbps, e.codec.setValue(codecMaxBitRate, ui4(bps)))
 	}
 	// In capped CRF **both** move: the cap because it is the network's limit,
 	// the mean because in PeakConstrainedVBR it is the target the encoder works
 	// around. Moving only one would leave the two telling different stories —
 	// and which of them the encoder listens to is not something to guess at.
 	if e.rateControl == RateCapped {
-		if err := e.codec.setUINT32(codecMaxBitRate, bps); err != nil {
+		if err := e.codec.setValue(codecMaxBitRate, ui4(bps)); err != nil {
 			return err
 		}
 	}
-	return e.kept(kbps, e.codec.setUINT32(codecMeanBitRate, bps))
+	return e.kept(kbps, e.codec.setValue(codecMeanBitRate, ui4(bps)))
 }
 
 // kept records kbps as the bitrate in force when the command it followed
@@ -529,8 +535,8 @@ func (e *VideoEncoder) reconfigure(cfg VideoEncoderConfig) error {
 	// means relying on which of the two the encoder looks at.
 	if e.codec != nil {
 		bps := uint32(cfg.BitrateKbps * 1000)
-		_ = e.codec.setUINT32(codecBufferSize, bps)
-		_ = e.codec.setUINT32(codecMeanBitRate, bps)
+		_ = e.codec.setValue(codecBufferSize, ui4(bps))
+		_ = e.codec.setValue(codecMeanBitRate, ui4(bps))
 	}
 
 	// **The previous session's events have to be thrown away before starting
@@ -572,11 +578,11 @@ func (e *VideoEncoder) ForceKeyFrame() error {
 	if e.codec == nil {
 		return fmt.Errorf("this encoder exposes no ICodecAPI")
 	}
-	err := e.codec.setUINT32(codecForceKeyFrame, 1)
+	err := e.codec.setValue(codecForceKeyFrame, ui4(1))
 	if err == nil {
 		return nil
 	}
-	if err2 := e.codec.setBool(codecForceKeyFrame, true); err2 == nil {
+	if err2 := e.codec.setValue(codecForceKeyFrame, variantBool(true)); err2 == nil {
 		return nil
 	}
 	return err

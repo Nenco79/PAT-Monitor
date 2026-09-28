@@ -45,57 +45,130 @@ type Block struct {
 	CrossRate float64
 }
 
-// AnalyzeS16LE analyses a block of 16-bit little-endian interleaved mono PCM.
-// Trailing odd bytes are ignored.
-func AnalyzeS16LE(b []byte) Block {
-	n := len(b) / 2
-	if n == 0 {
+// AnalyzeS16 analyses a block of 16-bit mono PCM.
+func AnalyzeS16(pcm []int16) Block { return sumsOf(pcm).block() }
+
+// sums are the raw totals of a stretch of samples, before any division: what
+// one block and a whole accumulation have in common, so that both are built by
+// the same walk and turned into a Block by the same arithmetic.
+//
+// **They are integers, and that makes them exact.** A square is at most 2^30,
+// so sumSq overflows int64 only after 2^33 samples, about fifty hours at 48
+// kHz; the float64 totals they replace were exact only up to about 2^23
+// samples at full scale.
+type sums struct {
+	n, zeros int
+	// crossings counts the sign changes between non-zero samples.
+	//
+	// **A field left at zero is not a missing value, it is a measurement.**
+	// `Result` used to build a Block with four of its five numbers measured and
+	// `CrossRate` at its zero value — which does not read as "not computed", it
+	// reads as **0 Hz**. Handed to `Sound.Feed` that is below the band, so the
+	// gate would refuse everything, silently and for ever: nothing does that
+	// today, which made it a trap rather than a defect. It is the family this
+	// project names twice over — *zero dBFS is full scale*, *a meter that cannot
+	// measure does not draw silence* — and the cheapest answer is not to label
+	// the zero but to remove it: every Block is built from a sums, and a sums
+	// always has its crossings.
+	crossings  int
+	sum, sumSq int64
+	peak       int16
+	// first and last are the first and the last non-zero sample, zero if there
+	// is none. They are what join needs to count the crossing that falls on a
+	// boundary, and nothing else reads them.
+	first, last int16
+}
+
+// sumsOf walks the samples, and it is the only place they are walked.
+func sumsOf(pcm []int16) sums {
+	s := sums{n: len(pcm)}
+	for _, v := range pcm {
+		if v == 0 {
+			s.zeros++
+		} else {
+			// A sign change is only counted between non-zero samples: an exact
+			// zero is not a crossing, and on a muted path — which delivers
+			// almost nothing but zeros — it would produce one every two
+			// samples, that is, the signature of a very high frequency signal
+			// in place of silence.
+			if s.last != 0 && (v > 0) != (s.last > 0) {
+				s.crossings++
+			}
+			if s.first == 0 {
+				s.first = v
+			}
+			s.last = v
+		}
+		if a := abs16(v); a > s.peak {
+			s.peak = a
+		}
+		s.sum += int64(v)
+		s.sumSq += int64(v) * int64(v)
+	}
+	return s
+}
+
+// join appends b, which follows a in the stream.
+//
+// The one crossing neither side can see is the one on the boundary: each block
+// is walked afresh and never counts its first non-zero sample, while the
+// accumulation is one stream, not a row of independent windows — so it is
+// counted here, once, and not lost. **It is the first non-zero sample, not the
+// first sample**: a block opening on an exact zero used to skip the join
+// altogether, and gated or quiet signals are the ones full of zeros.
+func (a *sums) join(b sums) {
+	if a.last != 0 && b.first != 0 && (a.last > 0) != (b.first > 0) {
+		a.crossings++
+	}
+	if a.first == 0 {
+		a.first = b.first
+	}
+	if b.last != 0 {
+		a.last = b.last
+	}
+	a.n += b.n
+	a.zeros += b.zeros
+	a.crossings += b.crossings
+	a.sum += b.sum
+	a.sumSq += b.sumSq
+	a.peak = max(a.peak, b.peak)
+}
+
+// block turns the totals into the Block's numbers.
+func (s sums) block() Block {
+	if s.n == 0 {
+		// **Samples is the field that says "nothing was measured"**, and it is
+		// read: `Sound.Feed` opens with `if b.Samples == 0 { return s.state(now) }`
+		// and returns before it ever looks at the crossing rate, and pat-capture
+		// gates on `Result().Samples > 0`.
+		//
+		// So the zero left in CrossRate here is not the trap it looks like. The
+		// levels do need care — they are set to the silence floor because zero
+		// dBFS is full scale, which would read as "blaring" — while zero
+		// crossings is simply what silence has, and the one consumer that could
+		// misread it has already returned. The review recorded the opposite and
+		// the correction is worth keeping: the danger was in the level, never in
+		// this field.
 		return Block{RMSdBFS: SilenceFloorDBFS, PeakdBFS: SilenceFloorDBFS}
 	}
-
-	var sum, sumSq float64
-	var zeros, crossings int
-	var peak int16
-	prev := int16(0)
-	for i := range n {
-		v := int16(uint16(b[2*i]) | uint16(b[2*i+1])<<8)
-		if v == 0 {
-			zeros++
-		}
-		// A sign change is only counted between non-zero samples: an exact zero
-		// is not a crossing, and on a muted path — which delivers almost
-		// nothing but zeros — it would produce one every two samples, that is,
-		// the signature of a very high frequency signal in place of silence.
-		if i > 0 && v != 0 && prev != 0 && (v > 0) != (prev > 0) {
-			crossings++
-		}
-		if v != 0 {
-			prev = v
-		}
-		if a := abs16(v); a > peak {
-			peak = a
-		}
-		f := float64(v)
-		sum += f
-		sumSq += f * f
-	}
-
-	mean := sum / float64(n)
+	n := float64(s.n)
+	sumSq := float64(s.sumSq)
+	mean := float64(s.sum) / n
 	// The variance is computed about the mean: any DC offset of the converter
 	// must not be mistaken for noise.
-	variance := sumSq/float64(n) - mean*mean
+	variance := sumSq/n - mean*mean
 	if variance < 0 {
 		variance = 0
 	}
 
 	return Block{
-		Samples:   n,
-		RMSdBFS:   toDBFS(math.Sqrt(sumSq/float64(n)) / FullScale),
-		PeakdBFS:  toDBFS(float64(peak) / FullScale),
-		Peak:      peak,
-		ZeroRatio: float64(zeros) / float64(n),
+		Samples:   s.n,
+		RMSdBFS:   toDBFS(math.Sqrt(sumSq/n) / FullScale),
+		PeakdBFS:  toDBFS(float64(s.peak) / FullScale),
+		Peak:      s.peak,
+		ZeroRatio: float64(s.zeros) / n,
 		StdDevLSB: math.Sqrt(variance),
-		CrossRate: float64(crossings) / float64(n),
+		CrossRate: float64(s.crossings) / n,
 	}
 }
 
@@ -216,102 +289,14 @@ func (b Block) Explain() string {
 
 // Accumulator aggregates several blocks to form a verdict over a long window,
 // where the instantaneous values would be too noisy.
-type Accumulator struct {
-	samples int
-	sumSq   float64
-	sum     float64
-	zeros   int
-	peak    int16
-	// crossings and prev carry the sign-change count across the blocks.
-	//
-	// **A field left at zero is not a missing value, it is a measurement.**
-	// `Result` used to build a Block with four of its five numbers measured and
-	// `CrossRate` at its zero value — which does not read as "not computed", it
-	// reads as **0 Hz**. Handed to `Sound.Feed` that is below the band, so the
-	// gate would refuse everything, silently and for ever: nothing does that
-	// today, which made it a trap rather than a defect. It is the family this
-	// project names twice over — *zero dBFS is full scale*, *a meter that cannot
-	// measure does not draw silence* — and the cheapest answer is not to label
-	// the zero but to remove it.
-	//
-	// `prev` is the last non-zero sample of the previous block, so a crossing
-	// that falls on a block boundary is counted once and not lost: the
-	// accumulation is one stream, not a row of independent windows.
-	crossings int
-	prev      int16
-}
+type Accumulator struct{ s sums }
 
-// Add takes in a block of PCM.
-func (a *Accumulator) Add(b []byte) Block {
-	blk := AnalyzeS16LE(b)
-	n := len(b) / 2
-	// **The crossings inside the block are taken from the block**, not counted a
-	// second time here: what does and does not count as a sign change is written
-	// in AnalyzeS16LE and must not be restated, or the two copies diverge at the
-	// first correction with nothing failing. CrossRate is crossings over these
-	// same n samples, so the count comes back exactly.
-	a.crossings += int(math.Round(blk.CrossRate * float64(n)))
-	joined := false
-	for i := range n {
-		v := int16(uint16(b[2*i]) | uint16(b[2*i+1])<<8)
-		if v == 0 {
-			a.zeros++
-		}
-		// The one crossing the block cannot see is the join with the block
-		// before: AnalyzeS16LE starts afresh every time and never counts its
-		// first non-zero sample, while the accumulation is one stream. It is
-		// the only place the rule is repeated, and it is repeated for one pair
-		// — **the first non-zero sample, not the first sample**: a block
-		// opening on an exact zero used to skip the join altogether.
-		if !joined && v != 0 {
-			joined = true
-			if a.prev != 0 && (v > 0) != (a.prev > 0) {
-				a.crossings++
-			}
-		}
-		if v != 0 {
-			a.prev = v
-		}
-		if abs := abs16(v); abs > a.peak {
-			a.peak = abs
-		}
-		f := float64(v)
-		a.sum += f
-		a.sumSq += f * f
-	}
-	a.samples += n
-	return blk
+// Add takes in a block of PCM, and returns that block's own analysis.
+func (a *Accumulator) Add(pcm []int16) Block {
+	b := sumsOf(pcm)
+	a.s.join(b)
+	return b.block()
 }
 
 // Result returns the cumulative statistics.
-func (a *Accumulator) Result() Block {
-	if a.samples == 0 {
-		// **Samples is the field that says "nothing was measured"**, and it is
-		// read: `Sound.Feed` opens with `if b.Samples == 0 { return s.state(now) }`
-		// and returns before it ever looks at the crossing rate, and pat-capture
-		// gates on `Result().Samples > 0`.
-		//
-		// So the zero left in CrossRate here is not the trap it looks like. The
-		// levels do need care — they are set to the silence floor because zero
-		// dBFS is full scale, which would read as "blaring" — while zero
-		// crossings is simply what silence has, and the one consumer that could
-		// misread it has already returned. The review recorded the opposite and
-		// the correction is worth keeping: the danger was in the level, never in
-		// this field.
-		return Block{RMSdBFS: SilenceFloorDBFS, PeakdBFS: SilenceFloorDBFS}
-	}
-	mean := a.sum / float64(a.samples)
-	variance := a.sumSq/float64(a.samples) - mean*mean
-	if variance < 0 {
-		variance = 0
-	}
-	return Block{
-		Samples:   a.samples,
-		RMSdBFS:   toDBFS(math.Sqrt(a.sumSq/float64(a.samples)) / FullScale),
-		PeakdBFS:  toDBFS(float64(a.peak) / FullScale),
-		Peak:      a.peak,
-		ZeroRatio: float64(a.zeros) / float64(a.samples),
-		StdDevLSB: math.Sqrt(variance),
-		CrossRate: float64(a.crossings) / float64(a.samples),
-	}
-}
+func (a *Accumulator) Result() Block { return a.s.block() }

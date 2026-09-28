@@ -1646,9 +1646,10 @@ whole session. The hub now reads `VideoFormat` — what the pipeline is really
 sending — and `scaleGovernor.resync` realigns once the settling window has
 passed. **The cadence to compare is the delivered one**, not the declared one,
 which chases the camera on its own account; and **a size that is not a step is
-not invented**, because it can come from a skewed read — size and cadence are in
-two different atomics — and the right answer is to wait for the next turn.
-Covered by `scale_test.go`.
+not invented**, because it is not the governor's to choose, and the right answer
+is to wait for the next turn. It used to be able to come from a skewed read as
+well, while size and cadence sat in separate atomics; `SentFormat` now hands
+them over from one load. Covered by `scale_test.go`.
 
 ### The quantiser is the only number that anticipates blocking
 

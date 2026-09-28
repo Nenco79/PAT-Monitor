@@ -3,6 +3,8 @@ package opuswasm
 import (
 	"context"
 	"fmt"
+
+	"github.com/tetratelabs/wazero/api"
 )
 
 // Decoder expands Opus packets into 16-bit PCM.
@@ -12,7 +14,7 @@ import (
 type Decoder struct {
 	in       *instance
 	statePtr uint32
-	decode   callable
+	decode   api.Function
 	channels int
 }
 
@@ -22,47 +24,17 @@ type Decoder struct {
 // beats resampling downstream, because that is the only operation in this chain
 // able to shift the pitch of sounds without leaving a trace.
 func NewDecoder(ctx context.Context, sampleRate, channels int) (*Decoder, error) {
-	if channels != 1 && channels != 2 {
-		return nil, fmt.Errorf("opuswasm: %d channels, expected 1 or 2", channels)
-	}
-	in, err := open(ctx, channels, MaxFrameSamples, maxPacketBytes)
+	in, state, err := openCodec(ctx, "decoder", channels,
+		uint64(int32(sampleRate)), uint64(int32(channels)))
 	if err != nil {
 		return nil, err
 	}
-	d := &Decoder{in: in, channels: channels}
-
-	getSize, err := in.function("opus_decoder_get_size")
-	if err != nil {
-		return nil, d.closeOnError(ctx, err)
-	}
-	initF, err := in.function("opus_decoder_init")
-	if err != nil {
-		return nil, d.closeOnError(ctx, err)
-	}
+	d := &Decoder{in: in, statePtr: state, channels: channels}
 	if d.decode, err = in.function("opus_decode"); err != nil {
-		return nil, d.closeOnError(ctx, err)
-	}
-
-	r, err := getSize.Call(ctx, uint64(channels))
-	if err != nil {
-		return nil, d.closeOnError(ctx, fmt.Errorf("opuswasm: opus_decoder_get_size: %w", err))
-	}
-	if d.statePtr, err = in.alloc(ctx, uint32(r[0])); err != nil {
-		return nil, d.closeOnError(ctx, err)
-	}
-	r, err = initF.Call(ctx, uint64(d.statePtr), uint64(int32(sampleRate)), uint64(int32(channels)))
-	if err != nil {
-		return nil, d.closeOnError(ctx, fmt.Errorf("opuswasm: opus_decoder_init: %w", err))
-	}
-	if c := int32(r[0]); c != opusOK {
-		return nil, d.closeOnError(ctx, Status(c))
+		_ = in.close(ctx)
+		return nil, err
 	}
 	return d, nil
-}
-
-func (d *Decoder) closeOnError(ctx context.Context, err error) error {
-	_ = d.in.close(ctx)
-	return err
 }
 
 // Decode expands a packet into pcm and returns the samples **per channel**.

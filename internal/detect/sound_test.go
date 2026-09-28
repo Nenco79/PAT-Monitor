@@ -10,7 +10,7 @@ const soundRate = 16000
 
 // block makes a 20 ms analysis block with a given level and dominant frequency.
 // It does not synthesise the wave: the chain under test starts after
-// AnalyzeS16LE, and going through samples would test two things at once.
+// AnalyzeS16, and going through samples would test two things at once.
 func block(dbfs, hz float64) Block {
 	return Block{
 		Samples:   soundRate / 50,

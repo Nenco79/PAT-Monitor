@@ -24,24 +24,7 @@ import (
 //
 // Like the encoder, **it is not safe for concurrent use**: it carries the
 // stream's state, and every source needs one of its own.
-type Decoder interface {
-	// Decode returns the packet's samples, interleaved if there is more than
-	// one channel.
-	Decode(packet []byte) ([]int16, error)
-	// Conceal produces the frame that stands in for a lost packet.
-	//
-	// **It is not silence.** Opus knows how to carry the waveform on for a
-	// frame or two, and the difference is audible: a gap filled with zeros
-	// makes a click on every lost packet, which on a mobile network means
-	// often.
-	Conceal() ([]int16, error)
-	// Channels and SampleRate describe what Decode returns.
-	Channels() int
-	SampleRate() int
-	Close() error
-}
-
-type opusDecoder struct {
+type Decoder struct {
 	dec      *opuswasm.Decoder
 	buf      []int16
 	channels int
@@ -56,7 +39,7 @@ type opusDecoder struct {
 // handles the downmix to mono itself, which it knows how to do better than an
 // average written here. It is the capture rule the other way round: the
 // conversion is done by whoever has the right to do it.
-func NewOpusDecoder(sampleRate, channels int) (Decoder, error) {
+func NewOpusDecoder(sampleRate, channels int) (*Decoder, error) {
 	if sampleRate == 0 {
 		sampleRate = SampleRate
 	}
@@ -75,7 +58,7 @@ func NewOpusDecoder(sampleRate, channels int) (Decoder, error) {
 	if err != nil {
 		return nil, fmt.Errorf("audiocodec: creating the Opus decoder at %d Hz: %w", sampleRate, err)
 	}
-	return &opusDecoder{
+	return &Decoder{
 		dec:      dec,
 		buf:      make([]int16, opuswasm.MaxFrameSamples*channels),
 		channels: channels,
@@ -83,10 +66,9 @@ func NewOpusDecoder(sampleRate, channels int) (Decoder, error) {
 	}, nil
 }
 
-func (d *opusDecoder) Channels() int   { return d.channels }
-func (d *opusDecoder) SampleRate() int { return d.rate }
-
-func (d *opusDecoder) Decode(packet []byte) ([]int16, error) {
+// Decode returns the packet's samples, interleaved if there is more than one
+// channel.
+func (d *Decoder) Decode(packet []byte) ([]int16, error) {
 	if len(packet) == 0 {
 		return nil, fmt.Errorf("audiocodec: empty packet")
 	}
@@ -98,7 +80,12 @@ func (d *opusDecoder) Decode(packet []byte) ([]int16, error) {
 	return append([]int16(nil), d.buf[:n*d.channels]...), nil
 }
 
-func (d *opusDecoder) Conceal() ([]int16, error) {
+// Conceal produces the frame that stands in for a lost packet.
+//
+// **It is not silence.** Opus knows how to carry the waveform on for a frame or
+// two, and the difference is audible: a gap filled with zeros makes a click on
+// every lost packet, which on a mobile network means often.
+func (d *Decoder) Conceal() ([]int16, error) {
 	// **It is asked for one frame, and the buffer's own size would ask for
 	// six.** `opus_decode` on a real packet reports *the packet's* duration
 	// whatever buffer it is offered — 20 ms into a 120 ms buffer — which is why
@@ -123,4 +110,4 @@ func (d *opusDecoder) Conceal() ([]int16, error) {
 
 // Close frees this decoder's module. See its twin in audiocodec.go: since every
 // codec has one of its own, closing is no longer a formality.
-func (d *opusDecoder) Close() error { return d.dec.Close(bg) }
+func (d *Decoder) Close() error { return d.dec.Close(bg) }

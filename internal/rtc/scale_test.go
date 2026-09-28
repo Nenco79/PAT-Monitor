@@ -649,9 +649,11 @@ func TestTheScaleRealignsWithWhatIsBeingSent(t *testing.T) {
 	}
 }
 
-// **A size that is not a step is not invented.** It can arrive from an out-of-step
-// reading — size and cadence live in two different atomics — and then the answer
-// is to do nothing: on the next turn the reading is coherent. Moving the governor
+// **A size that is not a step is not invented.** A size the scale does not have,
+// the zeros of a pipeline not yet sending, a cadence not yet known: the answer
+// to each is to do nothing and wait for a reading that is a step. (It used to
+// come from a skewed read too, while size and cadence sat in two atomics; the
+// hub now reads them out of one pointer.) Moving the governor
 // onto a "nearby" step would mean choosing on the pipeline's behalf, which is
 // exactly the job this realignment gives back to it.
 func TestTheScaleDoesNotInventAStep(t *testing.T) {

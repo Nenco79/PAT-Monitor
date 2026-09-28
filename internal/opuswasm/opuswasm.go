@@ -199,6 +199,56 @@ func open(ctx context.Context, channels int, pcmSamples, pktBytes int) (*instanc
 	return in, nil
 }
 
+// openCodec opens a module for one codec and brings libopus's state to life in
+// it: `kind` is "encoder" or "decoder", and initArgs follow the state pointer in
+// opus_<kind>_init. It returns the module and the state pointer.
+//
+// **A constructor that fails must not leave a module alive**, so on any error
+// the module is closed here; whoever looks up further functions afterwards
+// closes it the same way.
+func openCodec(ctx context.Context, kind string, channels int, initArgs ...uint64) (*instance, uint32, error) {
+	if channels != 1 && channels != 2 {
+		return nil, 0, fmt.Errorf("opuswasm: %d channels, expected 1 or 2", channels)
+	}
+	in, err := open(ctx, channels, MaxFrameSamples, maxPacketBytes)
+	if err != nil {
+		return nil, 0, err
+	}
+	state, err := in.initState(ctx, kind, channels, initArgs)
+	if err != nil {
+		_ = in.close(ctx)
+		return nil, 0, err
+	}
+	return in, state, nil
+}
+
+func (in *instance) initState(ctx context.Context, kind string, channels int, initArgs []uint64) (uint32, error) {
+	getSize, err := in.function("opus_" + kind + "_get_size")
+	if err != nil {
+		return 0, err
+	}
+	initF, err := in.function("opus_" + kind + "_init")
+	if err != nil {
+		return 0, err
+	}
+	r, err := getSize.Call(ctx, uint64(channels))
+	if err != nil {
+		return 0, fmt.Errorf("opuswasm: opus_%s_get_size: %w", kind, err)
+	}
+	state, err := in.alloc(ctx, uint32(r[0]))
+	if err != nil {
+		return 0, err
+	}
+	r, err = initF.Call(ctx, append([]uint64{uint64(state)}, initArgs...)...)
+	if err != nil {
+		return 0, fmt.Errorf("opuswasm: opus_%s_init: %w", kind, err)
+	}
+	if c := int32(r[0]); c != opusOK {
+		return 0, Status(c)
+	}
+	return state, nil
+}
+
 func (in *instance) alloc(ctx context.Context, n uint32) (uint32, error) {
 	r, err := in.malloc.Call(ctx, uint64(n))
 	if err != nil {

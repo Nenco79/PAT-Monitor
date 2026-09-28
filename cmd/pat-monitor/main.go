@@ -471,7 +471,7 @@ func run(log *slog.Logger, path string) error {
 	if err != nil {
 		return err
 	}
-	settings := preset.Settings()
+	settings := preset
 
 	// **The size is no longer lowered here.** It used to be, "once only", and the
 	// reason written beside it was that two readers need the starting size: the
@@ -558,14 +558,14 @@ func run(log *slog.Logger, path string) error {
 			}
 		},
 		OnVideoFormat: func(w, h, delivered, declared int) { p.SetVideoFormat(w, h, delivered, declared) },
-		// **The cadence compared is the delivered one.** `VideoFormat` reports
+		// **The cadence compared is the delivered one.** `p.VideoFormat` reports
 		// the **declared** one, which follows the camera on its own account:
 		// comparing that, the scale would think itself out of step every time
-		// automatic exposure lowers the frames.
-		VideoFormat: func() (int, int, int) {
-			w, h, _ := p.VideoFormat()
-			return w, h, p.DeliveredFPS()
-		},
+		// automatic exposure lowers the frames. `SentFormat` gives size and
+		// delivered cadence out of one load, so the two cannot come from two
+		// different formats. **A closure and not the method value**: `p` is
+		// still nil here, and `p.SentFormat` would bind it.
+		VideoFormat:   func() (int, int, int) { return p.SentFormat() },
 		QP:            func() (int, bool) { return p.TakeRecentQP() },
 		MotionStarted: func() bool { return motionStarted.Swap(false) },
 		TargetQP:      cfg.TargetQP,
@@ -613,13 +613,13 @@ func run(log *slog.Logger, path string) error {
 		Height:      settings.Height,
 		FPS:         settings.FPS,
 		BitrateKbps: settings.BitrateKbps,
-		// **From the settings, not from a literal.** It used to be a 2 written
-		// here while `encoder.Settings.KeyframeSecs` held a 2 of its own, so the
-		// field moved nothing: changing it changed the number pat-capture
-		// expects in its report and not the number the encoder is given, which
-		// is the instrument accusing the capture of its own arithmetic. The two
-		// agreed, which is exactly why it survived every reading.
-		GOPSeconds: settings.KeyframeSecs,
+		// **From the constant, not from a literal.** It used to be a 2 written
+		// here while a settings field held a 2 of its own, so the field moved
+		// nothing: changing it changed the number pat-capture expects in its
+		// report and not the number the encoder is given, which is the
+		// instrument accusing the capture of its own arithmetic. The two agreed,
+		// which is exactly why it survived every reading.
+		GOPSeconds: encoder.KeyframeSecs,
 
 		PreferEncoder: cfg.PreferEncoder,
 		MicDeviceID:   cfg.MicDeviceID,
@@ -715,8 +715,8 @@ func run(log *slog.Logger, path string) error {
 				motionPeak, motionMaxDelta, motionLoggedAt = 0, 0, now
 			}
 		},
-		Level: func(pcm []byte) {
-			blk := detect.AnalyzeS16LE(pcm)
+		Level: func(pcm []int16) {
+			blk := detect.AnalyzeS16(pcm)
 			now := time.Now()
 			st := sound.Feed(blk, now)
 			mu.Lock()
@@ -2188,7 +2188,7 @@ func loopbackNamesOnly(next http.Handler) http.Handler {
 // Found by testing the cadence in the dark, which is the only condition in which
 // the two numbers diverge — in the light they both sit at 30, and that is why it
 // went unnoticed.
-func declaredFPS(p *pipeline.Pipeline, settings encoder.Settings) int {
+func declaredFPS(p *pipeline.Pipeline, settings encoder.Preset) int {
 	if _, _, fps := p.VideoFormat(); fps > 0 {
 		return fps
 	}
@@ -2213,7 +2213,7 @@ func declaredFPS(p *pipeline.Pipeline, settings encoder.Settings) int {
 // evening; the **delivered** cadence — the only one that says whether frames are
 // being dropped — did not appear at all. It now travels on its own, in
 // `DeliveredFPS`.
-func videoResolution(p *pipeline.Pipeline, settings encoder.Settings) string {
+func videoResolution(p *pipeline.Pipeline, settings encoder.Preset) string {
 	w, h, _ := p.VideoFormat()
 	if w <= 0 || h <= 0 {
 		return fmt.Sprintf("%dx%d", settings.Width, settings.Height)

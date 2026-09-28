@@ -34,7 +34,7 @@ func ToMonoS16(src []byte, f StreamFormat, dst []int16) (int, error) {
 			}
 			sum += v
 		}
-		dst[i] = clampToS16(sum / float64(f.Channels))
+		dst[i] = SaturateS16(sum / float64(f.Channels) * 32767)
 	}
 	return frames, nil
 }
@@ -59,20 +59,22 @@ func sampleAt(b []byte, f StreamFormat) (float64, error) {
 	return 0, fmt.Errorf("audio: unconvertible samples: %s", f)
 }
 
-// clampToS16 saturates instead of wrapping.
+// SaturateS16 turns a sample already on the 16-bit scale into an int16,
+// saturating instead of wrapping.
 //
-// Floating-point PCM can exceed unity, and a sample that wraps becomes a
-// full-scale click: far more audible than clipping.
-func clampToS16(v float64) int16 {
-	const peak = 32767
-	s := v * peak
-	if s > peak {
-		return peak
+// Floating-point PCM can exceed unity, a gain can push a sample past full scale
+// and a filter can overshoot the peak it was given, and a sample that wraps
+// becomes a full-scale click of the opposite sign: far more audible than
+// clipping. It is the one saturation of the capture path, so that the downmix,
+// the gain and the analysis resampler cannot clip three different ways.
+func SaturateS16(v float64) int16 {
+	switch {
+	case v > math.MaxInt16:
+		return math.MaxInt16
+	case v < math.MinInt16:
+		return math.MinInt16
 	}
-	if s < -peak-1 {
-		return -peak - 1
-	}
-	return int16(s)
+	return int16(v)
 }
 
 // The list of rates Opus accepts does not live here but in

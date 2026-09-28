@@ -461,8 +461,8 @@ const sentWindowMinSamples = 2
 // decided a resolution descent, which is a one-way cut.
 type sentWindow struct{ samples []int }
 
-// add records a sample and returns the average, or **zero until the window is
-// full**.
+// add records a sample and returns the average, or **zero until the window
+// holds sentWindowMinSamples**.
 //
 // Zero means "I do not know", and for whoever judges an estimate that is the
 // harmless direction: with an unknown throughput no drop is credible, so it does
@@ -478,22 +478,9 @@ type sentWindow struct{ samples []int }
 // the window and take it back to "I do not know". It is the same rule already
 // written for the quantiser window.
 func (w *sentWindow) add(kbps int) int {
-	if kbps > 0 {
-		w.samples = append(w.samples, kbps)
-		if len(w.samples) > sentWindowSamples {
-			w.samples = w.samples[len(w.samples)-sentWindowSamples:]
-		}
-	} else if len(w.samples) > 0 {
-		w.samples = w.samples[1:]
-	}
-	if len(w.samples) < sentWindowMinSamples {
-		return 0
-	}
-	s := 0
-	for _, v := range w.samples {
-		s += v
-	}
-	return s / len(w.samples)
+	var mean int
+	w.samples, mean = rollingMean{keep: sentWindowSamples, speak: sentWindowMinSamples, ages: true}.add(w.samples, kbps)
+	return mean
 }
 
 // reset empties the window, because **it does not survive a size change**:

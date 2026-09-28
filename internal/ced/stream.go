@@ -1,7 +1,6 @@
 package ced
 
 import (
-	"encoding/binary"
 	"errors"
 	"sync"
 	"sync/atomic"
@@ -98,14 +97,16 @@ func NewStream(m *Model, interval time.Duration) *Stream {
 	return s
 }
 
-// FeedS16 appends mono s16le PCM samples, declaring what rate they are at.
+// FeedS16 appends mono 16-bit PCM samples, declaring what rate they are at. The
+// samples are copied into the ring, so the caller may reuse pcm afterwards.
 //
-// **The rate travels with the samples** instead of being set separately: the
-// microphone can be changed while the monitor runs, and then the analysis
-// stream changes too. A caller who had to remember to announce it would forget
-// at the first new call site — it is the same reason the motion frame carries
-// the size it came from.
-func (s *Stream) FeedS16(pcm []byte, rate int) {
+// **The rate travels with the samples** instead of being set separately, and in
+// the monitor it is always the same one: the analysis stream comes out at 16
+// kHz for any microphone. It is declared anyway for the reason ErrWrongRate
+// gives — this package cannot take the monitor's word for it — and a caller who
+// had to announce it separately would forget at the first new call site, the
+// same reason the motion frame carries the size it came from.
+func (s *Stream) FeedS16(pcm []int16, rate int) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if rate != s.rate {
@@ -115,8 +116,8 @@ func (s *Stream) FeedS16(pcm []byte, rate int) {
 	if rate != s.m.rate {
 		return
 	}
-	for i := 0; i+1 < len(pcm); i += 2 {
-		s.ring[s.head] = float32(int16(binary.LittleEndian.Uint16(pcm[i:]))) / 32768
+	for _, v := range pcm {
+		s.ring[s.head] = float32(v) / 32768
 		s.head++
 		if s.head == len(s.ring) {
 			s.head = 0

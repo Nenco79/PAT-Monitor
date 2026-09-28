@@ -4,17 +4,9 @@ package i18n
 
 import (
 	"strings"
-	"unsafe"
 
 	"golang.org/x/sys/windows"
 )
-
-var (
-	kernel32                        = windows.NewLazySystemDLL("kernel32.dll")
-	procGetUserPreferredUILanguages = kernel32.NewProc("GetUserPreferredUILanguages")
-)
-
-const mUILanguageName = 0x8 // tags like "it-IT", rather than numeric identifiers
 
 // FromSystem is the interface language list of whoever uses this computer, in
 // order of preference.
@@ -32,58 +24,24 @@ const mUILanguageName = 0x8 // tags like "it-IT", rather than numeric identifier
 // **A failure here is not a fault**: with no answer an empty list comes back
 // and the fallback language takes over, which is exactly what
 // GetUserPreferredUILanguages would have given an English user.
-func FromSystem() []string {
-	var count, chars uint32
-
-	// The first call is there to learn how much room is needed: a nil buffer
-	// goes in and the length comes back. Asking for a fixed size would mean
-	// deciding how many languages a person is entitled to have.
-	r, _, _ := procGetUserPreferredUILanguages.Call(
-		mUILanguageName,
-		uintptr(unsafe.Pointer(&count)),
-		0,
-		uintptr(unsafe.Pointer(&chars)),
-	)
-	if r == 0 || chars == 0 {
-		return nil
-	}
-
-	buf := make([]uint16, chars)
-	r, _, _ = procGetUserPreferredUILanguages.Call(
-		mUILanguageName,
-		uintptr(unsafe.Pointer(&count)),
-		uintptr(unsafe.Pointer(&buf[0])),
-		uintptr(unsafe.Pointer(&chars)),
-	)
-	if r == 0 {
-		return nil
-	}
-
-	return splitMultiSZ(buf)
-}
-
-// splitMultiSZ reads a MULTI_SZ: NUL-terminated strings one after another, with
-// one more NUL to close.
 //
-// **UTF16ToString is no use here**, and that is the mistake not to make: it
-// stops at the first NUL, so it would return the first language and nothing
-// else — with the worst possible symptom, which is no symptom, because a list
-// of one language is perfectly plausible. Anyone with a single language would
-// never notice.
-func splitMultiSZ(buf []uint16) []string {
-	var out []string
-	start := 0
-	for i, c := range buf {
-		if c != 0 {
-			continue
+// The answer is a MULTI_SZ, and x/sys splits it. **UTF16ToString is wrong on
+// that buffer**, which is why the splitting is not written here: it stops at
+// the first NUL and returns the first language only — a list of one is
+// perfectly plausible, so the mistake would have no symptom.
+func FromSystem() []string {
+	langs, err := windows.GetUserPreferredUILanguages(windows.MUI_LANGUAGE_NAME)
+	if err != nil {
+		return nil
+	}
+	out := langs[:0]
+	for _, l := range langs {
+		if l = strings.TrimSpace(l); l != "" {
+			out = append(out, l)
 		}
-		if i > start {
-			s := strings.TrimSpace(windows.UTF16ToString(buf[start:i]))
-			if s != "" {
-				out = append(out, s)
-			}
-		}
-		start = i + 1
+	}
+	if len(out) == 0 {
+		return nil
 	}
 	return out
 }

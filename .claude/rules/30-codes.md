@@ -107,9 +107,9 @@ language is chosen by who reads** applied to two readings inside one process,
 and it is why the catalogues live in a package of their own rather than inside
 the server. From Windows one asks for the **list** and not
 `GetUserDefaultUILanguage`, because that system keeps an order of preference
-like a browser; the buffer that answers is a MULTI_SZ, and **`UTF16ToString` is
-wrong there** — it stops at the first NUL, so it would return the first language
-only, with the worst possible symptom, none.
+like a browser. The buffer that answers is a MULTI_SZ, and **`UTF16ToString` is
+wrong there**: it stops at the first NUL and returns one language, with no
+symptom at all. `x/sys` splits it correctly, which is why nothing here does.
 
 **Codes cross the API even when the API is an HTTP error.** The JSON field is
 still called `error` but carries a code, and `TErr` picks the sentence — the

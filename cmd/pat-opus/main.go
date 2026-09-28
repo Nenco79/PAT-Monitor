@@ -81,7 +81,7 @@ func run() error {
 
 // ---------- synthetic test ----------
 
-func syntheticTest(enc audiocodec.Encoder) error {
+func syntheticTest(enc *audiocodec.Encoder) error {
 	const seconds = 3
 	src := sweep(seconds * (*rate))
 
@@ -131,7 +131,7 @@ func sweep(n int) []int16 {
 
 // ---------- microphone test ----------
 
-func micTest(enc audiocodec.Encoder) error {
+func micTest(enc *audiocodec.Encoder) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 	ctx, cancel := context.WithTimeout(ctx, *duration)
@@ -220,7 +220,7 @@ func micTest(enc audiocodec.Encoder) error {
 //
 // The gain is raised rather than making noise in the house: it is one in the
 // morning.
-func loudTest(enc audiocodec.Encoder, mono []int16) error {
+func loudTest(enc *audiocodec.Encoder, mono []int16) error {
 	const gainDB = 25
 	gain := math.Pow(10, gainDB/20.0)
 
@@ -266,7 +266,7 @@ func clamp16(v float64) int16 {
 // millisecond, and the sum of a thousand rounded measurements is well out. The
 // individual durations stay useful for the quantiles, where the tail is what
 // matters.
-func encodeAll(enc audiocodec.Encoder, pcm []int16) ([][]byte, []time.Duration, time.Duration, error) {
+func encodeAll(enc *audiocodec.Encoder, pcm []int16) ([][]byte, []time.Duration, time.Duration, error) {
 	frames := len(pcm) / frameSamples()
 	packets := make([][]byte, 0, frames)
 	took := make([]time.Duration, 0, frames)
