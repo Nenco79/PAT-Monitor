@@ -556,8 +556,8 @@ func (m *Matrix) matchesDown(x, y int, pat []bool) bool {
 // SVG wants them as text, whoever engraves a bitmap wants them as numbers.
 type Colour struct{ R, G, B uint8 }
 
-// Hex is the form CSS wants.
-func (c Colour) Hex() string { return fmt.Sprintf("#%02X%02X%02X", c.R, c.G, c.B) }
+// hex is the form CSS wants.
+func (c Colour) hex() string { return fmt.Sprintf("#%02X%02X%02X", c.R, c.G, c.B) }
 
 // Paper and Ink are the code's two colours, and they live **here** because two
 // different technologies use them: the SVG of the pages and the tray's GDI
@@ -614,11 +614,11 @@ func (m *Matrix) SVG(px int) string {
 	// that comes from the catalogue. The words belong at the edges.
 	fmt.Fprintf(&b, `<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" `+
 		`viewBox="0 0 %d %d" shape-rendering="crispEdges">`, px, px, side, side)
-	fmt.Fprintf(&b, `<rect width="%d" height="%d" fill="%s"/>`, side, side, Paper.Hex())
+	fmt.Fprintf(&b, `<rect width="%d" height="%d" fill="%s"/>`, side, side, Paper.hex())
 
 	// One path instead of a rect per module: there are a few thousand of them,
 	// and the browser draws every one.
-	fmt.Fprintf(&b, `<path fill="%s" d="`, Ink.Hex())
+	fmt.Fprintf(&b, `<path fill="%s" d="`, Ink.hex())
 	for y := 0; y < m.Size; y++ {
 		for x := 0; x < m.Size; x++ {
 			if m.at(x, y) {

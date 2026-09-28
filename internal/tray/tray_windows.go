@@ -220,7 +220,7 @@ type Tray struct {
 
 	hwnd windows.Handle
 	// posted is hwnd for the goroutines that are not the message loop's —
-	// Notify's callers and the stop — which may only post to it. hwnd itself
+	// notify's callers and the stop — which may only post to it. hwnd itself
 	// is the loop's, and reading it from elsewhere raced with its creation
 	// and its destruction.
 	posted atomic.Uintptr
@@ -397,12 +397,12 @@ func (t *Tray) Run(ctx context.Context) error {
 	}
 }
 
-// Notify shows a balloon over the icon. It can be called from any goroutine.
+// notify shows a balloon over the icon. It can be called from any goroutine.
 //
 // It is for things that happen **once** and that whoever is watching the screen
 // wants to know now: remote access opening, sessions disconnected. Not for
 // continuous state, which is the icon's colour.
-func (t *Tray) Notify(title, text string) {
+func (t *Tray) notify(title, text string) {
 	t.mu.Lock()
 	t.pending = append(t.pending, balloon{title, text})
 	t.mu.Unlock()
@@ -414,7 +414,7 @@ func (t *Tray) Notify(title, text string) {
 // NotifyPublicAddress announces that the monitor can be reached from outside.
 //
 // **The text is written by the tray, not by whoever decides when to say it**,
-// and that is why this method exists instead of a `Notify` with two strings. The
+// and that is why this method exists instead of a `notify` with two strings. The
 // words on this side are chosen by the Windows language, and a sentence composed
 // outside the package would be the only one not passing through here — that is,
 // the only one that would stay in one language inside a German menu, and the
@@ -425,7 +425,7 @@ func (t *Tray) Notify(title, text string) {
 // come up — and a notification that hurries to reassure raises the suspicion
 // that there is something to worry about.
 func (t *Tray) NotifyPublicAddress(url string) {
-	t.Notify(t.t("tray.notify.remote-on"), url)
+	t.notify(t.t("tray.notify.remote-on"), url)
 }
 
 // ---------- window ----------
@@ -782,7 +782,7 @@ func (t *Tray) notifyData(flags uint32) *notifyIconData {
 // as they were all night. A modify that succeeds is the proof it is there.
 func (t *Tray) iconIsThere() bool {
 	nid := t.notifyData(nifTip)
-	copyTip(&nid.SzTip, t.tipShown)
+	copyUTF16(nid.SzTip[:], t.tipShown)
 	r, _, _ := procShellNotifyIconW.Call(nimModify, uintptr(unsafe.Pointer(nid)))
 	return r != 0
 }
@@ -794,7 +794,7 @@ func (t *Tray) addIcon() error {
 	}
 	tip := t.tooltip(st)
 	nid := t.notifyData(nifMessage | nifIcon | nifTip)
-	copyTip(&nid.SzTip, tip)
+	copyUTF16(nid.SzTip[:], tip)
 	if r, _, err := procShellNotifyIconW.Call(nimAdd, uintptr(unsafe.Pointer(nid))); r == 0 {
 		return err
 	}
@@ -899,7 +899,7 @@ func (t *Tray) refresh() {
 		}
 	}
 	nid := t.notifyData(flags)
-	copyTip(&nid.SzTip, tip)
+	copyUTF16(nid.SzTip[:], tip)
 	procShellNotifyIconW.Call(nimModify, uintptr(unsafe.Pointer(nid)))
 	t.tipShown = tip
 }
@@ -1038,7 +1038,7 @@ func (t *Tray) repaintIcon() {
 		return
 	}
 	nid := t.notifyData(redrawFlags)
-	copyTip(&nid.SzTip, t.tipShown)
+	copyUTF16(nid.SzTip[:], t.tipShown)
 	procShellNotifyIconW.Call(nimModify, uintptr(unsafe.Pointer(nid)))
 }
 
@@ -1070,7 +1070,7 @@ func (t *Tray) tooltip(st Status) string {
 	// clicking anything and without knowing the password, and it is the first
 	// thing needed by whoever is helping somebody else over the phone.
 	//
-	// **All in 127 characters**: `szTip` is a fixed buffer and `copyTip`
+	// **All in 127 characters**: `szTip` is a fixed buffer and `copyUTF16`
 	// truncates without saying anything. The limit holds for **every language**,
 	// and that is why the test runs over all the catalogues rather than one: a
 	// German sentence is on average a third longer, and whoever overflows finds
@@ -1094,9 +1094,9 @@ func (t *Tray) drainBalloons() {
 		// while its text is unchanged: after a balloon the icon had no
 		// tooltip until something else moved.
 		nid := t.notifyData(balloonFlags)
-		copyTip(&nid.SzTip, t.tipShown)
-		copyInfo(&nid.SzInfoTitle, b.title)
-		copyBig(&nid.SzInfo, b.text)
+		copyUTF16(nid.SzTip[:], t.tipShown)
+		copyUTF16(nid.SzInfoTitle[:], b.title)
+		copyUTF16(nid.SzInfo[:], b.text)
 		nid.DwInfoFlags = niifInfo
 		procShellNotifyIconW.Call(nimModify, uintptr(unsafe.Pointer(nid)))
 	}
@@ -1217,10 +1217,6 @@ func setClipboard(owner windows.Handle, s string) error {
 	return nil
 }
 
-func copyTip(dst *[128]uint16, s string) { copyUTF16(dst[:], s) }
-func copyInfo(dst *[64]uint16, s string) { copyUTF16(dst[:], s) }
-func copyBig(dst *[256]uint16, s string) { copyUTF16(dst[:], s) }
-
 // copyUTF16 fills a fixed-size buffer, always leaving the trailing zero.
 func copyUTF16(dst []uint16, s string) {
 	src, err := windows.UTF16FromString(s)
@@ -1247,5 +1243,5 @@ func copyUTF16(dst []uint16, s string) {
 // page the panel's command opens. A notification that explains is a
 // notification read after the thing it explains has scrolled away.
 func (t *Tray) NotifyUpdate(version string) {
-	t.Notify(t.t("tray.notify.update"), t.t("tray.notify.update.body", "version", version))
+	t.notify(t.t("tray.notify.update"), t.t("tray.notify.update.body", "version", version))
 }

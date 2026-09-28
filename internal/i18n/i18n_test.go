@@ -217,7 +217,7 @@ func TestTheSelectorListsLatinNamesAlphabeticallyThenTheOthers(t *testing.T) {
 // nobody sees.
 func TestALatinNameBeginsWithAPlainLetter(t *testing.T) {
 	seen := 0
-	for tag, name := range Names() {
+	for tag, name := range names(FS) {
 		r := []rune(name)[0]
 		if !unicode.Is(unicode.Latin, r) {
 			continue

@@ -37,10 +37,10 @@ type Result struct {
 // It stays because this package is not the monitor and cannot take its word for
 // it. **A stream at the wrong rate is not classified**: the mel bands are
 // anchored to 16 kHz, and on a 24 kHz stream the model would answer as if every
-// sound were a third higher — plausibly and at random. Whoever delivers has to
-// **declare** it, though, otherwise the recognition vanishes and from outside
-// it looks like a quiet room: that is done by cmd/pat-monitor/recognise.go,
-// which is where there is a log.
+// sound were a third higher — plausibly and at random. The recognition would
+// then vanish, and from outside that looks like a quiet room: the monitor
+// delivers at a constant rate, and cmd/pat-monitor/recognise_test.go fails if
+// the embedded model does not answer at it.
 var ErrWrongRate = errors.New("ced: the analysis stream is not at the model's rate")
 
 // Stream keeps the last window of audio and has it classified when somebody

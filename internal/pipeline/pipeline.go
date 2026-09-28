@@ -52,8 +52,8 @@ const (
 
 	// levelBlockDuration is the length of the block handed to the detector: 100
 	// ms, a granularity that suits both the energy thresholds and a classifier's
-	// windows. In samples it depends on the analysis rate, which in turn depends
-	// on the microphone: see AnalysisRate.
+	// windows. In samples it is counted at AnalysisSampleRate, which is the
+	// same for every microphone.
 	levelBlockDuration = 100 * time.Millisecond
 )
 
@@ -212,9 +212,6 @@ type Stats struct {
 	VideoFrames  atomic.Int64
 	Keyframes    atomic.Int64
 	AudioPackets atomic.Int64
-	MotionFrames atomic.Int64
-	AudioBytesIn atomic.Int64
-	AudioDropped atomic.Int64
 	// VideoBytes are the video bytes produced by the encoder. Cumulative:
 	// whoever wants a throughput subtracts two readings, and so contends with
 	// nobody over a window — the quantiser take has a single consumer precisely
@@ -226,19 +223,19 @@ type Stats struct {
 	// rarely because we decided so" from "the camera has wedged" — two things
 	// that look identical from the status page.
 	VideoDropped atomic.Int64
-	// LastVideoUnix and LastAudioUnix make it possible to notice that one stream
-	// has stopped while everything else stays alive.
+	// LastVideoUnix makes it possible to notice that the picture has stopped
+	// while everything else stays alive.
 	//
-	// **That sentence was true and nobody was reading it.** Both were written
-	// on every frame and every packet from the day they were added, and no
-	// consumer in the tree loaded either: what the status page, the
-	// notification area and the alerts all watched instead was `Ready`, a latch
-	// that closes on the first keyframe. A monitor whose picture stops after an
-	// hour therefore goes on declaring itself ready, for minutes together, with
-	// the evidence sitting unread. `LastVideoUnix` now reaches
-	// `server.Status.LastFrameUnix` and is what `captureStopped` decides on.
+	// **That sentence was true and nobody was reading it.** It was written on
+	// every frame from the day it was added, beside a twin for the audio
+	// packets, and no consumer in the tree loaded either: what the status page,
+	// the notification area and the alerts all watched instead was `Ready`, a
+	// latch that closes on the first keyframe. A monitor whose picture stops
+	// after an hour therefore goes on declaring itself ready, for minutes
+	// together, with the evidence sitting unread. `LastVideoUnix` now reaches
+	// `server.Status.LastFrameUnix` and is what `captureStopped` decides on; the
+	// audio twin was still unread, and went.
 	LastVideoUnix atomic.Int64
-	LastAudioUnix atomic.Int64
 }
 
 // Pipeline manages the life of the capture, restarting it on error.
@@ -431,9 +428,6 @@ type Pipeline struct {
 	// "somebody chose" in place of "the camera came back" sends them looking
 	// for a command where there was a precaution.
 	camReopen, camChosen, camRecheck atomic.Bool
-	// analysisRate is the rate of the stream handed to the Level sink. It is
-	// AnalysisSampleRate for any microphone, and zero until the audio is open.
-	analysisRate atomic.Int64
 	// encoderName and hardware describe the chosen encoder, which is only known
 	// after asking the system.
 	encoderName atomic.Value
@@ -592,18 +586,10 @@ type Pipeline struct {
 	// warning on every evening, and would leave it off in the one case it exists
 	// for.
 	videoDelivered atomic.Int64
-	// curMinQP is the quantiser floor, taken from the configuration and applied
-	// by building the encoder. It is not changed live: MinQP is the twin of
-	// MaxQP, which the documentation declares settable **only before** the
-	// session starts, and about MinQP it says nothing — silence is not
-	// permission.
-	curMinQP atomic.Int64
 	// wantReconfig is the bitrate to impose by reconfiguring the transform. Zero
 	// means nothing to do. Like everything that touches the encoder, the video
 	// loop applies it: see ReconfigureBitrate.
 	wantReconfig atomic.Int64
-	// curMode is the bit-spending criterion in force, decided at construction.
-	curMode atomic.Value
 
 	// bitrate and keyframe are the commands that can be given to the encoder
 	// while it works. They live here and not in the engine because whoever
@@ -649,7 +635,6 @@ func New(cfg Config) *Pipeline {
 	cfg.applyDefaults()
 	p := &Pipeline{cfg: cfg}
 	p.encoderName.Store("")
-	p.curMinQP.Store(int64(cfg.MinQP))
 	// The configuration says which microphone capture starts from, and from
 	// here on micWanted is in command: it is the only point where the two touch.
 	p.micWanted.Store(cfg.MicDeviceID)
@@ -909,7 +894,7 @@ func (p *Pipeline) SetBitrate(kbps int) error {
 // first choice because it stops and restarts the transform, and it is taken when
 // the other one has been **measured** inert.
 // **The reconfiguration is deposited and the video loop applies it**, like the
-// size change and the quantiser floor.
+// size change.
 //
 // It is the only thing that modified the transform **from outside**, and the
 // only one that broke. Stopping the encoder, reassigning its format and
@@ -944,15 +929,6 @@ func (p *Pipeline) ReconfigureBitrate(kbps int) error {
 	p.curKbps.Store(int64(kbps))
 	p.wantReconfig.Store(int64(kbps))
 	return nil
-}
-
-// RateMode is the criterion in force now.
-func (p *Pipeline) RateMode() mf.RateControl {
-	s, _ := p.curMode.Load().(string)
-	if s == "" {
-		return mf.RateCBR
-	}
-	return mf.RateControl(s)
 }
 
 // videoFormat is size and cadence together, which is the way the scale decides
@@ -1858,14 +1834,6 @@ func (p *Pipeline) reconfigIsBroken() bool {
 // up a road that is not the only one anyway.
 const reconfigSuspect = 10 * time.Second
 
-// AnalysisRate is the rate of the stream handed to the Level sink.
-//
-// **It is always AnalysisSampleRate**, and it stays a method for one reason: it
-// is **zero until the audio is open**, which is what separates "there is nothing
-// there yet" from "it arrives at 16 kHz". How it gets there is decided by
-// `analysisPlan`.
-func (p *Pipeline) AnalysisRate() int { return int(p.analysisRate.Load()) }
-
 // ForceKeyFrame asks for the next frame to be a keyframe.
 //
 // It is the other reason this engine exists: when the browser reports a loss
@@ -2710,7 +2678,7 @@ func (p *Pipeline) runVideo(ctx context.Context, sinks Sinks) error {
 	// the governor to what is really being sent, which is what it is for.
 	p.wantFormat.Store(nil)
 
-	reader, err := mf.OpenCamera(link, wantW, wantH, wantF, nil)
+	reader, err := mf.OpenCamera(link, wantW, wantH, wantF)
 	// **Cleared on both roads, and before the error is wrapped**: an attempt
 	// that came back with a refusal is answered, not pending, and it is the
 	// denied flag's business from here on.
@@ -2793,19 +2761,6 @@ func (p *Pipeline) runVideo(ctx context.Context, sinks Sinks) error {
 	}
 	p.cfg.Log.Info("camera opened", "format", fmt.Sprintf("%s %dx%d@%d", subtype, w, h, fps))
 
-	// The encoder is built with a function rather than once only because the
-	// resolution scale rebuilds it: reconfiguring the running one does not take,
-	// while at start-up the size is always exact.
-	// The starting mode is the configured one, normally CBR: that is the safe
-	// one, with the limit guaranteed by construction.
-	if p.curMode.Load() == nil {
-		mode := p.cfg.RateControl
-		if mode == "" {
-			mode = mf.RateCBR
-		}
-		p.curMode.Store(string(mode))
-	}
-
 	// The distance between keyframes is kept in **seconds**, not in frames: the
 	// GOP is recomputed from the cadence in force, otherwise on the way down to
 	// one frame per second a GOP of sixty frames would become one keyframe a
@@ -2821,17 +2776,26 @@ func (p *Pipeline) runVideo(ctx context.Context, sinks Sinks) error {
 		return 1
 	}
 
+	// The encoder is built with a function rather than once only because the
+	// resolution scale rebuilds it: reconfiguring the running one does not take,
+	// while at start-up the size is always exact.
+	//
+	// The mode and the quantiser floor are the configured ones, read at every
+	// build and never changed live. The mode is normally CBR, the safe one, with
+	// the limit guaranteed by construction; MinQP is the twin of MaxQP, which
+	// the documentation declares settable **only before** the session starts,
+	// and about MinQP it says nothing — silence is not permission.
 	newEncoder := func(w, h, f, kbps int) (*mf.VideoEncoder, error) {
 		return mf.NewVideoEncoder(mf.VideoEncoderConfig{
 			Width: w, Height: h, FPS: f,
 			BitrateKbps: kbps,
-			MinQP:       int(p.curMinQP.Load()),
+			MinQP:       p.cfg.MinQP,
 			MaxQP:       p.cfg.MaxQP,
 			Profile:     mf.H264ProfileBase,
 			NameFilter:  p.cfg.PreferEncoder,
 			Device:      dev,
 			GOPFrames:   gopFor(f),
-			RateControl: p.RateMode(),
+			RateControl: p.cfg.RateControl,
 			Quality:     p.cfg.Quality,
 		})
 	}
@@ -3388,7 +3352,6 @@ func (p *Pipeline) runVideo(ctx context.Context, sinks Sinks) error {
 
 				if sinks.Motion != nil && motionGate.due(time.Now()) {
 					if err := motion.fromSample(s, func(gray []byte) {
-						p.Stats.MotionFrames.Add(1)
 						sinks.Motion(gray, motion.w, motion.h)
 					}); err != nil {
 						s.Release()
@@ -3747,7 +3710,6 @@ func (p *Pipeline) runAudio(ctx context.Context, sinks Sinks) error {
 					"from_hz", s.Format.SampleRate, "to_hz", AnalysisSampleRate,
 					"reason", "the ratio is not a whole number of samples to average")
 			}
-			p.analysisRate.Store(AnalysisSampleRate)
 			levelN = AnalysisSampleRate * int(levelBlockDuration/time.Millisecond) / 1000
 			levelOut = make([]byte, 0, levelN*2)
 			// The endpoint gain is applied by the audio engine only in shared
@@ -3792,7 +3754,6 @@ func (p *Pipeline) runAudio(ctx context.Context, sinks Sinks) error {
 			return nil
 		},
 		func(pcm []byte, silent bool) error {
-			p.Stats.AudioBytesIn.Add(int64(len(pcm)))
 			if p.cfg.Trace != nil {
 				p.cfg.Trace.MicCallback.Mark(time.Now())
 			}
@@ -3826,7 +3787,6 @@ func (p *Pipeline) runAudio(ctx context.Context, sinks Sinks) error {
 					continue
 				}
 				p.simulatePanic("audio", p.Stats.AudioPackets.Add(1))
-				p.Stats.LastAudioUnix.Store(time.Now().Unix())
 				if p.cfg.Trace != nil {
 					p.cfg.Trace.AudioEncode.Mark(time.Now())
 				}

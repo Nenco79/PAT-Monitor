@@ -43,14 +43,14 @@ func (s Snapshot) Bytes() int {
 // older than the first frame would give a clip that starts with sound over a
 // black screen, and one more recent than the last belongs to the post-roll,
 // which the recorder collects itself. A clip whose camera stops in the middle
-// keeps the sound after it, and WriteClip lets the last frame last as long.
+// keeps the sound after it, and writeClip lets the last frame last as long.
 //
 // **What falls outside the cut is not a negligible remainder.** The
 // misalignment is at most one packet, twenty milliseconds, only if the audio
 // arrives without interruption and starts before the video — and the two
 // captures have separate lives precisely because that is no guarantee. The
 // microphone may open after the camera or reopen halfway through, and then the
-// interval is seconds. It is not fixed here: WriteClip declares it in the file,
+// interval is seconds. It is not fixed here: writeClip declares it in the file,
 // along with the gaps.
 func (r *Ring) Snapshot() Snapshot {
 	r.mu.Lock()

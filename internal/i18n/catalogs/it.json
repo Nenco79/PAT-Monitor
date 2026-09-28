@@ -1,5 +1,4 @@
 {
-  "auth.failed": "Operazione non riuscita.",
   "auth.mismatch": "Le due password non coincidono.",
   "auth.set": "Password impostata. Reindirizzamento…",
   "auth.unreachable": "Impossibile contattare il server.",

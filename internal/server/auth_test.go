@@ -6,6 +6,23 @@ import (
 	"time"
 )
 
+// create generates a new session token for a caller arriving from `from`,
+// against the revocation generation now in force. The server always goes
+// through createAt, with the generation it read before the hash; the tests
+// that are not about revocation have no generation to hold.
+func (s *sessionStore) create(from origin) (string, error) {
+	return s.createAt(s.current(), from)
+}
+
+// retryAfter returns how long is left until the unlock; zero if not locked.
+// The server reads retryAfterLocked inside limiter.begin, under the same lock
+// as the admission; the tests read it on its own.
+func (l *limiter) retryAfter(key string) time.Duration {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.retryAfterLocked(key)
+}
+
 // TestTheGlobalLimiterNeverCloses is the property that matters more than any
 // other: a slowdown that became a block would be a way of switching the baby
 // monitor off from outside, by getting the password wrong enough times.
@@ -71,11 +88,11 @@ func TestRevokeAll(t *testing.T) {
 	s := newSessionStore(time.Hour)
 	defer s.close()
 
-	first, err := s.create("192.168.1.10", origin{Class: originLocal})
+	first, err := s.create(origin{Class: originLocal})
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, err := s.create("109.54.184.22", origin{Class: originInternet})
+	second, err := s.create(origin{Class: originInternet})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -177,13 +194,13 @@ func TestALoginVerifiedAcrossARevocationGetsNoSession(t *testing.T) {
 
 	gen := s.current()
 	s.revokeAll() // the owner changes the password while argon2 runs
-	if token, err := s.createAt(gen, "192.0.2.7", anyRoad); err == nil {
+	if token, err := s.createAt(gen, anyRoad); err == nil {
 		t.Fatalf("a login verified against the old password got a session: %q", token)
 	}
 	if n := s.count(); n != 0 {
 		t.Errorf("%d sessions are open after the revocation", n)
 	}
-	if _, err := s.createAt(s.current(), "192.0.2.7", anyRoad); err != nil {
+	if _, err := s.createAt(s.current(), anyRoad); err != nil {
 		t.Errorf("a login begun after the revocation was refused: %v", err)
 	}
 }

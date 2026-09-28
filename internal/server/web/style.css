@@ -1784,7 +1784,6 @@ body.day .stats .pick option:focus {
   font-size: var(--t-ui);
 }
 .remote.show { display: block; }
-.remote.todo { --tone: var(--c-note); }
 
 /* When access from outside works, the box has nothing to say to whoever is
    watching the room: it repeats the address of the page they already have open,

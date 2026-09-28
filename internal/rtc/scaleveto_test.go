@@ -17,7 +17,6 @@ import (
 // twenty minutes, and each one costs a minute of small picture because it climbs
 // back one step at a time with twenty seconds of dwell.
 func TestAHealthyQuantiserVetoesTheBandwidthDescent(t *testing.T) {
-	lim := qpThresholds()
 	now := time.Now()
 
 	// **First it is shown that the defect was there.** With the veto removed —
@@ -26,18 +25,18 @@ func TestAHealthyQuantiserVetoesTheBandwidthDescent(t *testing.T) {
 	// The estimate had been above a thousand for a minute: a collapse is a fall,
 	// and it does not exist while the estimate is climbing.
 	deaf := newScaleGovernor(1280, 720, 30)
-	deaf.target(1063, true, 0, qpLimits{}, true, now)
-	if _, _, _, came := deaf.target(302, true, 0, qpLimits{}, true, now.Add(time.Second)); !came {
+	deaf.target(1063, true, 0, true, now)
+	if _, _, _, came := deaf.target(302, true, 0, true, now.Add(time.Second)); !came {
 		t.Fatal("without the veto the real sequence no longer comes down: " +
 			"the test is no longer looking at the defect it exists to catch")
 	}
 
 	// With the quantiser in hand, the same bandwidth touches nothing.
 	g := newScaleGovernor(1280, 720, 30)
-	g.target(1063, true, 25, lim, true, now)
+	g.target(1063, true, 25, true, now)
 	for i, qp := range []int{25, 27, 24, 25, 29, 27} {
 		now = now.Add(time.Second)
-		w, h, _, came := g.target(302, true, qp, lim, true, now)
+		w, h, _, came := g.target(302, true, qp, true, now)
 		if came {
 			t.Fatalf("sample %d (qp %d): the bandwidth shrank to %dx%d "+
 				"a picture the quantiser declares healthy", i, qp, w, h)
@@ -53,14 +52,13 @@ func TestAHealthyQuantiserVetoesTheBandwidthDescent(t *testing.T) {
 // there the fast road of the collapse — which skips steps in one go — has to go
 // on working.
 func TestTheBandStillCommandsWhenTheImageIsSuffering(t *testing.T) {
-	lim := qpThresholds()
 	g := newScaleGovernor(1280, 720, 30)
 	now := time.Now()
 
 	// A quantiser just above the climb threshold is not yet a break — the QP
 	// alone would do nothing — but it removes the veto.
-	g.target(2500, true, lim.climbAt+1, lim, true, now)
-	w, h, _, came := g.target(10, true, lim.climbAt+1, lim, true, now.Add(time.Second))
+	g.target(2500, true, qpClimbAt+1, true, now)
+	w, h, _, came := g.target(10, true, qpClimbAt+1, true, now.Add(time.Second))
 	if !came {
 		t.Fatal("a bandwidth collapse brought nothing down")
 	}
@@ -73,18 +71,17 @@ func TestTheBandStillCommandsWhenTheImageIsSuffering(t *testing.T) {
 // the picture is good enough to authorise one more step, it is too good to lose
 // one.
 func TestTheVetoHoldsExactlyAtTheRiseThreshold(t *testing.T) {
-	lim := qpThresholds()
 	now := time.Now()
 
 	g := newScaleGovernor(1280, 720, 30)
-	g.target(2500, true, lim.climbAt, lim, true, now)
-	if _, _, _, came := g.target(10, true, lim.climbAt, lim, true, now.Add(time.Second)); came {
+	g.target(2500, true, qpClimbAt, true, now)
+	if _, _, _, came := g.target(10, true, qpClimbAt, true, now.Add(time.Second)); came {
 		t.Error("on the exact climb threshold the bandwidth brought it down")
 	}
 
 	g2 := newScaleGovernor(1280, 720, 30)
-	g2.target(2500, true, lim.climbAt+1, lim, true, now)
-	if _, _, _, came := g2.target(10, true, lim.climbAt+1, lim, true, now.Add(time.Second)); !came {
+	g2.target(2500, true, qpClimbAt+1, true, now)
+	if _, _, _, came := g2.target(10, true, qpClimbAt+1, true, now.Add(time.Second)); !came {
 		t.Error("one point above the threshold the veto did not lift")
 	}
 }
@@ -94,7 +91,6 @@ func TestTheVetoHoldsExactlyAtTheRiseThreshold(t *testing.T) {
 // the scale fall in the instant the quantiser grazes the threshold — a descent
 // decided by minutes in which nobody had measured the network.
 func TestVetoedSamplesDoNotAccumulate(t *testing.T) {
-	lim := qpThresholds()
 	g := newScaleGovernor(1280, 720, 30)
 	now := time.Now()
 
@@ -103,7 +99,7 @@ func TestVetoedSamplesDoNotAccumulate(t *testing.T) {
 	under := g.steps[0].MinKbps - 10
 	for i := range scaleConfirmSamples * 3 {
 		now = now.Add(time.Second)
-		if _, _, _, came := g.target(under, true, 25, lim, true, now); came {
+		if _, _, _, came := g.target(under, true, 25, true, now); came {
 			t.Fatalf("sample %d: came down with the veto in force", i)
 		}
 	}
@@ -111,7 +107,7 @@ func TestVetoedSamplesDoNotAccumulate(t *testing.T) {
 	// Now the picture worsens by one point past the threshold: the counter has to
 	// restart from zero, not bring it down on the first sample.
 	now = now.Add(time.Second)
-	if _, _, _, came := g.target(under, true, lim.climbAt+1, lim, true, now); came {
+	if _, _, _, came := g.target(under, true, qpClimbAt+1, true, now); came {
 		t.Error("the shortfalls had accumulated under the veto")
 	}
 }
@@ -119,13 +115,12 @@ func TestVetoedSamplesDoNotAccumulate(t *testing.T) {
 // The climb does not go through the veto, and must not: an echo is a **lower**
 // bound, and this is the branch that brings the picture back to the full size.
 func TestTheVetoDoesNotBlockTheRise(t *testing.T) {
-	lim := qpThresholds()
 	g := newScaleGovernor(1280, 720, 30)
 	now := time.Now()
 
 	// It comes down for the quantiser, which is the road that remains.
 	now = now.Add(time.Second)
-	if _, _, _, came := g.target(2500, true, lim.breakAt, lim, true, now); !came {
+	if _, _, _, came := g.target(2500, true, qpBreakAt, true, now); !came {
 		t.Fatal("the quantiser did not bring it down")
 	}
 	if g.atFullSize() {
@@ -135,7 +130,7 @@ func TestTheVetoDoesNotBlockTheRise(t *testing.T) {
 	// Then the bandwidth comes back, the picture is healthy — that is, the veto
 	// is in force — and it has to climb anyway, once settling and dwell are past.
 	now = now.Add(scaleDwell + time.Second)
-	if _, _, _, moved := g.target(2500, true, 20, lim, true, now); !moved {
+	if _, _, _, moved := g.target(2500, true, 20, true, now); !moved {
 		t.Error("the veto blocked the climb too")
 	}
 }
@@ -148,7 +143,6 @@ func TestTheVetoDoesNotBlockTheRise(t *testing.T) {
 // only the collapse got through, that is, the veto broke the half it claimed to
 // leave intact.
 func TestTheVetoDoesNotStarveTheConfirmation(t *testing.T) {
-	lim := qpThresholds()
 	g := newScaleGovernor(1280, 720, 30)
 	now := time.Now()
 
@@ -156,12 +150,12 @@ func TestTheVetoDoesNotStarveTheConfirmation(t *testing.T) {
 	// climb threshold, but the instant crosses that threshold at every keyframe.
 	alternating := []int{31, 37, 31, 37, 31, 37, 31, 37, 31, 37}
 	under := g.steps[0].MinKbps - 10
-	g.target(2500, true, alternating[0], lim, true, now)
+	g.target(2500, true, alternating[0], true, now)
 
 	came := false
 	for i, qp := range alternating {
 		now = now.Add(time.Second)
-		if _, _, _, ok := g.target(under, true, qp, lim, true, now); ok {
+		if _, _, _, ok := g.target(under, true, qp, true, now); ok {
 			came = true
 			if i+1 < scaleConfirmSamples {
 				t.Errorf("came down at sample %d, before the %d confirmations", i, scaleConfirmSamples)
@@ -178,15 +172,14 @@ func TestTheVetoDoesNotStarveTheConfirmation(t *testing.T) {
 // And the opposite half: an alternation whose **average** stays healthy brings
 // nothing down. 29 is the scene, 35 its second with the keyframe.
 func TestAnAlternatingQuantiserThatAveragesHealthyStillVetoes(t *testing.T) {
-	lim := qpThresholds()
 	g := newScaleGovernor(1280, 720, 30)
 	now := time.Now()
 	under := g.steps[0].MinKbps - 10
-	g.target(2500, true, 29, lim, true, now)
+	g.target(2500, true, 29, true, now)
 
 	for i, qp := range []int{29, 35, 29, 35, 29, 35, 29, 35} {
 		now = now.Add(time.Second)
-		if _, _, _, came := g.target(under, true, qp, lim, true, now); came {
+		if _, _, _, came := g.target(under, true, qp, true, now); came {
 			t.Fatalf("sample %d (qp %d): came down on a picture averaging 32", i, qp)
 		}
 	}
@@ -198,7 +191,6 @@ func TestAnAlternatingQuantiserThatAveragesHealthyStillVetoes(t *testing.T) {
 // decided on a scene that no longer exists. It is the same family as
 // `qualityGovernor.release` and the window over the throughput.
 func TestTheScaleDoesNotInheritTheLastSession(t *testing.T) {
-	lim := qpThresholds()
 	under := 0
 
 	// How many ticks it takes to come down, starting from a window full of
@@ -211,7 +203,7 @@ func TestTheScaleDoesNotInheritTheLastSession(t *testing.T) {
 		// The previous session: healthy picture, bandwidth below the threshold.
 		for range scaleQPWindow {
 			now = now.Add(time.Second)
-			g.target(under, true, 25, lim, true, now)
+			g.target(under, true, 25, true, now)
 		}
 		if !g.atFullSize() {
 			t.Fatal("it came down with a healthy picture")
@@ -229,7 +221,7 @@ func TestTheScaleDoesNotInheritTheLastSession(t *testing.T) {
 			// what decides is the bandwidth branch, not the descent for
 			// quantiser, which here would fire on the first tick and measure
 			// nothing.
-			if _, _, _, came := g.target(under, true, lim.climbAt+2, lim, true, now); came {
+			if _, _, _, came := g.target(under, true, qpClimbAt+2, true, now); came {
 				return i
 			}
 		}
@@ -252,7 +244,7 @@ func TestTheScaleDoesNotInheritTheLastSession(t *testing.T) {
 	// pipeline is sending now.
 	g := newScaleGovernor(1280, 720, 30)
 	now := time.Now()
-	g.target(2500, true, lim.breakAt, lim, true, now.Add(time.Second))
+	g.target(2500, true, qpBreakAt, true, now.Add(time.Second))
 	if g.atFullSize() {
 		t.Fatal("it did not come down")
 	}

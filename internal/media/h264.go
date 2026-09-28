@@ -243,27 +243,12 @@ func ProfileLevelID(sps []byte) (string, error) {
 // somewhere that might disagree with the stream.
 func SPSSize(sps []byte) (width, height int, err error) {
 	// The payload starts after the NAL header byte, and it has to be cleaned of
-	// the anti-emulation bytes: inside the SPS a 00 00 03 sequence is a 00 00
-	// with an 03 pushed in between so it does not look like a start code.
+	// the anti-emulation bytes (see rbsp).
 	if len(sps) < 5 {
 		return 0, 0, fmt.Errorf("h264: SPS too short (%d bytes)", len(sps))
 	}
-	rbsp := make([]byte, 0, len(sps))
-	zeros := 0
-	for _, b := range sps[1:] {
-		if zeros >= 2 && b == 3 {
-			zeros = 0
-			continue
-		}
-		if b == 0 {
-			zeros++
-		} else {
-			zeros = 0
-		}
-		rbsp = append(rbsp, b)
-	}
 
-	r := &bitReader{b: rbsp}
+	r := &bitReader{b: rbsp(sps[1:])}
 	profile := r.bits(8)
 	r.bits(8) // constraint flags and reserved
 	r.bits(8) // level_idc

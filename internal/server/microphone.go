@@ -29,11 +29,6 @@ import (
 type Microphone struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
-	// Default says this is the one Windows gives the default role to. **There
-	// may be none** — it takes no more than the default having been a Bluetooth
-	// headset that has gone away — and then the page shows the one that is
-	// capturing instead.
-	Default bool `json:"default"`
 }
 
 // apiMicrophones lists the available microphones.

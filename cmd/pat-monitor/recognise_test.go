@@ -37,7 +37,7 @@ func TestNothingIsAskedWithBothSwitchesOff(t *testing.T) {
 		win[i], win[i+1] = byte(uint16(v)), byte(uint16(v)>>8)
 	}
 	for range 12 {
-		r.Feed(win, 16000)
+		r.Feed(win)
 	}
 
 	r.Wanted(false, false)
@@ -51,9 +51,17 @@ func TestNothingIsAskedWithBothSwitchesOff(t *testing.T) {
 	}
 
 	// And with one on, the window is already there: the verdict arrives at once.
+	//
+	// **"At once" is waited for until a deadline, not for a count of naps.** A
+	// hundred naps of 20 ms ran out under a parallel `go test ./...` with the
+	// stream ready and the classification merely queued behind other packages'
+	// work: "no verdict" was then a statement about the machine's load. The
+	// loop leaves the moment the verdict arrives, so the deadline costs
+	// nothing when the test passes and is paid only by a failure — the one
+	// this half exists for, a stream that never became ready.
 	r.Wanted(false, true)
 	r.Ask()
-	for i := 0; i < 100 && r.stream.Last() == nil; i++ {
+	for deadline := time.Now().Add(30 * time.Second); r.stream.Last() == nil && time.Now().Before(deadline); {
 		time.Sleep(20 * time.Millisecond)
 	}
 	res := r.stream.Last()

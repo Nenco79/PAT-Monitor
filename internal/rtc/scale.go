@@ -459,8 +459,12 @@ func (g *scaleGovernor) resync(w, h, fps int, now time.Time) (int, bool) {
 // Passing zero in both cases lets the scale come down and never climb back: with
 // the saving switched on the throughput always sits well below the cap, so the
 // estimate is **never** credible and the function would exit at once.
-func (g *scaleGovernor) target(availKbps int, credible bool, qp int, lim qpLimits, maxBits bool, now time.Time) (w, h, fps int, changed bool) {
-	qpKnown := lim.known && qp > 0
+//
+// qp <= 0 means there is no reading, and the scale falls back on the bandwidth:
+// that is the case of the encoder the quantiser cannot be read from. The reading
+// is compared with qpBreakAt and qpClimbAt, which are fixed.
+func (g *scaleGovernor) target(availKbps int, credible bool, qp int, maxBits bool, now time.Time) (w, h, fps int, changed bool) {
+	qpKnown := qp > 0
 	if g == nil || len(g.steps) == 0 {
 		return 0, 0, 0, false
 	}
@@ -495,7 +499,7 @@ func (g *scaleGovernor) target(availKbps int, credible bool, qp int, lim qpLimit
 	// bandwidth, the QP does not say by how much we are outside, only that we
 	// are. A bandwidth collapse goes on coming down in one go by its own road,
 	// further below.
-	if qpKnown && !settling && maxBits && qp >= lim.breakAt && g.current < len(g.steps)-1 {
+	if qpKnown && !settling && maxBits && qp >= qpBreakAt && g.current < len(g.steps)-1 {
 		g.current++
 		g.changed = now
 		g.recentQP = g.recentQP[:0]
@@ -578,7 +582,7 @@ func (g *scaleGovernor) target(availKbps int, credible bool, qp int, lim qpLimit
 	// — no wait may hold back a descent, because holding it back would mean
 	// keeping the picture broken on purpose. TestTheScaleDoesNotHoldBackDescents
 	// says so, and that is how that rule survives this one.
-	pictureHealthy := qpVeto > 0 && qpVeto <= lim.climbAt
+	pictureHealthy := qpVeto > 0 && qpVeto <= qpClimbAt
 	bandwidthMayDescend := !pictureHealthy
 
 	// The shortfalls are counted only while the bandwidth has standing to act on
@@ -616,7 +620,7 @@ func (g *scaleGovernor) target(availKbps int, credible bool, qp int, lim qpLimit
 		// that, because it does not know how hard the scene is.
 		up := g.steps[g.current-1]
 		bandwidthEnough := float64(availKbps) >= float64(up.MinKbps)*scaleRiseMargin
-		qualityHasMargin := !qpKnown || (!settling && qp <= lim.climbAt)
+		qualityHasMargin := !qpKnown || (!settling && qp <= qpClimbAt)
 		if bandwidthEnough && qualityHasMargin {
 			want = g.current - 1
 		}

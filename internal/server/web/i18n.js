@@ -25,11 +25,11 @@
 
 'use strict';
 
-const DICTIONARY = (typeof window !== 'undefined' && window.__I18N) || {};
+const DICTIONARY = window.__I18N || {};
 // The language is declared here and **only here**: `clips.js` reads this same
 // `LANG` for its Intl formats, because two scripts on one page share one scope
 // and a second declaration of the same name stops the second file from parsing.
-const LANG = (typeof window !== 'undefined' && window.__I18N_LANG) || 'en';
+const LANG = window.__I18N_LANG || 'en';
 
 // The plural rules are known by the browser. They are not "one and everything
 // else": Russian has three, Polish four, and concatenating a number onto a
@@ -239,7 +239,7 @@ function applyHTML(root) {
 // cannot become a file path.
 function mountSelector() {
   const where = document.querySelector('[data-lang]');
-  const languages = (typeof window !== 'undefined' && window.__I18N_LANGS) || null;
+  const languages = window.__I18N_LANGS || null;
   // With one language there is nothing to choose, and a menu with one entry is
   // a command that does nothing.
   if (!where || !languages || Object.keys(languages).length < 2) return;
@@ -265,10 +265,5 @@ function mountSelector() {
   where.append(sel);
 }
 
-if (typeof document !== 'undefined') {
-  applyHTML();
-  mountSelector();
-}
-
-// For testing with Node, which has no DOM.
-if (typeof module !== 'undefined') module.exports = {T, TN, TOr, TErr, TAction, fill};
+applyHTML();
+mountSelector();

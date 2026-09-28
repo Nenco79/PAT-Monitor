@@ -122,7 +122,7 @@ func NewRecorder(cfg RecorderConfig) *Recorder {
 		cfg.PostRoll = DefaultPostRoll
 	}
 	return &Recorder{
-		ring:  NewRing(cfg.Log),
+		ring:  newRing(cfg.Log),
 		post:  cfg.PostRoll,
 		log:   cfg.Log,
 		clips: make(chan Clip, 1),

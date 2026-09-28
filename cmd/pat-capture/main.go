@@ -890,9 +890,6 @@ func main() {
 	if r := p.Stats.Restarts.Load(); r > 0 {
 		check(false, "pipeline restarts: %d (expected 0)", r)
 	}
-	if d := p.Stats.AudioDropped.Load(); d > 0 {
-		fmt.Printf("  [warn] audio blocks dropped: %d\n", d)
-	}
 	if runErr != nil {
 		check(false, "pipeline error: %v", runErr)
 	}

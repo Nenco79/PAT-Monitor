@@ -226,15 +226,14 @@ func (d *Dictionary) T(key string) string {
 	return key
 }
 
-// Names is each language's name **written in that language**.
+// names is each language's name **written in that language**, read from the
+// catalogues in fsys.
 //
 // That is how someone recognises their own in a menu when the page is speaking
 // another. It lives in the catalogue, under `lang.name`, because it is a
 // property of the translation and not a second list to keep aligned: adding a
 // language is adding a file. A language without that name is not offered —
 // better not to be able to choose it than to see it appear as a code.
-func Names() map[string]string { return names(FS) }
-
 func names(fsys fs.FS) map[string]string {
 	out := map[string]string{}
 	for l := range languages(fsys) {

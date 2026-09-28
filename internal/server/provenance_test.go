@@ -130,7 +130,7 @@ func fromTheFunnel(r *http.Request) {
 func TestASessionOpenedAtHomeDoesNotOpenThePublicAddress(t *testing.T) {
 	s, _ := serverWithPassword(t, "a-long-password")
 
-	home, err := s.sessions.create("192.168.1.40", origin{Class: originLocal})
+	home, err := s.sessions.create(origin{Class: originLocal})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -145,7 +145,7 @@ func TestASessionOpenedAtHomeDoesNotOpenThePublicAddress(t *testing.T) {
 
 	// The encrypted roads carry their sessions everywhere, which is the phone
 	// with Tailscale switched off on the way out of the house.
-	tail, err := s.sessions.create("192.0.2.10", origin{Class: originTailnet})
+	tail, err := s.sessions.create(origin{Class: originTailnet})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -170,7 +170,7 @@ func TestADualStackPhoneAtHomeIsBornAtHome(t *testing.T) {
 	if c := requestOrigin(r).Class; c != originInternet {
 		t.Fatalf("the global IPv6 address was classed %v, the case is not the one meant", c)
 	}
-	token, err := s.sessions.create("", requestOrigin(r))
+	token, err := s.sessions.create(requestOrigin(r))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -187,7 +187,7 @@ func TestADualStackPhoneAtHomeIsBornAtHome(t *testing.T) {
 	// The Funnel's own sessions still open the Funnel.
 	f := httptest.NewRequest(http.MethodGet, "/", nil)
 	fromTheFunnel(f)
-	token, err = s.sessions.create("", requestOrigin(f))
+	token, err = s.sessions.create(requestOrigin(f))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -223,7 +223,7 @@ func commandWith(s *Server, token string, headers map[string]string) int {
 // in requireAuth, the sibling origin's command is carried out.
 func TestACommandFromASiblingOriginIsRefused(t *testing.T) {
 	s, _ := serverWithPassword(t, "a-long-password")
-	token, err := s.sessions.create("192.168.1.40", origin{Class: originLocal})
+	token, err := s.sessions.create(origin{Class: originLocal})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -259,7 +259,7 @@ func TestACommandFromASiblingOriginIsRefused(t *testing.T) {
 // on the server. The cookie is handed out again once it is half its life old.
 func TestTheBrowsersCookieIsHandedOutAgainAsTheSessionSlides(t *testing.T) {
 	s, _ := serverWithPassword(t, "a-long-password")
-	token, err := s.sessions.create("192.168.1.40", origin{Class: originLocal})
+	token, err := s.sessions.create(origin{Class: originLocal})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -330,7 +330,7 @@ func TestATailnetNodeOverIPv6IsTheTailnet(t *testing.T) {
 		t.Fatalf("a tailnet IPv6 address was classed %v", c)
 	}
 	s, _ := serverWithPassword(t, "a-long-password")
-	token, err := s.sessions.create("", requestOrigin(r))
+	token, err := s.sessions.create(requestOrigin(r))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -466,7 +466,7 @@ func TestTheCredentialPagesSendANameOnToAnAddress(t *testing.T) {
 // browser's copy could already have expired.
 func TestARefusedCommandDoesNotUseUpTheRenewal(t *testing.T) {
 	s, _ := serverWithPassword(t, "a-long-password")
-	token, err := s.sessions.create("192.168.1.40", origin{Class: originLocal})
+	token, err := s.sessions.create(origin{Class: originLocal})
 	if err != nil {
 		t.Fatal(err)
 	}

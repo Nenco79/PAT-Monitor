@@ -1,5 +1,4 @@
 {
-  "auth.failed": "请求失败。",
   "auth.mismatch": "两次输入的密码不一致。",
   "auth.set": "密码已设置，正在跳转……",
   "auth.unreachable": "无法连接到服务器。",

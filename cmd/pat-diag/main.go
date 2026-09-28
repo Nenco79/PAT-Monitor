@@ -220,15 +220,16 @@ func probeScaling(cams []devices.Device, w, h, fps int) {
 	// **Without the Direct3D device, because that is how the monitor opens
 	// it.** With a D3D manager the reader converts through DXVA, without one it
 	// converts in software, and those are two different paths inside Media
-	// Foundation. The monitor passes nil deliberately — it needs the frames in
-	// system memory, because motion detection has to read their luminance plane
-	// — so a tool that opens with D3D can declare green a machine on which the
-	// monitor does not deliver a single frame.
+	// Foundation. The monitor opens without one deliberately — it needs the
+	// frames in system memory, because motion detection has to read their
+	// luminance plane — so a tool that opened with D3D could declare green a
+	// machine on which the monitor does not deliver a single frame. OpenCamera
+	// no longer takes a device at all, so the two cannot drift apart again.
 	//
 	// The rule is already written for the encoder: **the check has to be taken
 	// as close as possible to whoever consumes the data.** It holds for whoever
 	// writes the check too.
-	reader, err := mf.OpenCamera(cams[0].Link(), w, h, fps, nil)
+	reader, err := mf.OpenCamera(cams[0].Link(), w, h, fps)
 	if err != nil {
 		fmt.Printf("  open failed: %v\n", err)
 		return

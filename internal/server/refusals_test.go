@@ -105,7 +105,7 @@ func TestAFloodOfRefusedCommandsWritesOneShortLine(t *testing.T) {
 		what string
 	}{
 		{"a sibling origin posting a command", func(s *Server) *http.Request {
-			token, err := s.sessions.create("", anyRoad)
+			token, err := s.sessions.create(anyRoad)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -115,7 +115,7 @@ func TestAFloodOfRefusedCommandsWritesOneShortLine(t *testing.T) {
 			return r
 		}, "command refused"},
 		{"a home cookie carried to the Funnel", func(s *Server) *http.Request {
-			token, err := s.sessions.create("", origin{Class: originLocal})
+			token, err := s.sessions.create(origin{Class: originLocal})
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -140,13 +140,8 @@ func (r *SourceReader) vtbl() *sourceReaderVtbl {
 // the conversion itself, so a webcam that speaks only MJPEG is decoded without
 // us having to deal with it. It costs, and has to be measured, but it removes a
 // whole branch of special cases.
-//
-// With dev set the frames stay on the GPU: the Source Reader allocates Direct3D
-// textures instead of system-memory buffers, and that is the shape hardware
-// encoders expect. Whoever wants to read their pixels — motion detection — has
-// to bring them back down explicitly.
-func OpenCamera(link string, width, height, fps int, dev *D3DDevice) (*SourceReader, error) {
-	reader, err := newSourceReader(link, dev)
+func OpenCamera(link string, width, height, fps int) (*SourceReader, error) {
+	reader, err := newSourceReader(link)
 	if err != nil {
 		return nil, err
 	}
@@ -165,7 +160,7 @@ func OpenCamera(link string, width, height, fps int, dev *D3DDevice) (*SourceRea
 //
 // The separation is there so that what the camera offers can be enumerated
 // before demanding anything: see CameraFormats.
-func newSourceReader(link string, dev *D3DDevice) (*SourceReader, error) {
+func newSourceReader(link string) (*SourceReader, error) {
 	act, err := findDevice(link)
 	if err != nil {
 		return nil, err
@@ -203,11 +198,6 @@ func newSourceReader(link string, dev *D3DDevice) (*SourceReader, error) {
 	}
 	if err := attrs.SetUINT32(mfReadwriteEnableHardwareTransforms, 1); err != nil {
 		return nil, err
-	}
-	if dev != nil {
-		if err := attrs.SetUnknown(mfSourceReaderD3DManager, unsafe.Pointer(dev.manager)); err != nil {
-			return nil, err
-		}
 	}
 
 	var reader *SourceReader
@@ -264,7 +254,7 @@ const (
 // Windows Hello also expose an infrared sensor, which is a video stream to all
 // intents and purposes but speaks in greyscale and is of no use here.
 func CameraFormats(link string) ([]CameraFormat, error) {
-	reader, err := newSourceReader(link, nil)
+	reader, err := newSourceReader(link)
 	if err != nil {
 		return nil, err
 	}

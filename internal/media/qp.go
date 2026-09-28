@@ -1,6 +1,9 @@
 package media
 
-import "fmt"
+import (
+	"bytes"
+	"fmt"
+)
 
 // The quantiser is read from the stream, not asked of the encoder.
 //
@@ -423,7 +426,7 @@ func (q *QPReader) Seed(header []byte) {
 // keyframe. It copies the bytes because the buffer they come from is the
 // encoder's and gets reused straight after.
 func (q *QPReader) adopt(sps, pps NAL, fromStream bool) {
-	if equal(q.sps, sps.Data) && equal(q.pps, pps.Data) {
+	if bytes.Equal(q.sps, sps.Data) && bytes.Equal(q.pps, pps.Data) {
 		q.fromStream = q.fromStream || fromStream
 		return
 	}
@@ -464,16 +467,4 @@ func (q *QPReader) Feed(au []byte) (qp int, ok bool) {
 		return 0, false
 	}
 	return QPSlice(q.info, slice)
-}
-
-func equal(a, b []byte) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
 }

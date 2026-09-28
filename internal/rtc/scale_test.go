@@ -9,16 +9,11 @@ import (
 // of bandwidth getting worse and better on command, and that is exactly what
 // cannot be reproduced twice alike.
 
-// testLimits are the thresholds with the values this machine really produces:
-// reference 30, break at 38, climb below 33. The tests pass them explicitly,
-// because what is being checked is the **rule**, not the value.
-var testLimits = qpLimits{known: true, breakAt: 30 + qpBreakSpan, climbAt: 30 + qpClimbSpan}
-
 // withoutQP calls the scale as it is called when the encoder does not declare
 // the quantiser. It is the fallback, and it is the case these tests are about:
 // the bandwidth. The tests for the real criterion, the QP, are further down.
 func withoutQP(g *scaleGovernor, kbps int, now time.Time) (int, int, bool) {
-	w, h, _, ch := g.target(kbps, true, 0, qpLimits{}, true, now)
+	w, h, _, ch := g.target(kbps, true, 0, true, now)
 	return w, h, ch
 }
 
@@ -26,7 +21,7 @@ func withoutQP(g *scaleGovernor, kbps int, now time.Time) (int, int, bool) {
 // happens under the quality saving, where the encoder produces far less than the
 // cap and gcc settles on that little.
 func echoOfUs(g *scaleGovernor, kbps int, now time.Time) (int, int, bool) {
-	w, h, _, ch := g.target(kbps, false, 0, qpLimits{}, true, now)
+	w, h, _, ch := g.target(kbps, false, 0, true, now)
 	return w, h, ch
 }
 
@@ -374,7 +369,7 @@ func TestBelowTheLastSizeFramesAreTakenAway(t *testing.T) {
 	const bandwidth = 100000
 	var lastW, lastFPS int
 	for i := 0; i < len(g.steps)*2; i++ {
-		w, _, fps, changed := g.target(bandwidth, true, 45, testLimits, true, now)
+		w, _, fps, changed := g.target(bandwidth, true, 45, true, now)
 		if changed {
 			lastW, lastFPS = w, fps
 		}
@@ -399,7 +394,7 @@ func TestTheCadenceClimbsBack(t *testing.T) {
 
 	// It comes all the way down on the quantiser.
 	for i := 0; i < len(g.steps)*2; i++ {
-		g.target(100000, true, 45, testLimits, true, now)
+		g.target(100000, true, 45, true, now)
 		now = now.Add(scaleSettle + time.Second)
 	}
 	if g.steps[g.current].FPS != scaleMinFPS {
@@ -410,7 +405,7 @@ func TestTheCadenceClimbsBack(t *testing.T) {
 	var fps int
 	for i := 0; i < len(g.steps)*3; i++ {
 		now = now.Add(scaleDwell + time.Second)
-		if _, _, f, changed := g.target(100000, true, 20, testLimits, true, now); changed {
+		if _, _, f, changed := g.target(100000, true, 20, true, now); changed {
 			fps = f
 		}
 	}
@@ -435,14 +430,14 @@ func TestTheScaleComesDownOnTheQuantiserEvenWithEnoughBandwidth(t *testing.T) {
 
 	// Plenty of bandwidth: on its own it would bring nothing down.
 	bandwidth := g.steps[0].MinKbps * 3
-	if _, _, _, changed := g.target(bandwidth, true, 30, testLimits, true, now); changed {
+	if _, _, _, changed := g.target(bandwidth, true, 30, true, now); changed {
 		t.Fatal("it changed size with plenty of bandwidth and a clean picture")
 	}
 
 	// The movement arrives: the quantiser rises past the break threshold, while
 	// the bandwidth has not changed by one kbit.
 	now = now.Add(time.Second)
-	_, h, _, changed := g.target(bandwidth, true, 39, testLimits, true, now)
+	_, h, _, changed := g.target(bandwidth, true, 39, true, now)
 	if !changed {
 		t.Fatal("with QP 39 it did not come down: the bandwidth does not know how hard the scene is")
 	}
@@ -459,12 +454,12 @@ func TestTheScaleIgnoresTheQuantiserRightAfterAChange(t *testing.T) {
 	now := time.Now()
 	bandwidth := g.steps[0].MinKbps * 3
 
-	g.target(bandwidth, true, 39, testLimits, true, now) // first descent
+	g.target(bandwidth, true, 39, true, now) // first descent
 	start := g.current
 
 	// Straight afterwards, the transient: a very high QP for a few frames.
 	for i := 1; i <= 3; i++ {
-		if _, _, _, changed := g.target(bandwidth, true, 45, testLimits, true, now.Add(time.Duration(i)*time.Second)); changed {
+		if _, _, _, changed := g.target(bandwidth, true, 45, true, now.Add(time.Duration(i)*time.Second)); changed {
 			t.Fatalf("it came down again after %ds, reading the transient", i)
 		}
 	}
@@ -482,17 +477,17 @@ func TestTheScaleDoesNotClimbWithoutQualityMargin(t *testing.T) {
 	now := time.Now()
 	bandwidth := g.steps[0].MinKbps * 3
 
-	g.target(bandwidth, true, 39, testLimits, true, now) // it comes down
+	g.target(bandwidth, true, 39, true, now) // it comes down
 	now = now.Add(scaleDwell + scaleSettle + time.Second)
 
 	// Plenty of bandwidth, but the encoder is already working at its limit.
-	if _, _, _, changed := g.target(bandwidth, true, 36, testLimits, true, now); changed {
+	if _, _, _, changed := g.target(bandwidth, true, 36, true, now); changed {
 		t.Error("it climbed with QP 36: at the step above it would have ended in the break")
 	}
 
 	// With margin, on the other hand, it climbs.
 	now = now.Add(scaleDwell + time.Second)
-	if _, _, _, changed := g.target(bandwidth, true, testLimits.climbAt, testLimits, true, now); !changed {
+	if _, _, _, changed := g.target(bandwidth, true, qpClimbAt, true, now); !changed {
 		t.Error("it did not climb despite having bandwidth and quality margin")
 	}
 }
@@ -509,7 +504,7 @@ func TestTheScaleDoesNotTakePixelsWhileThereAreBitsToBuy(t *testing.T) {
 	// touched, the bitrate is left to climb.
 	for i := range 5 {
 		now = now.Add(time.Second)
-		if _, _, _, changed := g.target(bandwidth, true, 45, testLimits, false, now); changed {
+		if _, _, _, changed := g.target(bandwidth, true, 45, false, now); changed {
 			t.Fatalf("it shrank the picture at sample %d "+
 				"while there was still bandwidth to spend", i)
 		}
@@ -517,7 +512,7 @@ func TestTheScaleDoesNotTakePixelsWhileThereAreBitsToBuy(t *testing.T) {
 
 	// When the bits are gone, then it does: it is the only resort left.
 	now = now.Add(time.Second)
-	if _, _, _, changed := g.target(bandwidth, true, 45, testLimits, true, now); !changed {
+	if _, _, _, changed := g.target(bandwidth, true, 45, true, now); !changed {
 		t.Error("with the bitrate already at the cap and the picture broken it did nothing")
 	}
 }
@@ -715,11 +710,10 @@ func TestTheRealignmentLooksAtTheCadenceToo(t *testing.T) {
 // to 29.
 func TestAGapInTheQuantiserAgesTheScalesWindow(t *testing.T) {
 	g := newScaleGovernor(1280, 720, 30)
-	lim := qpThresholds()
 	now := t0
 	tick := func(qp int) {
 		now = now.Add(time.Second)
-		g.target(2500, true, qp, lim, false, now)
+		g.target(2500, true, qp, false, now)
 	}
 	for range scaleQPWindow {
 		tick(27)

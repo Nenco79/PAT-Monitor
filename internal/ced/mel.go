@@ -48,8 +48,8 @@ type Frontend struct {
 	spec   []float32
 }
 
-// NewFrontend builds the front-end from the pieces read out of the model.
-func NewFrontend(nFFT, hop, nMels int, window, filterbank []float32, amin, ref, mult, topDB float64) (*Frontend, error) {
+// newFrontend builds the front-end from the pieces read out of the model.
+func newFrontend(nFFT, hop, nMels int, window, filterbank []float32, amin, ref, mult, topDB float64) (*Frontend, error) {
 	if nFFT <= 0 || nFFT&(nFFT-1) != 0 {
 		return nil, fmt.Errorf("ced: n_fft is %d, which is not a power of two", nFFT)
 	}

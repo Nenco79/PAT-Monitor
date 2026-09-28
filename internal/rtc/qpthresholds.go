@@ -51,24 +51,15 @@ const (
 	qpClimbSpan = 3
 )
 
-// qpLimits are the thresholds the scale compares the measured quantiser with.
-// known stays in the type because the scale has to be able to work without a
-// quantiser too, falling back on the bandwidth: that is the case of the encoder
-// it cannot be read from.
-type qpLimits struct {
-	known   bool
-	breakAt int
-	climbAt int
-}
-
-// qpThresholds are the thresholds in force. They depend neither on the machine
-// nor on the moment: if one day they had to be tuned for a chip that behaves
-// very differently, there is one right knob and it is measured with
-// `pat-capture`, not learnt while the monitor works.
-func qpThresholds() qpLimits {
-	return qpLimits{
-		known:   true,
-		breakAt: qpReference + qpBreakSpan,
-		climbAt: qpReference + qpClimbSpan,
-	}
-}
+// The thresholds the scale compares the measured quantiser with. They depend
+// neither on the machine nor on the moment: if one day they had to be tuned for
+// a chip that behaves very differently, there is one right knob and it is
+// measured with `pat-capture`, not learnt while the monitor works.
+const (
+	// qpBreakAt is the quantiser at which the picture counts as broken: at or
+	// above it, the scale takes a step down.
+	qpBreakAt = qpReference + qpBreakSpan
+	// qpClimbAt is the highest quantiser at which the scale may still go up a
+	// step; at or below it, the bandwidth may not bring the picture down.
+	qpClimbAt = qpReference + qpClimbSpan
+)

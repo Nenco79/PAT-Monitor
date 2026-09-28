@@ -93,8 +93,8 @@ type Ring struct {
 	refused int64 // frames that arrived before a keyframe
 }
 
-// NewRing prepares an empty ring. The log may be nil.
-func NewRing(log *slog.Logger) *Ring {
+// newRing prepares an empty ring. The log may be nil.
+func newRing(log *slog.Logger) *Ring {
 	if log == nil {
 		log = slog.New(slog.DiscardHandler)
 	}

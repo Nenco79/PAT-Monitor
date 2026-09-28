@@ -198,7 +198,7 @@ func New(f *gguf.File) (*Model, error) {
 	if err != nil {
 		return nil, err
 	}
-	m.fe, err = NewFrontend(nFFT, hop, m.nMels, window, bank,
+	m.fe, err = newFrontend(nFFT, hop, m.nMels, window, bank,
 		getf("ced.a2db_amin"), getf("ced.a2db_ref"),
 		getf("ced.a2db_multiplier"), getf("ced.a2db_top_db"))
 	if err != nil {

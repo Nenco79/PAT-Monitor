@@ -79,9 +79,12 @@ import (
 //go:embed libopus.wasm
 var binary []byte
 
-// maxFrameSamples is the longest Opus frame, 120 ms at 48 kHz, per channel. It
-// sizes the buffers each instance allocates once.
-const maxFrameSamples = 48000 / 1000 * 120
+// MaxFrameSamples is the longest Opus frame, 120 ms at 48 kHz, per channel. It
+// sizes the buffers each instance allocates once, which makes it both the most
+// PCM a call accepts and the least a decoding caller should offer: browsers
+// send 20 ms, but a buffer shorter than the longest frame would not give a
+// truncated frame, it would give an error on every packet longer than expected.
+const MaxFrameSamples = 48000 / 1000 * 120
 
 // maxPacketBytes is how large an incoming packet we accept. An Opus frame fits
 // in 1275 bytes by specification; a packet can carry more than one, but it
@@ -96,11 +99,10 @@ const maxPacketBytes = 4096
 // an application it does not know, and every call reports its own code. This is
 // not the family of the GUID that gets accepted and does nothing.
 const (
-	opusOK        = 0
-	appAudio      = 2049 // OPUS_APPLICATION_AUDIO
-	sizeOfInt16   = 2
-	ptrNull       = 0
-	sampleRate48k = 48000
+	opusOK      = 0
+	appAudio    = 2049 // OPUS_APPLICATION_AUDIO
+	sizeOfInt16 = 2
+	ptrNull     = 0
 )
 
 // Status is a libopus return code.

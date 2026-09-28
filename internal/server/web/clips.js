@@ -342,19 +342,17 @@ async function load() {
   draw();
 }
 
-if (typeof document !== 'undefined') {
-  // **The suspicion is not shown: it is checked.** The warning appears only if
-  // playback confirms the declaration. See checkTheAudioArrives.
-  audioSuspect = audioUnsupported();
-  // `timeupdate` and not `playing`: at the first instant the decoded byte
-  // counter is still zero on every browser, so looking at it there would always
-  // say "no audio" — that is, it would go back to showing the warning to whoever
-  // does have audio, by another road. `timeupdate` arrives once playback has
-  // begun and more than once, so the answer comes when it is there.
-  el('clip').addEventListener('timeupdate', checkTheAudioArrives);
-  // **A player that refuses says so.** `canPlayType` is a declaration, and a
-  // declaration can be wrong in both directions: if playback really fails, that
-  // is not an opinion.
-  el('clip').addEventListener('error', () => showError(''));
-  load();
-}
+// **The suspicion is not shown: it is checked.** The warning appears only if
+// playback confirms the declaration. See checkTheAudioArrives.
+audioSuspect = audioUnsupported();
+// `timeupdate` and not `playing`: at the first instant the decoded byte
+// counter is still zero on every browser, so looking at it there would always
+// say "no audio" — that is, it would go back to showing the warning to whoever
+// does have audio, by another road. `timeupdate` arrives once playback has
+// begun and more than once, so the answer comes when it is there.
+el('clip').addEventListener('timeupdate', checkTheAudioArrives);
+// **A player that refuses says so.** `canPlayType` is a declaration, and a
+// declaration can be wrong in both directions: if playback really fails, that
+// is not an opinion.
+el('clip').addEventListener('error', () => showError(''));
+load();

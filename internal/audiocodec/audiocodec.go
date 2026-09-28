@@ -21,10 +21,10 @@ import (
 	"patmonitor/internal/opuswasm"
 )
 
-// Parameters of the audio stream. They have to stay aligned with
-// opusFrameDuration in internal/rtc: that is the duration the hub declares on
-// every packet, and if the two did not match, audio time would run faster or
-// slower than real time.
+// Parameters of the audio stream. FrameDuration is also the duration the hub
+// declares on every packet and the one a clip gives each Opus sample, and both
+// read it from here: if the frame produced and the duration declared did not
+// match, audio time would run faster or slower than real time.
 const (
 	// SampleRate is the preferred rate: the one Windows' shared capture
 	// delivers practically everywhere.
@@ -32,9 +32,6 @@ const (
 	Channels   = 1
 
 	FrameDuration = 20 * time.Millisecond
-	// FrameSamples is how many samples go into a packet at SampleRate. For the
-	// other rates see FrameSamplesAt.
-	FrameSamples = SampleRate / int(time.Second/FrameDuration)
 
 	// maxPacketBytes is the ceiling of an Opus packet at 20 ms. It is here only
 	// to size the working buffer: at 64 kbit/s real packets run around 160

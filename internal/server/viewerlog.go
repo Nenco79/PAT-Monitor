@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/netip"
@@ -280,10 +281,10 @@ func (s *Server) watchSession(ctx context.Context, notify func(path string), v *
 	for {
 		select {
 		case <-ctx.Done():
-			s.logSessionEnd(log, v, path, last)
+			logSessionEnd(log, v, path, last)
 			return
 		case <-v.Done():
-			s.logSessionEnd(log, v, path, last)
+			logSessionEnd(log, v, path, last)
 			return
 
 		case <-tick.C:
@@ -354,19 +355,12 @@ func waitForPath(ctx context.Context, v *rtc.Viewer, timeout time.Duration) (str
 // in the final report would look like a connection dead on arrival rather than
 // one that ended normally. Measured: `last_video_kbps=0 last_rtt_ms=0` on
 // sessions that had lasted two and a half minutes.
-func (s *Server) logSessionEnd(log logger, v *rtc.Viewer, path string, last rtc.SessionReport) {
+func logSessionEnd(log *slog.Logger, v *rtc.Viewer, path string, last rtc.SessionReport) {
 	log.Info("viewer disconnected",
 		"duration", v.Since().Round(time.Second).String(),
 		"path", path,
 		"last_video_kbps", last.VideoKbps,
 		"last_rtt_ms", last.RTT.Milliseconds())
-}
-
-// logger is the part of *slog.Logger that is needed here, so that the function
-// stays checkable without a real log.
-type logger interface {
-	Info(msg string, args ...any)
-	Warn(msg string, args ...any)
 }
 
 // shortUA reduces the User-Agent to what it takes to recognise the device.

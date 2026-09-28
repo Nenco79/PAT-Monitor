@@ -318,7 +318,7 @@ func (s *Store) Save(c Clip) error {
 	if err != nil {
 		return err
 	}
-	err = WriteClip(f, c.Snapshot)
+	err = writeClip(f, c.Snapshot)
 	if cerr := f.Close(); err == nil {
 		err = cerr
 	}

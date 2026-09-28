@@ -20,12 +20,6 @@ import (
 // likes. A partial implementation would be fine until the packet it cannot read
 // arrives, and on that day the talk-back would fall silent without saying why.
 
-// maxFrameSamples is the longest Opus frame: 120 ms at 48 kHz, per channel. It
-// only sizes the working buffer — browsers send 20 ms — but a short buffer here
-// would not give a truncated frame, it would give an error on every packet
-// longer than expected.
-const maxFrameSamples = 48000 / 1000 * 120
-
 // Decoder expands Opus packets into 16-bit PCM.
 //
 // Like the encoder, **it is not safe for concurrent use**: it carries the
@@ -83,7 +77,7 @@ func NewOpusDecoder(sampleRate, channels int) (Decoder, error) {
 	}
 	return &opusDecoder{
 		dec:      dec,
-		buf:      make([]int16, maxFrameSamples*channels),
+		buf:      make([]int16, opuswasm.MaxFrameSamples*channels),
 		channels: channels,
 		rate:     sampleRate,
 	}, nil
@@ -111,7 +105,7 @@ func (d *opusDecoder) Conceal() ([]int16, error) {
 	// `Decode` can hand over `d.buf` whole. With a null pointer there is no
 	// packet duration to report, so the buffer's length **is** the request:
 	// `opuswasm.call` passes `len(pcm)/channels` as `frame_size`, and `d.buf` is
-	// sized at `maxFrameSamples`, the longest Opus frame there is.
+	// sized at `opuswasm.MaxFrameSamples`, the longest Opus frame there is.
 	//
 	// Measured before the fix: 5760 samples, 120 ms, for every one of three
 	// consecutive concealments standing in for 20 ms packets. The caller

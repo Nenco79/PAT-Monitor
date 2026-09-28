@@ -8,6 +8,8 @@ import (
 
 	"github.com/bluenviron/mediacommon/v2/pkg/formats/mp4/codecs"
 	"github.com/bluenviron/mediacommon/v2/pkg/formats/pmp4"
+
+	"patmonitor/internal/audiocodec"
 )
 
 // boxes lists an MP4's top-level boxes, reading them from the specification:
@@ -68,17 +70,17 @@ func movieDuration(t *testing.T, b []byte, moov int) time.Duration {
 func TestAClipStartsWithAKeyframeAndCarriesBothTracks(t *testing.T) {
 	const step = 100 * time.Millisecond
 
-	r := NewRing(nil)
+	r := newRing(nil)
 	at := feedGOP(t, r, sps720p, t0, 20, step)
 	at = feedGOP(t, r, sps720p, at, 20, step)
 	for i := range 200 {
-		r.WriteAudio([]byte{0xfc, byte(i)}, t0.Add(time.Duration(i)*opusFrameDuration))
+		r.WriteAudio([]byte{0xfc, byte(i)}, t0.Add(time.Duration(i)*audiocodec.FrameDuration))
 	}
 	s := r.Snapshot()
 
 	var buf bytes.Buffer
-	if err := WriteClip(&buf, s); err != nil {
-		t.Fatalf("WriteClip: %v", err)
+	if err := writeClip(&buf, s); err != nil {
+		t.Fatalf("writeClip: %v", err)
 	}
 
 	found := boxes(t, buf.Bytes())
@@ -165,7 +167,7 @@ func TestAGapKeepsTheTwoTracksOnTheSameClock(t *testing.T) {
 		if i == 29 {
 			at = at.Add(500 * time.Millisecond) // the microphone reopens
 		} else {
-			at = at.Add(opusFrameDuration)
+			at = at.Add(audiocodec.FrameDuration)
 		}
 	}
 
@@ -184,7 +186,7 @@ func TestAGapKeepsTheTwoTracksOnTheSameClock(t *testing.T) {
 	ad := audioDurations(audio)
 	for i := range audio {
 		actual := audio[i].At.Sub(video[0].At)
-		if gap := sum - actual; gap > opusFrameDuration || gap < -opusFrameDuration {
+		if gap := sum - actual; gap > audiocodec.FrameDuration || gap < -audiocodec.FrameDuration {
 			t.Fatalf("packet %d falls at %v but arrived at %v: %v of slide", i, sum, actual, gap)
 		}
 		sum += ad[i]
@@ -247,7 +249,7 @@ func TestAStallAndABurstDoNotMoveTheAudioLate(t *testing.T) {
 	var sum time.Duration
 	for i := range audio {
 		actual := audio[i].At.Sub(audio[0].At)
-		if slide := sum - actual; slide > opusFrameDuration || slide < -opusFrameDuration {
+		if slide := sum - actual; slide > audiocodec.FrameDuration || slide < -audiocodec.FrameDuration {
 			t.Fatalf("packet %d falls at %v but arrived at %v: %v of slide", i, sum, actual, slide)
 		}
 		sum += ad[i]
@@ -261,19 +263,19 @@ func TestAStallAndABurstDoNotMoveTheAudioLate(t *testing.T) {
 func TestTheLastFrameLastsUntilTheSoundEnds(t *testing.T) {
 	var buf bytes.Buffer
 	const step = 100 * time.Millisecond
-	r := NewRing(nil)
+	r := newRing(nil)
 	feedGOP(t, r, sps720p, t0, 20, step)
 	for i := range 50 {
-		r.WriteAudio([]byte{0xfc, byte(i)}, t0.Add(time.Duration(i)*opusFrameDuration))
+		r.WriteAudio([]byte{0xfc, byte(i)}, t0.Add(time.Duration(i)*audiocodec.FrameDuration))
 	}
 	s := r.Snapshot()
 	// The camera stops; the microphone goes on for three more seconds.
 	for i := range 150 {
 		s.Audio = append(s.Audio, Packet{Data: []byte{0xfc, byte(i)},
-			At: t0.Add(time.Second + time.Duration(i)*opusFrameDuration)})
+			At: t0.Add(time.Second + time.Duration(i)*audiocodec.FrameDuration)})
 	}
-	if err := WriteClip(&buf, s); err != nil {
-		t.Fatalf("WriteClip: %v", err)
+	if err := writeClip(&buf, s); err != nil {
+		t.Fatalf("writeClip: %v", err)
 	}
 	var pres pmp4.Presentation
 	if err := pres.Unmarshal(bytes.NewReader(buf.Bytes())); err != nil {
@@ -296,16 +298,16 @@ func TestTheLastFrameLastsUntilTheSoundEnds(t *testing.T) {
 // otherwise everything is heard that interval early.
 func TestALateMicrophoneIsDeclaredInTheFile(t *testing.T) {
 	const step = 100 * time.Millisecond
-	r := NewRing(nil)
+	r := newRing(nil)
 	feedGOP(t, r, sps720p, t0, 20, step)
 	// The microphone arrives a second after the camera.
 	for i := range 50 {
-		r.WriteAudio([]byte{0xfc, byte(i)}, t0.Add(time.Second+time.Duration(i)*opusFrameDuration))
+		r.WriteAudio([]byte{0xfc, byte(i)}, t0.Add(time.Second+time.Duration(i)*audiocodec.FrameDuration))
 	}
 
 	var buf bytes.Buffer
-	if err := WriteClip(&buf, r.Snapshot()); err != nil {
-		t.Fatalf("WriteClip: %v", err)
+	if err := writeClip(&buf, r.Snapshot()); err != nil {
+		t.Fatalf("writeClip: %v", err)
 	}
 	if _, ok := boxes(t, buf.Bytes())["moov"]; !ok {
 		t.Fatal("no moov")
@@ -336,11 +338,11 @@ func TestTwoFramesInTheSameInstantStillHaveADuration(t *testing.T) {
 // not open is worse than a clip that is not there: the first is discovered when
 // it is needed.
 func TestAClipWithoutVideoIsRefused(t *testing.T) {
-	if err := WriteClip(&bytes.Buffer{}, Snapshot{}); err != ErrNoVideo {
+	if err := writeClip(&bytes.Buffer{}, Snapshot{}); err != ErrNoVideo {
 		t.Errorf("an empty snapshot gave %v instead of ErrNoVideo", err)
 	}
 	s := Snapshot{Video: []Frame{{Data: []byte{0, 0, 0, 1, 0x65}, At: t0}}}
-	if err := WriteClip(&bytes.Buffer{}, s); err == nil {
+	if err := writeClip(&bytes.Buffer{}, s); err == nil {
 		t.Error("a snapshot without an SPS and PPS produced a file")
 	}
 }

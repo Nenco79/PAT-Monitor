@@ -479,7 +479,7 @@ func testVersion() *VersionInfo {
 // So it is read back by **walking**, the way whoever consumes it does, instead
 // of recounting the fields with the code that wrote them.
 func TestTheFileDetailsAreWalkedFromTheStart(t *testing.T) {
-	blob, err := testVersion().Blob()
+	blob, err := testVersion().blob()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -569,7 +569,7 @@ func TestTheVersionResourceIsInTheTree(t *testing.T) {
 		t.Fatal("the language is missing")
 	}
 	size := binary.LittleEndian.Uint32(rsrc[leaf+4:])
-	want, _ := testVersion().Blob()
+	want, _ := testVersion().blob()
 	if int(size) != len(want) {
 		t.Fatalf("leaf of %d bytes, the blob has %d", size, len(want))
 	}
@@ -792,7 +792,7 @@ func TestThePreReleaseFlagFollowsTheLabelAndNotTheDigits(t *testing.T) {
 			v.Prerelease = c.label
 			v.Version = c.name + " r4567 (abc1234)"
 
-			b, err := v.Blob()
+			b, err := v.blob()
 			if err != nil {
 				t.Fatal(err)
 			}

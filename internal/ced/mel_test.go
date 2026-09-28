@@ -40,7 +40,7 @@ func testFrontend(t *testing.T, nFFT, hop, nMels int, topDB float64) *Frontend {
 	for b := range nMels {
 		fb[b*nFreqs+b] = 1
 	}
-	fe, err := NewFrontend(nFFT, hop, nMels, win, fb, 1e-10, 1, 10, topDB)
+	fe, err := newFrontend(nFFT, hop, nMels, win, fb, 1e-10, 1, 10, topDB)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -217,10 +217,10 @@ func TestTooShortToReflectIsAnError(t *testing.T) {
 
 func TestABadlyShapedFilterbankIsRefused(t *testing.T) {
 	win := make([]float32, 512)
-	if _, err := NewFrontend(512, 160, 64, win, make([]float32, 64*256), 1e-10, 1, 10, 120); err == nil {
+	if _, err := newFrontend(512, 160, 64, win, make([]float32, 64*256), 1e-10, 1, 10, 120); err == nil {
 		t.Error("a bank with 256 bins instead of 257 got through")
 	}
-	if _, err := NewFrontend(500, 160, 64, make([]float32, 500), make([]float32, 64*251), 1e-10, 1, 10, 120); err == nil {
+	if _, err := newFrontend(500, 160, 64, make([]float32, 500), make([]float32, 64*251), 1e-10, 1, 10, 120); err == nil {
 		t.Error("a length that is not a power of two got through")
 	}
 }

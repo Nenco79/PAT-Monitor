@@ -6,25 +6,6 @@ import (
 	"testing"
 )
 
-// stripJSComments removes `//` lines and `/* */` blocks.
-//
-// **A guard that reads comments finds its own subject written down beside the
-// defect**: the remedy to a fault tells its story, and the story names the very
-// field the test is refusing. Here the comment above `camOk` says the word
-// `ready` four times, which would have made the check below pass over any code
-// at all.
-func stripJSComments(src string) string {
-	src = regexp.MustCompile(`(?s)/\*.*?\*/`).ReplaceAllString(src, "")
-	var out []string
-	for line := range strings.SplitSeq(src, "\n") {
-		if i := strings.Index(line, "//"); i >= 0 {
-			line = line[:i]
-		}
-		out = append(out, line)
-	}
-	return strings.Join(out, "\n")
-}
-
 // **The check screen must not decide on a latch, and this is the second time.**
 //
 // `Ready` closes on the first keyframe and never opens again: it answers *did it
@@ -43,7 +24,12 @@ func stripJSComments(src string) string {
 // **Verified to catch**: with `!!s.ready &&` put back at the front of `camOk`
 // the test fails naming it; with `measuredFps` taken out, likewise.
 func TestTheCheckRowDoesNotDecideOnALatch(t *testing.T) {
-	js := stripJSComments(readAsset(t, "onboarding.js"))
+	// **A guard that reads comments finds its own subject written down beside
+	// the defect**: the remedy to a fault tells its story, and the story names
+	// the very field the test is refusing. Here the comment above `camOk` says
+	// the word `ready` four times, which would have made the check below pass
+	// over any code at all.
+	js := withoutComments(readAsset(t, "onboarding.js"))
 
 	// The declaration, not the prose around it: a search for a sentence passes
 	// vacuously the day somebody rewords it.

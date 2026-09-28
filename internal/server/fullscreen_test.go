@@ -101,7 +101,7 @@ func TestEveryCommandOnTheRailHasAGlyph(t *testing.T) {
 func TestTheRailClipsTheWordAndDoesNotRemoveIt(t *testing.T) {
 	css := readAsset(t, "style.css")
 	found := false
-	for _, r := range reCSSRule.FindAllStringSubmatch(stripCSSComments(css), -1) {
+	for _, r := range reCSSRule.FindAllStringSubmatch(reCSSComments.ReplaceAllString(css, ""), -1) {
 		sel, body := r[1], r[2]
 		if !strings.Contains(sel, ".viewer.fs .bar button > span") {
 			continue
@@ -125,7 +125,7 @@ func TestTheRailClipsTheWordAndDoesNotRemoveIt(t *testing.T) {
 // hiddenInFullScreen reads which ids the sheet takes out of the mode.
 func hiddenInFullScreen(css string) map[string]bool {
 	out := map[string]bool{}
-	for _, r := range reCSSRule.FindAllStringSubmatch(stripCSSComments(css), -1) {
+	for _, r := range reCSSRule.FindAllStringSubmatch(reCSSComments.ReplaceAllString(css, ""), -1) {
 		sel, body := r[1], r[2]
 		if !strings.Contains(body, "display: none") {
 			continue
@@ -135,8 +135,4 @@ func hiddenInFullScreen(css string) map[string]bool {
 		}
 	}
 	return out
-}
-
-func stripCSSComments(css string) string {
-	return reCSSComments.ReplaceAllString(css, "")
 }

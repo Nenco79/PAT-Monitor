@@ -17,7 +17,6 @@ import (
 // Messages sent to a transform.
 const (
 	msgCommandFlush         = 0x00000000
-	msgCommandDrain         = 0x00000001
 	msgSetD3DManager        = 0x00000002
 	msgNotifyBeginStreaming = 0x10000000
 	msgNotifyEndStreaming   = 0x10000001
@@ -373,44 +372,6 @@ func eventName(t uint32) string {
 	}
 }
 
-// mfEventFlagNoWait asks not to block when the queue is empty.
-const mfEventFlagNoWait = 0x00000001
-
-// mfENoEventsAvailable is the answer to an empty queue polled without waiting.
-const mfENoEventsAvailable = 0xC00D3E80
-
-// waitEvent waits for the next event, blocking until it arrives.
-//
-// It is the way the documentation prescribes for driving an asynchronous
-// transform. It has no deadline: the caller has to have a way of unblocking it.
-func (g *eventGenerator) waitEvent() (*mediaEvent, error) {
-	var ev *mediaEvent
-	r, _, _ := syscall.SyscallN(g.vtbl().GetEvent,
-		uintptr(unsafe.Pointer(g)), 0, uintptr(unsafe.Pointer(&ev)))
-	if err := check("GetEvent", r); err != nil {
-		return nil, err
-	}
-	return ev, nil
-}
-
-// nextEvent collects an event if there is one, without blocking.
-//
-// The blocking version would be simpler, but it turns any hitch into a stalled
-// program that says nothing. Polling without waiting, the caller can give
-// itself a deadline and report what did not arrive.
-func (g *eventGenerator) nextEvent() (*mediaEvent, error) {
-	var ev *mediaEvent
-	r, _, _ := syscall.SyscallN(g.vtbl().GetEvent,
-		uintptr(unsafe.Pointer(g)), mfEventFlagNoWait, uintptr(unsafe.Pointer(&ev)))
-	if uint32(r) == mfENoEventsAvailable {
-		return nil, nil
-	}
-	if err := check("GetEvent", r); err != nil {
-		return nil, err
-	}
-	return ev, nil
-}
-
 // ---------- H.264 encoder ----------
 
 // EncoderInfo describes a transform found in the system.
@@ -475,29 +436,14 @@ type VideoEncoderConfig struct {
 	BitrateKbps   int
 	// Profile is one of the H264Profile* values.
 	Profile uint32
-	// InputSubtype is the format of the incoming frames; nil means NV12.
-	InputSubtype *ole.GUID
 	// NameFilter, when set, narrows the choice to encoders whose name contains
 	// it. It is for diagnosis, to compare two encoders on the same machine.
 	NameFilter string
-	// Poll drives asynchronous transforms by polling too, without listening to
-	// their events. It is there to work out whether an encoder's silence is
-	// about the event queue or about the transform itself.
-	Poll bool
 	// Device is the Direct3D device to hand to the transform. Hardware encoders
 	// do not work without one; software ones ignore it, answering E_NOTIMPL.
 	//
-	// The caller owns it, because it has to be shared with the camera: if the
-	// two had different devices the textures produced by one would be useless
-	// to the other.
+	// The caller owns it and releases it: the encoder only borrows it.
 	Device *D3DDevice
-	// Skip discards the first usable candidates. The system lists the same
-	// encoder more than once and the duplicates are not necessarily equivalent:
-	// it is there to try the second when the first configures but does not
-	// work.
-	Skip int
-	// Block waits for events by blocking instead of polling the queue.
-	Block bool
 	// GOPFrames is the distance between keyframes. Zero leaves the choice to
 	// the encoder.
 	GOPFrames int
@@ -524,8 +470,6 @@ type VideoEncoderConfig struct {
 	// overshot bitrate is paid for in lost packets. Documented as **static**:
 	// set before starting the session, not while it runs.
 	MaxQP int
-	// QualityVsSpeed goes from 1 to 100. Zero leaves the default.
-	QualityVsSpeed int
 }
 
 // VideoEncoder wraps the transform and its event protocol.
@@ -550,8 +494,6 @@ type VideoEncoder struct {
 	seqTries  atomic.Int32
 	seqHeader atomic.Pointer[[]byte]
 	async     bool
-	poll      bool
-	block     bool
 	dev       *D3DDevice
 	// d3dResult keeps how the transform took the Direct3D device: it is the
 	// kind of answer one discards out of habit and then misses exactly when it
@@ -601,7 +543,6 @@ func NewVideoEncoder(cfg VideoEncoderConfig) (*VideoEncoder, error) {
 	// to be tried: the list says what exists, not which instance will accept
 	// our configuration.
 	var errs []string
-	skip := cfg.Skip
 	for _, cand := range list {
 		if cfg.NameFilter != "" && !strings.Contains(cand.Name, cfg.NameFilter) {
 			continue
@@ -612,7 +553,7 @@ func NewVideoEncoder(cfg VideoEncoderConfig) (*VideoEncoder, error) {
 			continue
 		}
 		t := (*transform)(unsafe.Pointer(obj))
-		enc := &VideoEncoder{t: t, Name: cand.Name, async: cand.Async, poll: cfg.Poll, block: cfg.Block, dev: cfg.Device}
+		enc := &VideoEncoder{t: t, Name: cand.Name, async: cand.Async, dev: cfg.Device}
 		if err := enc.configure(cfg); err != nil {
 			errs = append(errs, fmt.Sprintf("%s: %v", cand.Name, err))
 			// **The whole encoder is closed, not the transform alone.**
@@ -623,13 +564,8 @@ func NewVideoEncoder(cfg VideoEncoderConfig) (*VideoEncoder, error) {
 			// callback. Releasing t alone left all three, and the worst of them is
 			// the callback: that extra reference keeps the transform alive, so a
 			// candidate we have just rejected goes on being handed events for the
-			// life of the process with nobody reading them. Close does what the
-			// skip branch below already did.
-			enc.Close()
-			continue
-		}
-		if skip > 0 {
-			skip--
+			// life of the process with nobody reading them. Close gives back all
+			// three.
 			enc.Close()
 			continue
 		}
@@ -755,9 +691,6 @@ func (e *VideoEncoder) subscribe() error {
 		return fmt.Errorf("IMFMediaEventGenerator: %w", err)
 	}
 	e.events = (*eventGenerator)(unsafe.Pointer(gen))
-	if e.poll || e.block {
-		return nil
-	}
 	if e.cb, err = newAsyncCallback(e.events); err != nil {
 		return fmt.Errorf("event subscription: %w", err)
 	}
@@ -822,11 +755,7 @@ func (e *VideoEncoder) negotiateInput(cfg VideoEncoderConfig) error {
 	// the encoder declares it accepts, and size and cadence are added to it. A
 	// type made by hand is refused even when it has the same attributes, and
 	// the error received, E_POINTER, gives no hint of that.
-	subtype := cfg.InputSubtype
-	if subtype == nil {
-		subtype = MFVideoFormatNV12
-	}
-	in, err := e.t.inputTypeFor(subtype)
+	in, err := e.t.inputTypeFor(MFVideoFormatNV12)
 	if err != nil {
 		return fmt.Errorf("%w; the encoder declares it accepts: %s",
 			err, strings.Join(e.t.availableInputTypes(), ", "))
@@ -871,7 +800,7 @@ func (e *VideoEncoder) Close() {
 		e.t = nil
 	}
 	// The Direct3D device is not released here: it belongs to whoever gave it
-	// to us, and it is shared with the camera.
+	// to us.
 	e.dev = nil
 }
 
@@ -880,7 +809,7 @@ func (e *VideoEncoder) Close() {
 // It matters to whoever governs it: on a synchronous one the output is
 // collected after every frame fed in, on an asynchronous one only when
 // METransformHaveOutput arrives, and asking earlier answers E_UNEXPECTED.
-func (e *VideoEncoder) Async() bool { return e.async && !e.poll }
+func (e *VideoEncoder) Async() bool { return e.async }
 
 // UsesDevice says whether the transform accepted the Direct3D device, that is,
 // whether the encoding is happening on the GPU.
@@ -986,52 +915,14 @@ const (
 // On synchronous transforms there is nothing to wait for: a NeedInput is
 // feigned, and the caller collects the output after every ProcessInput.
 func (e *VideoEncoder) NextEvent(timeout time.Duration) (Event, error) {
-	if !e.async || e.poll {
+	if !e.async {
 		return EventNeedInput, nil
 	}
-	if e.cb != nil {
-		select {
-		case ev := <-e.cb.ch:
-			return ev, nil
-		case <-time.After(timeout):
-			return EventNone, nil
-		}
-	}
-	deadline := time.Now().Add(timeout)
-	for {
-		var (
-			ev  *mediaEvent
-			err error
-		)
-		if e.block {
-			ev, err = e.events.waitEvent()
-		} else {
-			ev, err = e.events.nextEvent()
-		}
-		if err != nil {
-			return EventOther, err
-		}
-		if ev == nil {
-			if time.Now().After(deadline) {
-				return EventNone, nil
-			}
-			time.Sleep(time.Millisecond)
-			continue
-		}
-
-		t, err := ev.eventType()
-		ev.Release()
-		if err != nil {
-			return EventOther, err
-		}
-		switch t {
-		case evNeedInput:
-			return EventNeedInput, nil
-		case evHaveOutput:
-			return EventHaveOutput, nil
-		default:
-			return EventOther, nil
-		}
+	select {
+	case ev := <-e.cb.ch:
+		return ev, nil
+	case <-time.After(timeout):
+		return EventNone, nil
 	}
 }
 

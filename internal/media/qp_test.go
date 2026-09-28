@@ -391,8 +391,9 @@ func TestASeedCannotOverrideWhatTheStreamSaid(t *testing.T) {
 // never actually taken, and a reserve nobody exercises is the least tested part
 // of a program. Fed by hand, it is exercised.
 //
-// They also carry the emulation-prevention bytes a synthetic set does not:
-// three `000003` sequences that rbsp has to strip.
+// They also carry the emulation-prevention bytes a synthetic set does not, but
+// past every field this test reads: it passes with the stripping switched off,
+// and what proves rbsp is TestRBSPStripsTheEmulationBytes.
 func TestTheDeclaredHeaderOfARealEncoderIsAsGoodForReading(t *testing.T) {
 	unhex := func(s string) []byte {
 		out := make([]byte, len(s)/2)

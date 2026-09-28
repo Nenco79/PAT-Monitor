@@ -108,13 +108,12 @@ type signalMessage struct {
 	Type      string                     `json:"type"`
 	SDP       *webrtc.SessionDescription `json:"sdp,omitempty"`
 	Candidate *webrtc.ICECandidateInit   `json:"candidate,omitempty"`
-	Message   string                     `json:"message,omitempty"`
 	Transport string                     `json:"transport,omitempty"`
 	// Reason carries the reason for the error as a code.
 	//
-	// The server no longer sends `Message`, so without this field the report
-	// says "error from the server: " and nothing else — which is precisely the
-	// information this tool is run for. Here the code is printed bare: a
+	// It is the only thing the server says about an error, so without this
+	// field the report says "error from the server: " and nothing else —
+	// which is precisely the information this tool is run for. Here the code is printed bare: a
 	// developer reads it, and turning it into a sentence would be one more
 	// dictionary to keep aligned for nobody.
 	Reason string `json:"reason,omitempty"`
@@ -505,7 +504,7 @@ func watch(ctx context.Context, jar *cookiejar.Jar, base, profileLevelID string,
 				fmt.Printf("  ICE path: %s\n", msg.Transport)
 			case "error":
 				done <- fmt.Errorf("error from the server: %s",
-					firstNonEmpty(msg.Reason, msg.Message, "no reason given"))
+					firstNonEmpty(msg.Reason, "no reason given"))
 				return
 			}
 		}

@@ -3,6 +3,8 @@ package audiocodec
 import (
 	"math"
 	"testing"
+
+	"patmonitor/internal/opuswasm"
 )
 
 // FuzzDecodeWhatAViewerSends feeds the talk-back decoder packets nobody
@@ -44,7 +46,7 @@ func FuzzDecodeWhatAViewerSends(f *testing.F) {
 		f.Fatal(err)
 	}
 	f.Cleanup(func() { dec.Close() })
-	limit := maxFrameSamples * dec.Channels()
+	limit := opuswasm.MaxFrameSamples * dec.Channels()
 
 	f.Fuzz(func(t *testing.T, packet []byte) {
 		out, err := dec.Decode(packet)

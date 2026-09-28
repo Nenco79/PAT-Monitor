@@ -5,15 +5,11 @@ import (
 	"io"
 	"time"
 
+	"patmonitor/internal/audiocodec"
 	"patmonitor/internal/media"
 )
 
 const (
-	// opusFrameDuration is the duration of an Opus packet. It is the hub's own
-	// constant, and it holds because we produce them: audiocodec emits one
-	// packet for every complete 20 ms frame.
-	opusFrameDuration = 20 * time.Millisecond
-
 	// opusChannels is how many channels are declared. The SDP's warning
 	// applies: the stream is mono, players expect the declaration to say two.
 	opusChannels = 2
@@ -28,7 +24,7 @@ const (
 // ErrNoVideo says there is nothing to write.
 var ErrNoVideo = errors.New("record: the pre-roll has no video")
 
-// WriteClip writes the snapshot as a progressive MP4.
+// writeClip writes the snapshot as a progressive MP4.
 //
 // MP4 and not a raw .h264 because the pre-roll carries **the audio too**, and a
 // bare Annex-B cannot hold it.
@@ -52,7 +48,7 @@ var ErrNoVideo = errors.New("record: the pre-roll has no video")
 // sample's duration, a packet assumed equal to the previous one — makes
 // **everything after it** slide against the other track, and a slide is not
 // visible looking at the file: it is heard watching the clip.
-func WriteClip(w io.Writer, s Snapshot) error {
+func writeClip(w io.Writer, s Snapshot) error {
 	if len(s.Video) == 0 {
 		return ErrNoVideo
 	}
@@ -134,7 +130,7 @@ func videoDurations(frames []Frame) []time.Duration {
 			end = pos + frames[i].At.Sub(frames[i-1].At)
 		default:
 			// A single frame: there is no interval to derive it from.
-			end = pos + opusFrameDuration
+			end = pos + audiocodec.FrameDuration
 		}
 		end = max(end, pos+minSampleDuration)
 		out[i] = end - pos
@@ -169,11 +165,11 @@ func audioDurations(packets []Packet) []time.Duration {
 	out := make([]time.Duration, len(packets))
 	var pos time.Duration // where the current packet starts, from the first
 	for i := range packets {
-		out[i] = opusFrameDuration
+		out[i] = audiocodec.FrameDuration
 		if i+1 < len(packets) {
-			due := pos + opusFrameDuration
-			if late := packets[i+1].At.Sub(packets[0].At) - due; late >= opusFrameDuration {
-				out[i] += late / opusFrameDuration * opusFrameDuration
+			due := pos + audiocodec.FrameDuration
+			if late := packets[i+1].At.Sub(packets[0].At) - due; late >= audiocodec.FrameDuration {
+				out[i] += late / audiocodec.FrameDuration * audiocodec.FrameDuration
 			}
 		}
 		pos += out[i]

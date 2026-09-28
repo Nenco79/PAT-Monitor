@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"patmonitor/internal/ced"
+	"patmonitor/internal/pipeline"
 )
 
 // **The model is what decides, and the shape detector acts as a gate.**
@@ -27,11 +28,9 @@ type recogniser struct {
 	watch  map[string][]int
 	log    *slog.Logger
 
-	// Touched by different goroutines: `wanted` by the watching round and read by
-	// the capture, `badRate` by the capture alone but with a value that must not
-	// be able to repeat the same line fifty times a second.
-	wanted  atomic.Bool
-	badRate atomic.Int64
+	// Touched by different goroutines: written by the watching round and read
+	// by the capture.
+	wanted atomic.Bool
 
 	mu    sync.Mutex
 	seen  *ced.Result
@@ -184,24 +183,17 @@ const recogniseInterval = 5 * time.Second
 // goroutine: it does not block, and the classification is on a goroutine of its
 // own.
 //
-// **A rate the model does not accept is declared.** The analysis stream always
-// comes out at 16 kHz, so it should never happen — but if it did, the recogniser
-// would stop answering and from outside that would be indistinguishable from a
-// quiet room. Now that the alert no longer says "possible", an unexplained
-// silence is the wrong confidence in the worst place.
-func (r *recogniser) Feed(pcm []byte, rate int) {
+// **The analysis stream always comes out at pipeline.AnalysisSampleRate**, for
+// any microphone, so there is no rate to pass. A model that wanted another rate
+// would leave the recogniser silent, indistinguishable from a quiet room, and
+// that is heard in a test rather than in the log: recognise_test.go feeds
+// through here and waits for a verdict, and with the rate put wrong it gets
+// none.
+func (r *recogniser) Feed(pcm []byte) {
 	if r == nil {
 		return
 	}
-	// **Every** rate is recorded and the line is written only when it changes
-	// and is wrong: this way the line comes out once per microphone and not
-	// fifty times a second, and if a bad rate returns after a good one it says
-	// so again. Recording only the bad ones would leave the return silent.
-	if r.badRate.Swap(int64(rate)) != int64(rate) && rate != r.model.SampleRate() {
-		r.log.Error("the analysis stream is not at the model's rate: cries and barks will not be reported",
-			"hz", rate, "wanted_hz", r.model.SampleRate())
-	}
-	r.stream.FeedS16(pcm, rate)
+	r.stream.FeedS16(pcm, pipeline.AnalysisSampleRate)
 }
 
 // Wanted says whether anybody will read the verdict.

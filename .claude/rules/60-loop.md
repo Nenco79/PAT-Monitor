@@ -957,8 +957,11 @@ encoders — so there is nothing to remember and nothing to forget.
 **A reserve nobody exercises is the least tested part of a program**, and on
 every encoder seen here the stream speaks on the first keyframe, so this one is
 never taken. Hence the test built from the bytes a real encoder actually
-produced, which also carry the three `000003` sequences a synthetic parameter
-set does not, and which the emulation-prevention stripping has to remove.
+produced, which also carry the `000003` sequences a synthetic parameter set
+does not — **past every field either reader walks, though**: with the
+emulation-prevention stripping switched off that test still passed, and so did
+the rest of the package. What proves the stripping is
+`TestRBSPStripsTheEmulationBytes`, which asks `rbsp` directly.
 
 #### On Quick Sync the slice quantiser is a constant
 

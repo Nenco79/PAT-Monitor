@@ -752,7 +752,7 @@ the difference from Traditional Chinese, which this chapter calls unreachable â€
 browsers ask for `zh-TW`, not `zh-hant`, so a `zh-hant.json` would be named for
 a tag nobody sends, while `pt-PT` is exactly what Lisbon sends. It overlays
 English like every catalogue, not Brazilian: an overlay of an overlay would be a
-second fallback chain, and the cost of a whole file is 434 strings of which most
+second fallback chain, and the cost of a whole file is 433 strings of which most
 differ by a word.
 
 - **No `vocÃª` and no `tu`: the subject is left out.** Microsoft's pt-PT guide says

@@ -1,5 +1,4 @@
 {
-  "auth.failed": "La demande a échoué.",
   "auth.mismatch": "Les deux mots de passe ne correspondent pas.",
   "auth.set": "Mot de passe défini. Redirection…",
   "auth.unreachable": "Serveur injoignable.",

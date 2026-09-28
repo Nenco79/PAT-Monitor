@@ -910,7 +910,6 @@ func (h *Hub) RunBitrateControl(ctx context.Context) error {
 			// the ceiling test further down have to describe the same value, and
 			// nothing guarantees that of two separate loads.
 			inForce := h.targetKbps.Load()
-			lim := qpThresholds()
 			// **The cap and the bitrate in force are two numbers, and this line
 			// used to print the first under the second's name.** `g.current` is
 			// what the network allows; what the encoder is really being asked for
@@ -972,7 +971,7 @@ func (h *Hub) RunBitrateControl(ctx context.Context) error {
 			}
 
 			if scale != nil && h.cfg.OnVideoFormat != nil && viewers > 0 {
-				w, ht, fps, moved := scale.target(videoForScale, credible, qp, lim, maxBits, now)
+				w, ht, fps, moved := scale.target(videoForScale, credible, qp, maxBits, now)
 
 				// **The cadence is declared, not assumed.** The encoder divides
 				// the budget by the frames it believes it is receiving: telling
@@ -1005,7 +1004,7 @@ func (h *Hub) RunBitrateControl(ctx context.Context) error {
 						"video", fmt.Sprintf("%dx%d@%d", w, ht, fps),
 						"declared", declaredFPS,
 						"measured_fps", fmt.Sprintf("%.1f", h.measuredFPSAt(now)),
-						"qp", qp, "break_threshold", lim.breakAt,
+						"qp", qp, "break_threshold", qpBreakAt,
 						"estimate_kbps", estimate, "for_video_kbps", video)
 					// **A change of cadence alone rebuilds the encoder too**, and
 					// with it the throughput changes: declaring 15 instead of 30

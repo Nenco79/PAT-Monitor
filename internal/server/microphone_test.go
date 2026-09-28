@@ -17,7 +17,7 @@ func fakeMicrophones(t *testing.T) (s *Server, token string, applied *string) {
 	applied = &chosen
 	s.opts.Microphones = func() ([]Microphone, error) {
 		return []Microphone{
-			{ID: "{0.0.1.00000000}.array", Name: "Microphone Array", Default: true},
+			{ID: "{0.0.1.00000000}.array", Name: "Microphone Array"},
 			{ID: "{0.0.1.00000000}.usb", Name: "USB Microphone"},
 		}, nil
 	}

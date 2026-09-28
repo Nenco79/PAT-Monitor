@@ -24,7 +24,6 @@ var (
 	codecRateControlMode = guid("{1c0608e9-370c-4710-8a58-cb6181c42423}")
 	codecMeanBitRate     = guid("{f7222374-2144-4815-b550-a37f8e12ee52}")
 	codecBufferSize      = guid("{0db96574-b6a4-4c8b-8106-3773de0310cd}")
-	codecQualityVsSpeed  = guid("{98332df8-03cd-476b-89fa-3f9e442dec9f}")
 	codecGOPSize         = guid("{95f31b26-95a4-41aa-9303-246a7fc6eef1}")
 	codecLowLatencyMode  = guid("{9c27891a-ed7a-40e1-88e8-b22727a024ee}")
 	codecForceKeyFrame   = guid("{398c1b98-8353-475a-9ef2-8f265d260345}")
@@ -167,7 +166,6 @@ const DefaultQuality = 50
 const (
 	rateControlCBR                = 0
 	rateControlPeakConstrainedVBR = 1
-	rateControlUnconstrainedVBR   = 2
 	rateControlQuality            = 3
 )
 
@@ -347,9 +345,6 @@ func (e *VideoEncoder) applyCodecSettings(cfg VideoEncoderConfig) error {
 
 	if cfg.GOPFrames > 0 {
 		note("keyframe distance", e.codec.setUINT32(codecGOPSize, uint32(cfg.GOPFrames)))
-	}
-	if cfg.QualityVsSpeed > 0 {
-		note("quality vs speed", e.codec.setUINT32(codecQualityVsSpeed, uint32(cfg.QualityVsSpeed)))
 	}
 
 	// The keyframe on request is not set here — it is asked for when it is

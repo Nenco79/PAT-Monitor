@@ -40,20 +40,13 @@ func TestRequestKeyframeCoalesce(t *testing.T) {
 	if forced != 2 {
 		t.Errorf("keyframes forced = %d, want 2", forced)
 	}
-	if got := h.Stats.KeyframeForced.Load(); got != 2 {
-		t.Errorf("Stats.KeyframeForced = %d, want 2", got)
-	}
 }
 
 // TestRequestKeyframeWithoutAnEncoder checks that a hub with no callback does
-// not claim to have forced anything: the counter serves diagnosis, and a count
-// that grows while the encoder receives nothing would say the false.
+// not claim to have forwarded anything.
 func TestRequestKeyframeWithoutAnEncoder(t *testing.T) {
 	h := New(Config{})
 	if h.requestKeyframe(time.Now()) {
 		t.Error("with no OnKeyframeRequest the request cannot be forwarded")
-	}
-	if got := h.Stats.KeyframeForced.Load(); got != 0 {
-		t.Errorf("Stats.KeyframeForced = %d, want 0", got)
 	}
 }

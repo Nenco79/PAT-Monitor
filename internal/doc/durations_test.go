@@ -15,28 +15,29 @@ import (
 // The two durations this program repeats on purpose, and the guard that was
 // missing on both.
 //
-// **Twenty milliseconds is declared four times** - `audiocodec.FrameDuration`,
-// and an `opusFrameDuration` each in `internal/rtc`, `internal/record` and
-// `cmd/pat-capture` - and **a hundred milliseconds three times**:
-// `pipeline.levelBlockDuration`, `analysisBlockDuration` in `cmd/pat-capture`
-// and `blockDuration` in `cmd/pat-sounds`. Every one of the seven carries prose
-// promising it equals the others, and until this file no test compared any two.
+// **Twenty milliseconds is declared twice** - `audiocodec.FrameDuration` and
+// the `opusFrameDuration` in `cmd/pat-capture` - and **a hundred milliseconds
+// three times**: `pipeline.levelBlockDuration`, `analysisBlockDuration` in
+// `cmd/pat-capture` and `blockDuration` in `cmd/pat-sounds`. Every one of the
+// five carries prose promising it equals the others, and until this file no
+// test compared any two. `internal/rtc` and `internal/record` used to hold an
+// `opusFrameDuration` each; they read audiocodec's now, and a copy that came
+// back under that name would be compared here like the others.
 //
 // **The repetitions are argued, and that is exactly why the comparison is the
-// defect.** `internal/record` must not import `internal/rtc` for a number;
-// `cmd/pat-capture` is an instrument that has to be able to measure without the
-// monitor's packages, and its own comment says the copy is deliberate because
-// "a reference would make it true by construction"; `cmd/pat-sounds` repeats the
-// block because "a measurement made with other numbers would measure a gate
-// that does not exist". None of those arguments survives the numbers actually
-// diverging - and what it costs is not cosmetic: if the frame the encoder
-// produces and the duration the hub declares on the packet disagree, audio time
-// runs faster or slower than real time, which is not a counter that goes red
-// but a delay that grows. The block is worse still, because the gate's whole
-// tuning was measured on that grid.
+// defect.** `cmd/pat-capture` is an instrument that has to be able to measure
+// without the monitor's packages, and its own comment says the copy is
+// deliberate because "a reference would make it true by construction";
+// `cmd/pat-sounds` repeats the block because "a measurement made with other
+// numbers would measure a gate that does not exist". None of those arguments
+// survives the numbers actually diverging - and what it costs is not cosmetic:
+// an instrument expecting a packet the encoder does not produce judges the
+// audio's cadence against a clock the monitor does not keep, and passes or
+// fails it for the wrong reason. The block is worse still, because the gate's
+// whole tuning was measured on that grid.
 //
 // **The list is derived from the tree, not written here.** A guard carrying its
-// own seven paths would protect exactly what somebody remembered, which is the
+// own five paths would protect exactly what somebody remembered, which is the
 // first entry of "Guards, and how they fail"; this one walks the source and
 // recognises the copies by the names they are all given. A copy named by the
 // same convention is covered with nothing to remember, and the floor below
@@ -199,7 +200,7 @@ func TestTheRepeatedDurationsAgree(t *testing.T) {
 	// A guard that has stopped recognising anything passes. These are the counts
 	// at the time of writing: fewer means the naming has moved and the sweep is
 	// absolving copies it can no longer see.
-	floors := map[string]int{"opus packet": 4, "analysis block": 3}
+	floors := map[string]int{"opus packet": 2, "analysis block": 3}
 	for fam, min := range floors {
 		if n := len(found[fam]); n < min {
 			t.Fatalf("%s: found %d declarations, expected at least %d - a copy has "+

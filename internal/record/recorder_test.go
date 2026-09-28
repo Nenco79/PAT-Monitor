@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"patmonitor/internal/audiocodec"
 	"patmonitor/internal/media"
 )
 
@@ -23,7 +24,7 @@ func feedRec(t *testing.T, r *Recorder, spsHex string, at time.Time, frames int)
 		}
 		// Five 20 ms audio packets for every 100 ms frame.
 		for j := range 5 {
-			r.WriteAudio([]byte{0xfc, byte(j)}, at.Add(time.Duration(j)*opusFrameDuration))
+			r.WriteAudio([]byte{0xfc, byte(j)}, at.Add(time.Duration(j)*audiocodec.FrameDuration))
 		}
 		at = at.Add(step)
 	}

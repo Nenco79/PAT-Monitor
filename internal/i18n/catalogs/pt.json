@@ -1,5 +1,4 @@
 {
-  "auth.failed": "Não foi possível concluir a solicitação.",
   "auth.mismatch": "As senhas não coincidem.",
   "auth.set": "Senha definida. Redirecionando…",
   "auth.unreachable": "Não é possível contatar o servidor.",

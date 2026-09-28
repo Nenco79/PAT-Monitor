@@ -26,7 +26,7 @@ func TestNoClipIsWrittenOnANearlyFullDisk(t *testing.T) {
 		Log:       slog.New(slog.NewTextHandler(&logged, nil)),
 	})
 
-	ring := NewRing(nil)
+	ring := newRing(nil)
 	feedGOP(t, ring, sps720p, t0, 20, step)
 	clip := Clip{Snapshot: ring.Snapshot(), Code: "motion", At: t0, Keep: true}
 
@@ -77,7 +77,7 @@ func TestNoAnswerAfterAFullDiskIsNotRoom(t *testing.T) {
 		FreeSpace: func(string) (uint64, error) { return free, askErr },
 		Log:       slog.New(slog.NewTextHandler(&logged, nil)),
 	})
-	ring := NewRing(nil)
+	ring := newRing(nil)
 	feedGOP(t, ring, sps720p, t0, 20, step)
 	clip := Clip{Snapshot: ring.Snapshot(), Code: "motion", At: t0}
 	if err := s.Save(clip); !errors.Is(err, ErrDiskFull) {

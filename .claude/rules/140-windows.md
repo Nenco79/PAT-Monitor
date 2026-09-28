@@ -445,7 +445,7 @@ questions: the menu is opened to do something, the tooltip is hovered to find
 out whether one can go to bed. Zero viewers is not written as a figure — "0
 viewers" reads as a broken counter, while the question has an answer in words.
 
-**All in 127 characters**, because `szTip` is a fixed buffer and `copyTip`
+**All in 127 characters**, because `szTip` is a fixed buffer and `copyUTF16`
 truncates **silently** — and the ceiling holds **in every language**, not in the
 writer's: a German sentence is on average a third longer than an Italian one, so
 the test runs over every catalogue and over each one's worst case. **A fault

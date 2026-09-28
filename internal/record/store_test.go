@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"patmonitor/internal/audiocodec"
 )
 
 // writeFake puts a file with a clip's name and the requested size into the
@@ -248,11 +250,11 @@ func TestSaveWritesAClipThatTheListingCanRead(t *testing.T) {
 	dir := t.TempDir()
 	s := NewStore(dir, StoreConfig{})
 
-	ring := NewRing(nil)
+	ring := newRing(nil)
 	at := feedGOP(t, ring, sps720p, t0, 20, step)
 	feedGOP(t, ring, sps720p, at, 20, step)
 	for i := range 200 {
-		ring.WriteAudio([]byte{0xfc, byte(i)}, t0.Add(time.Duration(i)*opusFrameDuration))
+		ring.WriteAudio([]byte{0xfc, byte(i)}, t0.Add(time.Duration(i)*audiocodec.FrameDuration))
 	}
 	snap := ring.Snapshot()
 	event := t0.Add(4 * time.Second)
@@ -339,7 +341,7 @@ func TestASaveWithAnUnusableCodeIsRefused(t *testing.T) {
 	dir := t.TempDir()
 	s := NewStore(dir, StoreConfig{})
 
-	ring := NewRing(nil)
+	ring := newRing(nil)
 	feedGOP(t, ring, sps720p, t0, 20, step)
 	snap := ring.Snapshot()
 
@@ -377,7 +379,7 @@ func TestAClipAskedForByHandIsBornKept(t *testing.T) {
 	dir := t.TempDir()
 	s := NewStore(dir, StoreConfig{})
 
-	ring := NewRing(nil)
+	ring := newRing(nil)
 	at := feedGOP(t, ring, sps720p, t0, 20, step)
 	feedGOP(t, ring, sps720p, at, 20, step)
 	if err := s.Save(Clip{Snapshot: ring.Snapshot(), Code: CodeManual,
@@ -476,7 +478,7 @@ func TestTheManualCodeCanBecomeAFileName(t *testing.T) {
 func TestAClipNeverReplacesAnotherWithTheSameName(t *testing.T) {
 	dir := t.TempDir()
 	s := NewStore(dir, StoreConfig{})
-	ring := NewRing(nil)
+	ring := newRing(nil)
 	feedGOP(t, ring, sps720p, t0, 20, step)
 	snap := ring.Snapshot()
 

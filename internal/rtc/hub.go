@@ -10,7 +10,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"net"
 	"strconv"
@@ -28,15 +27,13 @@ import (
 
 	patmedia "patmonitor/internal/media"
 
+	"patmonitor/internal/audiocodec"
 	"patmonitor/internal/guard"
 )
 
 // defaultVideoFrameDuration corresponds to 30 fps and is the fallback when the
 // configuration names no framerate.
 const defaultVideoFrameDuration = time.Second / 30
-
-// opusFrameDuration corresponds to -frame_duration 20 passed to libopus.
-const opusFrameDuration = 20 * time.Millisecond
 
 // Opus SDP parameters.
 const (
@@ -187,16 +184,7 @@ type Config struct {
 // Stats exposes the hub's counters.
 type Stats struct {
 	ViewersNow   atomic.Int64
-	ViewersTotal atomic.Int64
 	KeyframeReqs atomic.Int64
-	// KeyframeForced counts the requests actually forwarded to the encoder. The
-	// difference from KeyframeReqs is the ones absorbed by the minimum interval,
-	// and it is the number to look at when a storm is suspected.
-	KeyframeForced atomic.Int64
-	VideoSamples   atomic.Int64
-	AudioSamples   atomic.Int64
-	WriteFailures  atomic.Int64
-	ConnectFailure atomic.Int64
 }
 
 // Hub owns the shared tracks and creates one PeerConnection per viewer.
@@ -343,7 +331,6 @@ func (h *Hub) requestKeyframe(now time.Time) bool {
 	h.lastKeyframeAt = now
 	h.keyframeMu.Unlock()
 
-	h.Stats.KeyframeForced.Add(1)
 	h.cfg.OnKeyframeRequest()
 	return true
 }
@@ -620,14 +607,10 @@ func (h *Hub) WriteVideo(au patmedia.AccessUnit) {
 		Data:     au.Data,
 		Duration: h.nextVideoDuration(),
 	}); err != nil {
-		// With zero viewers the write is not an error: the track is simply not
-		// bound to any sender.
-		if !errors.Is(err, io.ErrClosedPipe) {
-			h.Stats.WriteFailures.Add(1)
-		}
+		// A write that fails is not counted in videoBytes. With zero viewers it
+		// is not even an error: the track is simply not bound to any sender.
 		return
 	}
-	h.Stats.VideoSamples.Add(1)
 	h.videoBytes.Add(int64(len(au.Data)))
 }
 
@@ -651,13 +634,7 @@ func (h *Hub) WriteAudio(packet []byte) {
 	if h.talk.Active() {
 		return
 	}
-	if err := track.WriteSample(media.Sample{Data: packet, Duration: opusFrameDuration}); err != nil {
-		if !errors.Is(err, io.ErrClosedPipe) {
-			h.Stats.WriteFailures.Add(1)
-		}
-		return
-	}
-	h.Stats.AudioSamples.Add(1)
+	_ = track.WriteSample(media.Sample{Data: packet, Duration: audiocodec.FrameDuration})
 }
 
 func (h *Hub) setSPS(sps []byte) {
@@ -1088,12 +1065,9 @@ func (h *Hub) NewViewer() (*Viewer, *webrtc.SessionDescription, error) {
 				// connection's state: see counted.
 				if v.counted.CompareAndSwap(false, true) {
 					h.Stats.ViewersNow.Add(1)
-					h.Stats.ViewersTotal.Add(1)
 				}
-			case webrtc.PeerConnectionStateDisconnected, webrtc.PeerConnectionStateClosed:
-				v.Close()
-			case webrtc.PeerConnectionStateFailed:
-				h.Stats.ConnectFailure.Add(1)
+			case webrtc.PeerConnectionStateDisconnected, webrtc.PeerConnectionStateClosed,
+				webrtc.PeerConnectionStateFailed:
 				v.Close()
 			}
 			return nil

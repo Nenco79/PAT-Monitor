@@ -131,8 +131,9 @@ two steps it has already taken an `ICodecAPI`, a second reference through
 and the worst is the callback: that extra reference keeps the rejected
 transform alive, so a candidate we have just turned down goes on being handed
 events for the life of the process with nobody reading them. The branch seven
-lines below it already called `Close()`, which is what makes this legible as an
-oversight rather than a decision.
+lines below it — a diagnostic skip nobody set, since removed — already called
+`Close()`, which is what made this legible as an oversight rather than a
+decision.
 
 `MF_E_TRANSFORM_STREAM_CHANGE` from `ProcessOutput` is not an error: the encoder
 is asking for its output format to be reassigned and to retry. Without D3D the

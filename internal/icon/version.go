@@ -77,14 +77,14 @@ type VersionInfo struct {
 	Modified   bool // built with uncommitted changes
 }
 
-// Blob builds VS_VERSIONINFO.
+// blob builds VS_VERSIONINFO.
 //
 // The declared language is en-US with the Unicode code page. **That is not an
 // oversight against the multilingual interface**: this sheet is not read by
 // whoever uses the monitor, it is read by whoever redistributes it and by the
 // tools that scan executables — the same audience as LICENSE and NOTICE, and
 // the same language.
-func (v VersionInfo) Blob() ([]byte, error) {
+func (v VersionInfo) blob() ([]byte, error) {
 	if v.Product == "" || v.Version == "" {
 		return nil, fmt.Errorf("icon: version resource without a name or a number")
 	}

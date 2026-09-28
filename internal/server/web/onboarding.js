@@ -75,11 +75,16 @@ let route = HOME;
 // the failure screen, and the Tailscale steps for whoever stays at home.
 const ordinal = (n) => route.findIndex((g) => g.includes(n));
 
+// drawRail puts one mark on the rail for every screen of the route.
+function drawRail() {
+  rail.replaceChildren();
+  for (let i = 0; i < route.length; i++) rail.appendChild(document.createElement('i'));
+}
+
 function setRoute(p) {
   if (p === route) return;
   route = p;
-  rail.replaceChildren();
-  for (let i = 0; i < route.length; i++) rail.appendChild(document.createElement('i'));
+  drawRail();
   updateHeader(step);
 }
 
@@ -87,7 +92,7 @@ const sections = Array.from(document.querySelectorAll('.step'));
 const rail = el('rail');
 const progress = el('progress');
 
-for (let i = 0; i < route.length; i++) rail.appendChild(document.createElement('i'));
+drawRail();
 
 let step = -1;
 
@@ -1165,8 +1170,7 @@ async function start() {
   // state and the rest all sit behind authentication, and showing them empty
   // would be worse than asking for the password.
   const fromAnchor = Number((location.hash.match(/^#p(\d)$/) || [])[1]);
-  let first = Number.isInteger(fromAnchor) ? fromAnchor : (inside ? 1 : 0);
-  if (!inside) first = 0;
+  const first = inside ? (Number.isInteger(fromAnchor) ? fromAnchor : 1) : 0;
   show(first);
 
   if (first >= 1) openPreview();

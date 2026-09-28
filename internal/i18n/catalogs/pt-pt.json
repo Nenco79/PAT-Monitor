@@ -1,5 +1,4 @@
 {
-  "auth.failed": "Não foi possível concluir o pedido.",
   "auth.mismatch": "As palavras-passe não coincidem.",
   "auth.set": "Palavra-passe definida. A redirecionar…",
   "auth.unreachable": "Não é possível contactar o servidor.",

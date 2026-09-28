@@ -141,9 +141,9 @@ func TestNobodyTouchesLastErrOutsideItsAccessors(t *testing.T) {
 // configure can fail after it has taken an ICodecAPI, a second reference
 // through IMFMediaEventGenerator and armed the async callback; `t.Release()`
 // left all three, and the extra reference keeps the rejected transform alive
-// with its callback still being handed events. The branch seven lines below it
-// already called enc.Close(), which is what makes this one legible as an
-// oversight rather than a decision.
+// with its callback still being handed events. The branch seven lines below it,
+// a diagnostic skip since removed, already called enc.Close(), which is what
+// made this one legible as an oversight rather than a decision.
 //
 // It reads the tree because there is nothing to run: reaching that branch wants
 // a machine whose encoders fail to configure, which is the machine nobody here

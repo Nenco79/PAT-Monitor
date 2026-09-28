@@ -962,16 +962,16 @@ entries that are not devices.
   is a thing to know — the alerts' own two levels — so the identical sentence
   would have come out brick beside one box and amber beside the other.
   `.pick-state.fault` and `.pick-state.notice`, in the banner's own colours.
-- **The camera's entries carry no `Default` field, and the microphone's is the
-  reason to look twice at that.** It is serialised, it is documented, and **no
-  page reads it**: the entry for the rule is drawn by the page from its own
-  catalogue, and its tooltip names the device in use — which, when that entry is
-  the selected one, is the device the rule opens, by construction. The camera's
-  was written with a sentence claiming it kept the page from assuming the list's
-  order, that is, a claim about a field with no consumer: **the field cannot
-  break and the comment cannot fail**, which is the pair already paid for by the
-  dead SDP field — and `deadcode` does not see it, because it is JSON and not
-  code.
+- **Neither box's entries carry a `Default` field, and both once did.** The
+  microphone's was serialised, it was documented, and **no page read it**: the
+  entry for the rule is drawn by the page from its own catalogue, and its
+  tooltip names the device in use — which, when that entry is the selected one,
+  is the device the rule opens, by construction. The camera's was written with a
+  sentence claiming it kept the page from assuming the list's order, that is, a
+  claim about a field with no consumer: **the field cannot break and the comment
+  cannot fail**, which is the pair already paid for by the dead SDP field — and
+  `deadcode` does not see it, because it is JSON and not code. The microphone's
+  went later, for the same reason.
 
 **And generalising switched two guards off, silently.** The ids moved out of
 `el('...')` into a configuration object, and the panel's source out of

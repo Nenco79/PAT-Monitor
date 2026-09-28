@@ -31,10 +31,10 @@ import (
 // **The ID is the symbolic link**, ninety-four characters of device path on the
 // development machine: it is what identifies a camera across restarts, while
 // the name does not — two cameras of the same model share it.
-// **There is no `Default` field here**, and the microphone's is the reason to
-// look twice at that: it is serialised, it is documented, and no page reads it.
-// The entry for "the first usable one" is drawn by the page from its own
-// catalogue, and its tooltip names the camera in use — which, when that entry
+// **There is no `Default` field here, nor on the microphone**, which had one:
+// it was serialised, it was documented, and no page read it. The entry for
+// "the first usable one" is drawn by the page from its own catalogue, and its
+// tooltip names the camera in use — which, when that entry
 // is the selected one, **is** the camera an empty choice opens, by construction.
 // A field with no consumer cannot break, and the sentence explaining it cannot
 // fail: that pair is the worst of both places, and `deadcode` does not see it

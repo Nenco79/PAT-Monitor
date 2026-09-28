@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"patmonitor/internal/audiocodec"
 	"patmonitor/internal/media"
 )
 
@@ -94,7 +95,7 @@ func feedGOP(t *testing.T, r *Ring, spsHex string, at time.Time, frames int, ste
 // first keyframe, the clip would start with a few seconds of broken picture and
 // there would be nothing to trim to make up for it.
 func TestTheRingAlwaysStartsAtAKeyframe(t *testing.T) {
-	r := NewRing(nil)
+	r := newRing(nil)
 
 	at := t0
 	for range 10 {
@@ -124,7 +125,7 @@ func TestTheRingAlwaysStartsAtAKeyframe(t *testing.T) {
 // guaranteed. It is the wrong reading of the four seconds of pre-roll, and this
 // test is what tells it from the right one.
 func TestTwoWholeGopsSurviveTheGrowingOne(t *testing.T) {
-	r := NewRing(nil)
+	r := newRing(nil)
 
 	const (
 		step = 100 * time.Millisecond
@@ -155,7 +156,7 @@ func TestTwoWholeGopsSurviveTheGrowingOne(t *testing.T) {
 // clip whose samples contradict the parameters the player decodes them with,
 // which is the fault that protests nowhere.
 func TestNewParameterSetsEmptyTheRing(t *testing.T) {
-	r := NewRing(nil)
+	r := newRing(nil)
 
 	const step = 100 * time.Millisecond
 	at := feedGOP(t, r, sps720p, t0, 20, step)
@@ -184,7 +185,7 @@ func TestNewParameterSetsEmptyTheRing(t *testing.T) {
 // part of the monitor that can eat the machine, and it would do it at night,
 // slowly, with nothing to say so.
 func TestAnEncoderThatStopsSendingKeyframesCannotGrowForever(t *testing.T) {
-	r := NewRing(nil)
+	r := newRing(nil)
 
 	at := t0
 	r.WriteVideo(keyframe(t, sps720p, 400), at)
@@ -207,7 +208,7 @@ func TestAnEncoderThatStopsSendingKeyframesCannotGrowForever(t *testing.T) {
 // nothing; audio more recent than the last would stretch the audio track past
 // the video one.
 func TestAudioIsTrimmedToTheVideoSpan(t *testing.T) {
-	r := NewRing(nil)
+	r := newRing(nil)
 
 	// The video covers the two seconds from t0: twenty 100 ms frames.
 	const step = 100 * time.Millisecond
@@ -216,7 +217,7 @@ func TestAudioIsTrimmedToTheVideoSpan(t *testing.T) {
 
 	// The audio covers six of them, three seconds before and one after.
 	for i := -150; i < 200; i++ {
-		r.WriteAudio([]byte{0xfc, byte(i)}, t0.Add(time.Duration(i)*opusFrameDuration))
+		r.WriteAudio([]byte{0xfc, byte(i)}, t0.Add(time.Duration(i)*audiocodec.FrameDuration))
 	}
 
 	s := r.Snapshot()
@@ -233,7 +234,7 @@ func TestAudioIsTrimmedToTheVideoSpan(t *testing.T) {
 	}
 	// And the test has to have something to trim: without this, a ring keeping
 	// no audio at all would pass too.
-	if want := int(videoEnd.Sub(t0)/opusFrameDuration) + 1; len(s.Audio) != want {
+	if want := int(videoEnd.Sub(t0)/audiocodec.FrameDuration) + 1; len(s.Audio) != want {
 		t.Errorf("%d audio packets kept instead of the %d that fall inside the video's window", len(s.Audio), want)
 	}
 }
@@ -242,15 +243,15 @@ func TestAudioIsTrimmedToTheVideoSpan(t *testing.T) {
 // while the microphone keeps going, and then there is no video to prune the
 // audio against. Without the age criterion that queue grows until morning.
 func TestAudioAloneDoesNotGrowForever(t *testing.T) {
-	r := NewRing(nil)
+	r := newRing(nil)
 
 	at := t0
 	for i := range 10000 { // two hundred seconds of voice alone
 		r.WriteAudio([]byte{0xfc, byte(i)}, at)
-		at = at.Add(opusFrameDuration)
+		at = at.Add(audiocodec.FrameDuration)
 	}
 	st := r.Stats()
-	if want := int(maxAudioAge/opusFrameDuration) + 1; st.AudioPackets > want {
+	if want := int(maxAudioAge/audiocodec.FrameDuration) + 1; st.AudioPackets > want {
 		t.Errorf("%d audio packets queued, that is, more than the %v the age ceiling allows", st.AudioPackets, maxAudioAge)
 	}
 }
@@ -261,12 +262,12 @@ func TestAudioAloneDoesNotGrowForever(t *testing.T) {
 // come out with a mixture of two instants inside, and it would be a race that
 // shows up one night in a hundred.
 func TestTheSnapshotSurvivesLaterWrites(t *testing.T) {
-	r := NewRing(nil)
+	r := newRing(nil)
 
 	const step = 100 * time.Millisecond
 	at := feedGOP(t, r, sps720p, t0, 20, step)
 	for i := range 50 {
-		r.WriteAudio([]byte{0xfc, byte(i)}, t0.Add(time.Duration(i)*opusFrameDuration))
+		r.WriteAudio([]byte{0xfc, byte(i)}, t0.Add(time.Duration(i)*audiocodec.FrameDuration))
 	}
 
 	s := r.Snapshot()
@@ -281,7 +282,7 @@ func TestTheSnapshotSurvivesLaterWrites(t *testing.T) {
 	for range 5 {
 		at = feedGOP(t, r, sps720p, at, 20, step)
 		for j := range 100 {
-			r.WriteAudio([]byte{0xfd, byte(j)}, at.Add(time.Duration(j)*opusFrameDuration))
+			r.WriteAudio([]byte{0xfd, byte(j)}, at.Add(time.Duration(j)*audiocodec.FrameDuration))
 		}
 	}
 
@@ -304,7 +305,7 @@ func TestTheSnapshotSurvivesLaterWrites(t *testing.T) {
 // and over. The symptom reported by whoever uses it is exactly that: short
 // clips that start at the event, with not an instant of what came before.
 func TestARebuildAtTheSameSizeKeepsThePreroll(t *testing.T) {
-	r := NewRing(nil)
+	r := newRing(nil)
 
 	const step = 100 * time.Millisecond
 	at := feedGOP(t, r, sps720p, t0, 20, step)
@@ -338,7 +339,7 @@ func TestARebuildAtTheSameSizeKeepsThePreroll(t *testing.T) {
 // A change of size, on the other hand, does empty it, and it has to: the old
 // samples do not decode with the new header.
 func TestAChangeOfSizeStillEmptiesTheRing(t *testing.T) {
-	r := NewRing(nil)
+	r := newRing(nil)
 
 	const step = 100 * time.Millisecond
 	at := feedGOP(t, r, sps720p, t0, 20, step)
@@ -357,7 +358,7 @@ func TestAChangeOfSizeStillEmptiesTheRing(t *testing.T) {
 // pic_init_qp_minus26, and the old frames read with the new one would give the
 // wrong quantiser — a corrupt picture with no error anywhere.
 func TestADifferentPPSEmptiesTheRing(t *testing.T) {
-	r := NewRing(nil)
+	r := newRing(nil)
 
 	const step = 100 * time.Millisecond
 	at := feedGOP(t, r, sps720p, t0, 20, step)

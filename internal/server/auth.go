@@ -21,10 +21,6 @@ const sessionCookieName = "bm_session"
 // session is an authenticated session.
 type session struct {
 	expires time.Time
-	// remote is only for diagnosis: the session is not tied to the IP, because
-	// a phone going from Wi-Fi to a mobile network changes address and would be
-	// disconnected exactly when it is needed.
-	remote string
 	// bornAtHome says the session was opened on the home network, over plain
 	// HTTP: see sessionStore.check for why it is not accepted from the Internet.
 	bornAtHome bool
@@ -94,11 +90,6 @@ func newSessionStore(ttl time.Duration) *sessionStore {
 	return s
 }
 
-// create generates a new session token for a caller arriving from `from`.
-func (s *sessionStore) create(remote string, from origin) (string, error) {
-	return s.createAt(s.current(), remote, from)
-}
-
 // current is the revocation generation now in force.
 func (s *sessionStore) current() uint64 {
 	s.mu.Lock()
@@ -108,7 +99,7 @@ func (s *sessionStore) current() uint64 {
 
 // createAt creates a session only if no revocation has happened since gen was
 // read.
-func (s *sessionStore) createAt(gen uint64, remote string, from origin) (string, error) {
+func (s *sessionStore) createAt(gen uint64, from origin) (string, error) {
 	raw := make([]byte, 32)
 	if _, err := rand.Read(raw); err != nil {
 		return "", err
@@ -121,8 +112,7 @@ func (s *sessionStore) createAt(gen uint64, remote string, from origin) (string,
 		return "", errRevokedMeanwhile
 	}
 	now := time.Now()
-	s.m[token] = session{expires: now.Add(s.ttl), remote: remote,
-		bornAtHome: bornAtHome(from), cookieSet: now}
+	s.m[token] = session{expires: now.Add(s.ttl), bornAtHome: bornAtHome(from), cookieSet: now}
 	return token, nil
 }
 
@@ -356,14 +346,8 @@ func (l *limiter) begin(key string) (release func(), wait time.Duration) {
 	}, 0
 }
 
-// retryAfter returns how long is left until the unlock; zero if not locked.
-func (l *limiter) retryAfter(key string) time.Duration {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	return l.retryAfterLocked(key)
-}
-
-// retryAfterLocked is retryAfter for a caller already holding l.mu.
+// retryAfterLocked returns how long is left until the unlock, zero if not
+// locked. The caller holds l.mu.
 func (l *limiter) retryAfterLocked(key string) time.Duration {
 	rec := l.m[key]
 	if rec == nil {
@@ -382,9 +366,9 @@ func (l *limiter) retryAfterLocked(key string) time.Duration {
 // sweepLocked drops the records whose window has passed.
 //
 // It runs when the table is full rather than on a ticker, which is the same
-// answer `retryAfter` already gives for one key: a record nobody comes back for
-// costs nothing until the space it holds is wanted. A sweeper goroutine would
-// need a lifetime, and this object is created without one.
+// answer `retryAfterLocked` already gives for one key: a record nobody comes
+// back for costs nothing until the space it holds is wanted. A sweeper
+// goroutine would need a lifetime, and this object is created without one.
 func (l *limiter) sweepLocked(now time.Time) {
 	for k, rec := range l.m {
 		if now.Sub(rec.last) > attemptWindow {

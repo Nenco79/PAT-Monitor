@@ -29,9 +29,6 @@ func TestFrameSamplesAt(t *testing.T) {
 			t.Errorf("FrameSamplesAt(%d) = %d, wanted %d", rate, got, n)
 		}
 	}
-	if FrameSamplesAt(SampleRate) != FrameSamples {
-		t.Errorf("FrameSamples and FrameSamplesAt disagree at the preferred rate")
-	}
 }
 
 // The refusal has to arrive here and not further down, where it would become an

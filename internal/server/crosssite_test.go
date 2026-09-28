@@ -262,7 +262,7 @@ func TestTheQRCodeIsEngravedForASignedInViewerFromTheInternet(t *testing.T) {
 
 	outside := httptest.NewRequest(http.MethodGet, "/", nil)
 	fromTheFunnel(outside)
-	token, err := s.sessions.create("", requestOrigin(outside))
+	token, err := s.sessions.create(requestOrigin(outside))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -275,7 +275,7 @@ func TestTheQRCodeIsEngravedForASignedInViewerFromTheInternet(t *testing.T) {
 
 	home := httptest.NewRequest(http.MethodGet, "/", nil)
 	fromTheLAN(home)
-	homeToken, err := s.sessions.create("", requestOrigin(home))
+	homeToken, err := s.sessions.create(requestOrigin(home))
 	if err != nil {
 		t.Fatal(err)
 	}

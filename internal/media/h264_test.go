@@ -49,6 +49,36 @@ func TestSPSSize(t *testing.T) {
 	}
 }
 
+// TestRBSPStripsTheEmulationBytes asks rbsp directly, because nothing else
+// here does: the real SPS above carries two `000003` sequences, but they lie
+// past every field SPSSize and ParsePPS read, and with the stripping switched
+// off every test in this package still passed. That was tried, and this test
+// fails with it.
+func TestRBSPStripsTheEmulationBytes(t *testing.T) {
+	cases := []struct{ name, in, want string }{
+		{
+			name: "the 720p SPS above, after its NAL header",
+			in:   "42e01f95b014016ec044000003000400000300f3a100098900002625a6f7be0ed0e197",
+			want: "42e01f95b014016ec04400000004000000f3a100098900002625a6f7be0ed0e197",
+		},
+		// After a stripped 03 the count of zeros starts again, so the next byte
+		// is data even when it is another 03.
+		{name: "an 03 after a stripped one", in: "00000303", want: "000003"},
+		{name: "two in a row", in: "000003000003", want: "00000000"},
+		{name: "at the very end", in: "000003", want: "0000"},
+		{name: "one zero is not enough", in: "0003", want: "0003"},
+	}
+	for _, c := range cases {
+		in, err := hex.DecodeString(c.in)
+		if err != nil {
+			t.Fatalf("%s: unreadable test bytes: %v", c.name, err)
+		}
+		if got := hex.EncodeToString(rbsp(in)); got != c.want {
+			t.Errorf("%s: rbsp gave %s, wanted %s", c.name, got, c.want)
+		}
+	}
+}
+
 // A truncated SPS must not produce a plausible size: a bit reader that runs out
 // of data and returns zeros would give numbers that look real.
 func TestATruncatedSPSIsRefused(t *testing.T) {

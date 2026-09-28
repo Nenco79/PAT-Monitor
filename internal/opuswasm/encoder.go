@@ -35,7 +35,7 @@ func NewEncoder(ctx context.Context, sampleRate, channels int) (*Encoder, error)
 	if channels != 1 && channels != 2 {
 		return nil, fmt.Errorf("opuswasm: %d channels, expected 1 or 2", channels)
 	}
-	in, err := open(ctx, channels, maxFrameSamples, maxPacketBytes)
+	in, err := open(ctx, channels, MaxFrameSamples, maxPacketBytes)
 	if err != nil {
 		return nil, err
 	}

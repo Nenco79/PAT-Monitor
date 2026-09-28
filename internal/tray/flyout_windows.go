@@ -465,7 +465,7 @@ func (f *flyout) compose(st Status) {
 				t.cfg.Log.Warn("address not copied", "error", err)
 				return
 			}
-			t.Notify(t.t("tray.notify.copied"), url)
+			t.notify(t.t("tray.notify.copied"), url)
 		}})
 	}
 	// **"Open the monitor" is not here, and it is not an oversight.** The left
@@ -510,7 +510,7 @@ func (f *flyout) compose(st Status) {
 			do: func() {
 				if err := t.cfg.OnResetPassword(); err != nil {
 					t.cfg.Log.Error("password not reset", "error", err)
-					t.Notify(t.t("tray.notify.reset-failed"), err.Error())
+					t.notify(t.t("tray.notify.reset-failed"), err.Error())
 					return
 				}
 				if setup != "" {
@@ -525,7 +525,7 @@ func (f *flyout) compose(st Status) {
 			confirm: [2]string{t.t("tray.confirm.revoke.title"), t.t("tray.confirm.revoke.body")},
 			do: func() {
 				n := t.cfg.OnRevoke()
-				t.Notify(t.t("tray.notify.revoked"),
+				t.notify(t.t("tray.notify.revoked"),
 					t.t("tray.notify.revoked.body", "sessions", t.sessionsText(n)))
 			},
 		})

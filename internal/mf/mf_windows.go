@@ -158,8 +158,6 @@ var (
 	MFMediaTypeVideo    = guid("{73646976-0000-0010-8000-00AA00389B71}")
 	MFVideoFormatNV12   = guid("{3231564E-0000-0010-8000-00AA00389B71}")
 	MFVideoFormatH264   = guid("{34363248-0000-0010-8000-00AA00389B71}")
-	MFVideoFormatMJPG   = guid("{47504A4D-0000-0010-8000-00AA00389B71}")
-	MFVideoFormatYUY2   = guid("{32595559-0000-0010-8000-00AA00389B71}")
 	mftCategoryVideoEnc = guid("{f79eac7d-e545-4387-bdee-d647d7bde42a}")
 
 	// Media type attributes.
@@ -195,7 +193,6 @@ var (
 	// all.
 	mfSourceReaderEnableAdvancedVideo = guid("{0f81da2c-b537-4672-a8b2-a681b17307a3}")
 	mftFriendlyNameAttribute          = guid("{314ffbae-5b41-4c95-9c19-4e7d586face3}")
-	mfSourceReaderD3DManager          = guid("{ec822da2-e1e9-4b29-a0d8-563c719f5269}")
 	// MF_LOW_LATENCY shares its GUID with CODECAPI_AVLowLatencyMode: they are
 	// the same setting reachable from two different interfaces.
 	mfLowLatency           = guid("{9c27891a-ed7a-40e1-88e8-b22727a024ee}")
@@ -279,14 +276,6 @@ func (a *Attributes) SetUINT64(key *ole.GUID, value uint64) error {
 	r, _, _ := syscall.SyscallN(a.vtbl().SetUINT64,
 		uintptr(unsafe.Pointer(a)), uintptr(unsafe.Pointer(key)), uintptr(value))
 	return check("SetUINT64", r)
-}
-
-// SetUnknown records a COM object among the attributes. obj is the pointer to
-// the interface, not to the Go struct wrapping it.
-func (a *Attributes) SetUnknown(key *ole.GUID, obj unsafe.Pointer) error {
-	r, _, _ := syscall.SyscallN(a.vtbl().SetUnknown,
-		uintptr(unsafe.Pointer(a)), uintptr(unsafe.Pointer(key)), uintptr(obj))
-	return check("SetUnknown", r)
 }
 
 // Keys lists the keys present in this attribute store.

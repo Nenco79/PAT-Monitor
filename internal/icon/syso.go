@@ -66,7 +66,7 @@ func Syso(im []Image, ver *VersionInfo, goarch string) ([]byte, error) {
 	var verBlob []byte
 	if ver != nil {
 		var err error
-		if verBlob, err = ver.Blob(); err != nil {
+		if verBlob, err = ver.blob(); err != nil {
 			return nil, err
 		}
 	}

@@ -1183,7 +1183,7 @@ func (s *Server) apiLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.limiter.success(key)
-	token, err := s.sessions.createAt(gen, key, requestOrigin(r))
+	token, err := s.sessions.createAt(gen, requestOrigin(r))
 	if errors.Is(err, errRevokedMeanwhile) {
 		s.log.Warn("login refused: the password changed while it was being verified", "from", key)
 		authError(w, r, isForm, "/login", http.StatusUnauthorized, ErrWrongPassword)
@@ -1287,10 +1287,6 @@ func (s *Server) apiPassword(w http.ResponseWriter, r *http.Request) {
 		s.refuseCredentials(w, r, isForm, "/onboarding", err)
 		return
 	}
-	if s.opts.Config == nil {
-		authError(w, r, isForm, "/onboarding", http.StatusInternalServerError, ErrSaveFailed)
-		return
-	}
 	if req.Password != req.Confirm {
 		authError(w, r, isForm, "/onboarding", http.StatusBadRequest, ErrMismatch)
 		return
@@ -1374,10 +1370,6 @@ func (s *Server) apiSetup(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.Password != req.Confirm {
 		authError(w, r, isForm, "/setup", http.StatusBadRequest, ErrMismatch)
-		return
-	}
-	if s.opts.Config == nil {
-		authError(w, r, isForm, "/setup", http.StatusInternalServerError, ErrSaveFailed)
 		return
 	}
 
@@ -1559,7 +1551,6 @@ type signalMessage struct {
 	Type      string                     `json:"type"`
 	SDP       *webrtc.SessionDescription `json:"sdp,omitempty"`
 	Candidate *webrtc.ICECandidateInit   `json:"candidate,omitempty"`
-	Message   string                     `json:"message,omitempty"`
 	// Reason says **why** the signalling stopped, with a code.
 	//
 	// `err.Error()` used to travel here, that is, the text of a Go error written

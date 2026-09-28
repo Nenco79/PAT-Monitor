@@ -178,45 +178,20 @@ var codesForPrefix = map[string][]string{
 	"tunnel.warning.": warningCodes(),
 }
 
-func reachCodes() []string {
+// strs turns a list of typed codes into the strings a key is composed from.
+func strs[T ~string](xs []T) []string {
 	var f []string
-	for _, r := range tunnel.AllReaches() {
-		f = append(f, string(r))
+	for _, x := range xs {
+		f = append(f, string(x))
 	}
 	return f
 }
 
-func warningCodes() []string {
-	var f []string
-	for _, w := range tunnel.AllWarnings() {
-		f = append(f, string(w))
-	}
-	return f
-}
-
-func actionCodes() []string {
-	var f []string
-	for _, a := range tunnel.AllActions() {
-		f = append(f, string(a))
-	}
-	return f
-}
-
-func stepCodes() []string {
-	var f []string
-	for _, s := range tunnel.AllSteps() {
-		f = append(f, string(s))
-	}
-	return f
-}
-
-func alertCodes() []string {
-	var f []string
-	for _, c := range alerts.AllCodes() {
-		f = append(f, string(c))
-	}
-	return f
-}
+func reachCodes() []string   { return strs(tunnel.AllReaches()) }
+func warningCodes() []string { return strs(tunnel.AllWarnings()) }
+func actionCodes() []string  { return strs(tunnel.AllActions()) }
+func stepCodes() []string    { return strs(tunnel.AllSteps()) }
+func alertCodes() []string   { return strs(alerts.AllCodes()) }
 
 func phaseCodes() []string {
 	var f []string
@@ -255,13 +230,18 @@ func allKeys(t *testing.T, s *Server) map[string]bool {
 	// language selector exists it also **uses** a key. Excluding it on principle
 	// would have made that key invisible — and indeed the first draft excluded
 	// it, and the test declared the key an orphan.
+	//
+	// **The comments are stripped first.** A comment that tells how a key used
+	// to be read quotes the call, and read raw that quotation kept the key
+	// alive: `auth.failed` stood in nine catalogues for a `T()` that only the
+	// history in `i18n.js` still made.
 	scripts, _ := fs.Glob(s.assets, "*.js")
 	for _, p := range scripts {
 		b, err := fs.ReadFile(s.assets, p)
 		if err != nil {
 			t.Fatal(err)
 		}
-		for _, k := range keysFromCode(t, string(b)) {
+		for _, k := range keysFromCode(t, withoutComments(string(b))) {
 			keys[k] = true
 		}
 	}

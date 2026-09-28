@@ -727,7 +727,7 @@ func run(log *slog.Logger, path string) error {
 			// by the model — but it tells the recogniser it is worth looking. The
 			// stream reaches it always, because the window the model will classify
 			// is the one of the ten seconds **before** this moment.
-			recog.Feed(pcm, p.AnalysisRate())
+			recog.Feed(pcm)
 			if st.Cry || st.Bark {
 				recog.Ask()
 			}
@@ -839,7 +839,11 @@ func run(log *slog.Logger, path string) error {
 			ProfileLevelID: hub.ProfileLevelID(),
 			Uptime:         time.Since(startedAt).Round(time.Second).String(),
 			LocalURL:       homeAddress(conf.ListenAddr),
-			Remote:         remoteState(remote),
+			// The state of remote access is reported even when it is off: an
+			// explicit "off" is preferable to an absent field, because the page
+			// has to be able to say that remote access is not there, instead of
+			// staying silent and letting one believe it is.
+			Remote: remote.State(),
 		}
 		return st
 	}
@@ -1005,7 +1009,7 @@ func run(log *slog.Logger, path string) error {
 			}
 			out := make([]server.Microphone, 0, len(devs))
 			for _, d := range devs {
-				out = append(out, server.Microphone{ID: d.ID, Name: d.Name, Default: d.IsDefault})
+				out = append(out, server.Microphone{ID: d.ID, Name: d.Name})
 			}
 			return out, nil
 		},
@@ -2070,13 +2074,6 @@ func announcePublicAddress(ctx context.Context, tr *tray.Tray, t *tunnel.Tunnel)
 		}
 	}
 }
-
-// remoteState reports the state of remote access, even when it is off.
-//
-// An explicit "disabled" state is preferable to an absent field: the page has to
-// be able to say that remote access is not there, instead of staying silent and
-// letting one believe it is.
-func remoteState(t *tunnel.Tunnel) tunnel.State { return t.State() }
 
 // encoderVendor translates, for the status page, the fact that the encoding is
 // happening on the GPU.

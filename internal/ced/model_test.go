@@ -36,7 +36,7 @@ func tiny(t *testing.T, depth int) *Model {
 	for b := range nMels {
 		bank[b*nFreqs+b] = 1
 	}
-	fe, err := NewFrontend(nFFT, hop, nMels, win, bank, 1e-10, 1, 10, 120)
+	fe, err := newFrontend(nFFT, hop, nMels, win, bank, 1e-10, 1, 10, 120)
 	if err != nil {
 		t.Fatal(err)
 	}

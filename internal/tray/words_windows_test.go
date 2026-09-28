@@ -165,7 +165,7 @@ func TestNoTrayEntryIsAnOrphan(t *testing.T) {
 
 // **The tooltip's limit holds in every language, not in one.**
 //
-// `szTip` is 128 characters and `copyTip` truncates without saying anything. A
+// `szTip` is 128 characters and `copyUTF16` truncates without saying anything. A
 // German sentence is on average a third longer than an Italian one, so testing
 // it on the writer's language alone means discovering the cut on somebody
 // else's machine. So it is tested across **every catalogue**, in the worst case:

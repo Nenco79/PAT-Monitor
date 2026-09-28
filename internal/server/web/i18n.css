@@ -119,14 +119,9 @@ stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6l6 -6'/%3E%3
 }
 
 @media (hover: hover) { .lang select:hover { border-color: var(--muted); } }
-/* The ring is everybody's: 2px/2px used to be written here by hand, that is, a
-   third value for a component that has one. Both palettes declare the two
-   names, which is the condition for this sheet — which is downstream and
-   declares nothing — to be able to consume them. */
-.lang select:focus-visible {
-  outline: var(--focus-w) solid var(--phase, var(--ink-2));
-  outline-offset: var(--focus-gap);
-}
+/* The ring is everybody's, and it is the global `:focus-visible` both palette
+   sheets declare: 2px/2px used to be written here by hand, a third value for a
+   component that has one. */
 
 /* On the phone the guided path has little margin at the top and the selector
    would land on top of the step count. It tightens and rises. */

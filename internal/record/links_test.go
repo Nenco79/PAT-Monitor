@@ -49,7 +49,7 @@ func TestALinkWithAClipsNameIsNotFollowed(t *testing.T) {
 		t.Error("the link's target was served")
 	}
 
-	ring := NewRing(nil)
+	ring := newRing(nil)
 	feedGOP(t, ring, sps720p, t0, 20, step)
 	// A name that is taken is not written: the clip goes under the next free
 	// one, and the link stays a link.
@@ -84,7 +84,7 @@ func TestALinkAtTheAsideNameIsNotFollowed(t *testing.T) {
 		t.Skipf("cannot make a symbolic link here: %v", err)
 	}
 	s := NewStore(clips, StoreConfig{})
-	ring := NewRing(nil)
+	ring := newRing(nil)
 	feedGOP(t, ring, sps720p, t0, 20, step)
 	if err := s.Save(Clip{Snapshot: ring.Snapshot(), Code: "motion", At: at}); err != nil {
 		t.Fatalf("the clip was not saved: %v", err)

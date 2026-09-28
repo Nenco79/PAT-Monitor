@@ -1558,7 +1558,7 @@ function showAlert(a) {
   alertBar.dataset.shown = shown;
   alertBar.innerHTML = '';
   const text = document.createElement('b');
-  text.textContent = a.code ? alertText(a.code) : T('viewer.alert.unknown');
+  text.textContent = alertText(a.code);
   const when = document.createElement('span');
   when.className = 'when';
   when.textContent = sinceLabel(a.since);
@@ -1571,7 +1571,7 @@ function showAlert(a) {
 function showRecovery(code) {
   clearTimeout(recoveryTimer);
   delete alertBar.dataset.shown;
-  alertBar.textContent = code ? recoveredText(code) : T('viewer.recovered.unknown');
+  alertBar.textContent = recoveredText(code);
   alertBar.className = 'alertbar show recovered';
   recoveryTimer = setTimeout(() => { alertBar.className = 'alertbar'; }, 8000);
 }

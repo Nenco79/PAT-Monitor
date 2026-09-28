@@ -599,7 +599,6 @@ p.small { font-size: var(--t-ui); color: var(--muted); }
 }
 .note.warn { --tone: var(--c-note); }
 .note.bad  { --tone: var(--c-stop); }
-.note strong { font-weight: 600; }
 .note :last-child { margin-bottom: 0; }
 
 .tech {

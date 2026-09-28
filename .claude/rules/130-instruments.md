@@ -113,9 +113,9 @@ which is the most idle thread in the program.
 `pat-diag`'s resolution-scale check opened the camera **with the Direct3D
 device**, and the monitor opens it without. It is not a detail: with a D3D
 manager the Source Reader converts in DXVA, without it converts in software, and
-those are two different paths inside Media Foundation. The monitor passes `nil`
-deliberately — it needs the frames in system memory, because motion detection
-has to read their luma plane.
+those are two different paths inside Media Foundation. The monitor opens it
+without one on purpose — it needs the frames in system memory, because motion
+detection has to read their luma plane.
 
 The result is a tool that can **declare green a machine on which the monitor
 delivers no frame**, and that is what happened: the report said `1280x720
@@ -127,7 +127,9 @@ opens as the monitor opens. And when the requested size exceeds the declared
 one, the section says so: **an upscale succeeds**, and a line saying only
 "delivered" reads as "the camera can do it". It is the rule already written for
 the encoder — the check must be taken as close as possible to whoever consumes
-the data — applied to whoever writes the check.
+the data — applied to whoever writes the check. `OpenCamera` has since stopped
+taking a device at all, so the tool and the monitor cannot open differently
+again.
 
 **And the same rule, broken the other way round, in `pat-capture`: it opened a
 camera the monitor would never open.** `devices.ListCameras` hands back
