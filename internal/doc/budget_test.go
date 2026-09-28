@@ -13,14 +13,14 @@ import (
 // that plus every slice whose globs cover the directory being worked on, which
 // is what opening one file there brings in.
 //
-// **They start at the maximum measured when this test was written, rounded up
-// to the thousand, and they only go down.** The last commit of the
-// condensation lowers them to what it leaves; after that, a chapter that pushes
-// a package over is the question "does this belong in the slice every session
-// in that package reads?", not a number to raise.
+// **They are what the condensation left, rounded up, and they only go down.**
+// Measured on 2026-09-28 when it ended: 6978 words always loaded, and 53070 for
+// internal/server, the heaviest package. A chapter that pushes a package over
+// is the question "does this belong in the slice every session in that package
+// reads?", not a number to raise.
 const (
 	alwaysBudget  = 7000
-	packageBudget = 54000
+	packageBudget = 53500
 )
 
 // words is what a file costs a session, counted the plain way: runs of

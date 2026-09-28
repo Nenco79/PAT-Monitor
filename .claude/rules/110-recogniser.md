@@ -240,12 +240,14 @@ CSVs it would take are not in this repository. What is claimed is narrow: the
 **turn** is on the negatives, the size of the gain is not.
 
 **And the 83% is recall on whole clips, which is not the catch rate in a
-room.** There the event fills the recording; what answers for a room is the
-dilution table below, and it answers much lower — a second of crying inside a
-window is worth 0.025, and at the gate's own twelve decibels the recogniser
-answers for a quarter of the cries. The 83% stays declared as what it is, cries
-recorded by parents on a phone, close, indoors, and a fourth corpus of that
-same shape would not repair it.
+room.** It is 383 of donateacry's 457 real cries at 0.15, where 0.20 caught
+363, the 79% above — 83.8 and 79.4, truncated as `baselines/sounds.txt` prints
+them. In a clip the event fills the recording; what answers for a room
+is the dilution table below, and it answers much lower — a second of crying
+inside a window is worth 0.025, and at the gate's own twelve decibels the
+recogniser answers for a quarter of the cries. The 83% stays declared as what
+it is, cries recorded by parents on a phone, close, indoors, and a fourth
+corpus of that same shape would not repair it.
 
 **What the search did turn up is a different question, and it is in the open
 issues, where open questions go.** Every negative here comes from somebody
@@ -298,8 +300,9 @@ Two rules follow that no five-second clip could have shown:
   positives diluted in a real room sit at the tenth percentile at 0.004 — the
   number was 0.166 while it was being read off twenty clips, that is, off the
   second value in the list — so the case that matters would be lost. Instead
-  the threshold must be exceeded on **two consecutive windows** — a cat miaows
-  once, a child cries for minutes. As in `internal/detect`, only time separates
+  the threshold must be exceeded **twice within thirty seconds** (`cryHits` and
+  `cryWindow`), not necessarily on consecutive windows — a cat miaows once, a
+  child cries for minutes. As in `internal/detect`, only time separates
   cry and bark. For the bark it does not hold, being a short episode: demanding
   two windows would mean losing it.
 
@@ -345,14 +348,18 @@ the two halves do not meet.** Walking an event down towards a room floor fixed
 at -46 dBFS — `pat-sounds dilute -sweep` — at the gate's own twelve decibels
 the recogniser answers for **92% of the barks and 25% of the cries** — counted
 against 0.20, the threshold of that sweep, before it moved to 0.15 — and the
-cry is gone entirely by six. The bark is still over the threshold at the room's
-own level (52%) and below it (38%): a burst with a signature survives a bad
-signal-to-noise ratio, a long shape at low contrast does not. So **the chain's
-sensitivity is set by the model and not by the gate**, and for the cry it sits
-between +18 and +24 dB, which is two octaves of loudness from where the gate
-opens. It is not a reason to move the gate — a gate that let less through would
-lose what the model can still catch — it is that one threshold serves two
-detectors needing numbers twenty decibels apart. **What it does not say is
+cry is down to 6% by six and to none at the room's own level. The bark is still
+over the threshold at the room's own level (52%) and below it (38%): a burst
+with a signature survives a bad signal-to-noise ratio, a long shape at low
+contrast does not. So **the chain's sensitivity is set by the model and not by
+the gate**, and for the cry — half of the real ones over the threshold, 38% at
++18 dB and 53% at +24 — it sits between +18 and +24 dB, six to twelve decibels
+above where the gate opens. It is not a reason to move the gate — a gate that
+let less through would lose what the model can still catch — it is that one
+threshold serves two detectors whose half-way points are some twenty decibels
+apart: the bark's between -3 and 0 dB, the cry's between +18 and +24. The rows
+are in `baselines/sounds.txt`, and the twelve is `detect.DefaultTriggerDB`.
+**What it does not say is
 that a child cannot be heard across a room**: it is a curve, and the other half
 would be how far above the floor a real cry sits at three metres. The exchange
 rate for the distance is measured, 20.9 dB for three metres off-axis; the
@@ -410,7 +417,7 @@ Three rules, each from a measurement:
   mattered more once the threshold had moved below the cat. *A cat miaows once*
   is a claim about hits, and the window is 10.11 s while the question is asked
   every 5: two consecutive classifications **overlap by half a window**, so one
-  miaow is seen twice, and the two confirmations need not be consecutive
+  miaow could be seen twice, and the two confirmations need not be consecutive
   anyway. **It was then measured by air**, and the table below is the answer:
   one play of that cat gives one hit and no alert. The three
   `children_playing` are outside the rule's reach in any case: children playing

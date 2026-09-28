@@ -176,8 +176,15 @@ The SDK headers are the only authority, and they must be searched in **every**
 form in which GUIDs are declared, because one pattern does not find them all:
 `EXTERN_GUID`/`DEFINE_GUID`, `DEFINE_CODECAPI_GUID` for codec properties,
 `MIDL_INTERFACE("...")` for IIDs, and `DEFINE_MEDIATYPE_GUID` with the FourCC
-for video subtypes, which does not even contain the value. All 40 of ours were
-checked that way: one was wrong, and it was that one. The script lives in `cmd/`
+for video subtypes, which does not even contain the value — and a fifth, the
+initialiser `EXTERN_C const DECLSPEC_SELECTANY GUID X = { ... }`, which is how
+`mftransform.h` declares `MF_TRANSFORM_ASYNC`, `MF_TRANSFORM_ASYNC_UNLOCK` and
+`MFT_FRIENDLY_NAME_Attribute`, and which none of the other four finds. When the
+check was first made one was wrong, and it was
+`MF_SOURCE_READER_ENABLE_ADVANCED_VIDEO_PROCESSING`. Redone on 2026-09-28
+against the 10.0.26100.0 headers, the 44 declarations in `internal/mf` — 43
+values, because `MF_LOW_LATENCY` and `CODECAPI_AVLowLatencyMode` are the same
+GUID — all match the symbol they are named for. The script lives in `cmd/`
 only in the reader's memory: redoing it costs ten minutes and it must be redone
 whenever one is added.
 

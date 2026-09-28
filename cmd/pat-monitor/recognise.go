@@ -48,15 +48,16 @@ var (
 	// **The lever against the cat is time, not a higher threshold.** ESC-50's
 	// cat reaches 0.181 and UrbanSound8K's children playing 0.292, so 0.30 would
 	// cover both — but real cries diluted in a ten-second window sit at the
-	// tenth percentile at 0.166, and the case that matters would be lost. A cat
-	// miaows once, a child cries for minutes.
+	// tenth percentile at 0.004 (0.166 while it was read off twenty clips; the
+	// 150 are in baselines/sounds.txt), and the case that matters would be
+	// lost. A cat miaows once, a child cries for minutes.
 	//
 	// **And that argument was an argument and not a measurement**, which mattered
 	// more once the threshold moved below the cat. The window is 10.11 s and the
 	// question is asked every 5, so two consecutive classifications overlap by
 	// half a window:
-	// one miaow is seen **twice**, and the two confirmations need not even be
-	// consecutive — two in thirty seconds is enough. What may still save it is
+	// one miaow **could** be seen twice, and the two confirmations need not even
+	// be consecutive — two in thirty seconds is enough. What may still save it is
 	// dilution, which is brutal — a one-second event in a full window falls from
 	// 0.378 to 0.025. **It was then measured by air, and the rule holds**: that
 	// cat played once gives one classification at 0.619 and then zeros, with no
