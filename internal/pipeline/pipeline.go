@@ -2598,6 +2598,13 @@ func (p *Pipeline) runVideo(ctx context.Context, sinks Sinks) error {
 	// every use below wants the derived one, and a second name would be a second
 	// thing to remember at each of them — the probe and the frame loop
 	// included, both of which have to stop when the camera changes.
+	//
+	// **Except one, which is why the general one keeps a name.** Whether the
+	// encoder is released at the end asks whether the *process* is ending, and
+	// the derived context is also cancelled by a camera choice and by the
+	// chosen camera's recheck: asked of it, every swap left a hardware encoder
+	// session open for the life of the process.
+	ending := ctx
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	// The close can be asked for by whoever changes camera, who is not here: the
@@ -2839,16 +2846,18 @@ func (p *Pipeline) runVideo(ctx context.Context, sinks Sinks) error {
 	// OS is about to reclaim every handle this process owns, so the release buys
 	// nothing and costs one night in five.
 	//
-	// **Only the last one is skipped.** A restart still closes, because there
-	// the process goes on and an encoder per restart really would accumulate:
-	// the condition is the context, which is cancelled only by a shutdown that
-	// somebody asked for.
+	// **Only the last one is skipped.** A restart, a camera choice and the
+	// chosen camera's recheck still close, because there the process goes on
+	// and an encoder per session really would accumulate — NVENC caps its
+	// sessions per process. The condition is the general context, `ending`,
+	// which is cancelled only by a shutdown somebody asked for; the session's
+	// own is cancelled by the other three too.
 	defer func() {
 		p.encMu.Lock()
 		last := enc
 		p.control.Store(nil)
 		p.encMu.Unlock()
-		if ctx.Err() != nil {
+		if ending.Err() != nil {
 			p.cfg.Log.Debug("the encoder is left to the operating system",
 				"why", "the process is ending, and releasing it has taken it out before")
 			return

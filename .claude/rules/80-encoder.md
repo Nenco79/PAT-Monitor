@@ -42,9 +42,15 @@ about to reclaim every handle this process owns, so the release buys nothing —
 and it costs the last lines of the log and whatever the recorder had open,
 which on a baby monitor is the clip somebody wanted.
 
-**Only the last release is skipped**, and the condition is the context: it is
-cancelled only by a shutdown somebody asked for. A restart still closes, because
-there the process goes on and an encoder per restart really would accumulate.
+**Only the last release is skipped**, and the condition is the process's
+context, which is cancelled only by a shutdown somebody asked for. A restart, a
+camera choice and the chosen camera's recheck still close, because there the
+process goes on and an encoder per session really would accumulate. **It was the
+session's context for a while, and that one is not only a shutdown's**: it
+became per-session so that choosing a camera could close it, and from then every
+swap and every recheck skipped the release — one hardware encoder session left
+open each time, with NVENC capping how many a process may hold. The frames
+counted in the live swap test could not show it; only the release could.
 
 **And it cures the monitor and not the instrument, which says the release was
 one path and not the family.** `pat-capture` takes the same branch — the log
@@ -248,8 +254,9 @@ why it sat there. **A constant spelled out twice is a constant that can be seen
 to disagree with itself**, and this table is the second spelling.
 
 **`E_FAIL` is deliberately absent**, and it is the one code here that has been
-met and is not named. It arrives from `PinNativeFormat` on a size the camera
-does not declare, five times out of five on a Logitech Brio 105 — but `check` is
+met and is not named. It arrives from `ReadSample` on a size the camera does not
+declare when the native format is **not** pinned, five times out of five on a
+Logitech Brio 105, and `PinNativeFormat`'s doc explains why — but `check` is
 the single funnel for every HRESULT in this package, so that note would travel
 with an `E_FAIL` raised while enumerating transforms or building a D3D device.
 **A generic code cannot be given a meaning by the place one of its instances was
