@@ -439,3 +439,11 @@ noisy floor one does not conclude**, and the threshold is on the floor and not
 on the rise — no tuning of the rise fixes a covered tone. Measured in a silent
 room: tone 52 dB above the floor, zero samples dropped, output opened in 313 ms.
 
+**And "the floor" is the mix's, not the room's.** Loopback hears the signal
+Windows hands the endpoint, before the speakers and, on most drivers, before
+the endpoint's volume: with nothing else playing the floor is digital silence,
+and a rise of 111 dB was printed beside a tone that was barely audible in a room
+that was not quiet. It proves the path, never the loudness, and the verdict now
+says so; how loud it is where somebody stands is the volume line and a person
+listening.
+

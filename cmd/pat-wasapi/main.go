@@ -328,11 +328,27 @@ func testOutput(d time.Duration) {
 	// The threshold is on the **floor**, not on the rise: below a certain level
 	// of silence the measurement holds, above it does not, and no tuning of the
 	// rise can make up for a tone that is covered.
+	//
+	// **What loopback hears is the mix, not the room.** It is the signal
+	// Windows hands this endpoint, before the speakers and, on most drivers,
+	// before the endpoint's own volume: a rise here says the tone reached the
+	// output and says nothing about how loud it is where somebody stands. With
+	// nothing else playing the floor is digital silence, and "111 dB above the
+	// floor" read as a claim about the room it never was. The verdict says what
+	// was measured, and the volume line above is the only one about loudness.
 	const usableFloor = -60
+	const digitalSilence = -119
 	rise := during - floor
 	switch {
+	case rise > 20 && floor <= digitalSilence:
+		fmt.Println("\n  THE TONE REACHES THE OUTPUT: it is in the mix Windows sends to this")
+		fmt.Printf("  endpoint at %.1f dBFS, where before there was digital silence.\n", during)
+		fmt.Println("  This is the signal, not the room: how loud it is there depends on the")
+		fmt.Println("  speakers and on the volume above, and no microphone measured it.")
 	case rise > 20:
-		fmt.Printf("\n  THE SOUND COMES OUT: %.0f dB above the floor. Talk-back has a path.\n", rise)
+		fmt.Printf("\n  THE TONE REACHES THE OUTPUT: %.0f dB above what was already playing.\n", rise)
+		fmt.Println("  This is the signal, not the room: how loud it is there depends on the")
+		fmt.Println("  speakers and on the volume above.")
 	case floor > usableFloor:
 		fmt.Printf("\n  INCONCLUSIVE: the floor is at %.0f dBFS and covers the tone.\n", floor)
 		fmt.Println("  Something is already playing on this machine: close players and")
