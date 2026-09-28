@@ -72,6 +72,24 @@ func TestOneLossReportIsOneCut(t *testing.T) {
 	}
 }
 
+// **Severe loss that goes on is cut on every report.** Tied to the window's
+// worst being replaced, reports of 0.90, 0.89, 0.88 were cut once in three
+// seconds. Put back and watched failing.
+func TestSevereLossThatGoesOnIsCutOnEveryReport(t *testing.T) {
+	h := New(Config{BitrateKbps: 2500})
+	cuts := 0
+	for i, f := range []float64{0.90, 0.89, 0.88, 0.89} {
+		now := t0.Add(time.Duration(i) * time.Second)
+		h.recordLoss(f, now)
+		if h.lossToCut(now) >= bitrateLossSevere {
+			cuts++
+		}
+	}
+	if cuts != 4 {
+		t.Errorf("four severe reports gave %d cuts, wanted four", cuts)
+	}
+}
+
 // **A gap in the quantiser ages the scale's veto window.** The readings from
 // before it used to stay and be averaged with the first ones after it, so a
 // hard scene read as the healthy one before the gap.

@@ -615,12 +615,17 @@ func (h *Hub) recordLoss(fraction float64, now time.Time) {
 	if now.Sub(h.lossWorstAt) > lossWindow || fraction >= h.lossWorst {
 		h.lossWorst = fraction
 		h.lossWorstAt = now
-		h.lossUncut = true
+	}
+	// **Every severe report is a cut, whatever the window holds.** Tied to the
+	// worst being replaced, a link reporting 0.90, 0.89, 0.88 was cut once in
+	// three seconds instead of once a second, four times slower to the floor.
+	if fraction >= bitrateLossSevere {
+		h.lossFresh, h.lossUncut = fraction, true
 	}
 }
 
-// lossToCut is the loss the bitrate governor may cut for on this turn: the
-// recent worst once, and zero until a report renews it.
+// lossToCut is the loss the bitrate governor may cut for on this turn: the last
+// severe report once, and zero until another arrives.
 //
 // **A cut is multiplicative, and the window holds a value for three seconds.**
 // Handing the governor the window on every turn applied one report's loss as a
@@ -633,11 +638,11 @@ func (h *Hub) recordLoss(fraction float64, now time.Time) {
 func (h *Hub) lossToCut(now time.Time) float64 {
 	h.lossMu.Lock()
 	defer h.lossMu.Unlock()
-	if !h.lossUncut || h.lossWorstAt.IsZero() || now.Sub(h.lossWorstAt) > lossWindow {
+	if !h.lossUncut {
 		return 0
 	}
 	h.lossUncut = false
-	return h.lossWorst
+	return h.lossFresh
 }
 
 // recentLoss is the worst fraction lost declared recently, zero if nobody has
