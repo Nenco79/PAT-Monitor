@@ -1206,7 +1206,9 @@ func (p *Pipeline) QP() QPStats {
 		Mean:    float64(p.qpSum) / float64(p.qpCount),
 		Max:     p.qpMax,
 	}
-	threshold := p.qpCount * 95 / 100
+	// Rounded up and never zero, as in TakeRecentQP: truncated, one sample
+	// gave a threshold of zero and a p95 of 1 whatever was measured.
+	threshold := max((p.qpCount*95+99)/100, 1)
 	var cum int64
 	for q := 1; q <= 51; q++ {
 		cum += p.qpHist[q]
@@ -1458,17 +1460,7 @@ func (p *Pipeline) probeBitrate(ctx context.Context, base int) {
 	// the preset with nobody having asked for it.
 	var asked, before int
 	lowered, completed := false, false
-	putBack := func() {
-		if kbps, restore := probeRestore(p.currentBitrate(), asked, before); restore {
-			if err := p.SetBitrate(kbps); err != nil {
-				p.cfg.Log.Warn("bitrate not restored after the probe", "error", err, "kbps", kbps)
-			}
-			return
-		}
-		p.cfg.Log.Info("bitrate left as it is after the probe",
-			"in_force_kbps", p.currentBitrate(),
-			"why", "someone else commanded while the probe was measuring")
-	}
+	putBack := func() { p.restoreAfterProbe(asked, before) }
 	defer func() {
 		if completed {
 			return
@@ -1602,6 +1594,30 @@ func probeVerdict(start, asked, after int) (took, judgeable bool) {
 	return dropped*10 >= wanted*bitrateProbeDrop, true
 }
 
+// restoreAfterProbe puts back what the probe lowered, unless somebody else has
+// commanded meanwhile.
+//
+// **With no encoder the value is still put back**, because a rebuilt encoder
+// starts from it. A probe aborted by a capture fault after halving reached here
+// once the encoder was already gone: SetBitrate refused before recording
+// anything, the value in force stayed at half the preset, and the next session's
+// probe halved from there and restored to it — an encoder born at the preset
+// left at half with nobody having asked.
+func (p *Pipeline) restoreAfterProbe(asked, before int) {
+	kbps, restore := probeRestore(p.currentBitrate(), asked, before)
+	if !restore {
+		p.cfg.Log.Info("bitrate left as it is after the probe",
+			"in_force_kbps", p.currentBitrate(),
+			"why", "someone else commanded while the probe was measuring")
+		return
+	}
+	if err := p.SetBitrate(kbps); err != nil {
+		p.curKbps.Store(int64(kbps))
+		p.cfg.Log.Debug("bitrate restored for the next encoder after the probe",
+			"kbps", kbps, "why", err)
+	}
+}
+
 // probeRestore says what to put back after the probe, and whether to put it
 // back.
 //
@@ -1620,6 +1636,18 @@ func probeRestore(inForce, asked, before int) (int, bool) {
 		return 0, false
 	}
 	return before, true
+}
+
+// resetBitrateWatch starts the watch's window and reference over, for a new
+// encoder. What the watch has concluded about the road — brHard — stays: that
+// is a fact about the machine, not about the session.
+func (p *Pipeline) resetBitrateWatch() {
+	p.brMu.Lock()
+	defer p.brMu.Unlock()
+	p.brSince = time.Time{}
+	p.brBytes = 0
+	p.brWantMax = 0
+	p.brWantRef, p.brMeasRef, p.brStreak = 0, 0, 0
 }
 
 // bitrateAsked records a bitrate command, so its effect can be weighed.
@@ -2795,7 +2823,14 @@ func (p *Pipeline) runVideo(ctx context.Context, sinks Sinks) error {
 		})
 	}
 
-	enc, err := newEncoder(w, h, fps, p.cfg.BitrateKbps)
+	// **The encoder is born at the bitrate in force, not at the preset.** A
+	// capture restart built it at the preset while the value in force and the
+	// governors kept the last command: 2500 went out on a link measured at 600,
+	// and nothing corrected it while the governors stood still — at the cap, or
+	// with the saving off on a steady network. It is the rule the size rebuild
+	// already keeps; the first session's value in force is the preset.
+	born := p.currentBitrate()
+	enc, err := newEncoder(w, h, fps, born)
 	if err != nil {
 		return fmt.Errorf("no usable H.264 encoder: %w", err)
 	}
@@ -2813,7 +2848,14 @@ func (p *Pipeline) runVideo(ctx context.Context, sinks Sinks) error {
 	// anyway. It showed on Quick Sync, where the loop settles at once around a
 	// value and stays there — ~1100 asked and ~2400 produced for two whole
 	// minutes, with the watch silent.
-	p.bitrateAsked(p.cfg.BitrateKbps)
+	//
+	// **And the window starts with the encoder.** It used to span the gap of a
+	// capture restart: the first window of the new session took in up to half a
+	// minute without frames, its throughput was a sliver of the truth, and the
+	// reference anchored there left the watch unable to judge for the rest of
+	// the process.
+	p.resetBitrateWatch()
+	p.bitrateAsked(born)
 
 	// The probe: once per process, and in a goroutine because it waits several
 	// seconds and here is the loop that delivers the frames.

@@ -293,7 +293,7 @@ func SPSSize(sps []byte) (width, height int, err error) {
 		r.bits(1)
 		r.se()
 		r.se()
-		for n := r.ue(); n > 0; n-- {
+		for n := r.ue(); n > 0 && r.err == nil; n-- {
 			r.se()
 		}
 	}

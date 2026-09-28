@@ -2099,5 +2099,9 @@ found only by reasoning, or by suffering them.
 the preset**, otherwise the maximum would be sent back on the wire exactly while
 the image is being shrunk because the bandwidth is not enough. The value is
 recorded in **both** the roads that command the bitrate — found because one of
-the two did not.
+the two did not. **And a capture restart is a rebuild too**: it built at the
+preset while the governors kept the last command, so 2500 went out on a link
+measured at 600 until some governor moved. The bitrate watchdog's window starts
+over with each encoder for the same reason, or its first window spans the gap
+and anchors the reference on a sliver of throughput.
 

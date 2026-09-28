@@ -230,10 +230,9 @@ func TestAnInterruptedProbeIsAskedAgain(t *testing.T) {
 	if stillSpent {
 		t.Error("the probe counted as done without measuring anything: this process will never ask again")
 	}
-	// And it left nothing behind. The value in force is what a rebuilt encoder
-	// starts from, so a probe that aborted after halving it and before putting
-	// it back would hand the next encoder half the preset with nobody having
-	// asked.
+	// And it left nothing behind. This probe aborts before halving, so it
+	// cannot see the abort after halving: that one is
+	// TestAProbeAbortedAfterHalvingPutsTheBitrateBack.
 	if got := p.currentBitrate(); got != inForce {
 		t.Errorf("the bitrate in force went from %d to %d across a probe that measured nothing",
 			inForce, got)
@@ -376,5 +375,41 @@ func TestNothingIsLookedForWhileTheChosenCameraIsOpen(t *testing.T) {
 
 	if got := asked.Load(); got != 0 {
 		t.Errorf("the list was asked for %d times with the chosen camera already open", got)
+	}
+}
+
+// **An abort after halving puts the bitrate back even with no encoder.** The
+// probe's restore ran once the capture fault had already removed the encoder,
+// SetBitrate refused before recording anything, and the value in force stayed
+// at half the preset for the next encoder to be born with.
+//
+// **The defect was put back and this test fails with it**: with the refusal
+// left unrecorded, the value in force stays at 1250.
+func TestAProbeAbortedAfterHalvingPutsTheBitrateBack(t *testing.T) {
+	p := quietPipeline()
+	p.curKbps.Store(1250) // the probe had halved, and the encoder is gone
+	p.restoreAfterProbe(1250, 2500)
+	if got := p.currentBitrate(); got != 2500 {
+		t.Errorf("the value in force is %d after the restore, wanted 2500", got)
+	}
+
+	// Somebody else commanded meanwhile: theirs stands.
+	p.curKbps.Store(900)
+	p.restoreAfterProbe(1250, 2500)
+	if got := p.currentBitrate(); got != 900 {
+		t.Errorf("a command given during the probe was overwritten: %d", got)
+	}
+}
+
+// **One sample's p95 is that sample.** The threshold was truncated, so with one
+// reading it was zero and the p95 came back as 1 whatever the quantiser was.
+func TestOneQuantiserSampleIsItsOwnPercentile(t *testing.T) {
+	p := quietPipeline()
+	p.qpMu.Lock()
+	p.qpHist[34]++
+	p.qpCount, p.qpSum, p.qpMax = 1, 34, 34
+	p.qpMu.Unlock()
+	if got := p.QP().P95; got != 34 {
+		t.Errorf("one reading of 34 gave a p95 of %d", got)
 	}
 }

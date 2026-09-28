@@ -3,6 +3,7 @@ package media
 import (
 	"encoding/hex"
 	"testing"
+	"time"
 )
 
 // The SPSs in this test are not invented: they are the ones this machine's
@@ -59,5 +60,40 @@ func TestATruncatedSPSIsRefused(t *testing.T) {
 		if w, h, err := SPSSize(sps[:n]); err == nil && (w <= 0 || h <= 0) {
 			t.Errorf("with %d bytes it answered %dx%d without an error", n, w, h)
 		}
+	}
+}
+
+// **A picture-order cycle of four billion entries is not read four billion
+// times.** The loop over num_ref_frames_in_pic_order_cnt_cycle stopped only on
+// its counter, so once the reader ran dry it spun on reads that answered zero at
+// once: seconds of a stopped frame loop for one malformed SPS, the same hang
+// bits() was already cured of.
+//
+// **The defect was put back and this test fails with it**, on the deadline.
+func TestAnEndlessPictureOrderCycleIsNotWalked(t *testing.T) {
+	w := &bitWriter{}
+	w.bits(66, 8)
+	w.bits(0xE01F, 16)
+	w.ue(0) // seq_parameter_set_id
+	w.ue(0) // log2_max_frame_num_minus4
+	w.ue(1) // pic_order_cnt_type 1
+	w.bit(0)
+	w.se(0)
+	w.se(0)
+	w.ue(4_000_000_000) // num_ref_frames_in_pic_order_cnt_cycle, and then nothing
+	sps := append([]byte{0x67}, w.b...)
+
+	done := make(chan error, 1)
+	go func() {
+		_, _, err := SPSSize(sps)
+		done <- err
+	}()
+	select {
+	case err := <-done:
+		if err == nil {
+			t.Error("an SPS that ends inside the cycle was read as a size")
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("SPSSize was still walking the cycle after two seconds")
 	}
 }
