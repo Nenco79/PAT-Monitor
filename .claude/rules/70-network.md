@@ -672,7 +672,9 @@ not by the class**, for the reason `credentials` already learnt: a phone on a
 dual-stack Wi-Fi reaches the plain-HTTP listener from a global IPv6 address,
 classes as the Internet, and its cookie crossed the Wi-Fi in clear all the same.
 Only the Funnel, recognised by what Tailscale put on the connection, and the
-tailnet are encrypted; everything else was born at home. The token is refused,
+tailnet are encrypted; everything else was born at home. **And the check asks
+by the road too**, or the two disagree: asked by the class, that same phone's
+home session was refused at home on its next request. The token is refused,
 not revoked: revoking would let whoever holds a copy log the owner out.
 
 **And the browser's copy slides with the server's.** The renewal was sliding on

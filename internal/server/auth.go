@@ -139,8 +139,13 @@ func (s *sessionStore) valid(token string) bool {
 	return ok && time.Now().Before(sess.expires)
 }
 
-// check validates a token for a request that arrived from the Internet or not,
+// check validates a token for a request that arrived through the Funnel or not,
 // and extends its life.
+//
+// **The question is the road, as in bornAtHome, and not the class.** The two
+// have to agree: a phone on a dual-stack Wi-Fi reaches the house's listener
+// from a global IPv6 address, which classes as the Internet, and asked by the
+// class its own home session was refused at home on every request.
 //
 // **A session opened on the home network is not accepted from the Internet.**
 // The LAN listener is plain HTTP, so its cookie crosses the Wi-Fi in clear, and

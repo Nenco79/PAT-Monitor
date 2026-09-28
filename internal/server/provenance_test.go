@@ -177,6 +177,12 @@ func TestADualStackPhoneAtHomeIsBornAtHome(t *testing.T) {
 	if code := statusWith(s, token, fromTheFunnel); code != http.StatusUnauthorized {
 		t.Errorf("a session opened in clear over IPv6 answered %d from the Funnel, wanted 401", code)
 	}
+	// **And at home it is still the key it was.** Refused by the class, the
+	// same phone was sent back to the login on its next request. Put back and
+	// watched failing.
+	if code := statusWith(s, token, func(r *http.Request) { r.RemoteAddr = "[2001:db8::40]:5555" }); code != http.StatusOK {
+		t.Errorf("the dual-stack phone's session answered %d at home, wanted 200", code)
+	}
 
 	// The Funnel's own sessions still open the Funnel.
 	f := httptest.NewRequest(http.MethodGet, "/", nil)

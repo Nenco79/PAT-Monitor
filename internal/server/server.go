@@ -584,7 +584,7 @@ func (s *Server) requireAuth(next http.Handler) http.Handler {
 		verdict := sessionInvalid
 		c, err := r.Cookie(sessionCookieName)
 		if err == nil {
-			verdict = s.sessions.check(c.Value, from.Public())
+			verdict = s.sessions.check(c.Value, from.Funnel)
 		}
 		if verdict == sessionWrongRoad {
 			// A cookie that only ever crossed the house in clear, presented at
@@ -839,7 +839,7 @@ func (s *Server) apiQR(w http.ResponseWriter, r *http.Request) {
 	from := requestOrigin(r)
 	signedIn := false
 	if c, err := r.Cookie(sessionCookieName); err == nil {
-		v := s.sessions.check(c.Value, from.Public())
+		v := s.sessions.check(c.Value, from.Funnel)
 		signedIn = v == sessionValid || v == sessionValidStaleCookie
 	}
 	if from.Public() && !signedIn {
