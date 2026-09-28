@@ -880,7 +880,7 @@ func (p *Pipeline) SetBitrate(kbps int) error {
 
 	enc := p.control.Load()
 	if enc == nil {
-		return fmt.Errorf("no capture running")
+		return errNoCapture
 	}
 	p.curKbps.Store(int64(kbps))
 	// On the machine where the simple command has already shown itself inert it
@@ -933,7 +933,7 @@ func (p *Pipeline) ReconfigureBitrate(kbps int) error {
 		return nil
 	}
 	if p.control.Load() == nil {
-		return fmt.Errorf("no capture running")
+		return errNoCapture
 	}
 	// The value is noted here **and** in SetBitrate: they are two doors into the
 	// same room, and one that forgets is enough to lose the command. Found this
@@ -1514,7 +1514,11 @@ func (p *Pipeline) probeBitrate(ctx context.Context, base int) {
 	// back is its number, not the preset. See the restore at the bottom.
 	before = p.currentBitrate()
 
-	asked = base * bitrateProbeFraction / 10
+	// **Half of what is in force, not of the preset.** A restarted encoder is
+	// born at the value in force, so a probe asked again after an abort could
+	// find 600 in force and ask for 1250: a rise, held for the whole wait, on a
+	// link just measured at 600, which probeVerdict then refuses anyway.
+	asked = before * bitrateProbeFraction / 10
 	if err := p.SetBitrate(asked); err != nil {
 		return
 	}
@@ -1611,12 +1615,21 @@ func (p *Pipeline) restoreAfterProbe(asked, before int) {
 			"why", "someone else commanded while the probe was measuring")
 		return
 	}
-	if err := p.SetBitrate(kbps); err != nil {
+	switch err := p.SetBitrate(kbps); {
+	case errors.Is(err, errNoCapture):
 		p.curKbps.Store(int64(kbps))
 		p.cfg.Log.Debug("bitrate restored for the next encoder after the probe",
 			"kbps", kbps, "why", err)
+	case err != nil:
+		// A running encoder that refused is not the harmless case: said at the
+		// level it always was.
+		p.cfg.Log.Warn("bitrate not restored after the probe", "error", err, "kbps", kbps)
 	}
 }
+
+// errNoCapture is a bitrate command with no encoder to take it: between two
+// capture sessions, or after the last one.
+var errNoCapture = errors.New("no capture running")
 
 // probeRestore says what to put back after the probe, and whether to put it
 // back.
