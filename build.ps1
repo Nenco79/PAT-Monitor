@@ -370,7 +370,7 @@ try {
         if (-not $keyPath) {
             throw "no signing key: pass -Key or set PATMON_SIGNING_KEY (pat-sign -generate makes one)"
         }
-        if (-not (Test-Path $keyPath)) { throw "the signing key $keyPath is not there" }
+        if (-not (Test-Path -LiteralPath $keyPath)) { throw "the signing key $keyPath is not there" }
 
         # The licence tree is regenerated rather than trusted. It is derived
         # from what is linked into the binary, so it goes stale on any `go get`
