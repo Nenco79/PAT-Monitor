@@ -37,6 +37,11 @@
   /* Above the guided path's two decorative layers (sky and grass, which sit at
      0) and above the content, which sits at 1. */
   z-index: 3;
+  /* The arrow's shape, which `.lang::after` paints: see there why the image
+     carries no colour. */
+  --arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' \
+viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' \
+stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6l6 -6'/%3E%3C/svg%3E");
 }
 
 /* The native `<select>` and not a menu of ours: it brings with it the keyboard,
@@ -95,13 +100,9 @@
    So the image carries the **shape** and nothing else, and the colour is put in
    by the mask: `background` is the token, and the arrow is the cut-out. The
    glyph is the same as `icons.css`'s — the down arrow of "Details" — with the
-   same stroke weight. */
-.lang {
-  --arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' \
-viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' \
-stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6l6 -6'/%3E%3C/svg%3E");
-}
-/* On a pseudo-element and not on the `<select>`: a mask on the control would cut
+   same stroke weight.
+
+   On a pseudo-element and not on the `<select>`: a mask on the control would cut
    the control out. `pointer-events: none` because the click has to reach the
    menu, which is underneath. */
 .lang::after {

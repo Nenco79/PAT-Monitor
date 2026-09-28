@@ -1763,9 +1763,11 @@ level did not. That is, the distinction lived in the page looked at once, in
 daylight, with the audio verifiable by ear, and was missing where the only one
 that counts is.
 
-The thresholds are the same — 0.72 and 0.92 — and copying them is not a
+The thresholds are the same — 0.72 and 0.92 — and sharing them is not a
 convenience: the measurement is the **same formula on the same stream**, RMS
 scaled from -60 dBFS to 0, so the two numbers talk about the same quantity.
+They were two copies, one per page, and they are now written once, in
+`page.js`, with the formula beside them (`dbfsOf`, `fromDbfs`).
 
 **But the peak is light and not brick, and here the two pages must diverge.** In
 the guided path saturation is a calibration fault and `--c-stop` is right. On

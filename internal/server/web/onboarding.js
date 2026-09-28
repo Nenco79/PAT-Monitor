@@ -12,8 +12,6 @@
 // choice to make.
 'use strict';
 
-const el = (id) => document.getElementById(id);
-
 // ------------------------------------------------------------------ scaffold
 
 // The names and the time left for each step.
@@ -137,6 +135,20 @@ function show(n) {
   sections.forEach((s) => s.classList.toggle('show', Number(s.dataset.step) === n));
   updateHeader(n);
 
+  // The preview opens when the check is reached and closes when it is left:
+  // keeping a WebRTC session alive for the whole path would mean occupying the
+  // encoder while the user reads Tailscale's page.
+  //
+  // **It is decided here, where the step changes, and it asks whether a preview
+  // was requested, not whether one arrived.** It used to be a MutationObserver
+  // on every class write in the page, and the heartbeat writes the rows' classes
+  // every second: with the camera refused no offer ever arrives, and the
+  // observer that asked about the connection reopened the socket once a second,
+  // the status line flickering between "opening" and the failure. A failed
+  // preview is opened again by "Check again", which is what that button is for.
+  if (n === 1 && !previewWs) openPreview();
+  if (n !== 1 && previewWs) closePreview();
+
   // The step lives in the anchor, so that refreshing the page does not go back
   // to the top: inside a five-minute path, starting over for an accidental F5 is
   // the kind of thing that makes people give up.
@@ -186,29 +198,6 @@ document.addEventListener('click', (e) => {
   if (b) show(Number(b.dataset.go));
 });
 
-// ------------------------------------------------------------- code to scan
-
-// qrFor points the image at the address's code, without remaking it every time.
-//
-// The heartbeat runs once a second: reassigning `src` every round makes the
-// browser fetch again and the image flickers, which inside a still page reads as
-// something going wrong.
-function qrFor(id, url) {
-  const img = el(id);
-  if (!img) return;
-  // With no address the code hides instead of staying without a source: an
-  // `<img>` with no `src` does not disappear, it draws the frame of a broken
-  // image next to an address that declares it is not there.
-  if (!url) {
-    img.hidden = true;
-    img.removeAttribute('src');
-    return;
-  }
-  const src = '/qr?u=' + encodeURIComponent(url);
-  if (img.getAttribute('src') !== src) img.setAttribute('src', src);
-  img.hidden = false;
-}
-
 // --------------------------------------------------------------------- copy
 
 // One handler for every "Copy" button: the element to copy is written in the
@@ -244,9 +233,10 @@ document.addEventListener('click', async (e) => {
 const pwForm = el('pw-form');
 const pwMsg = el('pw-msg');
 
-function pwSays(text, kind) {
-  pwMsg.textContent = text;
-  pwMsg.className = 'field-msg ' + kind;
+// says writes the line under a form's field, for the three password forms.
+function says(box, text, kind) {
+  box.textContent = text;
+  box.className = 'field-msg ' + kind;
 }
 
 pwForm.addEventListener('submit', async (e) => {
@@ -256,7 +246,7 @@ pwForm.addEventListener('submit', async (e) => {
 
   pwMsg.className = 'field-msg';
   if (password !== confirm) {
-    pwSays(T('auth.mismatch'), 'error');
+    says(pwMsg, T('auth.mismatch'), 'error');
     el('confirm').focus();
     return;
   }
@@ -264,14 +254,10 @@ pwForm.addEventListener('submit', async (e) => {
   const submit = el('pw-submit');
   submit.disabled = true;
   try {
-    const res = await fetch('/api/setup', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({password, confirm}),
-    });
+    const res = await postJSON('/api/setup', {password, confirm});
     if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      pwSays(TErr(body.error, body.retryAfter), 'error');
+      const body = await bodyOf(res);
+      says(pwMsg, TErr(body.error, body.retryAfter), 'error');
       return;
     }
 
@@ -280,13 +266,9 @@ pwForm.addEventListener('submit', async (e) => {
     // that sits behind the session. Sending the user to retype the password they
     // have just chosen, inside a guided path, would be one more step that asks
     // nothing new.
-    const acc = await fetch('/api/login', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({password}),
-    });
+    const acc = await postJSON('/api/login', {password});
     if (!acc.ok) {
-      pwSays(T('onb.pw.set-no-login'), 'error');
+      says(pwMsg, T('onb.pw.set-no-login'), 'error');
       return;
     }
     if (alreadyDone) {
@@ -296,7 +278,7 @@ pwForm.addEventListener('submit', async (e) => {
     }
     show(1);
   } catch (err) {
-    pwSays(T('onb.unreachable'), 'error');
+    says(pwMsg, T('onb.unreachable'), 'error');
   } finally {
     submit.disabled = false;
   }
@@ -317,15 +299,10 @@ signinForm.addEventListener('submit', async (e) => {
   submit.disabled = true;
   signinMsg.className = 'field-msg';
   try {
-    const res = await fetch('/api/login', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({password: el('signin-password').value}),
-    });
+    const res = await postJSON('/api/login', {password: el('signin-password').value});
     if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      signinMsg.textContent = TErr(body.error, body.retryAfter);
-      signinMsg.className = 'field-msg error';
+      const body = await bodyOf(res);
+      says(signinMsg, TErr(body.error, body.retryAfter), 'error');
       el('signin-password').select();
       return;
     }
@@ -333,8 +310,7 @@ signinForm.addEventListener('submit', async (e) => {
     el('pw-done').hidden = false;
     show(1);
   } catch (err) {
-    signinMsg.textContent = T('onb.unreachable');
-    signinMsg.className = 'field-msg error';
+    says(signinMsg, T('onb.unreachable'), 'error');
   } finally {
     submit.disabled = false;
   }
@@ -371,8 +347,7 @@ changeForm.addEventListener('submit', async (e) => {
 
   changeMsg.className = 'field-msg';
   if (password !== confirm) {
-    changeMsg.textContent = T('auth.mismatch');
-    changeMsg.className = 'field-msg error';
+    says(changeMsg, T('auth.mismatch'), 'error');
     el('new-confirm').focus();
     return;
   }
@@ -380,15 +355,10 @@ changeForm.addEventListener('submit', async (e) => {
   const submit = el('pw-change-submit');
   submit.disabled = true;
   try {
-    const res = await fetch('/api/password', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({current, password, confirm}),
-    });
+    const res = await postJSON('/api/password', {current, password, confirm});
     if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      changeMsg.textContent = TErr(body.error, body.retryAfter);
-      changeMsg.className = 'field-msg error';
+      const body = await bodyOf(res);
+      says(changeMsg, TErr(body.error, body.retryAfter), 'error');
       return;
     }
 
@@ -396,14 +366,9 @@ changeForm.addEventListener('submit', async (e) => {
     // signing in again the next steps would meet a 401 and the path would stop
     // without saying why. We sign in with the new one, which is also the proof
     // that it really was saved.
-    const acc = await fetch('/api/login', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({password}),
-    });
+    const acc = await postJSON('/api/login', {password});
     if (!acc.ok) {
-      changeMsg.textContent = T('onb.pw.changed-no-login');
-      changeMsg.className = 'field-msg error';
+      says(changeMsg, T('onb.pw.changed-no-login'), 'error');
       return;
     }
     changeForm.reset();
@@ -411,8 +376,7 @@ changeForm.addEventListener('submit', async (e) => {
     el('pw-change').hidden = false;
     show(1);
   } catch (err) {
-    changeMsg.textContent = T('onb.unreachable');
-    changeMsg.className = 'field-msg error';
+    says(changeMsg, T('onb.unreachable'), 'error');
   } finally {
     submit.disabled = false;
   }
@@ -451,8 +415,7 @@ function openPreview() {
   const state = el('ob-video-state');
   state.textContent = T('onb.prev.opening');
 
-  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const ws = new WebSocket(proto + '//' + location.host + '/ws');
+  const ws = new WebSocket(signalingURL());
   previewWs = ws;
 
   ws.onmessage = async (ev) => {
@@ -598,19 +561,6 @@ function checkRow(id, good, title, detail, settings) {
   go.hidden = !show;
 }
 
-// fromDbfs brings the level into 0..1 on a scale that makes sense to the eye.
-//
-// **The scale is logarithmic and the floor is -60 dBFS, not -96.** Digital
-// silence sits at -96, but the noise of an empty room is already around -70:
-// measuring all the way down would leave the bars visibly lit on nothing, that
-// is, they would say "I hear" when there is nothing to hear — which is exactly
-// the fault this step exists to find.
-function fromDbfs(db) {
-  if (typeof db !== 'number' || !isFinite(db)) return 0;
-  const v = (db + 60) / 60;
-  return Math.max(0, Math.min(1, v));
-}
-
 // ---------------------------------------------------------------- level meter
 
 // The meter feeds from the **received stream**, not from the server's state.
@@ -630,9 +580,9 @@ let vuActive = false;
 let vuPeak = 0;
 let vuPeakSince = 0;
 
+// VU_FLOOR is the bottom of the reading. The two thresholds above it, VU_LOUD
+// and VU_PEAK, are the viewer's too and live in `page.js`, with `fromDbfs`.
 const VU_FLOOR = -60;  // dBFS: below this it is the empty room, not digital silence
-const VU_LOUD = 0.72;  // above: amber
-const VU_PEAK = 0.92;  // above: red, it is clipping
 
 function writeVu(level, db) {
   const fill = el('ob-vu-fill');
@@ -690,11 +640,7 @@ function attachVu(stream) {
     vuActive = true;
     const tick = () => {
       if (!vuActive) return;
-      analyser.getFloatTimeDomainData(buf);
-      let sum = 0;
-      for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
-      const rms = Math.sqrt(sum / buf.length);
-      const db = rms > 0 ? 20 * Math.log10(rms) : -100;
+      const db = dbfsOf(analyser, buf);
       writeVu(fromDbfs(db), db);
       requestAnimationFrame(tick);
     };
@@ -713,26 +659,19 @@ async function markDone() {
   try { await fetch('/api/onboarding/done', {method: 'POST'}); } catch (err) { /* does not block */ }
 }
 
-// "At home is enough for me" is a legitimate outcome, not an abandonment: the
-// path is finished and has to be marked as such, otherwise it would open again
-// at the next start.
-el('home-only').addEventListener('click', async () => {
+// stayHome answers "at home is enough for me", from the fork, from the Funnel
+// step and from the failure screen.
+//
+// It is a legitimate outcome, not an abandonment: the path is finished and has
+// to be marked as such, otherwise it would open again at the next start.
+async function stayHome() {
   homeOnly = true;
   await markDone();
   show(STEP_READY);
-});
-
-el('skip-funnel').addEventListener('click', async () => {
-  homeOnly = true;
-  await markDone();
-  show(STEP_READY);
-});
-
-el('failed-home-only').addEventListener('click', async () => {
-  homeOnly = true;
-  await markDone();
-  show(STEP_READY);
-});
+}
+el('home-only').addEventListener('click', stayHome);
+el('skip-funnel').addEventListener('click', stayHome);
+el('failed-home-only').addEventListener('click', stayHome);
 
 // Switches on access from outside. It is the only point of the path that changes
 // the configuration besides the password, and also the only one that cannot be
@@ -747,7 +686,7 @@ async function enableOutside() {
   try {
     const res = await fetch('/api/remote/enable', {method: 'POST'});
     if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
+      const body = await bodyOf(res);
       showFailure(T('onb.enable-failed'), TErr(body.error, body.retryAfter));
       return;
     }
@@ -885,14 +824,14 @@ function showAuthorise(r) {
   // that is not there yet, and whoever presses them concludes it is broken.
   el('auth-open').closest('.addr-actions').hidden = waiting;
   if (waiting) {
-    qrFor('auth-qr', '');
+    qrFor(el('auth-qr'), '');
     return;
   }
   el('auth-url').textContent = r.actionUrl;
   el('auth-open').href = r.actionUrl;
   // The image is reassigned only if the address has changed: the heartbeat runs
   // every second, and reloading it every round would make it flicker.
-  qrFor('auth-qr', r.actionUrl);
+  qrFor(el('auth-qr'), r.actionUrl);
 }
 
 function showApproval(r) {
@@ -928,7 +867,7 @@ function composeFinal(s) {
   // address costs a failed attempt on the phone.
   const home = s.localUrl || '';
   el('url-home').textContent = home || '—';
-  qrFor('home-qr', home);
+  qrFor(el('home-qr'), home);
 
   const r = s.remote || {};
   const active = r.phase === 'running' && r.publicUrl;
@@ -946,7 +885,7 @@ function composeFinal(s) {
   el('wait-note').hidden = !active;
   if (active) {
     el('url-outside').textContent = r.publicUrl;
-    qrFor('outside-qr', r.publicUrl);
+    qrFor(el('outside-qr'), r.publicUrl);
   }
 
   // **A warning on the "ready" step is worth more than the rest of the page.**
@@ -1173,7 +1112,6 @@ async function start() {
   const first = inside ? (Number.isInteger(fromAnchor) ? fromAnchor : 1) : 0;
   show(first);
 
-  if (first >= 1) openPreview();
   setInterval(heartbeat, 1000);
   heartbeat();
 }
@@ -1191,21 +1129,5 @@ async function start() {
 // drawing too. Only the values live here.
 el('tray-line-1').textContent = T('tray.line.watching', {viewers: '1', devices: '2'});
 el('tray-line-2').textContent = T('tray.line.uptime', {since: '2h14m3s'});
-
-// The preview opens when it is needed and closes when it is not needed any more:
-// keeping a WebRTC session alive for the whole path would mean occupying the
-// encoder while the user reads Tailscale's page.
-//
-// **It asks whether a preview was requested, not whether one arrived.** The
-// observer fires on every class write, the heartbeat writes the rows' classes
-// every second, and with the camera refused no offer ever arrives: asked about
-// the connection, it reopened the socket once a second, and the status line
-// flickered between "opening" and the failure. A failed preview is opened again
-// by "Check again", which is what that button is for.
-const watch = new MutationObserver(() => {
-  if (step === 1 && !previewWs) openPreview();
-  if (step !== 1 && previewWs) closePreview();
-});
-watch.observe(document.body, {attributes: true, subtree: true, attributeFilter: ['class']});
 
 start();

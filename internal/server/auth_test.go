@@ -2,6 +2,9 @@ package server
 
 import (
 	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"testing"
 	"time"
 )
@@ -202,5 +205,57 @@ func TestALoginVerifiedAcrossARevocationGetsNoSession(t *testing.T) {
 	}
 	if _, err := s.createAt(s.current(), anyRoad); err != nil {
 		t.Errorf("a login begun after the revocation was refused: %v", err)
+	}
+}
+
+// **The generation is read inside the hashing slot and before argon2**, and
+// checkPassword is the one place that order is written.
+//
+// Read after the verification, it would be the generation of a password that
+// may already have stopped being the password: createAt would compare it with
+// itself and hand the stale login its session, which is the case
+// TestALoginVerifiedAcrossARevocationGetsNoSession exists for — and that test
+// drives the store, not the handler, so it cannot see the handler read the
+// count late. Read before the slot, it would move while the login waits in the
+// queue, refusing a correct password for a change that happened before argon2
+// began. So the source is asked.
+//
+// **The defect was put back and this test fails with it**: with `gen =` moved
+// below VerifyPassword, the order is reported.
+func TestThePasswordCheckReadsTheGenerationBeforeTheHash(t *testing.T) {
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, "server.go", nil, parser.SkipObjectResolution)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var body *ast.BlockStmt
+	for _, d := range file.Decls {
+		if fn, ok := d.(*ast.FuncDecl); ok && fn.Name.Name == "checkPassword" && fn.Recv != nil {
+			body = fn.Body
+		}
+	}
+	if body == nil {
+		t.Fatal("checkPassword is not in server.go: this guard is looking at nothing")
+	}
+	first := map[string]token.Pos{}
+	ast.Inspect(body, func(n ast.Node) bool {
+		if call, ok := n.(*ast.CallExpr); ok {
+			name := calleeName(call.Fun)
+			if _, seen := first[name]; !seen {
+				first[name] = call.Pos()
+			}
+		}
+		return true
+	})
+	slot, current, verify := first["hashSlot"], first["current"], first["VerifyPassword"]
+	if slot == token.NoPos || current == token.NoPos || verify == token.NoPos {
+		t.Fatalf("checkPassword no longer calls hashSlot, current and VerifyPassword "+
+			"(found %v, %v, %v): the order this guards has moved somewhere else",
+			slot != token.NoPos, current != token.NoPos, verify != token.NoPos)
+	}
+	if !(slot < current && current < verify) {
+		t.Errorf("checkPassword reads the generation at %s, the slot at %s and the "+
+			"hash at %s: it must be slot, then generation, then hash",
+			fset.Position(current), fset.Position(slot), fset.Position(verify))
 	}
 }

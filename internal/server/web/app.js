@@ -5,8 +5,6 @@
 // peer-to-peer, the WebSocket serves only the signalling.
 'use strict';
 
-const el = (id) => document.getElementById(id);
-
 const video = el('video');
 const dot = el('dot');
 const stateLabel = el('state');
@@ -152,8 +150,7 @@ function connect() {
 
   setState(T('viewer.state.connecting'));
 
-  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  ws = new WebSocket(`${proto}//${location.host}/ws`);
+  ws = new WebSocket(signalingURL());
 
   ws.onopen = () => setState(T('viewer.state.negotiating'));
 
@@ -375,22 +372,13 @@ el('mute').addEventListener('click', () => {
   applyAudio();
 });
 
-// attachMeter shows the incoming audio level.
-//
-// It serves to tell that the child is making a sound even with the phone on
-// silent or the volume at zero: the indicator moves anyway.
-//
-// The level's two thresholds, **the same as the guided path's**: there the bar
-// and its reading in decibels demonstrate the microphone to whoever is
-// installing, here they say what is happening in the room to whoever is watching
-// at night. The measurement is the same formula on the same stream, so the
-// numbers speak about the same quantity and copying them is not a convenience.
+// VU_SILENCE is where the level stops being a sound. The two thresholds above
+// it, VU_LOUD and VU_PEAK, are the guided path's too, and they are declared once
+// in `page.js`.
 //
 // **The distinction lived only in the page one looks at once.** The viewer had a
 // band six pixels tall of a single colour: a level showed, a **high** level did
 // not, and that is the only difference that matters at three in the morning.
-const VU_LOUD = 0.72;      // beyond: amber
-const VU_PEAK = 0.92;      // beyond: light — not brick, see the stylesheet
 const VU_SILENCE = 0.02;
 
 // levelState names the band, for the colour and for whoever cannot see it.
@@ -456,6 +444,10 @@ function resumeOnFirstGesture() {
   document.addEventListener('keydown', resume, true);
 }
 
+// attachMeter shows the incoming audio level.
+//
+// It serves to tell that the child is making a sound even with the phone on
+// silent or the volume at zero: the indicator moves anyway.
 function attachMeter() {
 
   if (!stream || stream.getAudioTracks().length === 0) return;
@@ -517,13 +509,9 @@ function attachMeter() {
         meterBox.classList.remove('unknown');
       }
 
-      analyser.getFloatTimeDomainData(buf);
-      let sum = 0;
-      for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
-      const rms = Math.sqrt(sum / buf.length);
+      const db = dbfsOf(analyser, buf);
       // Scaled from -60 dBFS to 0, which is the useful range for ambient sounds.
-      const db = rms > 0 ? 20 * Math.log10(rms) : -100;
-      const pct = Math.max(0, Math.min(100, ((db + 60) / 60) * 100));
+      const pct = fromDbfs(db) * 100;
       levelBar.style.width = pct.toFixed(0) + '%';
       const st = levelState(pct / 100);
       if (levelBar.className !== st.className) levelBar.className = st.className;
@@ -662,22 +650,6 @@ function renderRemote(r) {
   box.className = r.phase === 'running' && r.reach !== REACH_FAILED
     ? 'remote show ok'
     : 'remote show todo';
-}
-
-// qrFor points the image at an address's code, or hides it if there is no
-// address. The server draws it (`/qr`), not the page: it is the same code that
-// generates the onboarding's, so there are not two implementations that can
-// diverge.
-function qrFor(img, url) {
-  if (!img) return;
-  if (!url) {
-    img.hidden = true;
-    img.removeAttribute('src');
-    return;
-  }
-  const src = '/qr?u=' + encodeURIComponent(url);
-  if (img.getAttribute('src') !== src) img.setAttribute('src', src);
-  img.hidden = false;
 }
 
 // ---------- the server's state ----------
@@ -1115,15 +1087,11 @@ function makePicker(o) {
   async function send(id) {
     sel.disabled = true;
     try {
-      const res = await fetch(o.setUrl, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({id}),
-      });
+      const res = await postJSON(o.setUrl, {id});
       if (res.ok) {
         refused(null);
       } else {
-        const b = await res.json().catch(() => ({}));
+        const b = await bodyOf(res);
         refused(TErr(b.error));
         // A refusal nearly always means the list is old: somebody unplugged the
         // device between opening the details and the click.
@@ -1236,11 +1204,7 @@ async function toggleDetect(d) {
   const next = d.btn.getAttribute('aria-pressed') !== 'true';
   for (const x of DETECT) x.btn.disabled = true;
   try {
-    const res = await fetch('/api/detect', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ [d.key]: next }),
-    });
+    const res = await postJSON('/api/detect', { [d.key]: next });
     if (res.ok) {
       const got = await res.json();
       paintDetect({ detectCry: got.cry, detectBark: got.bark, detectMotion: got.motion });
@@ -1299,10 +1263,7 @@ async function askForClip() {
   recordBtn.disabled = true;
   try {
     const res = await fetch('/api/record', {method: 'POST'});
-    if (res.status === 401) {
-      location.href = '/login';
-      return;
-    }
+    if (sessionExpired(res)) return;
     if (res.ok) {
       showWarning('recording', null);
       paintRecord(true);
@@ -1312,7 +1273,7 @@ async function askForClip() {
     // first keyframe arrives, after startup or after the capture restarts, and
     // a nearly full disk would not keep the clip; a command that does nothing
     // and does not say so is a knob that moves nothing.
-    const body = await res.json().catch(() => ({}));
+    const body = await bodyOf(res);
     showWarning('recording', TErr(body.error));
     // **And it goes away by itself.** It is not a state anybody can contradict:
     // it is a thing that has just happened, and a line left on forever ends up

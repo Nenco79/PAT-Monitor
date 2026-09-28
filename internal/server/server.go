@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"net/netip"
 	"net/url"
+	"path"
 	"strconv"
 	"strings"
 	"sync"
@@ -326,16 +327,16 @@ type Server struct {
 	refusals      int
 	refusalsSince time.Time
 
-	// crossSite and setupElsewhere are the two public refusals, written as
-	// runs: see refusalRun. commandElsewhere and wrongRoad are requireAuth's
-	// two refusals a third party can provoke, and they are runs for the same
-	// reason: whoever provokes them would otherwise decide how many lines.
 	// ownNamesList is OwnNames' last answer, and ownNamesAt when it came:
 	// see ownNames.
 	ownNamesMu   sync.Mutex
 	ownNamesList []string
 	ownNamesAt   time.Time
 
+	// crossSite and setupElsewhere are the two public refusals, written as
+	// runs: see refusalRun. commandElsewhere and wrongRoad are requireAuth's
+	// two refusals a third party can provoke, and they are runs for the same
+	// reason: whoever provokes them would otherwise decide how many lines.
 	crossSite        *refusalRun
 	setupElsewhere   *refusalRun
 	commandElsewhere *refusalRun
@@ -461,19 +462,19 @@ func (s *Server) routes() {
 	// data ask for the session each on its own account, at the /api/ routes that
 	// sit behind requireAuth.
 	s.mux.HandleFunc("GET /onboarding", s.pageOnboarding)
-	s.mux.HandleFunc("GET /onboarding.js", s.serveAsset("onboarding.js", "application/javascript; charset=utf-8"))
-	s.mux.HandleFunc("GET /onboarding.css", s.serveAsset("onboarding.css", "text/css; charset=utf-8"))
+	s.mux.HandleFunc("GET /onboarding.js", s.serveAsset("onboarding.js"))
+	s.mux.HandleFunc("GET /onboarding.css", s.serveAsset("onboarding.css"))
 	s.mux.HandleFunc("GET /api/onboarding/state", s.apiOnboardingState)
 	// The QR code goes with an address the page already shows in the clear: it
 	// adds no secret, it only changes how it is transcribed. So it sits among
 	// the public routes like the page that uses it.
 	s.mux.HandleFunc("GET /qr", s.apiQR)
-	s.mux.HandleFunc("GET /style.css", s.serveAsset("style.css", "text/css; charset=utf-8"))
+	s.mux.HandleFunc("GET /style.css", s.serveAsset("style.css"))
 	// icons.css is read both by the viewer and by the configuration path, so it
 	// sits among the public routes like the second of the two: the login page
 	// does not ask for it, but serving it to whoever has no session reveals
 	// nothing the two pages do not show anyway.
-	s.mux.HandleFunc("GET /icons.css", s.serveAsset("icons.css", "text/css; charset=utf-8"))
+	s.mux.HandleFunc("GET /icons.css", s.serveAsset("icons.css"))
 	// The manifest and the icons it points at. **They are open**, like the
 	// stylesheets: a browser fetches a manifest before anybody has signed in,
 	// and an icon behind a session is an icon iOS saves as a broken image.
@@ -485,49 +486,44 @@ func (s *Server) routes() {
 	}
 	// auth.js serves the login pages, so it has to be reachable without a
 	// session: otherwise the form would fall back on native submission.
-	s.mux.HandleFunc("GET /auth.js", s.serveAsset("auth.js", "application/javascript; charset=utf-8"))
+	s.mux.HandleFunc("GET /auth.js", s.serveAsset("auth.js"))
+	s.mux.HandleFunc("GET /page.js", s.serveAsset("page.js"))
 	// The translation's two halves sit among the public routes because the login
 	// page asks for them too, and by definition it has no session. They reveal
 	// nothing: `i18n.js` is code, and the dictionary carries the same sentences
 	// the pages show anyway.
-	s.mux.HandleFunc("GET /i18n.js", s.serveAsset("i18n.js", "application/javascript; charset=utf-8"))
-	s.mux.HandleFunc("GET /i18n.css", s.serveAsset("i18n.css", "text/css; charset=utf-8"))
+	s.mux.HandleFunc("GET /i18n.js", s.serveAsset("i18n.js"))
+	s.mux.HandleFunc("GET /i18n.css", s.serveAsset("i18n.css"))
 	s.mux.HandleFunc("GET /dictionary.js", s.serveDictionary)
 
 	// Everything else requires a valid session.
-	s.mux.Handle("GET /", s.requireAuth(http.HandlerFunc(s.pageViewer)))
-	s.mux.Handle("GET /app.js", s.requireAuth(
-		http.HandlerFunc(s.serveAsset("app.js", "application/javascript; charset=utf-8"))))
-	s.mux.Handle("GET /api/status", s.requireAuth(http.HandlerFunc(s.apiStatus)))
-	s.mux.Handle("POST /api/logout", s.requireAuth(http.HandlerFunc(s.apiLogout)))
-	s.mux.Handle("GET /ws", s.requireAuth(http.HandlerFunc(s.wsSignaling)))
-	s.mux.Handle("POST /api/onboarding/done", s.requireAuth(http.HandlerFunc(s.apiOnboardingDone)))
-	s.mux.Handle("POST /api/remote/enable", s.requireAuth(http.HandlerFunc(s.apiRemoteEnable)))
-	s.mux.Handle("POST /api/password", s.requireAuth(http.HandlerFunc(s.apiPassword)))
-	s.mux.Handle("POST /api/detect", s.requireAuth(http.HandlerFunc(s.apiDetect)))
-	s.mux.Handle("GET /api/microphones", s.requireAuth(http.HandlerFunc(s.apiMicrophones)))
-	s.mux.Handle("POST /api/microphone", s.requireAuth(http.HandlerFunc(s.apiMicrophone)))
-	s.mux.Handle("GET /api/cameras", s.requireAuth(http.HandlerFunc(s.apiCameras)))
-	s.mux.Handle("POST /api/camera", s.requireAuth(http.HandlerFunc(s.apiCamera)))
+	private := func(pattern string, h http.HandlerFunc) { s.mux.Handle(pattern, s.requireAuth(h)) }
+	private("GET /", s.pageViewer)
+	private("GET /app.js", s.serveAsset("app.js"))
+	private("GET /api/status", s.apiStatus)
+	private("POST /api/logout", s.apiLogout)
+	private("GET /ws", s.wsSignaling)
+	private("POST /api/onboarding/done", s.apiOnboardingDone)
+	private("POST /api/remote/enable", s.apiRemoteEnable)
+	private("POST /api/password", s.apiPassword)
+	private("POST /api/detect", s.apiDetect)
+	private("GET /api/microphones", s.apiMicrophones)
+	private("POST /api/microphone", s.apiMicrophone)
+	private("GET /api/cameras", s.apiCameras)
+	private("POST /api/camera", s.apiCamera)
 	// The event recordings. The page and its code are two assets like the
 	// others; the rest sits under `/api/` on purpose, see clips.go.
-	s.mux.Handle("GET /clips", s.requireAuth(http.HandlerFunc(s.pageClips)))
-	s.mux.Handle("GET /clips.js", s.requireAuth(
-		http.HandlerFunc(s.serveAsset("clips.js", "application/javascript; charset=utf-8"))))
-	s.mux.Handle("GET /api/clips", s.requireAuth(http.HandlerFunc(s.apiClips)))
-	s.mux.Handle("GET /api/clips/{name}", s.requireAuth(http.HandlerFunc(s.apiClipFile)))
-	s.mux.Handle("POST /api/clips/{name}/keep", s.requireAuth(http.HandlerFunc(s.apiClipKeep)))
-	s.mux.Handle("POST /api/clips/{name}/release", s.requireAuth(http.HandlerFunc(s.apiClipRelease)))
-	s.mux.Handle("POST /api/clips/{name}/delete", s.requireAuth(http.HandlerFunc(s.apiClipDelete)))
+	private("GET /clips", s.serveAsset("clips.html"))
+	private("GET /clips.js", s.serveAsset("clips.js"))
+	private("GET /api/clips", s.apiClips)
+	private("GET /api/clips/{name}", s.apiClipFile)
+	private("POST /api/clips/{name}/keep", s.apiClipKeep)
+	private("POST /api/clips/{name}/release", s.apiClipRelease)
+	private("POST /api/clips/{name}/delete", s.apiClipDelete)
 	// Recording by hand is not a clips route: it does not touch the folder, it
 	// asks the recorder for a clip. It sits beside `/api/detect` for that reason
 	// — they are the two commands the viewer's bar gives the monitor.
-	s.mux.Handle("POST /api/record", s.requireAuth(http.HandlerFunc(s.apiRecord)))
-}
-
-// pageClips serves the recordings page.
-func (s *Server) pageClips(w http.ResponseWriter, r *http.Request) {
-	s.serveAsset("clips.html", "text/html; charset=utf-8")(w, r)
+	private("POST /api/record", s.apiRecord)
 }
 
 // ---------- middleware ----------
@@ -650,7 +646,7 @@ func (s *Server) pageViewer(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	s.serveAsset("index.html", "text/html; charset=utf-8")(w, r)
+	s.serveAsset("index.html")(w, r)
 }
 
 func (s *Server) pageLogin(w http.ResponseWriter, r *http.Request) {
@@ -663,7 +659,7 @@ func (s *Server) pageLogin(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/setup", http.StatusSeeOther)
 		return
 	}
-	s.serveAsset("login.html", "text/html; charset=utf-8")(w, r)
+	s.serveAsset("login.html")(w, r)
 }
 
 // setupNotFromThisPC refuses the first-configuration routes to whoever is not
@@ -728,7 +724,7 @@ func (s *Server) pageSetup(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, s.phrase(r, "err.setup-not-this-pc"), http.StatusForbidden)
 		return
 	}
-	s.serveAsset("setup.html", "text/html; charset=utf-8")(w, r)
+	s.serveAsset("setup.html")(w, r)
 }
 
 // pageOnboarding serves the first-configuration path.
@@ -743,7 +739,7 @@ func (s *Server) pageOnboarding(w http.ResponseWriter, r *http.Request) {
 	if s.sendOnToTheAddress(w, r) {
 		return
 	}
-	s.serveAsset("onboarding.html", "text/html; charset=utf-8")(w, r)
+	s.serveAsset("onboarding.html")(w, r)
 }
 
 // sendOnToTheAddress redirects a request made at this PC under a name to the
@@ -871,12 +867,11 @@ func (s *Server) apiOnboardingDone(w http.ResponseWriter, r *http.Request) {
 	if _, err := s.opts.Config.Set(func(c *config.Config) {
 		c.OnboardingDone = true
 	}); err != nil {
-		s.log.Error("saving the configuration", "error", err)
-		writeJSONError(w, http.StatusInternalServerError, ErrSaveFailed)
+		s.saveFailed(w, err)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+	writeOK(w)
 }
 
 // apiDetect switches the detection of the two sounds on and off.
@@ -912,8 +907,7 @@ func (s *Server) apiDetect(w http.ResponseWriter, r *http.Request) {
 		}
 	})
 	if err != nil {
-		s.log.Error("saving the configuration", "error", err)
-		writeJSONError(w, http.StatusInternalServerError, ErrSaveFailed)
+		s.saveFailed(w, err)
 		return
 	}
 
@@ -950,8 +944,7 @@ func (s *Server) apiRemoteEnable(w http.ResponseWriter, r *http.Request) {
 		return c.CanExposePublicly()
 	}); err != nil {
 		if errors.Is(err, config.ErrSave) {
-			s.log.Error("saving the configuration", "error", err)
-			writeJSONError(w, http.StatusInternalServerError, ErrSaveFailed)
+			s.saveFailed(w, err)
 			return
 		}
 		writeJSONError(w, http.StatusConflict, s.codeFor(err))
@@ -960,10 +953,31 @@ func (s *Server) apiRemoteEnable(w http.ResponseWriter, r *http.Request) {
 
 	s.opts.EnableRemote()
 	s.log.Info("remote access enabled from the guided setup")
-	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+	writeOK(w)
 }
 
-func (s *Server) serveAsset(name, contentType string) http.HandlerFunc {
+// assetTypes are the content types serveAsset gives, by extension.
+//
+// **A table of three and not `mime.TypeByExtension`**, which on Windows reads
+// the registry: a program that registered `.js` as `text/plain` would change
+// what the monitor serves, and under `nosniff` a script with that type does not
+// run.
+var assetTypes = map[string]string{
+	".js":   "application/javascript; charset=utf-8",
+	".css":  "text/css; charset=utf-8",
+	".html": "text/html; charset=utf-8",
+}
+
+// serveAsset serves an embedded file, with the content type of its extension.
+//
+// An extension missing from assetTypes is a mistake in the route that names
+// it, so it panics where the route is registered, which every test that builds
+// a server goes through, rather than serving a file with no type.
+func (s *Server) serveAsset(name string) http.HandlerFunc {
+	contentType, ok := assetTypes[path.Ext(name)]
+	if !ok {
+		panic("serveAsset: no content type for " + name)
+	}
 	return func(w http.ResponseWriter, r *http.Request) {
 		data, err := fs.ReadFile(s.assets, name)
 		if err != nil {
@@ -1116,9 +1130,20 @@ func authError(w http.ResponseWriter, r *http.Request, isForm bool, page string,
 	authErrorRetry(w, r, isForm, page, status, code, 0)
 }
 
+// authErrorRetry is authError with a wait, and it writes the `Retry-After`
+// header itself, before either road, so that the redirect carries it too.
+//
+// **The header and the body are one number because they are one call.** Five
+// call sites used to write the header by hand as the whole seconds plus one,
+// while the body went through retryAfterSeconds, which rounds up: a lockout is
+// whole seconds, so the header said 6 where the body said 5, and 2 for the one
+// second of busyRetry.
 func authErrorRetry(w http.ResponseWriter, r *http.Request, isForm bool, page string,
 	status int, code errCode, after time.Duration) {
 
+	if after > 0 {
+		w.Header().Set("Retry-After", strconv.Itoa(retryAfterSeconds(after)))
+	}
 	if isForm {
 		q := "?error=" + url.QueryEscape(string(code))
 		if after > 0 {
@@ -1134,6 +1159,62 @@ func authErrorRetry(w http.ResponseWriter, r *http.Request, isForm bool, page st
 	writeJSONError(w, status, code)
 }
 
+// admit lets one attempt from the caller's address in, or refuses it with how
+// long to wait: see limiter.begin. The release is nil on a refusal, so the
+// caller defers done only once ok.
+func (s *Server) admit(w http.ResponseWriter, r *http.Request, isForm bool, page string) (key string, done func(), ok bool) {
+	key = clientKey(r)
+	done, d := s.limiter.begin(key)
+	if d > 0 {
+		authErrorRetry(w, r, isForm, page, http.StatusTooManyRequests, ErrTooMany, d)
+		return key, nil, false
+	}
+	return key, done, true
+}
+
+// checkPassword weighs a password against the one in force, for an attempt
+// admit has let in, and answers the caller itself when it is wrong.
+//
+// **The order is the security, and this is its one copy**: a hashing slot,
+// then the revocation generation, then argon2, then the count. The generation
+// is read before the hash, so that a change landing while argon2 runs is seen
+// by createAt and not undone by it. A failure is charged to the address and to
+// everybody before the answer, and the answer waits out the global slowdown;
+// refused writes the caller's own log line in between.
+//
+// gen is the generation the verification was made under, for a caller that
+// goes on to open a session; ok false means the answer has been written, or
+// that the caller has gone and there is nobody to answer.
+func (s *Server) checkPassword(w http.ResponseWriter, r *http.Request, isForm bool,
+	page, key, password string, wrong errCode, refused func(lock, wait time.Duration)) (gen uint64, ok bool) {
+
+	release, ok := s.hashSlot(r)
+	if !ok {
+		return 0, false // the caller has gone: there is nobody to answer
+	}
+	gen = s.sessions.current()
+	verified := config.VerifyPassword(s.conf().PasswordHash, password)
+	release()
+
+	if !verified {
+		lock := s.limiter.fail(key)
+		// The global slowdown is paid here and not earlier: whoever typed the
+		// right password has already gone through, and must not wait because of
+		// somebody else.
+		wait := s.global.fail(time.Now())
+		refused(lock, wait)
+		sleepCtx(r.Context(), wait)
+		if lock > 0 {
+			authErrorRetry(w, r, isForm, page, http.StatusTooManyRequests, ErrTooMany, lock)
+			return 0, false
+		}
+		authError(w, r, isForm, page, http.StatusUnauthorized, wrong)
+		return 0, false
+	}
+	s.limiter.success(key)
+	return gen, true
+}
+
 func (s *Server) apiLogin(w http.ResponseWriter, r *http.Request) {
 	req, isForm, err := s.credentials(w, r)
 	if err != nil {
@@ -1146,43 +1227,21 @@ func (s *Server) apiLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	key := clientKey(r)
-	done, d := s.limiter.begin(key)
-	if d > 0 {
-		w.Header().Set("Retry-After", fmt.Sprint(int(d.Seconds())+1))
-		authErrorRetry(w, r, isForm, "/login", http.StatusTooManyRequests, ErrTooMany, d)
+	key, done, ok := s.admit(w, r, isForm, "/login")
+	if !ok {
 		return
 	}
 	defer done()
 
-	release, ok := s.hashSlot(r)
+	gen, ok := s.checkPassword(w, r, isForm, "/login", key, req.Password, ErrWrongPassword,
+		func(lock, wait time.Duration) {
+			s.log.Warn("login refused", "from", key, "lock", lock, "global_wait", wait)
+		})
 	if !ok {
-		return // the caller has gone: there is nobody to answer
-	}
-	// The generation is read before the hash, so that a change landing while
-	// argon2 runs is seen by createAt below and not undone by it.
-	gen := s.sessions.current()
-	verified := config.VerifyPassword(s.conf().PasswordHash, req.Password)
-	release()
-
-	if !verified {
-		lock := s.limiter.fail(key)
-		// The global slowdown is paid here and not earlier: whoever typed the
-		// right password has already gone through, and must not wait because of
-		// somebody else.
-		wait := s.global.fail(time.Now())
-		s.log.Warn("login refused", "from", key, "lock", lock, "global_wait", wait)
-		sleepCtx(r.Context(), wait)
-		if lock > 0 {
-			w.Header().Set("Retry-After", fmt.Sprint(int(lock.Seconds())+1))
-			authErrorRetry(w, r, isForm, "/login", http.StatusTooManyRequests, ErrTooMany, lock)
-			return
-		}
-		authError(w, r, isForm, "/login", http.StatusUnauthorized, ErrWrongPassword)
 		return
 	}
-
-	s.limiter.success(key)
+	// gen was read before the hash, so a change landing while argon2 ran is
+	// seen here and not undone.
 	token, err := s.sessions.createAt(gen, requestOrigin(r))
 	if errors.Is(err, errRevokedMeanwhile) {
 		s.log.Warn("login refused: the password changed while it was being verified", "from", key)
@@ -1207,11 +1266,8 @@ func (s *Server) apiLogout(w http.ResponseWriter, r *http.Request) {
 	if c, err := r.Cookie(sessionCookieName); err == nil {
 		s.sessions.revoke(c.Value)
 	}
-	http.SetCookie(w, &http.Cookie{
-		Name: sessionCookieName, Value: "", Path: "/", MaxAge: -1,
-		HttpOnly: true, SameSite: http.SameSiteStrictMode, Secure: isTLS(r),
-	})
-	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+	http.SetCookie(w, sessionCookie(r, "", -1))
+	writeOK(w)
 }
 
 // ResetPassword clears the password and closes every session.
@@ -1292,41 +1348,23 @@ func (s *Server) apiPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	key := clientKey(r)
-	done, d := s.limiter.begin(key)
-	if d > 0 {
-		w.Header().Set("Retry-After", fmt.Sprint(int(d.Seconds())+1))
-		authErrorRetry(w, r, isForm, "/onboarding", http.StatusTooManyRequests, ErrTooMany, d)
-		return
-	}
-	defer done()
-	release, ok := s.hashSlot(r)
+	key, done, ok := s.admit(w, r, isForm, "/onboarding")
 	if !ok {
 		return
 	}
-	verified := config.VerifyPassword(s.conf().PasswordHash, req.Current)
-	release()
-
-	if !verified {
-		lock := s.limiter.fail(key)
-		wait := s.global.fail(time.Now())
-		s.log.Warn("password change refused: wrong current password", "from", key, "lock", lock)
-		sleepCtx(r.Context(), wait)
-		if lock > 0 {
-			w.Header().Set("Retry-After", fmt.Sprint(int(lock.Seconds())+1))
-			authErrorRetry(w, r, isForm, "/onboarding", http.StatusTooManyRequests, ErrTooMany, lock)
-			return
-		}
-		authError(w, r, isForm, "/onboarding", http.StatusUnauthorized, ErrWrongCurrentPassword)
+	defer done()
+	if _, ok := s.checkPassword(w, r, isForm, "/onboarding", key, req.Current, ErrWrongCurrentPassword,
+		func(lock, _ time.Duration) {
+			s.log.Warn("password change refused: wrong current password", "from", key, "lock", lock)
+		}); !ok {
 		return
 	}
-	s.limiter.success(key)
 
 	// The hash is computed **before** taking the lock: argon2id costs hundreds
 	// of milliseconds on purpose, and holding the rest of the server still for
 	// that long would mean that whoever changes the password suspends the status
 	// page of whoever is watching.
-	release, ok = s.hashSlot(r)
+	release, ok := s.hashSlot(r)
 	if !ok {
 		return
 	}
@@ -1378,11 +1416,8 @@ func (s *Server) apiSetup(w http.ResponseWriter, r *http.Request) {
 	// proved nothing, and that is by design — at the first start there is
 	// nothing to prove with. What is not by design is that it could be called
 	// without limit.
-	key := clientKey(r)
-	done, d := s.limiter.begin(key)
-	if d > 0 {
-		w.Header().Set("Retry-After", fmt.Sprint(int(d.Seconds())+1))
-		authErrorRetry(w, r, isForm, "/setup", http.StatusTooManyRequests, ErrTooMany, d)
+	key, done, ok := s.admit(w, r, isForm, "/setup")
+	if !ok {
 		return
 	}
 	defer done()
@@ -1504,17 +1539,24 @@ func (s *Server) Status() Status {
 }
 
 func (s *Server) setSessionCookie(w http.ResponseWriter, r *http.Request, token string) {
-	http.SetCookie(w, &http.Cookie{
+	http.SetCookie(w, sessionCookie(r, token, s.conf().SessionTTLHours*3600))
+}
+
+// sessionCookie is the session cookie, the one shape both the one that opens a
+// session and the one that ends it are written in: a browser replaces a
+// cookie only when the name, the path and the domain are the same.
+func sessionCookie(r *http.Request, value string, maxAge int) *http.Cookie {
+	return &http.Cookie{
 		Name:  sessionCookieName,
-		Value: token,
+		Value: value,
 		Path:  "/",
 		// Secure only over TLS: imposing it always would block access on the LAN
 		// over plain HTTP, where the browser would never send the cookie.
 		Secure:   isTLS(r),
 		HttpOnly: true,
 		SameSite: http.SameSiteStrictMode,
-		MaxAge:   s.conf().SessionTTLHours * 3600,
-	})
+		MaxAge:   maxAge,
+	}
 }
 
 // isTLS says whether the request arrived encrypted.
@@ -2000,6 +2042,18 @@ func isNormalClose(err error) bool {
 		return ce.Code == websocket.StatusNormalClosure || ce.Code == websocket.StatusGoingAway
 	}
 	return errors.Is(err, context.Canceled)
+}
+
+// writeOK answers a command that was carried out and has nothing else to say.
+func writeOK(w http.ResponseWriter) {
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+// saveFailed answers a JSON route whose configuration would not save, and
+// writes the cause in the log, which is the only place it goes.
+func (s *Server) saveFailed(w http.ResponseWriter, err error) {
+	s.log.Error("saving the configuration", "error", err)
+	writeJSONError(w, http.StatusInternalServerError, ErrSaveFailed)
 }
 
 func writeJSON(w http.ResponseWriter, code int, v any) {

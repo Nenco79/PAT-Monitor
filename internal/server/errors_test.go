@@ -26,12 +26,15 @@ import (
 // be written: making `errCode` a type that literals do not convert into is not
 // possible in Go without giving up the constants.
 func TestNoProseTravelsAsACode(t *testing.T) {
-	// Where the code sits, in each function that carries it.
-	position := map[string]int{
-		"writeJSONError": 2,
-		"writeJSONRetry": 2,
-		"authError":      5,
-		"authErrorRetry": 5,
+	// Where the codes sit, in each function that carries them.
+	position := map[string][]int{
+		"writeJSONError": {2},
+		"writeJSONRetry": {2},
+		"authError":      {5},
+		"authErrorRetry": {5},
+		"checkPassword":  {6},
+		"listDevices":    {4},
+		"chooseDevice":   {5, 6},
 	}
 
 	fset := token.NewFileSet()
@@ -52,16 +55,17 @@ func TestNoProseTravelsAsACode(t *testing.T) {
 					return true
 				}
 				name := calleeName(call.Fun)
-				where, carriesACode := position[name]
-				if !carriesACode || where >= len(call.Args) {
-					return true
-				}
-				seen++
-				if lit, prose := call.Args[where].(*ast.BasicLit); prose {
-					t.Errorf("%s: %s receives the literal %s instead of a code: "+
-						"the type converts it silently and the page will show the "+
-						"generic message",
-						fset.Position(lit.Pos()), name, lit.Value)
+				for _, where := range position[name] {
+					if where >= len(call.Args) {
+						continue
+					}
+					seen++
+					if lit, prose := call.Args[where].(*ast.BasicLit); prose {
+						t.Errorf("%s: %s receives the literal %s instead of a code: "+
+							"the type converts it silently and the page will show the "+
+							"generic message",
+							fset.Position(lit.Pos()), name, lit.Value)
+					}
 				}
 				return true
 			})
@@ -82,6 +86,10 @@ func calleeName(e ast.Expr) string {
 		return f.Name
 	case *ast.SelectorExpr:
 		return f.Sel.Name
+	case *ast.IndexExpr: // a generic function named with its type argument
+		return calleeName(f.X)
+	case *ast.IndexListExpr:
+		return calleeName(f.X)
 	}
 	return ""
 }

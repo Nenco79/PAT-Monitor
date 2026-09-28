@@ -59,17 +59,24 @@ func askedLanguage(r *http.Request, available map[string]bool) string {
 	return ""
 }
 
-// serveDictionary delivers `window.__I18N` and `window.__I18N_LANG`.
-func (s *Server) serveDictionary(w http.ResponseWriter, r *http.Request) {
-	// The explicit choice goes ahead of everything else: it is one preference,
-	// so it is put at the head of the list rather than replacing it, and if for
-	// some reason that catalogue could not be read we would fall back on what
-	// the browser declares.
+// languagePreferences is the languages whoever made the request reads, best
+// first.
+//
+// The explicit choice goes ahead of everything else: it is one preference, so
+// it is put at the head of the list rather than replacing it, and if for some
+// reason that catalogue could not be read we would fall back on what the
+// browser declares.
+func languagePreferences(r *http.Request) []string {
 	preferences := i18n.FromAcceptLanguage(r.Header.Get("Accept-Language"))
 	if chosen := askedLanguage(r, i18n.Languages()); chosen != "" {
 		preferences = append([]string{chosen}, preferences...)
 	}
-	dictionary := i18n.Open(preferences)
+	return preferences
+}
+
+// serveDictionary delivers `window.__I18N` and `window.__I18N_LANG`.
+func (s *Server) serveDictionary(w http.ResponseWriter, r *http.Request) {
+	dictionary := i18n.Open(languagePreferences(r))
 
 	// **An unreadable catalogue has to be said, with its cause.** The page comes
 	// out anyway — in English, or with the keys if even that is missing — and
@@ -151,9 +158,5 @@ func languageList(menu []i18n.Language) []byte {
 // translation to. It is still the same rule — the language is decided by whoever
 // reads — applied where whoever shows and whoever answers are the same thing.
 func (s *Server) phrase(r *http.Request, key string) string {
-	preferences := i18n.FromAcceptLanguage(r.Header.Get("Accept-Language"))
-	if chosen := askedLanguage(r, i18n.Languages()); chosen != "" {
-		preferences = append([]string{chosen}, preferences...)
-	}
-	return i18n.Open(preferences).T(key)
+	return i18n.Open(languagePreferences(r)).T(key)
 }

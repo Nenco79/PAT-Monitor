@@ -855,8 +855,10 @@ above and the only way to see it; choosing the real one back cleared the
 fallback.
 
 `/api/cameras` and `/api/camera` are the microphone's routes twice over —
-deliberately the same shape, the same order, the same refusals — with one
-asymmetry: **an empty choice means "the first usable one"**, which is a rule of
+deliberately the same shape, the same order, the same refusals, and now by
+construction: both pairs are one call each to `listDevices` and `chooseDevice`,
+which take the codes as arguments so that `TestNoProseTravelsAsACode` still
+reads them at the call site — with one asymmetry: **an empty choice means "the first usable one"**, which is a rule of
 ours and not a role Windows keeps, so the entry that carries it is marked by
 `devices.Pick` itself rather than by the page assuming the list's order.
 

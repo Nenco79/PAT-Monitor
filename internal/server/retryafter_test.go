@@ -1,6 +1,9 @@
 package server
 
 import (
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 )
@@ -56,5 +59,52 @@ func TestTheWaitRoundsUp(t *testing.T) {
 	// field when the wait is positive, and a zero here must stay a zero.
 	if got := retryAfterSeconds(0); got != 0 {
 		t.Errorf("a wait of zero announced %d", got)
+	}
+}
+
+// **The header says the number the body says**, on both roads.
+//
+// `Retry-After` was written by hand at each refusal as the whole seconds plus
+// one, while the body went through retryAfterSeconds: a lockout is whole
+// seconds, so a caller told to wait one second by the page was told two by the
+// header. The attempt already in flight is the refusal whose wait is exactly one
+// second, busyRetry, and it is the one held open here.
+//
+// **The defect was put back and this test fails with it**: with the header
+// written by hand again, it reads "2" on both roads.
+func TestTheRetryAfterHeaderSaysWhatTheBodySays(t *testing.T) {
+	s, _ := serverWithPassword(t, "a-long-password")
+	held := func(r *http.Request) *http.Request {
+		t.Helper()
+		release, wait := s.limiter.begin(clientKey(r))
+		if wait > 0 {
+			t.Fatalf("the address was refused before the test held it: %v", wait)
+		}
+		t.Cleanup(release)
+		return r
+	}
+
+	w := httptest.NewRecorder()
+	s.Handler().ServeHTTP(w, held(loginReq("a-wrong-guess", fromTheLAN)))
+	if w.Code != http.StatusTooManyRequests {
+		t.Fatalf("a second attempt in flight answered %d, wanted 429", w.Code)
+	}
+	var body struct {
+		RetryAfter int `json:"retryAfter"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	if got := w.Header().Get("Retry-After"); got != "1" || body.RetryAfter != 1 {
+		t.Errorf("the header says %q and the body %d: both should say 1", got, body.RetryAfter)
+	}
+
+	w = httptest.NewRecorder()
+	s.Handler().ServeHTTP(w, held(formPost("/api/login", map[string]string{"password": "a-wrong-guess"})))
+	if w.Code != http.StatusSeeOther {
+		t.Fatalf("the form answered %d, wanted 303", w.Code)
+	}
+	if got := w.Header().Get("Retry-After"); got != "1" {
+		t.Errorf("the redirect carries Retry-After %q, wanted 1", got)
 	}
 }

@@ -45,6 +45,9 @@
      panel is what broke it. See 150-pages.md. */
   --muted:  #6A6256;
 
+  /* The faint ground of a ghost under the pointer or the finger. */
+  --wash:   #00000008;
+
   /* --- colour by phase: it says where you are, it does not decorate ------
      Each group of steps has its own, and the eyebrow, the progress bar, the
      button and the illustration's accents take it together. */
@@ -556,9 +559,9 @@ p.small { font-size: var(--t-ui); color: var(--muted); }
   font-weight: 500;
 }
 @media (hover: hover) {
-  .btn.ghost:hover { background: #00000008; filter: none; transform: none; }
+  .btn.ghost:hover { background: var(--wash); filter: none; transform: none; }
 }
-.btn.ghost:active { background: #00000008; filter: none; transform: none; }
+.btn.ghost:active { background: var(--wash); filter: none; transform: none; }
 
 .escape {
   margin-top: var(--s5);
@@ -926,9 +929,7 @@ code.block {
 
 /* --- password form (step 0) --------------------------------------------- */
 
-#pw-form label,
-#pw-signin label,
-#pw-change-form label {
+:is(#pw-form, #pw-signin, #pw-change-form) label {
   display: block;
   margin: var(--s4) 0 var(--s1);
   font-weight: 500;
@@ -937,9 +938,7 @@ code.block {
   font-family: var(--sans);
   color: var(--ink-2);
 }
-#pw-form input,
-#pw-signin input,
-#pw-change-form input {
+:is(#pw-form, #pw-signin, #pw-change-form) input {
   width: 100%;
   padding: 0 var(--s4);
   /* 48px and 16px are not typography. Below 48 a finger misses the target; below
@@ -962,12 +961,8 @@ code.block {
    lights up at every focus — and the two lines are exactly the same as in
    `style.css`, so that the password field behaves alike on all four pages that
    have one. */
-#pw-form input:focus,
-#pw-signin input:focus,
-#pw-change-form input:focus { border-color: var(--phase); }
-#pw-form input:focus:not(:focus-visible),
-#pw-signin input:focus:not(:focus-visible),
-#pw-change-form input:focus:not(:focus-visible) { outline: none; }
+:is(#pw-form, #pw-signin, #pw-change-form) input:focus { border-color: var(--phase); }
+:is(#pw-form, #pw-signin, #pw-change-form) input:focus:not(:focus-visible) { outline: none; }
 
 /* **The line under the field, and that is why it is not called `.msg`.** That
    name belonged to a different component in `style.css`: there the message is a

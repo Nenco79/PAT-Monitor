@@ -1,7 +1,6 @@
 package server
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"patmonitor/internal/config"
@@ -9,14 +8,14 @@ import (
 
 // The camera's routes: which ones there are, and which one is used.
 //
-// They are the microphone's twins, and deliberately so — the same shape, the
-// same order, the same refusals — because whoever comes to change one of the
-// two should not have to work out which of the two ways of doing it applies.
-// See microphone.go for the arguments, which hold unchanged: **the list does
-// not travel with the status**, because enumerating costs a round through Media
-// Foundation and the heartbeat asks every three seconds from every open page;
-// what does live in the status is which camera is open and which one was
-// chosen.
+// They are the microphone's twins — the same shape, the same order, the same
+// refusals — and they are so by construction: both run through listDevices
+// and chooseDevice, in microphone.go, so whoever comes to change one of the two
+// changes both, and there is no second way of doing it to work out. See there
+// for the arguments, which hold unchanged: **the list does not travel with the
+// status**, because enumerating costs a round through Media Foundation and the
+// heartbeat asks every three seconds from every open page; what does live in
+// the status is which camera is open and which one was chosen.
 //
 // **The one asymmetry is what an empty choice means.** For the microphone it is
 // "follow the role Windows calls default", which is a thing the system decides
@@ -44,25 +43,11 @@ type Camera struct {
 	Name string `json:"name"`
 }
 
+func (c Camera) deviceID() string { return c.ID }
+
 // apiCameras lists the available cameras.
 func (s *Server) apiCameras(w http.ResponseWriter, r *http.Request) {
-	if s.opts.Cameras == nil {
-		// No enumeration: the page keeps only the entry for the one in use, and
-		// the box cannot be pressed. It is also what the tests see, since they
-		// do not build the capture.
-		writeJSON(w, http.StatusOK, map[string]any{"devices": []Camera{}})
-		return
-	}
-	devs, err := s.opts.Cameras()
-	if err != nil {
-		s.log.Error("camera enumeration", "error", err)
-		writeJSONError(w, http.StatusInternalServerError, ErrCamListFailed)
-		return
-	}
-	if devs == nil {
-		devs = []Camera{}
-	}
-	writeJSON(w, http.StatusOK, map[string]any{"devices": devs})
+	listDevices(s, w, "camera", s.opts.Cameras, ErrCamListFailed)
 }
 
 // apiCamera chooses which camera to capture from.
@@ -74,67 +59,21 @@ func (s *Server) apiCameras(w http.ResponseWriter, r *http.Request) {
 //
 // The empty ID is a valid choice like the others: it means "the first usable
 // one", that is, follow the rule rather than pin a device.
+//
+// **A camera that is not connected is refused, and it is not the same thing as
+// the fallback**: the two are not in contradiction. A camera unplugged at three
+// in the morning must not stop the monitor, while a camera chosen at this
+// instant and not there is a choice that can be corrected by whoever is looking
+// at the box.
 func (s *Server) apiCamera(w http.ResponseWriter, r *http.Request) {
-	var body struct {
-		ID *string `json:"id"`
-	}
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<12)).Decode(&body); err != nil || body.ID == nil {
-		writeJSONError(w, http.StatusBadRequest, ErrBadRequest)
-		return
-	}
-	id := *body.ID
-
-	// **An ID that is not connected is refused here**, rather than discovered at
-	// the next open: the capture would fall back on another camera without
-	// whoever pressed knowing it, and the choice would stay written in the file
-	// saying something that does not happen. Whoever cannot enumerate cannot ask
-	// the question, and then trusts: better an unverified choice than an inert
-	// box.
-	//
-	// **It is not the same thing as the fallback**, and the two are not in
-	// contradiction: a camera unplugged at three in the morning must not stop
-	// the monitor, while a camera chosen at this instant and not there is a
-	// choice that can be corrected by whoever is looking at the box.
-	if id != "" && s.opts.Cameras != nil {
-		devs, err := s.opts.Cameras()
-		if err != nil {
-			s.log.Error("camera enumeration", "error", err)
-			writeJSONError(w, http.StatusInternalServerError, ErrCamListFailed)
-			return
-		}
-		found := false
-		for _, d := range devs {
-			if d.ID == id {
-				found = true
-				break
-			}
-		}
-		if !found {
-			writeJSONError(w, http.StatusConflict, ErrNoSuchCam)
-			return
-		}
-	}
-
-	if _, err := s.opts.Config.Set(func(c *config.Config) {
-		c.CameraDeviceID = id
-		// **The superseded key goes with the choice.** It is read only when the
-		// id is empty, so a choice of "the first usable one" made from the box
-		// would otherwise be overruled at the next start by a `camera_name`
-		// written years ago — a command that moves nothing until a restart, and
-		// then moves something nobody asked for.
-		c.CameraName = ""
-	}); err != nil {
-		s.log.Error("saving the configuration", "error", err)
-		writeJSONError(w, http.StatusInternalServerError, ErrSaveFailed)
-		return
-	}
-
-	// **It reopens even when the ID is the previous one.** Repeating the choice
-	// is the only way the viewer has of saying "try again now", and it is what
-	// is needed when the chosen camera was unplugged and has come back.
-	if s.opts.UseCamera != nil {
-		s.opts.UseCamera(id)
-	}
-	s.log.Info("camera chosen", "id", id)
-	writeJSON(w, http.StatusOK, map[string]any{"id": id})
+	chooseDevice(s, w, r, "camera", s.opts.Cameras, ErrCamListFailed, ErrNoSuchCam,
+		func(c *config.Config, id string) {
+			c.CameraDeviceID = id
+			// **The superseded key goes with the choice.** It is read only when
+			// the id is empty, so a choice of "the first usable one" made from
+			// the box would otherwise be overruled at the next start by a
+			// `camera_name` written years ago — a command that moves nothing
+			// until a restart, and then moves something nobody asked for.
+			c.CameraName = ""
+		}, s.opts.UseCamera)
 }

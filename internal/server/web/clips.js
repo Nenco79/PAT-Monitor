@@ -17,8 +17,6 @@
 const WHEN = new Intl.DateTimeFormat(LANG, {dateStyle: 'short', timeStyle: 'medium'});
 const NUMBER = new Intl.NumberFormat(LANG, {maximumFractionDigits: 1});
 
-const el = (id) => document.getElementById(id);
-
 // duration writes a time the way a player writes it: minutes and seconds, with
 // no words. That way there is nothing to translate and nothing to get wrong.
 //
@@ -153,16 +151,6 @@ function play(v) {
   el('clip').scrollIntoView({block: 'nearest', behavior: 'smooth'});
 }
 
-// **An expired session leads to the login, not to a red panel.** It is what the
-// viewer's heartbeat does, and it was missing here: the listing stayed as it
-// was, with a message that does not say how to get back in. A 401 is not a fault
-// of the page, it is a closed door that has a key.
-function sessionExpired(r) {
-  if (r.status !== 401) return false;
-  location.href = '/login';
-  return true;
-}
-
 // inFlight are the clips with a command on its way.
 //
 // **A second press before the list is redrawn is not sent.** Both presses carry
@@ -181,11 +169,11 @@ async function command(name, action) {
       {method: 'POST'});
     if (sessionExpired(r)) return null;
     if (!r.ok) {
-      const body = await r.json().catch(() => ({}));
+      const body = await bodyOf(r);
       showError(body.error);
       return null;
     }
-    const body = await r.json().catch(() => ({}));
+    const body = await bodyOf(r);
     // **The new name is said by the server**, which is the only one that knows
     // how it is composed: recomposing it here would be the second copy of the
     // prefix rule, and the two would diverge at the first touch.
@@ -329,7 +317,7 @@ async function load() {
     const r = await fetch('/api/clips');
     if (sessionExpired(r)) return;
     if (!r.ok) {
-      const body = await r.json().catch(() => ({}));
+      const body = await bodyOf(r);
       showError(body.error);
       return;
     }

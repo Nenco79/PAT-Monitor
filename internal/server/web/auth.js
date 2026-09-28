@@ -33,11 +33,7 @@ form.addEventListener('submit', async (e) => {
 
   submit.disabled = true;
   try {
-    const res = await fetch(form.action, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(mode === 'setup' ? {password, confirm} : {password}),
-    });
+    const res = await postJSON(form.action, mode === 'setup' ? {password, confirm} : {password});
 
     if (res.ok) {
       if (mode === 'setup') {
@@ -49,7 +45,7 @@ form.addEventListener('submit', async (e) => {
       return;
     }
 
-    const body = await res.json().catch(() => ({}));
+    const body = await bodyOf(res);
     show(TErr(body.error, body.retryAfter), 'error');
   } catch (err) {
     show(T('auth.unreachable'), 'error');

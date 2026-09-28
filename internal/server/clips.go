@@ -55,11 +55,11 @@ func (s *Server) apiClips(w http.ResponseWriter, r *http.Request) {
 // downloading all of it, and on a five-megabyte file through the funnel that is
 // the difference between watching and waiting.
 func (s *Server) apiClipFile(w http.ResponseWriter, r *http.Request) {
-	if s.opts.Clips == nil {
-		writeJSONError(w, http.StatusNotFound, ErrNoSuchClip)
+	clips := s.clipStore(w)
+	if clips == nil {
 		return
 	}
-	f, e, err := s.opts.Clips.Open(r.PathValue("name"))
+	f, e, err := clips.Open(r.PathValue("name"))
 	if err != nil {
 		writeJSONError(w, http.StatusNotFound, ErrNoSuchClip)
 		return
@@ -79,11 +79,28 @@ func (s *Server) apiClipFile(w http.ResponseWriter, r *http.Request) {
 
 // apiClipKeep exempts a clip from the retention.
 func (s *Server) apiClipKeep(w http.ResponseWriter, r *http.Request) {
-	if s.opts.Clips == nil {
-		writeJSONError(w, http.StatusNotFound, ErrNoSuchClip)
+	s.renameClip(w, r, (*record.Store).Keep)
+}
+
+// apiClipRelease puts a kept clip back under the retention.
+//
+// **It is the half that was missing**, and it is needed since clips asked for by
+// hand are born kept: without it the lock was one-way and every press of the
+// "Record" button left a few megabytes on the disk that no rule would ever touch
+// again.
+func (s *Server) apiClipRelease(w http.ResponseWriter, r *http.Request) {
+	s.renameClip(w, r, (*record.Store).Release)
+}
+
+// renameClip is the lock's two directions, which differ only in which of the
+// store's renames they ask for.
+func (s *Server) renameClip(w http.ResponseWriter, r *http.Request,
+	rename func(*record.Store, string) (string, error)) {
+	clips := s.clipStore(w)
+	if clips == nil {
 		return
 	}
-	renamed, err := s.opts.Clips.Keep(r.PathValue("name"))
+	renamed, err := rename(clips, r.PathValue("name"))
 	if err != nil {
 		s.refuseClip(w, r.PathValue("name"), err)
 		return
@@ -95,39 +112,27 @@ func (s *Server) apiClipKeep(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "name": renamed})
 }
 
-// apiClipRelease puts a kept clip back under the retention.
-//
-// **It is the half that was missing**, and it is needed since clips asked for by
-// hand are born kept: without it the lock was one-way and every press of the
-// "Record" button left a few megabytes on the disk that no rule would ever touch
-// again.
-func (s *Server) apiClipRelease(w http.ResponseWriter, r *http.Request) {
-	if s.opts.Clips == nil {
-		writeJSONError(w, http.StatusNotFound, ErrNoSuchClip)
-		return
-	}
-	renamed, err := s.opts.Clips.Release(r.PathValue("name"))
-	if err != nil {
-		s.refuseClip(w, r.PathValue("name"), err)
-		return
-	}
-	// The new name goes back to whoever pressed, for `apiClipKeep`'s reason:
-	// after the rename the old one no longer answers, and whoever was watching
-	// that clip has the old address in the player.
-	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "name": renamed})
-}
-
 // apiClipDelete deletes a clip.
 func (s *Server) apiClipDelete(w http.ResponseWriter, r *http.Request) {
-	if s.opts.Clips == nil {
-		writeJSONError(w, http.StatusNotFound, ErrNoSuchClip)
+	clips := s.clipStore(w)
+	if clips == nil {
 		return
 	}
-	if err := s.opts.Clips.Delete(r.PathValue("name")); err != nil {
+	if err := clips.Delete(r.PathValue("name")); err != nil {
 		s.refuseClip(w, r.PathValue("name"), err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+	writeOK(w)
+}
+
+// clipStore is the store of the clips, or nil with the refusal already
+// written: to whoever asks for one clip, "there is no store" and "there is no
+// such clip" are the same answer, and only the list says the first out loud.
+func (s *Server) clipStore(w http.ResponseWriter) *record.Store {
+	if s.opts.Clips == nil {
+		writeJSONError(w, http.StatusNotFound, ErrNoSuchClip)
+	}
+	return s.opts.Clips
 }
 
 // refuseClip separates "it is not there" from "it could not be touched".

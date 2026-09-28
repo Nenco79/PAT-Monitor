@@ -118,6 +118,11 @@
   --ink-2: #C8C0B3;
   --muted: #948B7C;
 
+  /* The faint ground of a ghost under the pointer or the finger, and of a
+     picker's entry under the pointer: a lightening at night, a darkening by
+     day. */
+  --wash: #FFFFFF10;
+
   /* The phase colours, lifted just enough to stand off the dark ground. Same
      colours as the other sheet, same meaning, different lightness. */
   --c-home:   #3FA8A4;   /* teal: security and home            */
@@ -193,6 +198,8 @@ body.day {
   --ink:   #2E2A24;
   --ink-2: #574F44;
   --muted: #6A6256;
+
+  --wash: #00000008;
 
   --c-home:   #17706E;
   --c-away:   #3C5CA8;
@@ -328,11 +335,10 @@ button.ghost {
    other buttons take, not a ground that hides the state. */
 @media (hover: hover) {
   button.ghost:not([aria-expanded="true"]):hover {
-    background: #FFFFFF10;
+    background: var(--wash);
     filter: none;
     transform: none;
   }
-  body.day button.ghost:not([aria-expanded="true"]):hover { background: #00000008; }
 }
 /* On a ghost the brightness has almost nothing to work on — a transparent
    ground and a muted word — so the press takes the ground the hover takes.
@@ -346,11 +352,10 @@ button.ghost {
    real answer to a press is the state flipping — which is a stronger mark
    than any of this. */
 button.ghost:not([aria-expanded="true"]):active {
-  background: #FFFFFF10;
+  background: var(--wash);
   filter: none;
   transform: none;
 }
-body.day button.ghost:not([aria-expanded="true"]):active { background: #00000008; }
 
 /* **The same pill on a link.**
    "Recordings" and "Back to the monitor" lead from one page to another, so they
@@ -384,14 +389,12 @@ a.ghost {
   text-decoration: none;
 }
 @media (hover: hover) {
-  a.ghost:hover { background: #FFFFFF10; }
-  body.day a.ghost:hover { background: #00000008; }
+  a.ghost:hover { background: var(--wash); }
 }
 /* The press carries what the hover carries, as on the buttons: without this a
    tap on "Recordings" or on "Back to the monitor" answers with nothing at all,
    which is the defect the hover guard created and the buttons already fixed. */
-a.ghost:active { background: #FFFFFF10; }
-body.day a.ghost:active { background: #00000008; }
+a.ghost:active { background: var(--wash); }
 
 /* ============================ little stars in the corners ============================ */
 
@@ -552,15 +555,14 @@ input:focus:not(:focus-visible) { outline: none; }
   display: none;
 }
 .msg.show { display: block; }
-.msg.error {
-  color: var(--c-stop);
-  border-color: color-mix(in srgb, var(--c-stop) 30%, transparent);
-  background: color-mix(in srgb, var(--c-stop) 12%, transparent);
-}
-.msg.ok {
-  color: var(--c-ready);
-  border-color: color-mix(in srgb, var(--c-ready) 30%, transparent);
-  background: color-mix(in srgb, var(--c-ready) 12%, transparent);
+/* One colour and a border and a ground derived from it, the `.warnbox` way; a
+   `.msg` with no kind is hidden and takes none of it. */
+.msg.error { --tone: var(--c-stop); }
+.msg.ok    { --tone: var(--c-ready); }
+.msg:is(.error, .ok) {
+  color: var(--tone);
+  border-color: color-mix(in srgb, var(--tone) 30%, transparent);
+  background: color-mix(in srgb, var(--tone) 12%, transparent);
 }
 
 .hint {
@@ -731,9 +733,9 @@ video {
      exception to this page's vocabulary of movement. */
   transition: width .08s linear, background-color .18s linear;
 }
-/* The two thresholds are the guided path's — 0.72 and 0.92 — and that is not a
-   copy for convenience: the measurement is the **same formula on the same
-   stream**, RMS on the received stream scaled from -60 dBFS to 0, so the two
+/* The two thresholds are the guided path's — 0.72 and 0.92, written once in
+   `page.js` — and sharing them is not a convenience: the measurement is the
+   **same formula on the same stream**, RMS on the received stream scaled from -60 dBFS to 0, so the two
    numbers speak of the same quantity. The distinction used to exist only in the
    page one looks at once, in daylight, with the audio checkable by ear; it was
    missing where the one that matters is.
@@ -1584,11 +1586,7 @@ video {
 }
 .stats .pick option:hover,
 .stats .pick option:focus {
-  background: #FFFFFF10;
-}
-body.day .stats .pick option:hover,
-body.day .stats .pick option:focus {
-  background: #00000008;
+  background: var(--wash);
 }
 .stats .pick option:checked:hover,
 .stats .pick option:checked:focus {
