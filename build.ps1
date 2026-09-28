@@ -54,6 +54,14 @@ $ErrorActionPreference = 'Stop'
 $env:Path = "C:\Program Files\Go\bin;$env:Path"
 $env:CGO_ENABLED = '0'          # a single static binary, no runtime to install
 
+# Assert-LicencesCommitted refuses a licence tree the regeneration changed. The
+# regeneration runs after the dirty-tree check, so a change it made would go
+# into an archive or a package that no commit holds.
+function Assert-LicencesCommitted {
+    $stale = & git status --porcelain -- licenses 2>$null
+    if ($stale) { throw "licenses\ was stale: commit the regenerated tree, then build again" }
+}
+
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 Push-Location $root
 try {
@@ -353,13 +361,29 @@ try {
         if ($dirty) { throw "the tree has uncommitted changes: a release must match a commit" }
         if (-not $sha) { throw "no commit: a release has to be identifiable" }
 
+        # **The key is asked for before anything is built**, and it used to be
+        # asked for after the archive: a run with no key, or a key pat-sign
+        # refuses, left a fresh zip in dist\ beside the .sig of an earlier run,
+        # a pair that looks finished and does not verify.
+        $keyPath = $Key
+        if (-not $keyPath) { $keyPath = $env:PATMON_SIGNING_KEY }
+        if (-not $keyPath) {
+            throw "no signing key: pass -Key or set PATMON_SIGNING_KEY (pat-sign -generate makes one)"
+        }
+        if (-not (Test-Path $keyPath)) { throw "the signing key $keyPath is not there" }
+
         # The licence tree is regenerated rather than trusted. It is derived
         # from what is linked into the binary, so it goes stale on any `go get`
         # — and the folder is committed, which is the combination that ages
         # without a word. licenses_test.go guards it both ways at `go test`, and
         # this makes the published copy the one that was just checked.
+        #
+        # **And a regeneration that changes anything is a refusal**: the dirty
+        # tree was judged before it, so what it rewrote would ship in an archive
+        # no commit holds. See Assert-LicencesCommitted.
         & go run .\cmd\pat-licenses | Out-Null
         if ($LASTEXITCODE -ne 0) { throw "licence collection failed" }
+        Assert-LicencesCommitted
 
         $stage = "dist\PAT-Monitor-$number-windows-amd64"
         if (Test-Path $stage) { Remove-Item -Recurse -Force $stage }
@@ -375,6 +399,7 @@ try {
 
         $zip = "$stage.zip"
         if (Test-Path $zip) { Remove-Item -Force $zip }
+        if (Test-Path "$zip.sig") { Remove-Item -Force "$zip.sig" }
         # **The folder goes inside the zip, and `\*` is what left it out.**
         # Without it "Extract Here" — which is what most people press — scatters
         # the executable, LICENSE, NOTICE and the whole licences tree loose into
@@ -392,13 +417,11 @@ try {
         # past it: the one build that could not hold the key was the one in CI,
         # and releases are no longer cut there.
         Remove-Item -Recurse -Force $stage
-        $keyPath = $Key
-        if (-not $keyPath) { $keyPath = $env:PATMON_SIGNING_KEY }
-        if (-not $keyPath) {
-            throw "no signing key: pass -Key or set PATMON_SIGNING_KEY (pat-sign -generate makes one)"
-        }
         & go run .\cmd\pat-sign -key $keyPath $zip
-        if ($LASTEXITCODE -ne 0) { throw "signing failed" }
+        if ($LASTEXITCODE -ne 0) {
+            Remove-Item -Force $zip
+            throw "signing failed: the unsigned archive was removed"
+        }
 
         Write-Host "signed: $(Split-Path -Leaf $zip).sig"
     }
@@ -412,6 +435,7 @@ try {
 
         & go run .\cmd\pat-licenses | Out-Null
         if ($LASTEXITCODE -ne 0) { throw "licence collection failed" }
+        Assert-LicencesCommitted
 
         # **The SDK is looked for and not written down.** The version folder
         # under Windows Kits changes with every SDK, and on a CI image it is

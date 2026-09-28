@@ -189,7 +189,15 @@ func digits(number string) (major, minor, patch int) {
 // becomes the copy that diverges.
 func Prerelease() bool { return prerelease(Number) }
 
-func prerelease(number string) bool { return strings.Contains(number, "-") }
+// prerelease reads the label the way split does: build metadata after a `+`
+// is not part of it, so a `-` in there does not make a final release a
+// pre-release.
+func prerelease(number string) bool {
+	if i := strings.IndexByte(number, '+'); i >= 0 {
+		number = number[:i]
+	}
+	return strings.Contains(number, "-")
+}
 
 // Package is the version a package manifest carries: the product's three digits
 // and a zero.

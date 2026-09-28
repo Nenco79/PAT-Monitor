@@ -127,13 +127,37 @@ func TestAPrereleaseIsNeverOffered(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			c.rel.HTMLURL = "https://github.com/Nenco79/PAT-Monitor/releases/tag/v99.0.0"
 			st, err := (&fake{body: c.rel}).start(t).Check(context.Background())
-			if err != nil {
-				t.Fatalf("check failed: %v", err)
+			if err == nil {
+				t.Error("a pre-release document produced no error")
 			}
-			if st.Code == Available {
-				t.Fatalf("%s %q was offered", c.name, st.Version)
+			if st.Code != Unknown {
+				t.Fatalf("%s answered %q: it says nothing about the stable release", c.name, st.Code)
 			}
 		})
+	}
+}
+
+// **A pre-release document does not overwrite an update already found.** It
+// was answered Current, which Check stores with the ETag, so the known update
+// was lost and every later 304 repeated "up to date".
+//
+// **The defect was put back and this test fails with it**: with the belt
+// answering Current, the second check comes back Current.
+func TestAPrereleaseDoesNotHideAnUpdateAlreadyFound(t *testing.T) {
+	notModified(t)
+	f := &fake{
+		body: release{TagName: "v99.0.0", HTMLURL: "https://github.com/Nenco79/PAT-Monitor/releases/tag/v99.0.0"},
+		etag: `W/"abc123"`,
+	}
+	c := f.start(t)
+	if st, err := c.Check(context.Background()); err != nil || st.Code != Available {
+		t.Fatalf("first check: %v / %q", err, st.Code)
+	}
+	f.body = release{TagName: "v99.1.0-beta.1", Prerelease: true,
+		HTMLURL: "https://github.com/Nenco79/PAT-Monitor/releases/tag/v99.1.0-beta.1"}
+	f.etag = `W/"def456"`
+	if st, _ := c.Check(context.Background()); st.Code != Available || st.Version != "99.0.0" {
+		t.Fatalf("the update already found was overwritten: %q %q", st.Code, st.Version)
 	}
 }
 
@@ -312,20 +336,32 @@ func TestAModifiedBuildNeverReportsAnUpdate(t *testing.T) {
 }
 
 // The check gives up rather than holding a goroutine against a dead socket.
+//
+// **With a context that has no deadline**, because that is what the monitor
+// passes: the test used to bring a 200 ms deadline of its own, and so passed
+// with fetch's timeout deleted. Put back and watched failing.
 func TestACheckThatHangsIsAbandoned(t *testing.T) {
 	notModified(t)
+	// The handler also lets go when the test ends, so that a failure here is a
+	// failure and not a server whose Close waits for ever.
+	stop := make(chan struct{})
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		<-r.Context().Done()
+		select {
+		case <-r.Context().Done():
+		case <-stop:
+		}
 	}))
 	t.Cleanup(srv.Close)
+	t.Cleanup(func() { close(stop) })
 
-	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
-	defer cancel()
+	was := timeout
+	timeout = 200 * time.Millisecond
+	t.Cleanup(func() { timeout = was })
 
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		if st, _ := (&Checker{URL: srv.URL}).Check(ctx); st.Code != Unknown {
+		if st, _ := (&Checker{URL: srv.URL}).Check(context.Background()); st.Code != Unknown {
 			t.Errorf("code %q instead of %q", st.Code, Unknown)
 		}
 	}()
@@ -369,11 +405,17 @@ func TestTheEndpointIsTheOneThatExcludesPrereleases(t *testing.T) {
 }
 
 // A body far larger than any release document does not get read into memory.
+//
+// **The document is otherwise a real offer**, with its page: without one the
+// verdict was Unknown whatever the read limit did, and the test passed with the
+// limit removed. Now only the cut stops it being believed. Put back and watched
+// failing.
 func TestAHugeAnswerIsBounded(t *testing.T) {
 	notModified(t)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = fmt.Fprint(w, `{"tag_name":"v99.0.0","notes":"`)
+		_, _ = fmt.Fprint(w, `{"tag_name":"v99.0.0",`+
+			`"html_url":"https://github.com/Nenco79/PAT-Monitor/releases/tag/v99.0.0","notes":"`)
 		chunk := strings.Repeat("x", 64*1024)
 		for range 64 { // 4 MB, four times the ceiling
 			_, _ = fmt.Fprint(w, chunk)
@@ -382,9 +424,12 @@ func TestAHugeAnswerIsBounded(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	st, _ := (&Checker{URL: srv.URL}).Check(context.Background())
+	st, err := (&Checker{URL: srv.URL}).Check(context.Background())
 	if st.Code == Available {
 		t.Error("an oversized body was read and believed")
+	}
+	if err == nil {
+		t.Error("a body cut at the ceiling produced no error")
 	}
 }
 

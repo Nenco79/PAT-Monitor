@@ -53,6 +53,21 @@ func TestTheFolderFollowsTheDependencies(t *testing.T) {
 	}
 	text := string(index)
 
+	// The rows, path to version. **The version is compared on the module's own
+	// row**: searched for anywhere in the index, a stale row passed whenever
+	// another module carried the same version, and several do.
+	rows := map[string]string{}
+	for line := range strings.SplitSeq(text, "\n") {
+		if !strings.HasPrefix(line, "| `") {
+			continue
+		}
+		cells := strings.Split(line, "|")
+		if len(cells) < 3 {
+			continue
+		}
+		rows[strings.Trim(strings.TrimSpace(cells[1]), "`")] = strings.TrimSpace(cells[2])
+	}
+
 	// One way round: every dependency must have its folder and its row.
 	expected := map[string]bool{}
 	for _, m := range mods {
@@ -63,8 +78,8 @@ func TestTheFolderFollowsTheDependencies(t *testing.T) {
 		if !strings.Contains(text, "`"+m.Path+"`") {
 			t.Errorf("%s does not appear in the index — regenerate", m.Path)
 		}
-		if !strings.Contains(text, m.Version) {
-			t.Errorf("%s: the index does not carry version %s — regenerate", m.Path, m.Version)
+		if got, ok := rows[m.Path]; ok && got != m.Version {
+			t.Errorf("%s: the index says %s, the binary links %s — regenerate", m.Path, got, m.Version)
 		}
 	}
 

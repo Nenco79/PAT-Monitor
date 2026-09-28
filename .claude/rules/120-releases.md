@@ -121,6 +121,12 @@ tag is unreadable too. `version.Readable` now answers the question `Newer`
 cannot: **"not newer" and "not a version" are the same answer and not the same
 fact.**
 
+**And the belt's own answer was the same hole again.** A pre-release or draft
+document was answered Current, which `Check` stores with the ETag: an update
+already found was overwritten, and every later 304 repeated "up to date". Such a
+document says nothing about the latest stable release, so it is Unknown now,
+and the earlier answer survives it.
+
 **The release's URL is executed, not displayed, and it was believed as it
 came.** The panel hands `html_url` to the shell's `open`, which starts whatever
 it names: a browser for an https page, and for a path, a share or a registered

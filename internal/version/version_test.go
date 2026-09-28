@@ -23,6 +23,9 @@ func TestTheDigitsSurviveAPreReleaseLabel(t *testing.T) {
 		{"1.0.0", 1, 0, 0, false},
 		{"0.6.0", 0, 6, 0, false},
 		{"2.10.3-rc.2", 2, 10, 3, true},
+		// Build metadata is not a label, whatever it holds: split drops it.
+		{"1.4.0+build-7", 1, 4, 0, false},
+		{"1.4.0-beta.1+x", 1, 4, 0, true},
 	} {
 		t.Run(c.number, func(t *testing.T) {
 			if ma, mi, pa := digits(c.number); ma != c.ma || mi != c.mi || pa != c.pa {

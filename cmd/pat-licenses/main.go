@@ -116,6 +116,21 @@ func run() error {
 		return nil
 	}
 
+	// **The index says every licence is permissive, so one that is not stops
+	// the generator** before anything is rewritten: the sentence is a constant
+	// in the header, and a GPL or MPL row under it, or one the classifier could
+	// not name, would ship a false statement in the archive and the package.
+	var notPermissive []string
+	for _, e := range entries {
+		if !permissive[e.kind] {
+			notPermissive = append(notPermissive, e.mod.Path+" ("+e.kind+")")
+		}
+	}
+	if len(notPermissive) > 0 {
+		return fmt.Errorf("licences that are not known permissive, to be looked at by hand:\n  %s",
+			strings.Join(notPermissive, "\n  "))
+	}
+
 	// The folder is rewritten from scratch: a dependency that has been removed
 	// must disappear from here too, and a file left behind states something
 	// that is no longer true. Only what this program generates is touched —
@@ -214,6 +229,11 @@ func licenceKind(p string) (string, error) {
 		return "BSD-2-Clause", nil
 	}
 	return "TO CHECK", nil
+}
+
+// permissive are the kinds the index's header may call permissive.
+var permissive = map[string]bool{
+	"Apache-2.0": true, "MIT": true, "BSD-2-Clause": true, "BSD-3-Clause": true, "ISC": true,
 }
 
 func wipe(dir string) error {

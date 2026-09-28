@@ -67,6 +67,16 @@ const (
 	Available Code = "available"
 )
 
+// timeout bounds one attempt. The check is a background courtesy with nobody
+// waiting on it, so it gives up quickly rather than holding a goroutine against
+// a socket that will never answer.
+//
+// **It is the only bound there is**: the monitor calls Check with a context
+// that has no deadline and the client has no Timeout. It is a variable so that
+// a test can shorten it and watch it bite; a test with a deadline of its own
+// proves the caller's deadline and not this one.
+var timeout = 20 * time.Second
+
 const (
 	// endpoint is the release the check asks about.
 	//
@@ -80,11 +90,6 @@ const (
 	// pages live: see releasePage.
 	repository   = "Nenco79/PAT-Monitor"
 	releasePages = "https://github.com/" + repository + "/releases/"
-
-	// timeout bounds one attempt. The check is a background courtesy with
-	// nobody waiting on it, so it gives up quickly rather than holding a
-	// goroutine against a socket that will never answer.
-	timeout = 20 * time.Second
 
 	// bodyLimit is what we are willing to read. The document wanted is a few
 	// kilobytes and release notes can be long; on the other side of this
@@ -207,9 +212,15 @@ func (c *Checker) State() State {
 // pre-release, the policy this program promises — marked pre-release means not
 // offered — would go on holding instead of failing in the one direction nobody
 // would look at.
+//
+// **And such a document is Unknown, not Current.** It says nothing about
+// whether the latest stable release is newer than this one, and Current is an
+// answer Check stores together with the ETag: an update already found was
+// overwritten, and every later 304 repeated "up to date" from memory. It is the
+// unreadable tag's hole, through the one branch above it.
 func verdict(r release) State {
 	if r.Prerelease || r.Draft {
-		return State{Code: Current}
+		return State{}
 	}
 	tag := strings.TrimSpace(r.TagName)
 	// **A tag that cannot be read is Unknown, and the empty one was only the
