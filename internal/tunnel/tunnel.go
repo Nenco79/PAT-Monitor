@@ -567,8 +567,18 @@ func (t *Tunnel) live(ctx context.Context, handler http.Handler) (retry bool) {
 		MaxHeaderBytes: 64 << 10,
 		ConnContext:    withFunnelSource,
 	}
+	// **It waits for this life too, not only for the process.** A life that
+	// ends in a failure is followed by another, and waiting on ctx alone left
+	// one goroutine and one dead server behind for each, until the process
+	// exited.
+	lifeOver := make(chan struct{})
+	defer close(lifeOver)
 	guard.Go(t.cfg.Log, "the shutdown of public access", func() {
-		<-ctx.Done()
+		select {
+		case <-ctx.Done():
+		case <-lifeOver:
+			return // Serve has already returned: there is nothing to shut down
+		}
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		_ = httpSrv.Shutdown(shutdownCtx)
@@ -843,6 +853,15 @@ func (t *Tunnel) askFunnel(ctx context.Context, lc *local.Client) (text, url str
 	if done {
 		*a = featureAnswer{}
 		return text, url, true
+	}
+	// **An empty answer is a failed ask, and it does not replace a good one.**
+	// askTailscale answers empty on any error: remembered, one hiccup of the
+	// control server took the administrator's one-click link off the page for
+	// the whole of a five-minute wait. The previous answer stands, and the ask
+	// is repeated at the first cadence.
+	if text == "" && url == "" {
+		a.asked, a.wait = time.Now(), featureFirstWait
+		return a.text, a.url, false
 	}
 	a.text, a.url, a.asked = text, url, time.Now()
 	switch {

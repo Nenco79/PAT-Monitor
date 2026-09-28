@@ -98,16 +98,17 @@ var emailAddress = regexp.MustCompile(`[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za
 // withoutEmail writes every email address as `<email>`.
 func withoutEmail(s string) string { return emailAddress.ReplaceAllString(s, "<email>") }
 
-// tailnetName matches a name under ts.net: an optional node label, then the
-// tailnet's own.
 // loginLink is the address that signs a node into a tailnet. Until somebody
 // opens it, whoever opens it first can take the node into their own, so it is
 // a key and not a diagnosis: the tray and the page show it whole, the file from
 // Info up keeps where it points and not the key. `-v` still has it.
 var loginLink = regexp.MustCompile(`(?i)(login\.tailscale\.com/a/)[A-Za-z0-9]+`)
 
+// withoutLoginLink writes the key of every sign-in link as `<hidden>`.
 func withoutLoginLink(s string) string { return loginLink.ReplaceAllString(s, "${1}<hidden>") }
 
+// tailnetName matches a name under ts.net: an optional node label, then the
+// tailnet's own.
 var tailnetName = regexp.MustCompile(`(?i)\b(?:([a-z0-9-]+)\.)?[a-z0-9-]+\.ts\.net\b`)
 
 // withoutTailnet turns `patmon-1a2b3c.quercia-lieve.ts.net` into

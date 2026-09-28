@@ -179,3 +179,29 @@ func TestAFailureThatRepeatsIsWrittenOnce(t *testing.T) {
 		t.Errorf("a different failure was not written: %d Error lines", n)
 	}
 }
+
+// **A failed ask does not take away a good answer.** askTailscale answers empty
+// on any error, and remembered, a moment of the control server's trouble took
+// the administrator's link off the page for five minutes.
+//
+// **The defect was put back and this test fails with it**: with the empty
+// answer remembered, the link is gone after the hiccup.
+func TestAFailedAskKeepsTheLastAnswer(t *testing.T) {
+	tun := New(Config{Hostname: "test"})
+	answer := [2]string{"ask your admin", "https://login.tailscale.com/admin"}
+	tun.query = func(context.Context, *local.Client, string) (string, string, bool) {
+		return answer[0], answer[1], false
+	}
+	st := &ipnstate.Status{BackendState: ipn.Running.String()}
+	tun.evaluate(t.Context(), nil, st)
+
+	answer = [2]string{"", ""} // the control server hiccups
+	tun.funnel.asked = time.Now().Add(-time.Hour)
+	got, _ := tun.evaluate(t.Context(), nil, st)
+	if got.ActionURL == "" || got.ActionText != "ask your admin" {
+		t.Errorf("a failed ask replaced the good answer: %+v", got)
+	}
+	if tun.funnel.wait != featureFirstWait {
+		t.Errorf("after a failed ask the next is in %v, wanted the first cadence", tun.funnel.wait)
+	}
+}
