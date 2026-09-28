@@ -255,8 +255,11 @@ func probeScaling(cams []devices.Device, w, h, fps int) {
 		w, h  int
 		label string
 	}
-	var steps []step
-	for _, s := range rtc.ScaleSizes(w, h) {
+	// The first row is the size the reader was opened at, which is not asked
+	// again: the scale's own first step is that size rounded to the
+	// macroblock, and at 1080 it would expect 1072 of a frame that is 1080.
+	steps := []step{{w, h, "the size asked for"}}
+	for _, s := range rtc.ScaleSizes(w, h)[1:] {
 		steps = append(steps, step{s[0], s[1], "a step of the scale"})
 	}
 	steps = append(steps, step{848, 480, "not native, to prove scaling"}, step{w, h, "back to full size"})
