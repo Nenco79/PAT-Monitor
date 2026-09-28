@@ -134,7 +134,9 @@ func sinc(x float64) float64 {
 }
 
 // blackman is the window, zero outside [-k, k]. It attenuates the side lobes by
-// about 58 dB, which past the sixteen bits of a sample cannot be heard.
+// about 58 dB: well beyond the -40 dB the alias test asks of the analysis
+// stream, which is what this resampler feeds. It is not past sixteen bits,
+// which are some 96 dB.
 func blackman(x, k float64) float64 {
 	if x < -k || x > k {
 		return 0

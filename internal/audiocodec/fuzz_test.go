@@ -36,7 +36,8 @@ func FuzzDecodeWhatAViewerSends(f *testing.F) {
 	f.Add([]byte{0xff, 0xff})             // code 3, 63 frames of the longest mode
 	f.Add([]byte{0x03, 0xbf, 0xff, 0xff}) // code 3, VBR, padding flag
 	f.Add(append([]byte{0x0b}, make([]byte, 1274)...))
-	f.Add(make([]byte, 1276)) // one byte over the packet ceiling
+	f.Add(make([]byte, 1276)) // one byte over libopus's single-frame limit
+	f.Add(make([]byte, 4097)) // one byte over the decoder's own buffer
 
 	dec, err := NewOpusDecoder(SampleRate, Channels)
 	if err != nil {

@@ -68,8 +68,9 @@ func FrameSamplesAt(rate int) int {
 // and every consumer needs one of their own.
 type Encoder interface {
 	// Encode returns the compressed packet. pcm must hold exactly
-	// FrameSamples() samples. An empty packet is not an error: it means the
-	// encoder decided to transmit nothing for this frame.
+	// FrameSamples() samples. A frame the encoder chose not to transmit comes
+	// back as a one-byte packet, the TOC alone, as libopus writes it: it is not
+	// an error, and it is sent like any other.
 	Encode(pcm []int16) ([]byte, error)
 	// FrameSamples is the frame length this encoder insists on, which depends
 	// on the rate it was created with.
@@ -133,6 +134,8 @@ func (e *opusEncoder) Encode(pcm []int16) ([]byte, error) {
 		return nil, fmt.Errorf("audiocodec: encode: %w", err)
 	}
 	if n == 0 {
+		// libopus writes at least the TOC on success, so this is defensive:
+		// it is not the untransmitted frame, which is one byte.
 		return nil, nil
 	}
 	// The working buffer is reused on every frame, so the packet has to be

@@ -81,9 +81,14 @@ func TestAToneAboveNyquistIsGoneAndDoesNotFoldBack(t *testing.T) {
 	}
 }
 
-// DC must not change: this is the proof that every phase sums to one. Without
-// the per-phase normalisation the gain wobbles with the ratio, and out of it
-// comes a hum that is heard and not seen.
+// DC must not change: at this kernel's length every phase sums to one within
+// the tolerance, and a gain that wobbled with the ratio would be a hum that is
+// heard and not seen.
+//
+// **It is not the proof of the per-phase normalisation**, and it used to say it
+// was: with 24 zero crossings the phases already sum to one within 2e-6, so this
+// passes with the normalisation removed — which resample.go says too. What the
+// normalisation protects is a shorter kernel.
 func TestAConstantStaysTheSameConstant(t *testing.T) {
 	for _, c := range []struct{ from, to int }{{44100, 16000}, {24000, 16000}, {8000, 16000}} {
 		r, err := New(c.from, c.to)

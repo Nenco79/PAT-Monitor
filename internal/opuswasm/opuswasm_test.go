@@ -255,3 +255,24 @@ func TestVersion(t *testing.T) {
 	}
 	t.Log(v)
 }
+
+// **A packet larger than the decoder's buffer is refused before it is
+// written.** The buffer inside the module is maxPacketBytes, and a longer packet
+// would be written over its neighbours; every packet the other tests use is at
+// most 1275 bytes, so nothing reached the refusal.
+//
+// **The defect was put back and this test fails with it**: with the length
+// guard removed, the packet is written and handed to libopus.
+func TestAPacketOverTheBufferIsRefused(t *testing.T) {
+	ctx := context.Background()
+	dec, err := NewDecoder(ctx, rate, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer dec.Close(ctx)
+	pcm := make([]int16, 5760)
+	_, err = dec.Decode(ctx, make([]byte, maxPacketBytes+1), pcm)
+	if err == nil || !strings.Contains(err.Error(), "byte limit") {
+		t.Errorf("a packet of %d bytes gave %v", maxPacketBytes+1, err)
+	}
+}
