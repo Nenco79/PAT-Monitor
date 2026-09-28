@@ -1,19 +1,14 @@
-// Checks that WASAPI capture in raw mode really does bypass the OEM's Audio
-// Processing Objects.
-//
-// The comparison is A/B on the same microphone: first with the processing chain
-// active, then in raw mode. If the bypass works, raw mode shows a live noise
-// floor (a standard deviation of a few quantisation units, few exact zeros)
-// while the normal mode delivers digital silence. No sound needs to be made.
 package main
+
+// The microphone's three paths and the talk-back output, measured rather than
+// opened: what used to be the separate pat-wasapi, now `pat-diag -mic-modes`
+// and `pat-diag -out`.
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"math"
 	"os"
-	"os/signal"
 	"strings"
 	"time"
 
@@ -21,34 +16,16 @@ import (
 	"patmonitor/internal/audiocodec"
 	"patmonitor/internal/detect"
 	"patmonitor/internal/diag"
-	"patmonitor/internal/wincom"
 )
 
-var (
-	duration   = flag.Duration("d", 6*time.Second, "duration of each measurement phase")
-	deviceID   = flag.String("device", "", "endpoint ID to use (empty = default)")
-	outputOnly = flag.Bool("out", false, "test the talk-back audio output instead of the microphone")
-)
-
-func main() {
-	// As the monitor does, and first: see wincom.NarrowDLLSearch.
-	dllSearchErr := wincom.NarrowDLLSearch()
-	flag.Parse()
-	if dllSearchErr != nil {
-		fmt.Fprintf(os.Stderr, "WARNING: DLL search path not narrowed as the monitor does it: %v\n", dllSearchErr)
-	}
-
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
-	defer stop()
-
-	// The output is tested separately: it is the other half of the room, and
-	// whoever comes here for the talk-back does not need to wait for two
-	// measurements of the microphone.
-	if *outputOnly {
-		testOutput(*duration)
-		return
-	}
-
+// measureMicModes checks that WASAPI capture in raw mode really does bypass the
+// OEM's Audio Processing Objects.
+//
+// The comparison is A/B on the same microphone: first with the processing chain
+// active, then in raw mode. If the bypass works, raw mode shows a live noise
+// floor (a standard deviation of a few quantisation units, few exact zeros)
+// while the normal mode delivers digital silence. No sound needs to be made.
+func measureMicModes(ctx context.Context, d time.Duration) {
 	fmt.Println("=== WASAPI CAPTURE ENDPOINTS ===")
 	devs, err := audio.ListCaptureDevices()
 	if err != nil {
@@ -69,9 +46,9 @@ func main() {
 	// Normal mode first, then raw: the order does not matter, but measuring
 	// them one after the other reduces the risk that something else changes in
 	// between.
-	normal, nStream, nErr := measure(ctx, modeShared, *duration)
-	rawBlk, rStream, rErr := measure(ctx, modeRaw, *duration)
-	excl, eStream, eErr := measure(ctx, modeExclusive, *duration)
+	normal, nStream, nErr := measure(ctx, modeShared, d)
+	rawBlk, rStream, rErr := measure(ctx, modeRaw, d)
+	excl, eStream, eErr := measure(ctx, modeExclusive, d)
 
 	fmt.Println(strings.Repeat("=", 76))
 	fmt.Println("  COMPARISON")
@@ -123,6 +100,7 @@ func measure(ctx context.Context, mode captureMode, d time.Duration) (detect.Blo
 
 	var acc detect.Accumulator
 	var stream audio.Stream
+	var ch0 []int16
 
 	// Cadence of the callback. In shared event-driven mode Windows should wake
 	// us on every device period, typically 10 ms. If it delivers in bursts
@@ -132,7 +110,7 @@ func measure(ctx context.Context, mode captureMode, d time.Duration) (detect.Blo
 
 	err := audio.Capture(runCtx,
 		audio.Options{
-			DeviceID:  *deviceID,
+			DeviceID:  *micWanted,
 			Raw:       mode == modeRaw,
 			Exclusive: mode == modeExclusive,
 		},
@@ -144,7 +122,16 @@ func measure(ctx context.Context, mode captureMode, d time.Duration) (detect.Blo
 		},
 		func(pcm []byte, silent bool) error {
 			cadence.Mark(time.Now())
-			acc.Add(toS16Channel0(pcm, stream.Format))
+			// The first channel alone, as audio.FirstChannelS16 explains: the
+			// count of exact zeros is the figure under examination.
+			if n := len(pcm) / max(stream.Format.BytesPerFrame(), 1); cap(ch0) < n {
+				ch0 = make([]int16, n)
+			}
+			n, err := audio.FirstChannelS16(pcm, stream.Format, ch0[:cap(ch0)])
+			if err != nil {
+				return err
+			}
+			acc.Add(ch0[:n])
 			return nil
 		},
 	)
@@ -154,51 +141,6 @@ func measure(ctx context.Context, mode captureMode, d time.Duration) (detect.Blo
 		return detect.Block{}, stream, err
 	}
 	return acc.Result(), stream, nil
-}
-
-// toS16Channel0 extracts the first channel and converts it to 16-bit samples,
-// the form the analyser expects.
-//
-// One channel is taken rather than averaging them: averaging channels whose
-// noise is uncorrelated would lower the level by about 3 dB and falsify the
-// count of exact zeros, which is precisely the figure under examination.
-func toS16Channel0(b []byte, f audio.StreamFormat) []int16 {
-	bytesPerSample := f.BitsPerSample / 8
-	frame := f.Channels * bytesPerSample
-	if frame <= 0 || bytesPerSample <= 0 {
-		return nil
-	}
-	frames := len(b) / frame
-	out := make([]int16, 0, frames)
-
-	for i := range frames {
-		off := i * frame // channel 0
-		var v int16
-		switch {
-		case f.Float && bytesPerSample == 4:
-			bits := uint32(b[off]) | uint32(b[off+1])<<8 | uint32(b[off+2])<<16 | uint32(b[off+3])<<24
-			v = clampToInt16(float64(math.Float32frombits(bits)) * 32768)
-		case !f.Float && bytesPerSample == 2:
-			v = int16(uint16(b[off]) | uint16(b[off+1])<<8)
-		case !f.Float && bytesPerSample == 4:
-			u := uint32(b[off]) | uint32(b[off+1])<<8 | uint32(b[off+2])<<16 | uint32(b[off+3])<<24
-			v = int16(int32(u) >> 16)
-		default:
-			return nil
-		}
-		out = append(out, v)
-	}
-	return out
-}
-
-func clampToInt16(f float64) int16 {
-	switch {
-	case f > math.MaxInt16:
-		return math.MaxInt16
-	case f < math.MinInt16:
-		return math.MinInt16
-	}
-	return int16(f)
 }
 
 func report(label string, b detect.Block, s audio.Stream, err error) {
@@ -212,7 +154,7 @@ func report(label string, b detect.Block, s audio.Stream, err error) {
 		return
 	}
 	fmt.Printf("    format: %s   raw obtained: %v\n", s.Format, s.RawMode)
-	fmt.Printf("    %.1f s analysed\n", float64(b.Samples)/float64(maxInt(s.Format.SampleRate, 1)))
+	fmt.Printf("    %.1f s analysed\n", float64(b.Samples)/float64(max(s.Format.SampleRate, 1)))
 	fmt.Printf("    RMS %.1f dBFS   peak %.1f dBFS (%d LSB)\n", b.RMSdBFS, b.PeakdBFS, b.Peak)
 	fmt.Printf("    exact zeros %.1f%%   noise floor %.2f LSB   -> %s\n",
 		b.ZeroRatio*100, b.StdDevLSB, b.Health())
@@ -247,18 +189,6 @@ func verdict(normal detect.Block, nErr error, raw detect.Block, rErr error) {
 	fmt.Println()
 }
 
-func maxInt(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}
-
-func fatal(format string, a ...any) {
-	fmt.Fprintf(os.Stderr, "error: "+format+"\n", a...)
-	os.Exit(1)
-}
-
 // --- the other direction: the output, that is, the talk-back ----------------
 
 // testOutput answers the question the talk-back will give rise to: "I pressed
@@ -273,7 +203,7 @@ func fatal(format string, a ...any) {
 func testOutput(d time.Duration) {
 	fmt.Println("\n=== AUDIO OUTPUT (talk-back) ===")
 
-	vol, err := audio.RenderVolume(*deviceID)
+	vol, err := audio.RenderVolume(*speakerWanted)
 	switch {
 	case err != nil:
 		fmt.Printf("  volume: cannot be read (%v)\n", err)
@@ -288,14 +218,14 @@ func testOutput(d time.Duration) {
 		}
 	}
 
-	floor, _, err := audio.LoopbackLevel(*deviceID, d/3)
+	floor, _, err := audio.LoopbackLevel(*speakerWanted, d/3)
 	if err != nil {
 		fmt.Printf("  loopback unavailable: %v\n", err)
 		return
 	}
 	fmt.Printf("  before the tone: %.1f dBFS\n", floor)
 
-	p, err := audio.NewPlayer(audiocodec.SampleRate, *deviceID, nil)
+	p, err := audio.NewPlayer(audiocodec.SampleRate, *speakerWanted, nil)
 	if err != nil {
 		fmt.Printf("  OPEN FAILED: %v\n", err)
 		fmt.Println("  Without an audio output there is no talk-back: the button never appears.")
@@ -307,7 +237,7 @@ func testOutput(d time.Duration) {
 		playTone(p, d)
 	}()
 	time.Sleep(250 * time.Millisecond)
-	during, peak, err := audio.LoopbackLevel(*deviceID, d/2)
+	during, peak, err := audio.LoopbackLevel(*speakerWanted, d/2)
 	<-done
 	_ = p.Close()
 	if err != nil {

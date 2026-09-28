@@ -127,48 +127,15 @@ func TestTheSmallSizesDoNotCarryTheGlint(t *testing.T) {
 
 // **The stride the two containers are built on.** `dirEntry` is shared by
 // ICONDIRENTRY and GRPICONDIRENTRY, and each caller advances by that length plus
-// its own tail: 16 in the .ico, 14 in the group resource. The doc above it used
+// its own tail: 14 in the group resource, 16 in a .ico. The doc above it used
 // to say six, and nothing compared the sentence with the slice — a wrong stride
 // does not fail, it produces a well-formed container whose entries are read from
 // the wrong offset, which is the family this package is a monument to.
 func TestTheDirectoryEntryIsEightBytes(t *testing.T) {
 	if n := len(dirEntry(Image{Side: 16})); n != 8 {
-		t.Errorf("dirEntry is %d bytes: the .ico strides 16 and the group 14, both "+
-			"of which count on 8, so every entry after the first is read from the "+
-			"wrong offset — and nothing about that looks like an error", n)
-	}
-}
-
-func TestTheICOContainerReadsBack(t *testing.T) {
-	im := Images()
-	f := ICO(im)
-
-	if got := binary.LittleEndian.Uint16(f[2:]); got != 1 {
-		t.Fatalf("type %d, wanted 1 (icon)", got)
-	}
-	n := int(binary.LittleEndian.Uint16(f[4:]))
-	if n != len(im) {
-		t.Fatalf("%d entries for %d images", n, len(im))
-	}
-	for k := range n {
-		v := f[6+16*k:]
-		size := int(binary.LittleEndian.Uint32(v[8:]))
-		off := int(binary.LittleEndian.Uint32(v[12:]))
-		if off+size > len(f) {
-			t.Fatalf("entry %d: the data runs off the file", k)
-		}
-		if !bytes.Equal(f[off:off+size], im[k].Data) {
-			t.Fatalf("entry %d: the data is not the image's", k)
-		}
-		// 256 is written as zero: that is the convention, and getting it wrong
-		// produces an icon that exists and gets chosen badly.
-		want := byte(im[k].Side)
-		if im[k].Side >= 256 {
-			want = 0
-		}
-		if v[0] != want || v[1] != want {
-			t.Errorf("entry %d: declared side %dx%d, wanted %d", k, v[0], v[1], want)
-		}
+		t.Errorf("dirEntry is %d bytes: the group strides 14 on the count of 8, "+
+			"so every entry after the first is read from the wrong offset — and "+
+			"nothing about that looks like an error", n)
 	}
 }
 
@@ -363,6 +330,15 @@ func TestTheResourceIsWalkedFromTheStart(t *testing.T) {
 		if size := int(binary.LittleEndian.Uint32(v[8:])); size != len(im[k].Data) {
 			t.Errorf("entry %d: the group declares %d bytes, the icon has %d",
 				k, size, len(im[k].Data))
+		}
+		// 256 is written as zero: that is the convention, and getting it wrong
+		// produces an icon that exists and gets chosen badly.
+		want := byte(im[k].Side)
+		if im[k].Side >= 256 {
+			want = 0
+		}
+		if v[0] != want || v[1] != want {
+			t.Errorf("entry %d: declared side %dx%d, wanted %d", k, v[0], v[1], want)
 		}
 	}
 }

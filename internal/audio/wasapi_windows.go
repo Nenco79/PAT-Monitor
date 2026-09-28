@@ -449,7 +449,7 @@ func endpointVolumeInfo(dev *wca.IMMDevice) (VolumeInfo, error) {
 	var vol *wca.IAudioEndpointVolume
 	if err := dev.Activate(wca.IID_IAudioEndpointVolume, ole.CLSCTX_ALL, nil, &vol); err != nil {
 		// **The error carries the readable form too, not only Why.** Both are
-		// read: Why by pat-diag, the error by pat-wasapi and by the capture,
+		// read: Why by pat-diag, the error by pat-diag -out and by the capture,
 		// which puts it in the line that explains a 30 dB loss on the exclusive
 		// path. Returning the raw one there printed a bare decimal HRESULT — the
 		// exact defect the describeAudclnt sweep exists for, by the one road that

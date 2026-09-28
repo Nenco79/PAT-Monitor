@@ -71,3 +71,56 @@ func Embedded() (*Model, error) {
 	})
 	return embedded, embedErr
 }
+
+// WatchedClasses are the AudioSet classes that count for each event: the
+// monitor watches them and pat-sounds measures them by default, so both
+// commands read this one list rather than a copy each.
+//
+// It is far narrower than one would be tempted to write. "Dog"
+// is the strongest class on real barks and catches `brushing_teeth` at
+// 0.442; "Domestic animals, pets" gives 0.877 on a cat. **Every extra class
+// brings its own false positives**: at threshold 0.10 "Bark + Dog" makes
+// fifteen false positives on ESC-50 where "Bark + Bow-wow" makes one.
+var WatchedClasses = map[string][]string{
+	"bark": {"Bark", "Bow-wow"},
+	"cry":  {"Baby cry, infant cry", "Crying, sobbing"},
+}
+
+// SoundThreshold is the probability beyond which a class counts.
+//
+// **It was 0.20 and the measurement moved it**, over three public datasets of
+// negatives — 20,857 clips for the cry, 19,779 for the bark — plus 457 real
+// cries from donateacry. Both codes gain, and they gain much more than they
+// cost:
+//
+//	                   caught at 0.20   at 0.15      false, 0.20 -> 0.15
+//	cry, donateacry    363/457 (79%)    383 (83%)    ESC-50   0 -> 1
+//	cry, FSD50K         13/42  (30%)     15 (35%)    US8K     1 -> 4
+//	bark, US8K         660/998 (66%)    698 (69%)    FSD50K   2 -> 4
+//	bark, FSD50K        74/122 (60%)     77 (63%)    bark, all 13 -> 15
+//
+// **Sixty-three more real events against eight more false ones**, which on
+// the negatives is 0.014% to 0.043% for the cry and 0.066% to 0.076% for the
+// bark. And the next step down is where it turns: 0.20 to 0.15 buys 63 for 8,
+// 0.15 to 0.10 buys 49 for **22**. The knee is here, and it was measured
+// rather than chosen.
+//
+// **What enters at 0.15 is worth naming**, because a count hides it: ESC-50's
+// cat at 0.181; three `children_playing` on UrbanSound8K, 0.160 to 0.185, in
+// a class whose worst was already through at 0.292; a door squeak at 0.192
+// and a gasp at 0.187 on FSD50K. Nothing new in kind — the same confusions
+// the old threshold already had at its own edge.
+//
+// **It is not a per-class threshold** because CED's probabilities are not
+// comparable between classes — on an empty room the model is 38% sure it
+// hears a mouse — but these four have their floor measured at the same place,
+// and the move was checked on both codes precisely because one number serves
+// two.
+//
+// **It is one number for both commands, and it lives here so that it is.** The
+// tool used to hold a copy, kept equal to the monitor's by a test reading its
+// source, because a sweep rerun without -threshold had measured the chain at
+// 0.20 after the monitor had moved to 0.15. It is untyped because the monitor
+// compares it with float32 probabilities and pat-sounds with float64 ones too,
+// and each gets 0.15 in its own type.
+const SoundThreshold = 0.15

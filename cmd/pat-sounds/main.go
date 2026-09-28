@@ -67,12 +67,6 @@ var candidateClasses = []string{
 	"Snoring", "Cat", "Meow", "Speech", "Silence",
 }
 
-// chosen is what the monitor looks at today, and the report says why.
-var chosen = map[string][]string{
-	"bark": {"Bark", "Bow-wow"},
-	"cry":  {"Baby cry, infant cry", "Crying, sobbing"},
-}
-
 func main() {
 	if len(os.Args) < 2 {
 		usage()
@@ -90,13 +84,6 @@ func main() {
 		usage()
 	}
 }
-
-// monitorThreshold is the monitor's own threshold, soundThreshold in
-// cmd/pat-monitor, which a main package cannot import. It is what the tool
-// counts against by default: a sweep rerun without the flag used to measure the
-// chain at 0.20, a threshold the monitor no longer uses. TestTheToolCountsAtTheMonitorsThreshold
-// keeps the two equal.
-const monitorThreshold = 0.15
 
 func usage() {
 	fmt.Fprintln(os.Stderr, "usage: pat-sounds <score|judge|dilute|gate> [flags]")
@@ -376,7 +363,7 @@ func judge(args []string) {
 	}
 	rows, err := readScores(*path)
 	die(err)
-	watch := chosen
+	watch := ced.WatchedClasses
 	if *classes != "" {
 		watch = map[string][]string{}
 		die(json.Unmarshal([]byte(*classes), &watch))
@@ -546,7 +533,7 @@ func whereTheRecallGoes(rows []scored, positive string, classes []string) {
 			return // a single row explains nothing
 		}
 		fmt.Printf("\n%s\n%-22s %6s %9s %8s %8s %8s\n", title, "", "n", "median",
-			fmt.Sprintf("@%.2f", monitorThreshold), "@0.20", "@0.30")
+			fmt.Sprintf("@%.2f", ced.SoundThreshold), "@0.20", "@0.30")
 		keys := make([]string, 0, len(m))
 		for k := range m {
 			keys = append(keys, k)
@@ -565,7 +552,7 @@ func whereTheRecallGoes(rows []scored, positive string, classes []string) {
 				return fmt.Sprintf("%d%%", 100*n/len(v))
 			}
 			fmt.Printf("%-22s %6d %9.3f %8s %8s %8s\n", k, len(v), quantile(v, 50),
-				pct(monitorThreshold), pct(0.20), pct(0.30))
+				pct(ced.SoundThreshold), pct(0.20), pct(0.30))
 		}
 	}
 	show("recall by salience (1 foreground, 2 background)", bySalience)
@@ -614,7 +601,7 @@ func byLabel(rows []scored, positive string, classes []string) {
 		slices.Sort(vs)
 		over := 0
 		for _, v := range vs {
-			if v >= monitorThreshold {
+			if v >= ced.SoundThreshold {
 				over++
 			}
 		}
@@ -623,7 +610,7 @@ func byLabel(rows []scored, positive string, classes []string) {
 	sort.Slice(out, func(a, b int) bool { return out[a].max > out[b].max })
 	fmt.Printf("\nwhere the false positives are (the eight categories that light up most)\n")
 	fmt.Printf("%-46s %6s %9s %8s %8s\n", "category", "n", "median", "max",
-		fmt.Sprintf(">=%.2f", monitorThreshold))
+		fmt.Sprintf(">=%.2f", ced.SoundThreshold))
 	for i := 0; i < 8 && i < len(out); i++ {
 		fmt.Printf("%-46s %6d %9.3f %8.3f %8d\n",
 			short(out[i].cat), out[i].n, out[i].p50, out[i].max, out[i].over)

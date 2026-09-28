@@ -281,10 +281,9 @@ which ones is `build.ps1`'s business. The default build skips them.
 
 | tool | what it reports |
 |---|---|
-| `pat-diag` | Direct3D device, available H.264 encoders, camera formats and streams, microphone |
+| `pat-diag` | Direct3D device, available H.264 encoders, camera formats and streams, microphone; `-mic-modes` measures the three microphone paths — shared, raw, exclusive — one after the other, and `-out` checks the talk-back output by listening to what the speakers play |
 | `pat-capture` | the full pipeline: delivery regularity, bitrate, quantizer distribution, keyframes |
 | `pat-viewer` | a synthetic WebRTC viewer, with on-demand keyframe requests |
-| `pat-wasapi` | the three microphone paths — shared, raw, exclusive — one after the other; `-out` checks the talk-back output by listening to what the speakers play |
 | `pat-opus` | the audio encoder, checked against an independent decoder |
 | `pat-sounds` | the sound recognition on labelled datasets: which classes to watch, at what threshold, and what the shape detector lets through |
 
@@ -298,7 +297,7 @@ signs an archive with it, which `build.ps1 -Release` calls.
 | package | contents |
 |---|---|
 | `cmd/pat-monitor` | the program, flags, wiring |
-| `internal/mf`, `internal/media` | Media Foundation capture and H.264 encoding, SPS and QP parsing, fMP4 muxer |
+| `internal/mf`, `internal/media` | Media Foundation capture and H.264 encoding, SPS and QP parsing, MP4 muxer |
 | `internal/audio`, `internal/audiocodec`, `internal/resample` | WASAPI capture, Opus encoding, and the rate conversion the analysis stream needs |
 | `internal/pipeline` | capture supervision, restart, resolution and cadence changes |
 | `internal/rtc` | WebRTC hub, congestion control, bitrate, resolution scale, quality loop |

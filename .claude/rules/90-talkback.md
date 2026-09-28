@@ -427,9 +427,9 @@ other side of the room.
 
 WASAPI has the answer: open a **capture** client on a **render** endpoint with
 `AUDCLNT_STREAMFLAGS_LOOPBACK` and the mix the engine is playing arrives. It
-lives in `pat-wasapi -out`, together with the endpoint volume, which is the
-third cause of "it cannot be heard" and the only one the program cannot
-compensate for.
+lives in `pat-diag -out`, which was `pat-wasapi -out`, together with the
+endpoint volume, which is the third cause of "it cannot be heard" and the only
+one the program cannot compensate for.
 
 **The verdict has three values, and the third is the one that matters.** The
 first version had two and declared "nothing" whenever the tone did not emerge:

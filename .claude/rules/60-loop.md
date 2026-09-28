@@ -764,12 +764,30 @@ exist.
 **This section describes pieces that no longer exist**, and it remains for the
 measurements. `ratemode.go`, the switch between CBR and constant quality, was
 deleted when the saving could be obtained by commanding the **bitrate alone**.
+The quality mode itself outlived it as `pat-capture -rc quality -q N`, with no
+user left, and went too: `-rc capped` is what remains.
 
 - **The ceiling in quality mode does not exist there at all.**
   `AVEncCommonMaxBitRate` "applies when the rate control mode is
   **PeakConstrainedVBR**", and we were setting it in `Quality`;
   `AVEncCommonMeanBitRate` "is **ignored** if the rate control mode is Quality".
-  Two properties asked of the wrong mode.
+  Two properties asked of the wrong mode. Measured, **10507 kbit/s with the
+  ceiling at 2500**.
+- **The quality level is the encoder's scale, not the quantiser.**
+  `AVEncCommonQuality` runs from 0 to 100, is `VT_UI4` and not the `VT_R4` a
+  "quality" suggests, and how it maps to a quantiser belongs to the encoder. On
+  Quick Sync, measured:
+
+  ```
+  q=70 -> QP 25, 10507 kbit/s   (the sensor's noise, preserved at great cost)
+  q=50 -> QP 30,   979 kbit/s
+  q=30 -> QP 36,   250 kbit/s
+  q=15 -> QP 40,   145 kbit/s
+  ```
+
+  From 50 to 70 is **ten times** the bandwidth for five points of quantiser:
+  below 30 the encoder preserves the sensor's noise, which is incompressible
+  and cannot be seen.
 - **Real capped CRF works on a still scene — 24% fewer bits than CBR at the same
   quality — and not under load**: with someone in front of the camera, mean 2308
   and peaks 3913 on a ceiling of 2500, with the quantiser nailed to the floor.

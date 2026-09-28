@@ -6,7 +6,7 @@
 //
 // The ring knows neither files nor the network: it accumulates and hands over a
 // snapshot, and whoever receives it decides where to send it. It is the same
-// division as media.FMP4Muxer, and for the same reason: there is nothing in
+// division as media.MP4Clip, and for the same reason: there is nothing in
 // here that needs a disk to be tested.
 package record
 

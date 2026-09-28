@@ -226,7 +226,7 @@ func loudTest(enc *audiocodec.Encoder, mono []int16) error {
 
 	loud := make([]int16, len(mono))
 	for i, v := range mono {
-		loud[i] = clamp16(float64(v) * gain)
+		loud[i] = audio.SaturateS16(float64(v) * gain)
 	}
 
 	packets, _, _, err := encodeAll(enc, loud)
@@ -244,16 +244,6 @@ func loudTest(enc *audiocodec.Encoder, mono []int16) error {
 	fmt.Printf("  spectral deviation\n")
 	printSpectralDiff(loud, out)
 	return nil
-}
-
-func clamp16(v float64) int16 {
-	if v > 32767 {
-		return 32767
-	}
-	if v < -32768 {
-		return -32768
-	}
-	return int16(v)
 }
 
 // ---------- measurements ----------

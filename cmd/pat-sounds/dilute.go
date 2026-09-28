@@ -61,7 +61,7 @@ func dilute(args []string) {
 	// median alone, because what is being looked for is where the answer
 	// stops arriving.
 	sweep := fs.Bool("sweep", false, "walk the event down towards the room floor instead of the four lengths")
-	threshold := fs.Float64("threshold", monitorThreshold, "the threshold the share is counted against")
+	threshold := fs.Float64("threshold", ced.SoundThreshold, "the threshold the share is counted against")
 	_ = fs.Parse(args)
 	if *dir == "" {
 		usage()
@@ -136,7 +136,7 @@ func dilute(args []string) {
 	}
 
 	idx := map[string][]int{}
-	for code, names := range chosen {
+	for code, names := range ced.WatchedClasses {
 		for _, n := range names {
 			i, err := m.Index(n)
 			die(err)

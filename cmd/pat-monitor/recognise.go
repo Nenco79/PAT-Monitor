@@ -38,51 +38,11 @@ type recogniser struct {
 	until map[string]time.Time
 }
 
-// The AudioSet classes that count for each event, and the numbers that govern
-// them. **Every one of these comes from a measurement**, and which one is next to it.
+// The numbers that govern an event once one of ced.WatchedClasses has crossed
+// ced.SoundThreshold; those two live in internal/ced because pat-sounds
+// measures with them too. **Every one of these comes from a measurement**, and
+// which one is next to it.
 var (
-	// watchedClasses is far narrower than one would be tempted to write. "Dog"
-	// is the strongest class on real barks and catches `brushing_teeth` at
-	// 0.442; "Domestic animals, pets" gives 0.877 on a cat. **Every extra class
-	// brings its own false positives**: at threshold 0.10 "Bark + Dog" makes
-	// fifteen false positives on ESC-50 where "Bark + Bow-wow" makes one.
-	watchedClasses = map[string][]string{
-		"bark": {"Bark", "Bow-wow"},
-		"cry":  {"Baby cry, infant cry", "Crying, sobbing"},
-	}
-
-	// soundThreshold is the probability beyond which a class counts.
-	//
-	// **It was 0.20 and the measurement moved it**, over three public datasets of
-	// negatives — 20,857 clips for the cry, 19,779 for the bark — plus 457 real
-	// cries from donateacry. Both codes gain, and they gain much more than they
-	// cost:
-	//
-	//	                   caught at 0.20   at 0.15      false, 0.20 -> 0.15
-	//	cry, donateacry    363/457 (79%)    383 (83%)    ESC-50   0 -> 1
-	//	cry, FSD50K         13/42  (30%)     15 (35%)    US8K     1 -> 4
-	//	bark, US8K         660/998 (66%)    698 (69%)    FSD50K   2 -> 4
-	//	bark, FSD50K        74/122 (60%)     77 (63%)    bark, all 13 -> 15
-	//
-	// **Sixty-three more real events against eight more false ones**, which on
-	// the negatives is 0.014% to 0.043% for the cry and 0.066% to 0.076% for the
-	// bark. And the next step down is where it turns: 0.20 to 0.15 buys 63 for 8,
-	// 0.15 to 0.10 buys 49 for **22**. The knee is here, and it was measured
-	// rather than chosen.
-	//
-	// **What enters at 0.15 is worth naming**, because a count hides it: ESC-50's
-	// cat at 0.181; three `children_playing` on UrbanSound8K, 0.160 to 0.185, in
-	// a class whose worst was already through at 0.292; a door squeak at 0.192
-	// and a gasp at 0.187 on FSD50K. Nothing new in kind — the same confusions
-	// the old threshold already had at its own edge.
-	//
-	// **It is not a per-class threshold** because CED's probabilities are not
-	// comparable between classes — on an empty room the model is 38% sure it
-	// hears a mouse — but these four have their floor measured at the same place,
-	// and the move was checked on both codes precisely because one number serves
-	// two.
-	soundThreshold float32 = 0.15
-
 	// cryHits and cryWindow: a cry wants two confirmations, a bark one.
 	//
 	// **The lever against the cat is time, not a higher threshold.** ESC-50's
@@ -149,7 +109,7 @@ func newRecogniser(log *slog.Logger) *recogniser {
 		hits:  map[string][]time.Time{},
 		until: map[string]time.Time{},
 	}
-	for code, names := range watchedClasses {
+	for code, names := range ced.WatchedClasses {
 		for _, n := range names {
 			i, err := m.Index(n)
 			if err != nil {
@@ -160,13 +120,13 @@ func newRecogniser(log *slog.Logger) *recogniser {
 		}
 	}
 	r.stream = ced.NewStream(m, recogniseInterval)
-	// The threshold is formatted, not passed bare: it is a float32, and `slog`
-	// promotes it to float64 printing `0.20000000298023224` — the noise of the
+	// The threshold is formatted, not passed bare: were it a float32, as it
+	// once was, `slog` would promote it to float64 printing `0.20000000298023224` — the noise of the
 	// conversion read as though it were a fine tuning.
 	log.Info("sound recognition ready",
 		"classes", len(m.Labels()), "rate_hz", m.SampleRate(),
 		"window_s", fmt.Sprintf("%.2f", m.WindowSeconds()),
-		"threshold", fmt.Sprintf("%.2f", soundThreshold))
+		"threshold", fmt.Sprintf("%.2f", ced.SoundThreshold))
 	return r
 }
 
@@ -254,7 +214,7 @@ func (r *recogniser) apply(res *ced.Result, now time.Time) {
 	for _, code := range []string{"cry", "bark"} {
 		label, p := r.best(res.Scores, code)
 		args = append(args, code, fmt.Sprintf("%.3f", p), code+"_class", label)
-		if p < soundThreshold {
+		if p < ced.SoundThreshold {
 			continue
 		}
 		need := 1

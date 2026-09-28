@@ -54,12 +54,46 @@ $ErrorActionPreference = 'Stop'
 $env:Path = "C:\Program Files\Go\bin;$env:Path"
 $env:CGO_ENABLED = '0'          # a single static binary, no runtime to install
 
-# Assert-LicencesCommitted refuses a licence tree the regeneration changed. The
-# regeneration runs after the dirty-tree check, so a change it made would go
-# into an archive or a package that no commit holds.
-function Assert-LicencesCommitted {
+# New-Stage lays out what ships in $Stage: the binary just built, LICENSE,
+# NOTICE and licenses\. -Release zips it and -Msix packs it, and $What is the
+# word the refusals use for which of the two is being made.
+#
+# **A build from a dirty tree matches no commit**, and the whole identifier
+# argument in internal/version rests on that not happening: `r` names a commit,
+# and a binary carrying one it does not correspond to is an identifier that lies
+# exactly when somebody is trying to find out what they are running. It is
+# cheap to refuse here and impossible to correct once the archive is on the
+# Internet or the package is submitted.
+#
+# The licence tree is regenerated rather than trusted. It is derived from what
+# is linked into the binary, so it goes stale on any `go get` — and the folder
+# is committed, which is the combination that ages without a word.
+# licenses_test.go guards it both ways at `go test`, and this makes the
+# published copy the one that was just checked.
+#
+# **And a regeneration that changes anything is a refusal**: the dirty tree was
+# judged before it, so what it rewrote would ship in an archive or a package no
+# commit holds.
+#
+# **The layout is the shape of an installation**, not a folder of convenience:
+# whoever unpacks this has the thing as it is meant to sit on disk, and the
+# download half, when it is written, maps one onto the other with nothing to
+# translate.
+function New-Stage {
+    param([string]$What, [string]$Stage, [string]$Dirty, [string]$Sha)
+    if ($Dirty) { throw "the tree has uncommitted changes: a $What must match a commit" }
+    if (-not $Sha) { throw "no commit: a $What has to be identifiable" }
+
+    & go run .\cmd\pat-licenses | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "licence collection failed" }
     $stale = & git status --porcelain -- licenses 2>$null
     if ($stale) { throw "licenses\ was stale: commit the regenerated tree, then build again" }
+
+    if (Test-Path $Stage) { Remove-Item -Recurse -Force $Stage }
+    New-Item -ItemType Directory -Force $Stage | Out-Null
+    Copy-Item bin\pat-monitor.exe $Stage
+    Copy-Item LICENSE, NOTICE $Stage
+    Copy-Item -Recurse licenses $Stage
 }
 
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -352,15 +386,6 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "PAT Monitor build failed" }
 
     if ($Release) {
-        # **A release built from a dirty tree matches no commit**, and the whole
-        # identifier argument in internal/version rests on that not happening:
-        # `r` names a commit, and a binary carrying one it does not correspond to
-        # is an identifier that lies exactly when somebody is trying to find out
-        # what they are running. It is cheap to refuse here and impossible to
-        # correct once the archive is on the Internet.
-        if ($dirty) { throw "the tree has uncommitted changes: a release must match a commit" }
-        if (-not $sha) { throw "no commit: a release has to be identifiable" }
-
         # **The key is asked for before anything is built**, and it used to be
         # asked for after the archive: a run with no key, or a key pat-sign
         # refuses, left a fresh zip in dist\ beside the .sig of an earlier run,
@@ -372,30 +397,9 @@ try {
         }
         if (-not (Test-Path -LiteralPath $keyPath)) { throw "the signing key $keyPath is not there" }
 
-        # The licence tree is regenerated rather than trusted. It is derived
-        # from what is linked into the binary, so it goes stale on any `go get`
-        # — and the folder is committed, which is the combination that ages
-        # without a word. licenses_test.go guards it both ways at `go test`, and
-        # this makes the published copy the one that was just checked.
-        #
-        # **And a regeneration that changes anything is a refusal**: the dirty
-        # tree was judged before it, so what it rewrote would ship in an archive
-        # no commit holds. See Assert-LicencesCommitted.
-        & go run .\cmd\pat-licenses | Out-Null
-        if ($LASTEXITCODE -ne 0) { throw "licence collection failed" }
-        Assert-LicencesCommitted
-
+        # The refusals, the licence tree and the layout: see New-Stage.
         $stage = "dist\PAT-Monitor-$number-windows-amd64"
-        if (Test-Path $stage) { Remove-Item -Recurse -Force $stage }
-        New-Item -ItemType Directory -Force $stage | Out-Null
-
-        # **The layout is the shape of an installation**, not a folder of
-        # convenience: whoever unpacks this has the thing as it is meant to sit
-        # on disk, and the download half, when it is written, maps one onto the
-        # other with nothing to translate.
-        Copy-Item bin\pat-monitor.exe $stage
-        Copy-Item LICENSE, NOTICE $stage
-        Copy-Item -Recurse licenses $stage
+        New-Stage -What "release" -Stage $stage -Dirty $dirty -Sha $sha
 
         $zip = "$stage.zip"
         if (Test-Path $zip) { Remove-Item -Force $zip }
@@ -404,7 +408,7 @@ try {
         # Without it "Extract Here" — which is what most people press — scatters
         # the executable, LICENSE, NOTICE and the whole licences tree loose into
         # the Downloads folder, among everything else already there. The layout
-        # this block stages is the shape an installation has on disk, and it has
+        # New-Stage lays out is the shape an installation has on disk, and it has
         # to survive the unpacking or it was never a layout.
         Compress-Archive -Path $stage -DestinationPath $zip
         Write-Host "release: $zip"
@@ -427,16 +431,6 @@ try {
     }
 
     if ($Msix) {
-        # A package is submitted, so the same two refusals as a release: a
-        # binary that matches no commit is an identifier that lies exactly when
-        # somebody is trying to find out what they are running.
-        if ($dirty) { throw "the tree has uncommitted changes: a package must match a commit" }
-        if (-not $sha) { throw "no commit: a package has to be identifiable" }
-
-        & go run .\cmd\pat-licenses | Out-Null
-        if ($LASTEXITCODE -ne 0) { throw "licence collection failed" }
-        Assert-LicencesCommitted
-
         # **The SDK is looked for and not written down.** The version folder
         # under Windows Kits changes with every SDK, and on a CI image it is
         # whatever that image happens to carry: a path spelled here is a build
@@ -456,17 +450,18 @@ try {
         $pkgver = (& go run .\cmd\pat-icon -print-package-version).Trim()
         if ($LASTEXITCODE -ne 0 -or -not $pkgver) { throw "the package version could not be asked for" }
 
+        # A package is submitted, so the same refusals as a release, and the
+        # same layout, which is the shape an installation has on disk, plus the
+        # two things only a package carries. See New-Stage.
         $pkg = Join-Path "dist" "PAT-Monitor-$pkgver-x64"
-        if (Test-Path $pkg) { Remove-Item -Recurse -Force $pkg }
+        New-Stage -What "package" -Stage $pkg -Dirty $dirty -Sha $sha
         New-Item -ItemType Directory -Force (Join-Path $pkg "Assets") | Out-Null
 
-        # The same layout as the archive, which is the shape an installation has
-        # on disk, plus the two things only a package carries.
-        Copy-Item bin\pat-monitor.exe $pkg
-        Copy-Item LICENSE, NOTICE $pkg
-        Copy-Item -Recurse licenses $pkg
-
-        & go run .\cmd\pat-icon -png (Join-Path $pkg "Assets") -o (Join-Path $env:TEMP "pat-icon-msix.syso") | Out-Null
+        # pat-icon writes a .syso whatever else it is asked to draw, so the two
+        # drawings below send theirs to a throwaway path: in cmd\pat-monitor it
+        # would replace the resource the binary above was linked with.
+        $throwaway = Join-Path $env:TEMP "pat-icon-msix.syso"
+        & go run .\cmd\pat-icon -png (Join-Path $pkg "Assets") -o $throwaway | Out-Null
         if ($LASTEXITCODE -ne 0) { throw "the package logos could not be drawn" }
 
         (Get-Content packaging\AppxManifest.xml -Raw) -replace '\{VERSION\}', $pkgver |
@@ -499,7 +494,7 @@ try {
         # here, beside the package, so that each package comes with the tile of
         # the same drawing. See icon.StoreTile.
         $tile = Join-Path "dist" "PAT-Monitor-$pkgver-store-tile-300.png"
-        & go run .\cmd\pat-icon -store $tile -o (Join-Path $env:TEMP "pat-icon-msix.syso") | Out-Null
+        & go run .\cmd\pat-icon -store $tile -o $throwaway | Out-Null
         if ($LASTEXITCODE -ne 0) { throw "the Store tile could not be drawn" }
         Write-Host "package: $outPkg"
         Write-Host "Store tile: $tile (for the listing, not inside the package)"
@@ -525,7 +520,7 @@ try {
         # The tools do not embed tsnet: no stamps to impress. And no -s -w:
         # they **are** the place one looks when something does not add up, so
         # they stay whole and attachable from a debugger.
-        foreach ($tool in 'pat-capture', 'pat-diag', 'pat-opus', 'pat-sounds', 'pat-viewer', 'pat-wasapi') {
+        foreach ($tool in 'pat-capture', 'pat-diag', 'pat-opus', 'pat-sounds', 'pat-viewer') {
             Write-Host $tool
             & go build -o "bin\$tool.exe" ".\cmd\$tool"
             if ($LASTEXITCODE -ne 0) { throw "$tool build failed" }

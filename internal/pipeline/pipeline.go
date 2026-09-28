@@ -115,11 +115,8 @@ type Config struct {
 	// nothing in the monitor sets it: see the call site for the numbers.
 	KeepFrameRateConversion bool
 	// RateControl is the criterion by which the encoder spends its bits; empty
-	// means CBR. Quality is the level to hold when constant quality is chosen,
-	// MinQP the quantiser floor when capped CRF is chosen: they are two
-	// different scales and each one belongs to its own mode.
+	// means CBR. MinQP is the quantiser floor when capped CRF is chosen.
 	RateControl mf.RateControl
-	Quality     int
 	MinQP       int
 	// MaxQP is how far the encoder may degrade in order to stay inside the
 	// bitrate. Zero leaves it free, and free means it may also refuse to degrade
@@ -2887,7 +2884,6 @@ func (p *Pipeline) runVideo(ctx context.Context, sinks Sinks) error {
 			Device:      dev,
 			GOPFrames:   gopFor(f),
 			RateControl: p.cfg.RateControl,
-			Quality:     p.cfg.Quality,
 		})
 	}
 

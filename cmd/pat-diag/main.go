@@ -10,6 +10,11 @@
 // asked of Media Foundation instead of trying to encode, and the microphone is
 // opened instead of being looked up in a list. A device that appears in a list
 // and then does not open is exactly the fault being looked for.
+//
+// Two measurements run instead of the report, and they were the separate
+// pat-wasapi: -mic-modes captures the microphone in its three modes one after
+// the other and says whether raw mode really bypasses the OEM effects, and -out
+// plays a tone on the talk-back output and listens to it through loopback.
 package main
 
 import (
@@ -36,7 +41,12 @@ var (
 	height      = flag.Int("h", encoder.Presets[0].Height, "test height")
 	fps         = flag.Int("fps", encoder.Presets[0].FPS, "test frame rate")
 	bitrateKbps = flag.Int("b", encoder.Presets[0].BitrateKbps, "test bitrate in kbit/s")
-	micWanted   = flag.String("mic", "", "probe this microphone endpoint ID, the value of mic_device_id (empty = the default one)")
+	micWanted   = flag.String("mic", "", "probe this microphone endpoint ID, the value of mic_device_id (empty = the default one); -mic-modes measures it too")
+
+	micModes      = flag.Bool("mic-modes", false, "instead of the report, measure the microphone's three paths - shared, raw, exclusive - one after the other")
+	outputTest    = flag.Bool("out", false, "instead of the report, test the talk-back audio output by listening to what it plays")
+	speakerWanted = flag.String("speaker", "", "the output endpoint ID -out tests, the value of speaker_device_id (empty = the default one)")
+	phaseLength   = flag.Duration("d", 6*time.Second, "duration of each measurement phase of -mic-modes and -out")
 )
 
 func main() {
@@ -50,6 +60,20 @@ func main() {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
+
+	// The two measurements run instead of the report, and apart from each
+	// other: the output is the other half of the room, and whoever comes here
+	// for the talk-back does not need to wait for three measurements of the
+	// microphone.
+	if *micModes || *outputTest {
+		if *micModes {
+			measureMicModes(ctx, *phaseLength)
+		}
+		if *outputTest {
+			testOutput(*phaseLength)
+		}
+		return
+	}
 
 	// The microphone is tested first, because it lives on a thread of its own
 	// and has nothing to do with Media Foundation.
@@ -87,13 +111,7 @@ func main() {
 		fmt.Printf("  error: %v\n", err)
 		os.Exit(1)
 	}
-	var usable []devices.Device
-	for _, c := range cams {
-		if c.IsLikelyIR() {
-			continue
-		}
-		usable = append(usable, c)
-	}
+	usable := devices.Cameras(cams)
 	fmt.Printf("  usable webcams: %d\n", len(usable))
 	for _, c := range usable {
 		fmt.Printf("  [video] %s\n", c.Name)
@@ -183,7 +201,7 @@ func main() {
 	}
 
 	section("RESOLUTION SCALING")
-	probeScaling(usable, *width, *height, *fps)
+	probeScaling(cams, *width, *height, *fps)
 
 	section("VERDICT")
 	if enc.UsesDevice() {
@@ -213,8 +231,11 @@ func main() {
 // answers nor from what GetCurrentMediaType declares afterwards: a format that
 // is accepted and not applied would say yes to both. An NV12 frame occupies
 // width x height x 3/2, so the measurement is unambiguous.
-func probeScaling(cams []devices.Device, w, h, fps int) {
-	if len(cams) == 0 {
+func probeScaling(all []devices.Device, w, h, fps int) {
+	// The camera the monitor opens when camera_device_id is empty, chosen by
+	// the monitor's own rule rather than by taking the first one by hand.
+	cam, _, err := devices.Pick(all, "")
+	if err != nil {
 		fmt.Println("  no camera: cannot be checked")
 		return
 	}
@@ -230,7 +251,7 @@ func probeScaling(cams []devices.Device, w, h, fps int) {
 	// The rule is already written for the encoder: **the check has to be taken
 	// as close as possible to whoever consumes the data.** It holds for whoever
 	// writes the check too.
-	reader, err := mf.OpenCamera(cams[0].Link(), w, h, fps)
+	reader, err := mf.OpenCamera(cam.Link(), w, h, fps)
 	if err != nil {
 		fmt.Printf("  open failed: %v\n", err)
 		return
@@ -240,7 +261,7 @@ func probeScaling(cams []devices.Device, w, h, fps int) {
 	// An enlargement **succeeds**, and said without a warning it reads as "the
 	// camera can manage it". On a webcam that declares 640x480 as its maximum
 	// this section would otherwise declare "1280x720 delivered".
-	if mw, mh, mfps, clamped, e := mf.PickCameraSize(cams[0].Link(), w, h, fps); e == nil && clamped {
+	if mw, mh, mfps, clamped, e := mf.PickCameraSize(cam.Link(), w, h, fps); e == nil && clamped {
 		fmt.Printf("  NOTE: the camera declares at most %dx%d@%d — every larger row below\n",
 			mw, mh, mfps)
 		fmt.Printf("        is the reader enlarging, not the camera.\n\n")
@@ -421,4 +442,9 @@ func printCameraFormats(link string) {
 		}
 		fmt.Printf("            %2d) %s\n", f.Index, f)
 	}
+}
+
+func fatal(format string, a ...any) {
+	fmt.Fprintf(os.Stderr, "error: "+format+"\n", a...)
+	os.Exit(1)
 }

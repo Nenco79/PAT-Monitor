@@ -92,42 +92,17 @@ func dib(img *image.NRGBA) []byte {
 	return b.Bytes()
 }
 
-// ICO packs the images into a .ico file.
-//
-// The monitor does not use it — what goes in the binary is the resource, not
-// the file — but it is there for anyone who has to give an icon to a shortcut,
-// an installer or a page, and it is also the only way to **look** at what we
-// have drawn without compiling.
-func ICO(im []Image) []byte {
-	var b bytes.Buffer
-	put := func(v any) { _ = binary.Write(&b, binary.LittleEndian, v) }
-	put(uint16(0))       // reserved
-	put(uint16(1))       // type: icon
-	put(uint16(len(im))) // how many
-	off := 6 + 16*len(im)
-	for _, i := range im {
-		b.Write(dirEntry(i))
-		put(uint32(len(i.Data)))
-		put(uint32(off))
-		off += len(i.Data)
-	}
-	for _, i := range im {
-		b.Write(i.Data)
-	}
-	return b.Bytes()
-}
-
 // dirEntry is the first **eight** bytes common to ICONDIRENTRY and
 // GRPICONDIRENTRY: only what comes after differs, the offset in the file or the
 // resource identifier.
 //
 // Counted: bWidth, bHeight, bColorCount, bReserved, then wPlanes and wBitCount
-// at two bytes each. The comment said six, and both callers already depended on
-// eight — ICO strides 16 (8 + 4 + 4) and group strides 14 (8 + 4 + 2). Trusting
-// the number and trimming the slice gives an .ico whose second entry starts two
-// bytes early and a group whose identifiers are read out of the byte count,
-// which is the very fault the note in `dib` three functions above warns about:
-// short by just enough to make whoever counts read the wrong bytes.
+// at two bytes each. The comment said six, and the callers already depended on
+// eight — the group strides 14 (8 + 4 + 2), as a .ico would 16 (8 + 4 + 4).
+// Trusting the number and trimming the slice gives a group whose identifiers
+// are read out of the byte count, which is the very fault the note in `dib`
+// just above warns about: short by just enough to make whoever counts read the
+// wrong bytes.
 //
 // **256 is written as zero.** The field is one byte, so 256 does not fit, and
 // the convention is that zero means 256. Writing 255 produces an icon that

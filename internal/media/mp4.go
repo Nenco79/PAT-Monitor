@@ -7,25 +7,47 @@ import (
 	"io"
 	"time"
 
+	"github.com/bluenviron/mediacommon/v2/pkg/codecs/h264"
 	"github.com/bluenviron/mediacommon/v2/pkg/formats/mp4/codecs"
 	"github.com/bluenviron/mediacommon/v2/pkg/formats/pmp4"
 )
 
+// The two tracks' time scales.
+//
+// 90 kHz is the conventional base for video in MPEG and it represents the usual
+// cadences exactly. The audio uses its own sample rate, so the duration of a
+// 20 ms Opus packet is a whole number of samples and accumulates no rounding
+// error.
+const (
+	videoTimeScale = 90000
+	audioTimeScale = 48000
+
+	videoTrackID = 1
+	audioTrackID = 2
+)
+
+// ErrNoParameterSets says the SPS or the PPS is missing, and without them the
+// video track cannot be described.
+var ErrNoParameterSets = errors.New("media: SPS or PPS missing")
+
+// ErrNoSamples says there is nothing to write.
+var ErrNoSamples = errors.New("media: no samples")
+
 // MP4Clip collects samples and writes a **progressive** MP4, that is, one with
 // the sample table all in the moov instead of scattered through the fragments.
 //
-// **It is not FMP4Muxer's twin, it is the other job.** The fragmented one is
+// **Progressive, because a fragmented file is the other job.** Fragmented is
 // for where the file is not finished while it is being sent — streaming — and
 // the price is that without an index (sidx or mfra) whoever opens it does not
 // know how long it lasts or where to seek: measured on our first download,
 // Explorer declared an empty duration, and players that insist on the index
 // treat it as non-seekable. A clip on disk, on the other hand, is complete the
 // instant it is written, so the index can really be written — same samples, a
-// thousand bytes more, and the duration appears.
+// thousand bytes more, and the duration appears. The fragmented muxer that was
+// written for streaming had only a measuring tool left as a user, and went.
 //
-// The API is FMP4Muxer's on purpose, so moving from one to the other costs
-// nothing. And like that one, it knows neither the network nor files, and it is
-// not safe for concurrent use.
+// It knows neither the network nor files, and it is not safe for concurrent
+// use.
 type MP4Clip struct {
 	sps, pps      []byte
 	audioChannels int
@@ -36,14 +58,26 @@ type MP4Clip struct {
 
 // NewMP4Clip prepares a clip for the tracks described.
 //
-// audioChannels is the channel count declared for Opus: the SDP's warning
-// applies, the stream is mono but players expect the declaration to say two.
+// audioChannels is the channel count declared for Opus, and **the two declared
+// when none are asked for is not a convenience, it is normative**: it is the
+// SDP's own warning — the stream is mono and players expect the declaration to
+// say two, RFC 7587.
+//
+// The parameter sets are copied: whoever passes them may reuse those slices,
+// and keeping them by reference would write bytes into the header that changed
+// afterwards.
 func NewMP4Clip(sps, pps []byte, audioChannels int) (*MP4Clip, error) {
-	sps, pps, audioChannels, err := trackSetup(sps, pps, audioChannels)
-	if err != nil {
-		return nil, err
+	if len(sps) == 0 || len(pps) == 0 {
+		return nil, ErrNoParameterSets
 	}
-	return &MP4Clip{sps: sps, pps: pps, audioChannels: audioChannels}, nil
+	if audioChannels <= 0 {
+		audioChannels = 2
+	}
+	return &MP4Clip{
+		sps:           append([]byte(nil), sps...),
+		pps:           append([]byte(nil), pps...),
+		audioChannels: audioChannels,
+	}, nil
 }
 
 // AddVideo appends an Annex-B access unit with the declared duration.
@@ -127,6 +161,49 @@ func (c *MP4Clip) Marshal(w io.Writer) error {
 		return fmt.Errorf("media: writing the clip: %w", err)
 	}
 	return nil
+}
+
+// durToScale converts a duration into the given time scale.
+//
+// The rounding is to nearest and not down: truncating systematically would lose
+// a few units on every sample, and over a whole night the declared time would
+// slip behind the real one.
+func durToScale(d time.Duration, scale int64) int64 {
+	if d <= 0 {
+		return 0
+	}
+	return (int64(d)*scale + int64(time.Second)/2) / int64(time.Second)
+}
+
+// avccSample converts an access unit from Annex-B to AVCC — the length in front
+// of every NAL instead of the start codes — and says whether it is a keyframe.
+//
+// The SPS, PPS and delimiters do not go into the sample: the parameter sets are
+// already in the header, and repeating them on every keyframe swells the file
+// without adding anything. It returns nil when no useful NAL is left.
+func avccSample(au []byte) (payload []byte, keyframe bool, err error) {
+	var nalus [][]byte
+	IterateAnnexB(au, func(n NAL) bool {
+		switch n.Type {
+		case NALTypeSPS, NALTypePPS, NALTypeAUD:
+			return true
+		}
+		if n.IsKeyframe() {
+			keyframe = true
+		}
+		nalus = append(nalus, n.Data)
+		return true
+	})
+	if len(nalus) == 0 {
+		return nil, false, nil
+	}
+	// h264.AVCC(...).Marshal() is public API and not deprecated, unlike
+	// fmp4.NewSampleH264, which beyond this did nothing we needed.
+	payload, err = h264.AVCC(nalus).Marshal()
+	if err != nil {
+		return nil, false, fmt.Errorf("media: video sample: %w", err)
+	}
+	return payload, keyframe, nil
 }
 
 // ErrNoMovieHeader says the file does not carry the header with the duration.

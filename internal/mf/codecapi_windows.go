@@ -28,16 +28,10 @@ var (
 	codecLowLatencyMode  = guid("{9c27891a-ed7a-40e1-88e8-b22727a024ee}")
 	codecForceKeyFrame   = guid("{398c1b98-8353-475a-9ef2-8f265d260345}")
 
-	// The two constant-quality properties. The GUIDs are cross-checked between
-	// the mingw-w64 headers and the ones Microsoft publishes in win32metadata,
+	// The bitrate cap of RateCapped. The GUID is cross-checked between the
+	// mingw-w64 headers and the ones Microsoft publishes in win32metadata,
 	// because the SDK is not present on this machine: see the invariant about
 	// the quantiser.
-	//
-	// AVEncCommonQuality goes from 0 to 100 and is VT_UI4, not VT_R4 as one
-	// might expect of a "quality". The type is dictated by the declaration, not
-	// by the sense of the question — a lesson already paid for with
-	// AVEncVideoForceKeyFrame.
-	codecQuality    = guid("{fcbf57a3-7ea5-4b0c-9644-69b40c39c391}")
 	codecMaxBitRate = guid("{9651eae4-39b9-4ebf-85ef-d7f444ec7465}")
 
 	// The quantiser's floor and ceiling, that is, the limits within which the
@@ -95,25 +89,12 @@ const (
 	// and it is what you want when the bandwidth is given and fixed.
 	RateCBR RateControl = "cbr"
 
-	// RateQuality: the quality is fixed and the bitrate follows the scene.
-	//
-	// On a baby monitor that is the opposite of what CBR does, and in the right
-	// direction: the room is still for 99% of the night and moves in the 1%
-	// that is the only moment that counts. CBR spends when nothing is happening
-	// and runs out of bits when something does.
-	//
-	// It goes **always** with a cap (AVEncCommonMaxBitRate), otherwise a sudden
-	// movement would produce a spike the network cannot carry: that would trade
-	// blockiness for freezing, which is worse.
-	//
-	// **But that cap does not exist here.** The H.264 Video Encoder
-	// documentation says AVEncCommonMaxBitRate "applies when the rate control
-	// mode is PeakConstrainedVBR": asked for in Quality it is not ignored on
-	// some hardware whim, it is simply not provided for. Measured, 10507 kbit/s
-	// with the cap at 2500. That is why RateCapped exists.
-	RateQuality RateControl = "quality"
-
 	// RateCapped: quality with a real cap, in a single loop.
+	//
+	// **It is the only constant-quality mode, because in Quality the cap does
+	// not exist.** AVEncCommonMaxBitRate "applies when the rate control mode is
+	// PeakConstrainedVBR": asked for in Quality it is simply not provided for,
+	// and the mode that tried went — see "Capped CRF and the two-mode switch".
 	//
 	// It is the *capped CRF* the rest of the world uses for streaming — a
 	// quality target with a hard ceiling — and on Windows it is put together
@@ -137,36 +118,14 @@ const (
 // the sensor's noise — which in the dark is incompressible and cannot be seen.
 // Below that value it is spending for nothing.
 //
-// As with DefaultQuality, on a different encoder the number will be another
-// one, and the way to find it is `pat-capture -rc capped -minqp N`.
-const DefaultMinQP = 30
-
-// DefaultQuality is the quality level when none is asked for.
-//
-// The scale runs from 0 to 100 and **it is not the quantiser**: the mapping
-// belongs to the encoder and has to be measured with `pat-capture -rc quality
-// -q N`. On Quick Sync, measured:
-//
-//	q=70 -> QP 25, 10507 kbit/s   (the sensor's noise, preserved at great cost)
-//	q=50 -> QP 30,   979 kbit/s
-//	q=30 -> QP 36,   250 kbit/s
-//	q=15 -> QP 40,   145 kbit/s
-//
-// 50 is the right value here because it lands on QP 30, which our measurements
-// point to as a clean picture, and because the jump from 50 to 70 is **ten
-// times** the bandwidth for five points of quantiser: below 30 the encoder
-// starts preserving the sensor's noise, which is incompressible and cannot be
-// seen.
-//
 // On a different encoder the number will be another one, and the way to find it
-// is that command line.
-const DefaultQuality = 50
+// is `pat-capture -rc capped -minqp N`.
+const DefaultMinQP = 30
 
 // Bitrate control modes.
 const (
 	rateControlCBR                = 0
 	rateControlPeakConstrainedVBR = 1
-	rateControlQuality            = 3
 )
 
 type codecAPI struct {
@@ -275,17 +234,6 @@ func (e *VideoEncoder) applyCodecSettings(cfg VideoEncoderConfig) error {
 	// are spent: it is the bandwidth the network has declared it can carry, and
 	// exceeding it does not produce a better picture but lost packets.
 	switch cfg.RateControl {
-	case RateQuality:
-		// The quality is fixed and the bitrate follows the scene — but with the
-		// cap, otherwise a sudden movement would produce a spike the network
-		// cannot carry.
-		note("rate control mode", e.codec.setValue(codecRateControlMode, ui4(rateControlQuality)))
-		q := cfg.Quality
-		if q <= 0 || q > 100 {
-			q = DefaultQuality
-		}
-		note("quality", e.codec.setValue(codecQuality, ui4(uint32(q))))
-		note("max bitrate", e.codec.setValue(codecMaxBitRate, ui4(bps)))
 	case RateCapped:
 		// The three pieces go together and none of them does the job alone: the
 		// mode because it is the only one where the cap holds, the cap because
@@ -435,14 +383,6 @@ func (e *VideoEncoder) SetBitrate(kbps int) error {
 		return err
 	}
 
-	// In constant quality the number that governs is not the mean but the
-	// **cap**: the mean is not even looked at, and changing it would leave the
-	// encoder free to exceed the bandwidth the network has declared it can
-	// carry. It is the kind of slip that gives no error and shows up only as
-	// lost packets.
-	if e.rateControl == RateQuality {
-		return e.kept(kbps, e.codec.setValue(codecMaxBitRate, ui4(bps)))
-	}
 	// In capped CRF **both** move: the cap because it is the network's limit,
 	// the mean because in PeakConstrainedVBR it is the target the encoder works
 	// around. Moving only one would leave the two telling different stories —

@@ -16,7 +16,7 @@ import (
 // to be full already, otherwise the first verdict would arrive ten seconds later
 // with the previous silence inside it.
 //
-// **It is also the guardian of `watchedClasses`**, which is the only way the
+// **It is also the guardian of `ced.WatchedClasses`**, which is the only way the
 // recogniser can really fail to start: the four names are written by hand and
 // have to exist **under those exact names** among the 527 classes.
 // `newRecogniser` resolves them all, so calling it here checks them all — a list
@@ -24,7 +24,7 @@ import (
 func TestNothingIsAskedWithBothSwitchesOff(t *testing.T) {
 	r := newRecogniser(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError})))
 	if r == nil {
-		t.Fatal("newRecogniser answered nil: either the embedded model did not load, or one of the watchedClasses names is not among the classes, and the log says which")
+		t.Fatal("newRecogniser answered nil: either the embedded model did not load, or one of the ced.WatchedClasses names is not among the classes, and the log says which")
 	}
 	defer r.Close()
 

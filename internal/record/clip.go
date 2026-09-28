@@ -32,8 +32,8 @@ var ErrNoVideo = errors.New("record: the pre-roll has no video")
 // **Progressive and not fragmented**: without an index an fMP4 does not declare
 // how long it lasts, and on the first download Explorer answered with an empty
 // duration while the same clip rewritten progressive answered four seconds. It
-// costs a thousand bytes on a megabyte and a half. The fragmented one stays
-// where its job is: sending a file that is not finished yet.
+// costs a thousand bytes on a megabyte and a half. Fragmented is for sending a
+// file that is not finished yet, and nothing here does that.
 //
 // **The durations come from the arrival instants, not from a constant.**
 // AccessUnit carries no time — the camera's PTS is discarded by the pipeline,

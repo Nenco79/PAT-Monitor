@@ -40,8 +40,7 @@ var (
 	height2   = flag.Int("h2", 0, "halfway through, drop to this height and measure whether the pixels change")
 	width2    = flag.Int("w2", 0, "the width to go with -h2 (default: 16:9 of it, rounded to macroblocks)")
 	fps2      = flag.Int("fps2", 0, "halfway through, drop to this frame rate and measure whether the frames really fall")
-	rateCtl   = flag.String("rc", "cbr", "how the bits are spent: cbr, quality, capped")
-	qLevel    = flag.Int("q", 0, "quality level 1-100 for -rc quality (0 = default)")
+	rateCtl   = flag.String("rc", "cbr", "how the bits are spent: cbr, capped")
 	minQP     = flag.Int("minqp", 0, "quantiser floor 1-51 for -rc capped (0 = default)")
 	maxQP     = flag.Int("maxqp", 0, "quantiser ceiling 1-51: how far the encoder may degrade to stay in the bitrate (0 = free)")
 	micGain   = flag.Float64("gain", 0, "microphone gain in dB")
@@ -49,7 +48,7 @@ var (
 	pinNative = flag.Bool("pin", false, "pin the camera's native format, so a size change must go through a converter")
 	keepFRC   = flag.Bool("frc", false, "leave the video processor free to invent frames, as Media Foundation does by default")
 	verbose   = flag.Bool("v", false, "debug logging")
-	fmp4Out   = flag.String("fmp4", "", "write a fragmented MP4 to this file, to exercise the muxer")
+	mp4Out    = flag.String("mp4", "", "write the run to this MP4 with the clips' muxer; it is progressive, so it is held in memory and written at the end")
 	testTone  = flag.Bool("tone", false, "use a test tone instead of the microphone")
 	camWanted = flag.String("cam", "", "measure on the camera whose name or link contains this text")
 	// micWanted is the microphone's twin of -cam. The monitor captures the one
@@ -250,12 +249,11 @@ func main() {
 		MicCallback: fullRun(wasapiPeriod),
 		AudioEncode: fullRun(opusFrameDuration),
 	}
-	// Exercising the fMP4 muxer on the real stream. It is the format both the
-	// playback fallback and the recorded clips need, and the only proof that
-	// counts is that an independent player can open the result.
-	var rec *fmp4Recorder
-	if *fmp4Out != "" {
-		rec, err = newFMP4Recorder(*fmp4Out, time.Second/time.Duration(*fps))
+	// Exercising the clips' muxer on the real stream: the only proof that counts
+	// is that an independent player can open the result.
+	var rec *mp4Recorder
+	if *mp4Out != "" {
+		rec, err = newMP4Recorder(*mp4Out, time.Second/time.Duration(*fps))
 		if err != nil {
 			fatal("%v", err)
 		}
@@ -266,8 +264,8 @@ func main() {
 	// measurement taken with -rc misspelt would say "cbr" while calling itself
 	// something else, and that is exactly how a test accuses somebody else.
 	rc := mf.RateControl(*rateCtl)
-	if rc != mf.RateCBR && rc != mf.RateQuality && rc != mf.RateCapped {
-		fatal("unknown rate control: %q (cbr, quality or capped)", *rateCtl)
+	if rc != mf.RateCBR && rc != mf.RateCapped {
+		fatal("unknown rate control: %q (cbr or capped)", *rateCtl)
 	}
 
 	start := time.Now()
@@ -289,7 +287,6 @@ func main() {
 		// let the two part company.
 		GOPSeconds:              encoder.KeyframeSecs,
 		RateControl:             rc,
-		Quality:                 *qLevel,
 		MinQP:                   *minQP,
 		MaxQP:                   *maxQP,
 		PreferEncoder:           *preferEnc,
@@ -332,10 +329,7 @@ func main() {
 			}
 			if rec != nil {
 				if err := rec.feedVideo(au); err != nil {
-					fmt.Fprintf(os.Stderr, "fmp4: %v\n", err)
-				}
-				if err := rec.flush(now); err != nil {
-					fmt.Fprintf(os.Stderr, "fmp4: %v\n", err)
+					fmt.Fprintf(os.Stderr, "mp4: %v\n", err)
 				}
 			}
 			// Checks that the parameter sets accompany the stream: without
@@ -899,8 +893,8 @@ func main() {
 	fmt.Println()
 
 	if !pass {
-		// os.Exit runs no defer, and the recorder's last segment is written by
-		// its close: a failing run is the one whose tail most needs looking at.
+		// os.Exit runs no defer, and the recorder writes the file in its close:
+		// a failing run is the one that most needs looking at.
 		if rec != nil {
 			rec.close()
 		}
@@ -917,34 +911,36 @@ const opusFrameDuration = 20 * time.Millisecond
 // pipeline, fixed in readLevel.
 const analysisBlockDuration = 100 * time.Millisecond
 
-// fmp4Recorder writes the fMP4 muxer's output to a file.
+// mp4Recorder writes the run to a file with media.MP4Clip, the muxer the clips
+// ship with.
 //
-// It exists to exercise the muxer on the real stream: an independent player
+// It exists to exercise that muxer on the real stream: an independent player
 // that opens the file and reads its duration, codec and frame count is a proof
-// no test built on synthetic data can give.
-type fmp4Recorder struct {
+// no test built on synthetic data can give. The file is progressive, so the
+// samples are held until close writes it: a run killed before then leaves an
+// empty file.
+type mp4Recorder struct {
 	f        *os.File
-	mux      *media.FMP4Muxer
+	clip     *media.MP4Clip
 	frameDur time.Duration
 	sps, pps []byte
-	// started becomes true at the first keyframe after the initialisation: a
-	// segment starting with a differential frame is not decodable.
-	started   bool
-	lastFlush time.Time
+	// started becomes true at the first keyframe after the parameter sets: a
+	// track starting with a differential frame is not decodable.
+	started bool
 }
 
-func newFMP4Recorder(path string, frameDur time.Duration) (*fmp4Recorder, error) {
+func newMP4Recorder(path string, frameDur time.Duration) (*mp4Recorder, error) {
 	f, err := os.Create(path)
 	if err != nil {
 		return nil, fmt.Errorf("creating %s: %w", path, err)
 	}
-	return &fmp4Recorder{f: f, frameDur: frameDur}, nil
+	return &mp4Recorder{f: f, frameDur: frameDur}, nil
 }
 
-func (r *fmp4Recorder) feedVideo(au media.AccessUnit) error {
-	if r.mux == nil {
+func (r *mp4Recorder) feedVideo(au media.AccessUnit) error {
+	if r.clip == nil {
 		// The parameter sets describe the track and have to be collected before
-		// the initialisation can be written.
+		// the clip can be prepared.
 		media.IterateAnnexB(au.Data, func(n media.NAL) bool {
 			switch n.Type {
 			case media.NALTypeSPS:
@@ -957,19 +953,11 @@ func (r *fmp4Recorder) feedVideo(au media.AccessUnit) error {
 		if len(r.sps) == 0 || len(r.pps) == 0 {
 			return nil
 		}
-		mux, err := media.NewFMP4Muxer(r.sps, r.pps, 2)
+		clip, err := media.NewMP4Clip(r.sps, r.pps, 2)
 		if err != nil {
 			return err
 		}
-		init, err := mux.Init()
-		if err != nil {
-			return err
-		}
-		if _, err := r.f.Write(init); err != nil {
-			return err
-		}
-		r.mux = mux
-		r.lastFlush = time.Now()
+		r.clip = clip
 	}
 
 	if !r.started {
@@ -978,34 +966,22 @@ func (r *fmp4Recorder) feedVideo(au media.AccessUnit) error {
 		}
 		r.started = true
 	}
-	return r.mux.AddVideo(au.Data, r.frameDur)
+	return r.clip.AddVideo(au.Data, r.frameDur)
 }
 
-func (r *fmp4Recorder) feedAudio(pkt []byte) {
-	if r.mux == nil || !r.started {
+func (r *mp4Recorder) feedAudio(pkt []byte) {
+	if r.clip == nil || !r.started {
 		return
 	}
-	r.mux.AddAudio(pkt, opusFrameDuration)
+	r.clip.AddAudio(pkt, opusFrameDuration)
 }
 
-// flush emits a segment if enough time has passed.
-func (r *fmp4Recorder) flush(now time.Time) error {
-	if r.mux == nil || now.Sub(r.lastFlush) < time.Second {
-		return nil
-	}
-	r.lastFlush = now
-	seg, err := r.mux.Segment()
-	if err != nil || seg == nil {
-		return err
-	}
-	_, err = r.f.Write(seg)
-	return err
-}
-
-func (r *fmp4Recorder) close() {
-	if r.mux != nil {
-		if seg, err := r.mux.Segment(); err == nil && seg != nil {
-			_, _ = r.f.Write(seg)
+// close writes the file. It is called once: by the defer, or before os.Exit,
+// which runs none.
+func (r *mp4Recorder) close() {
+	if r.clip != nil {
+		if err := r.clip.Marshal(r.f); err != nil {
+			fmt.Fprintf(os.Stderr, "mp4: %v\n", err)
 		}
 	}
 	_ = r.f.Close()

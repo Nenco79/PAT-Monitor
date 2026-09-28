@@ -127,12 +127,10 @@ func TestMP4DurationRefusesAZeroTimescale(t *testing.T) {
 	}
 }
 
-// The two writers have two jobs and one constraint in common, and that
-// constraint is not ours: RFC 7587 wants Opus declared with two channels even
-// when the stream is mono. Written in two constructors it could change in one
-// only, and the symptom would be a clip on disk declaring different channels
-// from the stream that produced it — plausible on both sides, wrong on one.
-func TestBothWritersDeclareTheSameOpusChannels(t *testing.T) {
+// RFC 7587 wants Opus declared with two channels even when the stream is mono,
+// and that constraint is not ours: a clip declaring anything else when nobody
+// asked is plausible and wrong.
+func TestTheClipDeclaresOpusAsTwoChannels(t *testing.T) {
 	sps, pps := []byte{0x67, 0x42, 0xE0, 0x1F}, []byte{0x68, 0xCE}
 
 	for _, asked := range []int{0, -1, 1, 2} {
@@ -140,41 +138,29 @@ func TestBothWritersDeclareTheSameOpusChannels(t *testing.T) {
 		if err != nil {
 			t.Fatalf("NewMP4Clip(%d): %v", asked, err)
 		}
-		mux, err := NewFMP4Muxer(sps, pps, asked)
-		if err != nil {
-			t.Fatalf("NewFMP4Muxer(%d): %v", asked, err)
-		}
-		if clip.audioChannels != mux.audioChannels {
-			t.Errorf("with %d asked for: the clip declares %d channels, the muxer %d",
-				asked, clip.audioChannels, mux.audioChannels)
-		}
 		if asked <= 0 && clip.audioChannels != 2 {
 			t.Errorf("with no channels asked for it declares %d instead of 2", clip.audioChannels)
+		}
+		if asked > 0 && clip.audioChannels != asked {
+			t.Errorf("with %d asked for it declares %d", asked, clip.audioChannels)
 		}
 	}
 }
 
-// The defensive copy holds for both: whoever passes the parameter sets may
-// reuse those slices, and a writer keeping them by reference would write bytes
-// into the header that changed afterwards.
-func TestNeitherWriterKeepsTheCallersSlices(t *testing.T) {
+// The defensive copy: whoever passes the parameter sets may reuse those slices,
+// and a writer keeping them by reference would write bytes into the header that
+// changed afterwards.
+func TestTheClipDoesNotKeepTheCallersSlices(t *testing.T) {
 	sps, pps := []byte{0x67, 0x42, 0xE0, 0x1F}, []byte{0x68, 0xCE}
 	clip, err := NewMP4Clip(sps, pps, 2)
 	if err != nil {
 		t.Fatalf("NewMP4Clip: %v", err)
-	}
-	mux, err := NewFMP4Muxer(sps, pps, 2)
-	if err != nil {
-		t.Fatalf("NewFMP4Muxer: %v", err)
 	}
 
 	sps[1], pps[1] = 0xFF, 0xFF // the caller reuses their buffer
 
 	if clip.sps[1] == 0xFF || clip.pps[1] == 0xFF {
 		t.Error("the clip kept the caller's slices")
-	}
-	if mux.sps[1] == 0xFF || mux.pps[1] == 0xFF {
-		t.Error("the muxer kept the caller's slices")
 	}
 }
 

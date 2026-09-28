@@ -39,6 +39,32 @@ func ToMonoS16(src []byte, f StreamFormat, dst []int16) (int, error) {
 	return frames, nil
 }
 
+// FirstChannelS16 extracts the first channel of a PCM block as 16-bit samples,
+// and returns how many it wrote into dst. It is the form the analyser expects,
+// for the instruments that judge a microphone's noise floor.
+//
+// One channel is taken rather than averaging them: averaging channels whose
+// noise is uncorrelated would lower the level by about 3 dB and falsify the
+// count of exact zeros, which is precisely the figure under examination. For
+// the same reason the scale is 32768 and not ToMonoS16's 32767: a 16-bit
+// sample comes back unchanged, so an exact zero stays one and a single LSB of
+// noise is not rounded away.
+func FirstChannelS16(src []byte, f StreamFormat, dst []int16) (int, error) {
+	bpf := f.BytesPerFrame()
+	if bpf <= 0 {
+		return 0, fmt.Errorf("audio: unconvertible format: %s", f)
+	}
+	frames := min(len(src)/bpf, len(dst))
+	for i := range frames {
+		v, err := sampleAt(src[i*bpf:], f)
+		if err != nil {
+			return 0, err
+		}
+		dst[i] = SaturateS16(v * 32768)
+	}
+	return frames, nil
+}
+
 // sampleAt reads a single sample and normalises it into [-1, 1].
 func sampleAt(b []byte, f StreamFormat) (float64, error) {
 	switch {

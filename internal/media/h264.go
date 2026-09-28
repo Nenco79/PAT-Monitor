@@ -238,9 +238,9 @@ func ProfileLevelID(sps []byte) (string, error) {
 // written here, in the stream, and there is no way for them to be a
 // declaration.
 //
-// It is needed outside this package too: the header of a fragmented MP4 carries
-// the size in the track, and taking it from elsewhere means taking it from
-// somewhere that might disagree with the stream.
+// It is needed outside this package too: the header of an MP4 carries the size
+// in the track, and taking it from elsewhere means taking it from somewhere that
+// might disagree with the stream.
 func SPSSize(sps []byte) (width, height int, err error) {
 	// The payload starts after the NAL header byte, and it has to be cleaned of
 	// the anti-emulation bytes (see rbsp).

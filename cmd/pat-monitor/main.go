@@ -2091,11 +2091,11 @@ func encoderVendor(hardware bool) string {
 // videoKbps is the bandwidth the video is **really occupying**, not the one it
 // has been granted.
 //
-// The two numbers coincide in CBR, where the encoder fills the cap, and diverge
-// exactly when the difference matters: under constant quality the cap stays
-// where it is while the throughput falls. Showing the cap would say "2500" all
-// night even while 900 are being used, that is, it would hide precisely the
-// saving that mode exists to obtain.
+// The two numbers diverge in the ordinary case, not in a special mode: on a
+// still room the encoder produces less than it is granted even in CBR — see
+// "The requested bitrate is not the produced bitrate, not even in CBR". Showing
+// the cap would say "2500" all night even while 900 are being used, that is, it
+// would hide precisely the saving the quality loop exists to obtain.
 //
 // It is the same correction already made for the cadence and the resolution: the
 // status page has to say what is happening, not what was asked for.

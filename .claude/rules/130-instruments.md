@@ -5,7 +5,6 @@ paths:
   - "cmd/pat-diag/**"
   - "cmd/pat-capture/**"
   - "cmd/pat-viewer/**"
-  - "cmd/pat-wasapi/**"
   - "cmd/pat-opus/**"
   - "cmd/pat-sounds/**"
 ---
@@ -161,10 +160,11 @@ reading that led to it is not, and here it was enough to find the defect again
 in four greps. **An agent's transcript is an instrument too**, and it survives
 the agent.
 
-**`pat-wasapi`** measures the microphone's three paths one after another —
-shared, raw and exclusive — and compares them. It answers "why is it so quiet":
-the RMS difference between raw and exclusive **is** the endpoint gain that one
-of the two roads does not receive.
+**`pat-diag -mic-modes`**, which was the separate `pat-wasapi`, measures the
+microphone's three paths one after another — shared, raw and exclusive — and
+compares them. It answers "why is it so quiet": the RMS difference between raw
+and exclusive **is** the endpoint gain that one of the two roads does not
+receive.
 
 **`pat-opus`** exercises the audio encoder: it encodes with libopus and decodes
 with `pion/opus`, which is an **independent** implementation — two roads that

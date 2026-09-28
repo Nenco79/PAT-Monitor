@@ -137,10 +137,10 @@ func LoopbackLevel(deviceID string, window time.Duration) (rmsDBFS, peak float64
 		// the instrument exists to reach: "the path accepts the samples and
 		// produces no sound".
 		//
-		// It was briefly an error, and that aborted `pat-wasapi` at its first
-		// call — on a machine deliberately kept quiet, which is what the tool
-		// asks for — so the tone was never played and no verdict was ever
-		// reached. The case this function really could not measure is an
+		// It was briefly an error, and that aborted `pat-wasapi` (now
+		// `pat-diag -out`) at its first call — on a machine deliberately kept
+		// quiet, which is what the tool asks for — so the tone was never played
+		// and no verdict was ever reached. The case this function really could not measure is an
 		// unreadable sample format, and that one now comes back as an error from
 		// `floatSamples` instead of as silence.
 		if n == 0 {
@@ -192,7 +192,7 @@ func floatSamples(data *byte, n int, f StreamFormat) ([]float64, error) {
 // **It exists to answer "I cannot hear anything" without guessing.** The render
 // path can be perfect and the sound still be inaudible because the slider is
 // down or the output is muted, and from inside the program those two cases are
-// indistinguishable from a fault. It is the same question pat-wasapi asks about
+// indistinguishable from a fault. It is the same question pat-diag asks about
 // the microphone, from the other side of the room.
 func RenderVolume(deviceID string) (VolumeInfo, error) {
 	var info VolumeInfo

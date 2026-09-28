@@ -10,9 +10,6 @@
 // **Icon and version live in the same file**, and that is not a convenience: an
 // executable has one resource section, and two `.syso` in the same directory do
 // not add up.
-//
-// With -ico it also writes the .ico file, which the binary does not need but is
-// the only way to **look at** the icon without installing it somewhere.
 package main
 
 import (
@@ -26,13 +23,12 @@ import (
 )
 
 var (
-	out     = flag.String("o", filepath.Join("cmd", "pat-monitor", "icon_windows.syso"), "where to write the resource")
-	arch    = flag.String("arch", "amd64", "target architecture")
-	icoFile = flag.String("ico", "", "also write the .ico file here (optional)")
+	out  = flag.String("o", filepath.Join("cmd", "pat-monitor", "icon_windows.syso"), "where to write the resource")
+	arch = flag.String("arch", "amd64", "target architecture")
 
 	// The logos a package manifest names, drawn at the sizes it names them at.
 	//
-	// **They are drawn here and not scaled from the .ico**, which is the whole
+	// **They are drawn here and not scaled from the icon**, which is the whole
 	// reason this flag exists rather than three lines of image resizing in
 	// whoever packages: the drawing simplifies as it shrinks, so a small logo
 	// scaled down from a large one carries the detail that was meant to
@@ -122,13 +118,6 @@ func main() {
 			fail(err)
 		}
 		fmt.Printf("%s  (Store tile, %dx%d)\n", *storeTile, icon.StoreTile.Side, icon.StoreTile.Side)
-	}
-
-	if *icoFile != "" {
-		if err := os.WriteFile(*icoFile, icon.ICO(im), 0o644); err != nil {
-			fail(err)
-		}
-		fmt.Printf("%s  (%d sizes)\n", *icoFile, len(im))
 	}
 
 	data, err := icon.Syso(im, versionInfo(), *arch)

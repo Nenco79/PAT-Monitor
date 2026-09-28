@@ -367,8 +367,8 @@ Monitor\tsnet`, still under the same name, because the roaming profile follows
 the user to other machines and a node's keys must stay on one
 (`tunnel.moveTheNode`). Behind it: the Go module `patmonitor`,
 `cmd/pat-monitor`, the tools `pat-diag`, `pat-capture`, `pat-viewer`,
-`pat-opus`, `pat-wasapi`, `pat-sounds`, the two build generators `pat-icon`
-and `pat-licenses`, and `pat-sign`, which holds the release signing key.
+`pat-opus`, `pat-sounds`, the two build generators `pat-icon` and
+`pat-licenses`, and `pat-sign`, which holds the release signing key.
 
 **The Tailscale hostname is not a name, it is an address**: it generates the
 public URL, `patmon-1a2b3c.quercia-lieve.ts.net`. Changing it breaks the
@@ -455,7 +455,7 @@ already comes from System32, so this is for the loads Windows components make on
 our behalf. It was run on the AMD machine across the capture, the hardware
 encoder, both audio directions, the stream and the tray's `ShellExecute`, and
 on the NVIDIA and Intel machines through the encoder with a real camera.
-`pat-diag`, `pat-capture` and `pat-wasapi` narrow it too, so that they answer
+`pat-diag` and `pat-capture` narrow it too, so that they answer
 for the program they diagnose. A vendor transform loading a DLL of its own by
 bare name is what to suspect if an encoder stops opening
 (`internal/wincom/dllsearch_windows.go`).

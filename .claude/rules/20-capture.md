@@ -76,18 +76,18 @@ Three traps, all paid for:
   the other produces denormals, that is, "non-zero" samples at -760 dBFS: they
   look like signal if you count zeros and like silence if you look at amplitude.
   **A signal is judged by amplitude, never by the count of non-zero samples.**
-- **In exclusive mode there is no volume either.** Measured with `pat-wasapi`:
-  between raw and exclusive there are **-30.3 dB**, and the endpoint declares it
-  applies **+30.0** — two independent roads that agree, which is why the
-  declaration can be trusted instead of tuning by ear. Slider and mute are
-  applied by the audio engine, which here does not take part: without reapplying
-  them the audio arrives clean and six times quieter, enough to make a level
-  meter look stuck. They are read back from `IAudioEndpointVolume` downstream,
-  and the gain brings the sensitivity to the endpoint's **maximum whatever the
-  Windows slider says** — the slider moves for meetings and games, and a
-  monitor that inherited it could go deaf over something done the day before;
-  `mic_gain_db` is this program's own knob. Mute is respected, and is a silence
-  to be declared.
+- **In exclusive mode there is no volume either.** Measured with `pat-wasapi`
+  (now `pat-diag -mic-modes`): between raw and exclusive there are **-30.3 dB**,
+  and the endpoint declares it applies **+30.0** — two independent roads that
+  agree, which is why the declaration can be trusted instead of tuning by ear.
+  Slider and mute are applied by the audio engine, which here does not take
+  part: without reapplying them the audio arrives clean and six times quieter,
+  enough to make a level meter look stuck. They are read back from
+  `IAudioEndpointVolume` downstream, and the gain brings the sensitivity to the
+  endpoint's **maximum whatever the Windows slider says** — the slider moves for
+  meetings and games, and a monitor that inherited it could go deaf over
+  something done the day before; `mic_gain_db` is this program's own knob. Mute
+  is respected, and is a silence to be declared.
 
 The fault is silent: green page, still meter, zero signal.
 

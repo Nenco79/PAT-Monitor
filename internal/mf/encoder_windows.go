@@ -451,17 +451,12 @@ type VideoEncoderConfig struct {
 	GOPFrames int
 	// RateControl is the criterion for spending bits; empty means CBR.
 	RateControl RateControl
-	// Quality is the level to hold in RateQuality, from 1 to 100. Zero uses
-	// DefaultQuality.
-	Quality int
 	// MinQP is the quantiser floor in RateCapped, from 1 to 51. Zero uses
 	// DefaultMinQP.
 	//
 	// Higher means spending less and settling sooner; lower means chasing a
-	// sharpness that beyond a certain point is sensor noise. It is not the same
-	// scale as Quality and must not be confused with it: here the number **is**
-	// the quantiser, there it is a level from 0 to 100 that the encoder
-	// converts on its own.
+	// sharpness that beyond a certain point is sensor noise. The number **is**
+	// the quantiser, not a quality level the encoder converts on its own.
 	MinQP int
 	// MaxQP is the quantiser ceiling: beyond it the encoder must not degrade
 	// further. Zero leaves it free.

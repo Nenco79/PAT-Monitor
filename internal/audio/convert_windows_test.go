@@ -86,6 +86,73 @@ func TestToMonoS16Int16(t *testing.T) {
 	}
 }
 
+// TestFirstChannelS16ReadsEveryFormat checks the instruments' reader on every
+// sample format sampleAt knows, two channels each, the second one loud so that
+// reading it or averaging it in shows. The 24-bit and 64-bit float rows are the
+// ones pat-wasapi's own converter did not have: on such an endpoint it handed
+// the analyser nothing, and reported "no sample received" about a microphone
+// that was delivering. A 16-bit sample must come back unchanged, because the
+// count of exact zeros is the figure the instrument exists for.
+func TestFirstChannelS16ReadsEveryFormat(t *testing.T) {
+	const loud = 0x7000 // on channel 1, on the 16-bit scale
+	for _, c := range []struct {
+		name string
+		f    StreamFormat
+		ch0  []int64 // raw values, in the format's own integer or float scale
+		want []int16
+	}{
+		{"int16", StreamFormat{BitsPerSample: 16}, []int64{0, 1, -1, 32767, -32768}, []int16{0, 1, -1, 32767, -32768}},
+		{"int24", StreamFormat{BitsPerSample: 24}, []int64{0, 0x123456, -256, 0x7FFFFF, -0x800000}, []int16{0, 0x1234, -1, 32767, -32768}},
+		{"int32", StreamFormat{BitsPerSample: 32}, []int64{0, 0x12345678, -65536}, []int16{0, 0x1234, -1}},
+	} {
+		c.f.Channels = 2
+		bps := c.f.BitsPerSample / 8
+		src := make([]byte, 0, len(c.ch0)*2*bps)
+		for _, v := range c.ch0 {
+			src = appendLE(src, uint64(v), bps)
+			src = appendLE(src, uint64(loud)<<(8*(bps-2)), bps)
+		}
+		checkFirstChannel(t, c.name, src, c.f, c.want)
+	}
+
+	f32 := StreamFormat{Channels: 2, BitsPerSample: 32, Float: true}
+	checkFirstChannel(t, "float32", f32le(0.25, 0.9, -1, 0.9, 0, 0.9), f32, []int16{8192, -32768, 0})
+
+	f64 := StreamFormat{Channels: 2, BitsPerSample: 64, Float: true}
+	var src []byte
+	for _, v := range []float64{0.5, 0.9, -0.5, 0.9, 2, 0.9} {
+		src = appendLE(src, math.Float64bits(v), 8)
+	}
+	checkFirstChannel(t, "float64", src, f64, []int16{16384, -16384, 32767})
+}
+
+func checkFirstChannel(t *testing.T, name string, src []byte, f StreamFormat, want []int16) {
+	t.Helper()
+	dst := make([]int16, len(want)+1) // one spare: the count must be the frames
+	n, err := FirstChannelS16(src, f, dst)
+	if err != nil {
+		t.Errorf("%s: %v", name, err)
+		return
+	}
+	if n != len(want) {
+		t.Errorf("%s: %d samples, want %d", name, n, len(want))
+		return
+	}
+	for i := range want {
+		if dst[i] != want[i] {
+			t.Errorf("%s: sample %d = %d, want %d", name, i, dst[i], want[i])
+		}
+	}
+}
+
+// appendLE appends the low n bytes of v, little-endian.
+func appendLE(b []byte, v uint64, n int) []byte {
+	for i := range n {
+		b = append(b, byte(v>>(8*i)))
+	}
+	return b
+}
+
 func f32le(values ...float32) []byte {
 	out := make([]byte, 4*len(values))
 	for i, v := range values {
