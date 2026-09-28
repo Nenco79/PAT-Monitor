@@ -268,3 +268,29 @@ func insideTheTest(t *testing.T, s *record.Store, dir string) {
 			"writing to the disk of whoever runs it", s.Dir(), dir)
 	}
 }
+
+// **A retention too large to convert is no limit, not a tiny one.** The
+// conversion to a Duration and to bytes wraps: 213504 days was about twenty-five
+// minutes, and the hourly prune then deleted every clip not kept.
+//
+// **The defect was put back and this test fails with it**: with the plain
+// conversion, the century-long expiry comes back as minutes.
+func TestARetentionTooLargeToConvertIsNoLimit(t *testing.T) {
+	log := slog.New(slog.DiscardHandler)
+	for _, days := range []int{213504, 999999, maxRetentionDays + 1} {
+		if got := retentionAge(days, log); got != 0 {
+			t.Errorf("clips_max_days %d became an expiry of %v", days, got)
+		}
+	}
+	if got := retentionAge(7, log); got != 7*24*time.Hour {
+		t.Errorf("a week became %v", got)
+	}
+	for _, mb := range []int{17592186044417, maxRetentionMB + 1} {
+		if got := retentionBytes(mb, log); got != 0 {
+			t.Errorf("clips_max_mb %d became a ceiling of %d bytes", mb, got)
+		}
+	}
+	if got := retentionBytes(-5, log); got != 0 {
+		t.Errorf("a negative quota became %d bytes", got)
+	}
+}

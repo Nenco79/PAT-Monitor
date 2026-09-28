@@ -29,6 +29,9 @@ import (
 type Store struct {
 	mu  sync.RWMutex
 	cfg Config
+	// over is what this run changes without it being the file's: see
+	// Override.
+	over func(*Config)
 }
 
 // NewStore takes the configuration as loaded. From here on it is the only copy
@@ -53,7 +56,31 @@ var ErrSave = errors.New("config: the configuration could not be written")
 func (s *Store) Get() Config {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return s.cfg
+	return s.view(s.cfg)
+}
+
+// Override lays a change over what Get answers that is never written to the
+// file.
+//
+// **A value given for one run is not a setting.** `-listen` overrides the
+// address for this run, and it used to be set on the configuration itself:
+// the first save of anything — a setting changed from the page, the tunnel
+// recording its name — marshalled the whole struct, and every later start
+// listened on the address a one-off flag had asked for, with nothing in the
+// log saying where it came from. What Get answers is the file with this laid
+// over it; what Update hands `change` and writes is the file alone.
+func (s *Store) Override(over func(*Config)) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.over = over
+}
+
+// view is c with the run's override laid over it.
+func (s *Store) view(c Config) Config {
+	if s.over != nil {
+		s.over(&c)
+	}
+	return c
 }
 
 // Update applies a change and writes the result to disk, returning what was
@@ -79,13 +106,13 @@ func (s *Store) Update(change func(*Config) error) (Config, error) {
 
 	next := s.cfg
 	if err := change(&next); err != nil {
-		return s.cfg, err
+		return s.view(s.cfg), err
 	}
 	if err := next.Save(); err != nil {
-		return s.cfg, fmt.Errorf("%w: %v", ErrSave, err)
+		return s.view(s.cfg), fmt.Errorf("%w: %v", ErrSave, err)
 	}
 	s.cfg = next
-	return next, nil
+	return s.view(next), nil
 }
 
 // Set applies a change that cannot fail. It is Update for the ordinary case, so

@@ -77,9 +77,11 @@ func TestTheMachineCanBeHeldAwakeAndGivenBack(t *testing.T) {
 
 // **Releasing twice would close somebody else's handle.** The second call to
 // CloseHandle lands on whatever number Windows has handed out since, and the
-// program then breaks somewhere with no connection to here. Both roads out of
-// the monitor can reach the release — the deferred one and the end of the
-// Windows session — so it is not a hypothesis.
+// program then breaks somewhere with no connection to here.
+//
+// **The closes are counted**, because a second CloseHandle on a closed handle
+// returns an error release ignores: without the count this test passed with the
+// once taken out. Put back and watched failing.
 //
 // And nil is one of the things the caller holds, because a refused request is
 // still something to defer.
@@ -88,8 +90,16 @@ func TestGivingTheMachineBackTwiceIsOnce(t *testing.T) {
 	if err != nil {
 		t.Fatalf("the machine could not be held awake: %v", err)
 	}
+	closes := 0
+	a.closer = func(h windows.Handle) error {
+		closes++
+		return windows.CloseHandle(h)
+	}
 	a.release()
 	a.release()
+	if closes != 1 {
+		t.Errorf("the request's handle was closed %d times, wanted once", closes)
+	}
 
 	var none *awake
 	none.release()

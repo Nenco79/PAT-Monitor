@@ -287,17 +287,7 @@ func (r *Recorder) checkDone(now time.Time) {
 // finish hands the clip over and goes back to rest. It is called with the lock
 // held.
 func (r *Recorder) finish() {
-	clip := Clip{
-		Snapshot: Snapshot{SPS: r.sps, PPS: r.pps, Video: r.video, Audio: r.audio},
-		Code:     r.code,
-		At:       r.eventAt,
-		Keep:     r.keep,
-	}
-	r.armed = false
-	r.code = ""
-	r.keep = false
-	r.video, r.audio, r.bytes = nil, nil, 0
-
+	clip := r.take()
 	select {
 	case r.clips <- clip:
 		r.written++
@@ -308,6 +298,53 @@ func (r *Recorder) finish() {
 		r.log.Warn("clip dropped: the previous one is still being written",
 			"code", clip.Code, "dropped", r.dropped)
 	}
+}
+
+// Flush hands over the clip in progress, if there is one, with what it has
+// collected so far. It is for the end of the process, when nothing will reach
+// the finish line any more: an armed clip would otherwise be lost with the
+// memory it is in.
+//
+// It waits up to wait for the writer to take it, where finish does not wait at
+// all: at the end there is nothing else to protect from a slow disk, and the
+// previous clip may still be being written.
+func (r *Recorder) Flush(wait time.Duration) {
+	r.mu.Lock()
+	if !r.armed {
+		r.mu.Unlock()
+		return
+	}
+	clip := r.take()
+	r.mu.Unlock()
+
+	select {
+	case r.clips <- clip:
+		r.mu.Lock()
+		r.written++
+		r.mu.Unlock()
+	case <-time.After(wait):
+		r.mu.Lock()
+		r.dropped++
+		r.mu.Unlock()
+		r.log.Warn("clip dropped: the previous one was still being written at the end",
+			"code", clip.Code)
+	}
+}
+
+// take closes the clip in progress and goes back to rest. It is called with the
+// lock held.
+func (r *Recorder) take() Clip {
+	clip := Clip{
+		Snapshot: Snapshot{SPS: r.sps, PPS: r.pps, Video: r.video, Audio: r.audio},
+		Code:     r.code,
+		At:       r.eventAt,
+		Keep:     r.keep,
+	}
+	r.armed = false
+	r.code = ""
+	r.keep = false
+	r.video, r.audio, r.bytes = nil, nil, 0
+	return clip
 }
 
 // Recording says whether a clip is in progress.

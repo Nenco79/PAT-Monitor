@@ -27,7 +27,7 @@ type recogniser struct {
 	watch  map[string][]int
 	log    *slog.Logger
 
-	// Touched by different goroutines: `wanted` by the status loop and read by
+	// Touched by different goroutines: `wanted` by the watching round and read by
 	// the capture, `badRate` by the capture alone but with a value that must not
 	// be able to repeat the same line fifty times a second.
 	wanted  atomic.Bool
@@ -206,7 +206,7 @@ func (r *recogniser) Feed(pcm []byte, rate int) {
 
 // Wanted says whether anybody will read the verdict.
 //
-// It has to be called from the status loop, which already reads the switches:
+// It has to be called from the watching round, which already reads the switches:
 // **the stream is always delivered**, so that turning one on finds the window
 // already full, but with both off the model is not woken for a verdict nobody
 // will look at. Unlike motion — which has a second reader, the bitrate discount
@@ -233,7 +233,7 @@ func (r *recogniser) Ask() {
 
 // Verdict is what is in the room now, according to the model.
 //
-// It has to be called at a regular cadence — from the status loop, once a second
+// It has to be called at a regular cadence — from the watching round, once a second
 // — and consumes the results as they arrive. With the recogniser absent it
 // answers no twice: **the shape detector no longer decides in any case**,
 // because its present tuning is that of a gate and as a decider it would sound

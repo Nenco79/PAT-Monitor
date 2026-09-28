@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"errors"
 	"log/slog"
 	"os"
@@ -123,8 +122,13 @@ func oldClipsDir(cfgPath string) string {
 }
 
 // tellAboutOldClips says where the previous clips were left, if there are any.
+//
+// **The two are compared as folders, not as strings**: the current one can come
+// back unresolved from clipsFolder's last fallback while the old one has been
+// resolved, and a short name, a relative -config or a difference in case then
+// made one folder two, announcing the clips it serves as left behind.
 func tellAboutOldClips(dir string, now *record.Store, log *slog.Logger) {
-	if dir == now.Dir() {
+	if samePath(resolvedDir(dir), resolvedDir(now.Dir())) {
 		return // the fallback: the old clips are the current ones
 	}
 	entries, err := os.ReadDir(dir)
@@ -167,11 +171,46 @@ func tellAboutOldClips(dir string, now *record.Store, log *slog.Logger) {
 // machine that happens to be short of space.
 func clipStore(cfg config.Config, dir string, free func(string) (uint64, error), log *slog.Logger) *record.Store {
 	return record.NewStore(dir, record.StoreConfig{
-		MaxBytes:  int64(cfg.ClipsMaxMB) << 20,
-		MaxAge:    time.Duration(cfg.ClipsMaxDays) * 24 * time.Hour,
+		MaxBytes:  retentionBytes(cfg.ClipsMaxMB, log),
+		MaxAge:    retentionAge(cfg.ClipsMaxDays, log),
 		FreeSpace: free,
 		Log:       log,
 	})
+}
+
+// The largest retention the conversion can carry. Beyond them the product in
+// the units the store applies wraps: 213504 days is a Duration of about
+// twenty-five minutes, and a prune at that expiry deletes every clip not kept.
+// Past a century there is nothing to expire, and 2^43 MB is eight exabytes.
+const (
+	maxRetentionDays = 36500
+	maxRetentionMB   = 1<<43 - 1
+)
+
+// retentionBytes is clips_max_mb in bytes: zero or less is no ceiling, and so
+// is anything too large to be one.
+func retentionBytes(mb int, log *slog.Logger) int64 {
+	if mb <= 0 {
+		return 0
+	}
+	if mb > maxRetentionMB {
+		log.Warn("clips_max_mb is larger than any disk: the folder has no ceiling", "clips_max_mb", mb)
+		return 0
+	}
+	return int64(mb) << 20
+}
+
+// retentionAge is clips_max_days as a duration: zero or less is no expiry, and
+// so is anything longer than a century.
+func retentionAge(days int, log *slog.Logger) time.Duration {
+	if days <= 0 {
+		return 0
+	}
+	if days > maxRetentionDays {
+		log.Warn("clips_max_days is longer than a century: clips do not expire", "clips_max_days", days)
+		return 0
+	}
+	return time.Duration(days) * 24 * time.Hour
 }
 
 // recordsClip says whether an alert deserves a recording.
@@ -181,7 +220,7 @@ func clipStore(cfg config.Config, dir string, free func(string) (uint64, error),
 // why it stopped — and recording on every alert would fill the folder on exactly
 // the night when something is wrong.
 //
-// It is a function rather than a condition inside the status loop so that it can
+// It is a function rather than a condition inside the watching round so that it can
 // be asked about **all** the codes that exist, including those still to come.
 func recordsClip(a alerts.Alert) bool { return a.Level == alerts.Event }
 
@@ -195,26 +234,41 @@ func recordsClip(a alerts.Alert) bool { return a.Level == alerts.Event }
 // that brings a folder left outside back within the caps — whoever lowers the
 // quota and restarts expects it to do something, and hooking the prune only to
 // writing it would do nothing until the first event.
-func serveClips(ctx context.Context, store *record.Store, clips <-chan record.Clip, log *slog.Logger) {
+func serveClips(stop <-chan struct{}, store *record.Store, clips <-chan record.Clip, log *slog.Logger) {
 	if _, err := store.Prune(time.Now()); err != nil {
 		log.Debug("cannot prune the clips at startup", "error", err)
+	}
+	save := func(c record.Clip) {
+		// A full disk is written by the store when it starts and when it
+		// stops, and is the disk-full alert meanwhile: one line per clip
+		// refused would be one per event all night.
+		if err := store.Save(c); err != nil && !errors.Is(err, record.ErrDiskFull) {
+			log.Warn("cannot save the clip", "code", c.Code, "error", err)
+		}
 	}
 	tick := time.NewTicker(pruneInterval)
 	defer tick.Stop()
 	for {
 		select {
-		case <-ctx.Done():
-			return
+		case <-stop:
+			// What was handed over before the stop is written: the recorder
+			// has been flushed by then, so this is the last clip there is.
+			for {
+				select {
+				case c, ok := <-clips:
+					if !ok {
+						return
+					}
+					save(c)
+				default:
+					return
+				}
+			}
 		case c, ok := <-clips:
 			if !ok {
 				return
 			}
-			// A full disk is written by the store when it starts and when it
-			// stops, and is the disk-full alert meanwhile: one line per clip
-			// refused would be one per event all night.
-			if err := store.Save(c); err != nil && !errors.Is(err, record.ErrDiskFull) {
-				log.Warn("cannot save the clip", "code", c.Code, "error", err)
-			}
+			save(c)
 		case <-tick.C:
 			if _, err := store.Prune(time.Now()); err != nil {
 				log.Debug("cannot prune the clips", "error", err)

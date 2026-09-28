@@ -66,6 +66,10 @@ type awake struct {
 	h      windows.Handle
 	reason []uint16
 	once   sync.Once
+	// closer closes the request's handle. It is a field so that a test can
+	// count the closes: a second CloseHandle returns an error release ignores,
+	// so nothing else would show it.
+	closer func(windows.Handle) error
 }
 
 // awakeReason is what the machine's owner reads.
@@ -83,7 +87,7 @@ func keepAwake(reason string) (*awake, error) {
 	if err != nil {
 		return nil, fmt.Errorf("the reason for staying awake: %w", err)
 	}
-	a := &awake{reason: r}
+	a := &awake{reason: r, closer: windows.CloseHandle}
 	ctx := reasonContext{
 		Version: powerRequestContextVersion,
 		Flags:   powerRequestContextSimpleString,
@@ -107,17 +111,17 @@ func keepAwake(reason string) (*awake, error) {
 
 // release gives the machine back.
 //
-// **It is nil-safe and happens once**, because both are real here: the caller
-// holds whatever keepAwake returned including nothing, and the release sits in
-// a defer that the end of the Windows session can reach from the other side.
-// Clearing a request twice closes a handle twice, and the second close lands on
-// whatever has been given that number since.
+// **It is nil-safe and happens once.** The caller holds whatever keepAwake
+// returned, including nothing, and defers the release. There is one caller
+// today; the once is there because clearing a request twice closes a handle
+// twice, and the second close lands on whatever has been given that number
+// since, so a second caller added tomorrow must find it harmless.
 func (a *awake) release() {
 	if a == nil {
 		return
 	}
 	a.once.Do(func() {
 		procPowerClearRequest.Call(uintptr(a.h), powerRequestSystemRequired)
-		windows.CloseHandle(a.h)
+		a.closer(a.h)
 	})
 }

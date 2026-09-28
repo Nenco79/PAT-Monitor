@@ -312,6 +312,11 @@ func run(log *slog.Logger, path string) error {
 		return err
 	}
 	cfg.SetPath(path)
+	// **What the file says is kept apart from what this run uses.** `-listen`
+	// and the migrated camera link below change `cfg` for this run, and the
+	// store is handed `onFile` with them laid over it, never written: see
+	// config.Store.Override.
+	onFile := cfg
 	if *listenAddr != "" {
 		cfg.ListenAddr = *listenAddr
 	}
@@ -352,7 +357,7 @@ func run(log *slog.Logger, path string) error {
 	}
 
 	if *setPassword {
-		return promptAndSetPassword(&cfg)
+		return promptAndSetPassword(&onFile, cfg.ListenAddr)
 	}
 
 	// **SIGTERM is here for the build that has a console, and it is not the same
@@ -446,7 +451,17 @@ func run(log *slog.Logger, path string) error {
 	// the other. `config.Store` is the one copy, and the reason it lives in
 	// `internal/config` rather than here is that the server needs it too — see
 	// the note on `server.Options.Config`.
-	store := config.NewStore(cfg)
+	store := config.NewStore(onFile)
+	store.Override(func(c *config.Config) {
+		if *listenAddr != "" {
+			c.ListenAddr = *listenAddr
+		}
+		// The migrated link stands only while the file still names the camera
+		// the old way: once one is chosen from the box, the file says so.
+		if c.CameraDeviceID == "" && c.CameraName != "" && c.CameraName == onFile.CameraName {
+			c.CameraDeviceID = chosenCam
+		}
+	})
 	// configNow is the snapshot every reader takes. **Whoever needs two fields
 	// takes it once**: read twice, the two can come from two different
 	// configurations.
@@ -586,12 +601,8 @@ func run(log *slog.Logger, path string) error {
 	var motionPeak float64
 	var motionMaxDelta int
 	var motionLoggedAt, soundLoggedAt time.Time
-	// **This one instead sits under `mu`, and the three above do not.** Those are
-	// touched by a single goroutine, the sink that produces them; the status
-	// round, on the other hand, is called by two — the tray's thread once a second
-	// and **every** HTTP request to /api/status — so here a bare variable is a
-	// data race. It would not show: the race detector wants cgo, which is not on
-	// this machine.
+	// Touched only by the watching round, which is one goroutine too: see
+	// watch below.
 	var prerollLoggedAt time.Time
 	startedAt := time.Now()
 
@@ -636,7 +647,17 @@ func run(log *slog.Logger, path string) error {
 	// in another place, and the two would diverge.
 	rec := record.NewRecorder(record.RecorderConfig{Log: log})
 	clips := clipStore(cfg, clipsFolder(videosDir(log), cfg.Path(), provenDir, log), diskFree, log)
-	guard.Go(log, "the recordings", func() { serveClips(ctx, clips, rec.Clips(), log) })
+	// **The writer is stopped after the recorder has been flushed, not by the
+	// context.** On the context it returned the moment quitting began, so a
+	// clip armed within its post-roll — a hand-requested one included, which is
+	// born kept — stayed in memory and was lost, and one being written when the
+	// process exited was left truncated. See the end of run.
+	stopClips := make(chan struct{})
+	clipsDone := make(chan struct{})
+	guard.Go(log, "the recordings", func() {
+		defer close(clipsDone)
+		serveClips(stopClips, clips, rec.Clips(), log)
+	})
 	// The folder is declared **always**, not only with a detector on: since the
 	// "Clip" button exists a clip can be had with the three switches off too, and
 	// then "where has it put it?" is a question somebody will ask anyway.
@@ -766,10 +787,9 @@ func run(log *slog.Logger, path string) error {
 	}
 
 	registry := alerts.NewRegistry()
-	statusFn := func() server.Status {
-		// One snapshot for the whole round: the address below and the three
-		// switches further down have to describe the same configuration.
-		conf := configNow()
+	// snapshot is what the monitor knows about itself now. It reads and decides
+	// nothing: the alerts are the watching round's.
+	snapshot := func(conf config.Config) server.Status {
 		mu.Lock()
 		lvl := audioLevel
 		mu.Unlock()
@@ -820,10 +840,28 @@ func run(log *slog.Logger, path string) error {
 			LocalURL:       homeAddress(conf.ListenAddr),
 			Remote:         remoteState(remote),
 		}
+		return st
+	}
+	// watch is the watching round: the alerts, the event clips, the
+	// recogniser's verdict and the clip heartbeat.
+	//
+	// **It runs on a ticker of its own, and it used to run inside the status.**
+	// Its only caller was whoever asked for the status — the page's heartbeat
+	// and the tray's timer — so with the page closed and the tray not started
+	// (a session with no desktop, an icon that would not add) nothing ran: no
+	// alert reached the log, no event was recorded, the recogniser was never
+	// asked, and in the morning the log and the folder were empty with nothing
+	// saying why. Called from two places it also applied snapshots out of
+	// order, so an alert could appear, clear and appear again with a new id
+	// across one transition. One goroutine, once a second, is both remedies.
+	watch := func(now time.Time) {
+		// One snapshot for the whole round: the address in the state and the
+		// three switches further down have to describe the same configuration.
+		conf := configNow()
+		st := snapshot(conf)
 		// The alerts are recomputed from scratch on every round on the snapshot
 		// just built: no state to keep aligned, and a fault that clears switches
 		// itself off with no branch charged with switching it off.
-		now := time.Now()
 		mu.Lock()
 		moving := motionNow
 		mu.Unlock()
@@ -892,14 +930,10 @@ func run(log *slog.Logger, path string) error {
 		// that do not arrive, `resets` rising means the encoder was rebuilt, and
 		// that is the first thing to look at when a pre-roll comes out short.
 		//
-		// It is decided under the lock and written outside it: holding `mu` while
-		// writing to a file would make anybody asking for the status wait.
-		mu.Lock()
 		due := now.Sub(prerollLoggedAt) >= 10*time.Second
 		if due {
 			prerollLoggedAt = now
 		}
-		mu.Unlock()
 		// **A clip's finish line is checked by the frames that arrive**, and if
 		// the camera stops none arrive any more: without this heartbeat the clip
 		// would stay open in memory and never be written, that is, precisely the
@@ -915,7 +949,28 @@ func run(log *slog.Logger, path string) error {
 				"recording", rs.Recording, "clips", rs.Written,
 				"lost", rs.Dropped, "cut", rs.Cut)
 		}
-		st.Alerts = registry.Active(now)
+	}
+	// **The round is stopped before what it reads is closed**: the deferred
+	// wait runs ahead of recog.Close, being registered after it.
+	watchCtx, stopWatch := context.WithCancel(ctx)
+	watchDone := make(chan struct{})
+	defer func() { stopWatch(); <-watchDone }()
+	guard.Go(log, "the watching round", func() {
+		defer close(watchDone)
+		tick := time.NewTicker(time.Second)
+		defer tick.Stop()
+		for {
+			select {
+			case <-watchCtx.Done():
+				return
+			case now := <-tick.C:
+				watch(now)
+			}
+		}
+	})
+	statusFn := func() server.Status {
+		st := snapshot(configNow())
+		st.Alerts = registry.Active(time.Now())
 		return st
 	}
 
@@ -1208,8 +1263,11 @@ func run(log *slog.Logger, path string) error {
 		}))
 	}
 
-	// Orderly shutdown: the server is closed before the pipeline is allowed to
-	// die, so that connected viewers receive a clean close.
+	// Orderly shutdown of the HTTP server. **It is not ordered against the
+	// pipeline**: both stop on the same cancellation, so the camera can stop
+	// before, during or after this, and the viewers' sessions — hijacked
+	// WebSockets, which Shutdown does not touch — are closed by srv.Close once
+	// the group has ended.
 	//
 	// Not `aside`: this runs when everything is already ending, so there is
 	// nothing left to carry on without. What the catch buys is that the fault
@@ -1248,6 +1306,18 @@ func run(log *slog.Logger, path string) error {
 	})
 	if err != nil {
 		return err
+	}
+	// **The clip in progress is written, not dropped.** Everything that feeds
+	// the recorder has stopped, so what it holds is final: it is handed over
+	// with the post-roll it had, and the writer drains before the process
+	// goes. Bounded, because a disk that does not answer must not keep a
+	// monitor that has been told to quit.
+	rec.Flush(shutdownLimit)
+	close(stopClips)
+	select {
+	case <-clipsDone:
+	case <-time.After(shutdownLimit):
+		log.Warn("the last clip was still being written when the time ran out")
 	}
 	log.Info("shutdown complete")
 	return nil
@@ -2253,8 +2323,11 @@ func iceServerUsable(s webrtc.ICEServer) error {
 // listener is the one single-instance check this program has. It is held until
 // the file is written, so a monitor cannot start in between. The page's own
 // change, which closes every session, is the road for a running monitor.
-func promptAndSetPassword(cfg *config.Config) error {
-	ln, err := holdThePort(cfg.ListenAddr)
+//
+// cfg is the file as loaded, and listen the address this run would use: the
+// first is what gets written, and `-listen` is not part of it.
+func promptAndSetPassword(cfg *config.Config, listen string) error {
+	ln, err := holdThePort(listen)
 	if err != nil {
 		return err
 	}

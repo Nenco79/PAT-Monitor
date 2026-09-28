@@ -360,3 +360,36 @@ func TestAnEmptyRingRefusesTheRequestInsteadOfSayingNothing(t *testing.T) {
 		t.Error("request refused with the ring full")
 	}
 }
+
+// **Quitting inside a post-roll hands the clip over.** Nothing reaches the
+// finish line once the capture has stopped, so an armed clip — a hand-requested
+// one included, which is born kept — was lost with the memory it was in.
+//
+// **The defect was put back and this test fails with it**: with Flush doing
+// nothing, no clip is delivered.
+func TestFlushHandsOverTheClipInProgress(t *testing.T) {
+	r := NewRecorder(RecorderConfig{PostRoll: 10 * time.Second})
+	at := feedRec(t, r, sps720p, t0, 20)
+	at = feedRec(t, r, sps720p, at, 20)
+	if !r.TriggerKept(CodeManual, at) {
+		t.Fatal("the request was refused with a full ring")
+	}
+	feedRec(t, r, sps720p, at, 5) // a second of post-roll, then the quit
+
+	r.Flush(time.Second)
+	if r.Recording() {
+		t.Error("the recorder is still recording after the flush")
+	}
+	c := takeClip(t, r)
+	if !c.Keep || len(c.Video) == 0 {
+		t.Errorf("the flushed clip lost its lock or its frames: keep=%v frames=%d", c.Keep, len(c.Video))
+	}
+
+	// Nothing armed, nothing handed over.
+	r.Flush(time.Millisecond)
+	select {
+	case <-r.Clips():
+		t.Error("a flush with nothing armed delivered a clip")
+	default:
+	}
+}
