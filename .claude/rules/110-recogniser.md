@@ -356,7 +356,8 @@ concerns them, the -46 dBFS floor measured here with the real microphone.
 **But what happens on the other side of the gate had never been measured, and
 the two halves do not meet.** Walking an event down towards a room floor fixed
 at -46 dBFS — `pat-sounds dilute -sweep` — at the gate's own twelve decibels
-the recogniser answers for **92% of the barks and 25% of the cries**, and the
+the recogniser answers for **92% of the barks and 25% of the cries** — counted
+against 0.20, the threshold of that sweep, before it moved to 0.15 — and the
 cry is gone entirely by six. The bark is still over the threshold at the room's
 own level (52%) and below it (38%): a burst with a signature survives a bad
 signal-to-noise ratio, a long shape at low contrast does not. So **the chain's

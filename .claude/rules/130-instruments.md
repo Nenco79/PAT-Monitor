@@ -355,6 +355,14 @@ the folder: `-config` elsewhere means a log elsewhere. That covers the second
 instance somebody starts deliberately and not the one this fault produced, where
 both processes are the same binary reading the same configuration.
 
+**And two writers is the one state the rotation cannot move the file in.** The
+other process holds it open without share-delete, so the rename is refused — and
+the spares used to be shifted and the oldest deleted before the rename was
+tried: within three lines every spare was gone, and from then on every line was
+a close and a reopen on a file that grew without a limit. The current file is
+now moved first and the spares only after it has gone; a refused move deletes
+nothing, is written once, and is tried again a tenth of the ceiling later.
+
 ### The session log is the only instrument for the test that counts
 
 This program's decisive test — phone on cellular, Tailscale off, ten minutes —

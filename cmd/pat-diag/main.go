@@ -25,6 +25,7 @@ import (
 	"patmonitor/internal/audio"
 	"patmonitor/internal/devices"
 	"patmonitor/internal/mf"
+	"patmonitor/internal/rtc"
 	"patmonitor/internal/wincom"
 )
 
@@ -34,6 +35,7 @@ var (
 	height      = flag.Int("h", 720, "test height")
 	fps         = flag.Int("fps", 30, "test frame rate")
 	bitrateKbps = flag.Int("b", 2500, "test bitrate in kbit/s")
+	micWanted   = flag.String("mic", "", "probe this microphone endpoint ID, the value of mic_device_id (empty = the default one)")
 )
 
 func main() {
@@ -242,23 +244,32 @@ func probeScaling(cams []devices.Device, w, h, fps int) {
 		fmt.Printf("        is the reader enlarging, not the camera.\n\n")
 	}
 
-	// The sizes are those of the scale: full, halfway, minimum. Among them
-	// there is one **the camera does not offer**, and that is the one that
-	// matters: if it arrives, the reader really is scaling. Asking only for
-	// native sizes would not tell scaling from switching the camera's mode,
-	// which is the other design — the one that interrupts the video at every
-	// step.
-	steps := []struct{ w, h int }{{w, h}, {960, 540}, {848, 480}, {640, 360}, {w, h}}
+	// The sizes are **the scale's own**, from the same rule the monitor steps
+	// by — they used to be 960x540 and 640x360, which are no step and not even
+	// macroblock-aligned. Beside them there is one **the camera does not
+	// offer**, 848x480, and that is the one that answers a different question:
+	// if it arrives, the reader really is scaling rather than switching the
+	// camera's mode, which is the other design — the one that interrupts the
+	// video at every step.
+	type step struct {
+		w, h  int
+		label string
+	}
+	var steps []step
+	for _, s := range rtc.ScaleSizes(w, h) {
+		steps = append(steps, step{s[0], s[1], "a step of the scale"})
+	}
+	steps = append(steps, step{848, 480, "not native, to prove scaling"}, step{w, h, "back to full size"})
 	for i, s := range steps {
 		if i > 0 {
 			if err := reader.SetOutputSize(s.w, s.h, fps); err != nil {
-				fmt.Printf("  %4dx%-4d  refused: %v\n", s.w, s.h, err)
+				fmt.Printf("  %4dx%-4d  refused: %v  (%s)\n", s.w, s.h, err, s.label)
 				continue
 			}
 		}
 		got, err := frameBytes(reader)
 		if err != nil {
-			fmt.Printf("  %4dx%-4d  no frame: %v\n", s.w, s.h, err)
+			fmt.Printf("  %4dx%-4d  no frame: %v  (%s)\n", s.w, s.h, err, s.label)
 			continue
 		}
 		want := s.w * s.h * 3 / 2
@@ -266,7 +277,7 @@ func probeScaling(cams []devices.Device, w, h, fps int) {
 		if got != want {
 			verdict = fmt.Sprintf("DELIVERS SOMETHING ELSE (%d bytes, i.e. %d pixels)", got, got*2/3)
 		}
-		fmt.Printf("  %4dx%-4d  %s\n", s.w, s.h, verdict)
+		fmt.Printf("  %4dx%-4d  %s  (%s)\n", s.w, s.h, verdict, s.label)
 	}
 	fmt.Println()
 	fmt.Println("  The last row repeats the starting size: if it comes back, the change")
@@ -316,7 +327,10 @@ func probeMicrophone(parent context.Context) string {
 
 	var line string
 	err := audio.Capture(ctx,
-		audio.Options{Raw: true, FallbackOnRawFailure: true},
+		// The one the monitor opens, when -mic says which: the default one is
+		// what pat-diag probed alone, and on a machine with mic_device_id set
+		// it described a microphone the monitor does not use.
+		audio.Options{Raw: true, FallbackOnRawFailure: true, DeviceID: *micWanted},
 		func(s audio.Stream) error {
 			mode := "raw (OEM effects bypassed)"
 			if !s.RawMode {

@@ -51,3 +51,22 @@ func TestDefaultUsesTheDistinctName(t *testing.T) {
 		t.Errorf("Default() says %q instead of %q", got, DefaultFunnelHostname())
 	}
 }
+
+// **The name cannot be confirmed by guessing the computer's name.** Hashed
+// from it alone, whoever suspected "desktop-anna" computed the fingerprint and
+// compared it with public DNS; with the machine's secret as the seed, the name
+// says nothing.
+//
+// **The defect was put back and this test fails with it**: with the secret
+// ignored, the two fingerprints are the same.
+func TestTheFingerprintIsNotTheNamesHash(t *testing.T) {
+	if funnelHostnameFrom("0c5e1f2a-guid", "desktop-anna") == funnelHostnameFrom("", "desktop-anna") {
+		t.Error("the fingerprint is the computer name's hash: a guessed name confirms it")
+	}
+	if a, b := funnelHostnameFrom("0c5e1f2a-guid", "x"), funnelHostnameFrom("0c5e1f2a-guid", "y"); a != b {
+		t.Errorf("the name moved the fingerprint although the secret was there: %q, %q", a, b)
+	}
+	if got := funnelHostnameFrom("", ""); got != "patmon" {
+		t.Errorf("with nothing to tell the machine apart: %q", got)
+	}
+}

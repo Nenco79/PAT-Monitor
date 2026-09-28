@@ -366,6 +366,23 @@ func snr(a, b []int16, lag int) float64 {
 	return 10 * math.Log10(sig/noise)
 }
 
+// The bands the spectral comparison measures.
+const (
+	spectralBands = 16
+	spectralFrom  = 100.0
+)
+
+// bandFreq is band b's frequency, the one measured and the one printed.
+//
+// **The top follows the rate, as the sweep's already did.** The bands ran to
+// 16 kHz whatever the rate, so at 16 kHz half of them sat past Nyquist, folded
+// onto lower frequencies, and the one labelled 16000 Hz was DC — which Opus
+// filters out, so a microphone with an offset showed a large deviation there.
+func bandFreq(b int) float64 {
+	top := math.Min(16000, 0.45*float64(*rate))
+	return spectralFrom * math.Pow(top/spectralFrom, float64(b)/float64(spectralBands-1))
+}
+
 // bandEnergies measures the energy in logarithmic bands, in dB.
 //
 // A DFT over a few frequencies is used instead of a full transform: the bands of
@@ -373,16 +390,15 @@ func snr(a, b []int16, lag int) float64 {
 // than transforming everything.
 func bandEnergies(pcm []int16) []float64 {
 	const (
-		bands  = 16
+		bands  = spectralBands
 		window = 2048
-		f0, f1 = 100.0, 16000.0
 	)
 	energy := make([]float64, bands)
 	windows := 0
 	for start := 0; start+window <= len(pcm); start += window {
 		seg := pcm[start : start+window]
 		for b := range bands {
-			freq := f0 * math.Pow(f1/f0, float64(b)/float64(bands-1))
+			freq := bandFreq(b)
 			k := 2 * math.Pi * freq / float64(*rate)
 			var re, im float64
 			for i, v := range seg {
@@ -426,7 +442,7 @@ func printSpectralDiff(in, out []int16) {
 	var sum, worst float64
 	counted := 0
 	for i := range a {
-		freq := 100 * math.Pow(160, float64(i)/float64(len(a)-1))
+		freq := bandFreq(i)
 		d := b[i] - a[i]
 		mark := "  ·"
 		if a[i] >= peak-floorBelowPeak {

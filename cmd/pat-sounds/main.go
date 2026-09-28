@@ -10,7 +10,8 @@
 // belong to other people. Where they are obtained, under which licence, and
 // what came out of them is in `baselines/sounds.txt`.
 //
-// Two steps, because the first costs and the second does not:
+// Four subcommands: score, judge, dilute and gate. The first two are one
+// measurement in two steps, because the first costs and the second does not:
 //
 //	pat-sounds score -kind esc50 -dir ...\ESC-50-master -out esc50.csv
 //	pat-sounds judge -kind esc50 -scores esc50.csv
@@ -24,7 +25,10 @@
 // as it is: it takes the positives and puts them inside a whole window, which
 // is the condition the monitor really works in and no dataset reproduces.
 //
-//	pat-sounds dilute -dir ...\ESC-50-master
+//	pat-sounds dilute -kind esc50 -dir ...\ESC-50-master
+//
+// The fourth, gate, asks what the shape detector in front of the model lets
+// through, on the same datasets.
 package main
 
 import (
@@ -87,14 +91,22 @@ func main() {
 	}
 }
 
+// monitorThreshold is the monitor's own threshold, soundThreshold in
+// cmd/pat-monitor, which a main package cannot import. It is what the tool
+// counts against by default: a sweep rerun without the flag used to measure the
+// chain at 0.20, a threshold the monitor no longer uses. TestTheToolCountsAtTheMonitorsThreshold
+// keeps the two equal.
+const monitorThreshold = 0.15
+
 func usage() {
 	fmt.Fprintln(os.Stderr, "usage: pat-sounds <score|judge|dilute|gate> [flags]")
 	fmt.Fprintln(os.Stderr, "  score -model m.gguf -kind esc50|urbansound8k|fsd50k|donateacry -dir DIR -out scores.csv")
 	fmt.Fprintln(os.Stderr, "  judge -kind esc50|urbansound8k|fsd50k|donateacry -scores scores.csv")
-	// `dilute` does not take -kind: it needs clean, short positives, and only
-	// ESC-50 has them. Writing it in the usage and not accepting it would give
-	// whoever copies the line a flag error.
-	fmt.Fprintln(os.Stderr, "  dilute -dir ESC-50-DIR        how much a short event loses in a full window")
+	// `dilute` takes -kind for its positives; Donate-a-Cry has no background
+	// sounds of its own, so with it -bg names an ESC-50 folder to take the room
+	// from.
+	fmt.Fprintln(os.Stderr, "  dilute -kind esc50|donateacry -dir DIR [-bg ESC-50-DIR] [-sweep] [-threshold T]")
+	fmt.Fprintln(os.Stderr, "                                how much a short event loses in a full window")
 	fmt.Fprintln(os.Stderr, "  gate -kind KIND -dir DIR      what the shape detector lets through; -sweep tries other values")
 	os.Exit(2)
 }
@@ -533,7 +545,8 @@ func whereTheRecallGoes(rows []scored, positive string, classes []string) {
 		if len(m) < 2 {
 			return // a single row explains nothing
 		}
-		fmt.Printf("\n%s\n%-22s %6s %9s %8s %8s\n", title, "", "n", "median", "@0.20", "@0.30")
+		fmt.Printf("\n%s\n%-22s %6s %9s %8s %8s %8s\n", title, "", "n", "median",
+			fmt.Sprintf("@%.2f", monitorThreshold), "@0.20", "@0.30")
 		keys := make([]string, 0, len(m))
 		for k := range m {
 			keys = append(keys, k)
@@ -551,7 +564,8 @@ func whereTheRecallGoes(rows []scored, positive string, classes []string) {
 				}
 				return fmt.Sprintf("%d%%", 100*n/len(v))
 			}
-			fmt.Printf("%-22s %6d %9.3f %8s %8s\n", k, len(v), quantile(v, 50), pct(0.20), pct(0.30))
+			fmt.Printf("%-22s %6d %9.3f %8s %8s %8s\n", k, len(v), quantile(v, 50),
+				pct(monitorThreshold), pct(0.20), pct(0.30))
 		}
 	}
 	show("recall by salience (1 foreground, 2 background)", bySalience)
@@ -600,7 +614,7 @@ func byLabel(rows []scored, positive string, classes []string) {
 		slices.Sort(vs)
 		over := 0
 		for _, v := range vs {
-			if v >= 0.2 {
+			if v >= monitorThreshold {
 				over++
 			}
 		}
@@ -608,7 +622,8 @@ func byLabel(rows []scored, positive string, classes []string) {
 	}
 	sort.Slice(out, func(a, b int) bool { return out[a].max > out[b].max })
 	fmt.Printf("\nwhere the false positives are (the eight categories that light up most)\n")
-	fmt.Printf("%-46s %6s %9s %8s %8s\n", "category", "n", "median", "max", ">=0.20")
+	fmt.Printf("%-46s %6s %9s %8s %8s\n", "category", "n", "median", "max",
+		fmt.Sprintf(">=%.2f", monitorThreshold))
 	for i := 0; i < 8 && i < len(out); i++ {
 		fmt.Printf("%-46s %6d %9.3f %8.3f %8d\n",
 			short(out[i].cat), out[i].n, out[i].p50, out[i].max, out[i].over)

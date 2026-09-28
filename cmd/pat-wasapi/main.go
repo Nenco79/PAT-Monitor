@@ -273,7 +273,7 @@ func fatal(format string, a ...any) {
 func testOutput(d time.Duration) {
 	fmt.Println("\n=== AUDIO OUTPUT (talk-back) ===")
 
-	vol, err := audio.RenderVolume()
+	vol, err := audio.RenderVolume(*deviceID)
 	switch {
 	case err != nil:
 		fmt.Printf("  volume: cannot be read (%v)\n", err)
@@ -288,7 +288,7 @@ func testOutput(d time.Duration) {
 		}
 	}
 
-	floor, _, err := audio.LoopbackLevel(d / 3)
+	floor, _, err := audio.LoopbackLevel(*deviceID, d/3)
 	if err != nil {
 		fmt.Printf("  loopback unavailable: %v\n", err)
 		return
@@ -307,7 +307,7 @@ func testOutput(d time.Duration) {
 		playTone(p, d)
 	}()
 	time.Sleep(250 * time.Millisecond)
-	during, peak, err := audio.LoopbackLevel(d / 2)
+	during, peak, err := audio.LoopbackLevel(*deviceID, d/2)
 	<-done
 	_ = p.Close()
 	if err != nil {

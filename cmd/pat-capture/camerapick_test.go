@@ -68,6 +68,42 @@ func TestTheInstrumentPicksTheCameraTheMonitorWould(t *testing.T) {
 		t.Error("nothing in this tool goes through devices.Pick or devices.Cameras: " +
 			"whatever it opens, it is not what the monitor opens")
 	}
+
+	// **And it is the default branch that has to pick.** Counting Pick calls
+	// anywhere and refusing a list of spellings of "the first one" absolved a
+	// loop that takes the first, `cameras[0]`, or an index held in a variable.
+	// The else branch of `if *camWanted != ""` must assign cam from
+	// devices.Pick; put back as a loop that takes the first, this fails.
+	pickedByDefault := false
+	ast.Inspect(file, func(n ast.Node) bool {
+		ifs, ok := n.(*ast.IfStmt)
+		if !ok || ifs.Else == nil {
+			return true
+		}
+		cond, ok := ifs.Cond.(*ast.BinaryExpr)
+		if !ok {
+			return true
+		}
+		star, ok := cond.X.(*ast.StarExpr)
+		if !ok || name(star.X) != "camWanted" {
+			return true
+		}
+		ast.Inspect(ifs.Else, func(m ast.Node) bool {
+			as, ok := m.(*ast.AssignStmt)
+			if !ok || len(as.Rhs) != 1 || len(as.Lhs) == 0 || name(as.Lhs[0]) != "cam" {
+				return true
+			}
+			if call, ok := as.Rhs[0].(*ast.CallExpr); ok && name(call.Fun) == "devices.Pick" {
+				pickedByDefault = true
+			}
+			return true
+		})
+		return false
+	})
+	if !pickedByDefault {
+		t.Error("with no -cam the camera is not assigned from devices.Pick: " +
+			"the instrument may open a camera the monitor would not")
+	}
 }
 
 // And the filter really is the thing that separates the two, which is what

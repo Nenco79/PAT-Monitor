@@ -63,6 +63,11 @@ type Writer struct {
 	// standard error. It has to be remembered, because the file behind it is
 	// replaced at every rotation and the runtime keeps no reference to follow.
 	crashes bool
+	// retryAt is the size below which a refused rotation is not tried again:
+	// see rotate.
+	retryAt int64
+	// refusedSaid says the refused rotation has been written down once.
+	refusedSaid bool
 }
 
 // New opens the log inside dir, creating it if it is missing.
@@ -166,7 +171,7 @@ func (w *Writer) Write(p []byte) (int, error) {
 	if w.f == nil {
 		return len(p), nil
 	}
-	if w.n+int64(len(p)) > MaxBytes {
+	if w.n+int64(len(p)) > MaxBytes && w.n >= w.retryAt {
 		w.rotate()
 	}
 	n, err := w.f.Write(p)
@@ -191,6 +196,14 @@ func (w *Writer) Write(p []byte) (int, error) {
 
 // rotate sets the current file aside and opens a new one. It is called with the
 // lock held.
+//
+// **The current file is moved first, and the spares only once it has gone.**
+// Another process holding the file open — a second instance, which
+// 130-instruments.md documents, an editor, a scanner — refuses the move, and
+// the spares used to be shifted and the oldest deleted before anybody knew:
+// within Keep lines every spare was gone, and from then on every line cost a
+// close and a reopen while the file grew without a limit. A refused move now
+// deletes nothing, is said once, and is tried again a tenth of MaxBytes later.
 func (w *Writer) rotate() {
 	// Given up **before** the close and not after: between the two the handle
 	// no longer exists, and its value is handed out again to the next thing
@@ -201,22 +214,36 @@ func (w *Writer) rotate() {
 	w.f.Close()
 	w.f = nil
 
-	// The spare files shift by one: .1 is the most recent. The walk goes
-	// backwards, otherwise they would overwrite one another.
-	for i := Keep; i >= 1; i-- {
-		older := w.numbered(i + 1)
-		current := w.numbered(i)
-		if i == Keep {
-			os.Remove(current)
-			continue
+	aside := w.path + ".rotating"
+	moveErr := os.Rename(w.path, aside)
+	if moveErr == nil {
+		// The spare files shift by one: .1 is the most recent. The walk goes
+		// backwards, otherwise they would overwrite one another.
+		for i := Keep; i >= 1; i-- {
+			older := w.numbered(i + 1)
+			current := w.numbered(i)
+			if i == Keep {
+				os.Remove(current)
+				continue
+			}
+			os.Rename(current, older)
 		}
-		os.Rename(current, older)
+		os.Rename(aside, w.numbered(1))
 	}
-	os.Rename(w.path, w.numbered(1))
 
 	if err := w.open(); err != nil {
 		w.f = nil
+		return
 	}
+	if moveErr != nil {
+		w.retryAt = w.n + MaxBytes/10
+		if !w.refusedSaid {
+			w.refusedSaid = true
+			w.note("the log could not be set aside, it grows until it can: " + moveErr.Error())
+		}
+		return
+	}
+	w.retryAt, w.refusedSaid = 0, false
 }
 
 func (w *Writer) numbered(i int) string {

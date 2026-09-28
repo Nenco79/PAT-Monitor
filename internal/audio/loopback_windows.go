@@ -27,8 +27,13 @@ import (
 const audclntStreamFlagsLoopback = 0x00020000
 
 // LoopbackLevel measures, for as long as it is told to, the level of what comes
-// out of the default audio output, and returns RMS in dBFS plus the peak.
-func LoopbackLevel(window time.Duration) (rmsDBFS, peak float64, err error) {
+// out of an audio output — deviceID, or the default one when it is empty — and
+// returns RMS in dBFS plus the peak.
+//
+// **It takes the device the tone is played on**, because measured on the
+// default while the tone went to another, the verdict was about a speaker that
+// was not playing.
+func LoopbackLevel(deviceID string, window time.Duration) (rmsDBFS, peak float64, err error) {
 	err = comThread(func() error {
 		enum, e := newDeviceEnumerator()
 		if e != nil {
@@ -36,7 +41,7 @@ func LoopbackLevel(window time.Duration) (rmsDBFS, peak float64, err error) {
 		}
 		defer enum.Release()
 
-		dev, e := openRenderDevice(enum, "")
+		dev, e := openRenderDevice(enum, deviceID)
 		if e != nil {
 			return e
 		}
@@ -181,14 +186,15 @@ func floatSamples(data *byte, n int, f StreamFormat) ([]float64, error) {
 	return out, nil
 }
 
-// RenderVolume reads the volume of the default audio output.
+// RenderVolume reads the volume of an audio output: deviceID, or the default one
+// when it is empty.
 //
 // **It exists to answer "I cannot hear anything" without guessing.** The render
 // path can be perfect and the sound still be inaudible because the slider is
 // down or the output is muted, and from inside the program those two cases are
 // indistinguishable from a fault. It is the same question pat-wasapi asks about
 // the microphone, from the other side of the room.
-func RenderVolume() (VolumeInfo, error) {
+func RenderVolume(deviceID string) (VolumeInfo, error) {
 	var info VolumeInfo
 	err := comThread(func() error {
 		enum, e := newDeviceEnumerator()
@@ -196,7 +202,7 @@ func RenderVolume() (VolumeInfo, error) {
 			return e
 		}
 		defer enum.Release()
-		dev, e := openRenderDevice(enum, "")
+		dev, e := openRenderDevice(enum, deviceID)
 		if e != nil {
 			return e
 		}

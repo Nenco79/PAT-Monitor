@@ -278,8 +278,8 @@ func newScaleGovernor(width, height, fps int) *scaleGovernor {
 			MinKbps: int(float64(w*h*f) * bpp / 1000),
 		})
 	}
-	for _, frac := range []float64{1, 0.75, 0.5} {
-		add(even16(int(float64(width)*frac)), even16(int(float64(height)*frac)), fps, bitsPerPixel)
+	for _, s := range ScaleSizes(width, height) {
+		add(s[0], s[1], fps, bitsPerPixel)
 	}
 	if len(g.steps) == 0 {
 		return nil
@@ -343,6 +343,22 @@ func newScaleGovernor(width, height, fps int) *scaleGovernor {
 // size that does not fit forces the encoder to crop, and the crop is another
 // field of the SPS that can go wrong.
 func even16(v int) int { return v / 16 * 16 }
+
+// ScaleSizes are the sizes the resolution scale steps through from a starting
+// size, largest first: the whole, three quarters and half, rounded down to the
+// macroblock.
+//
+// **It is exported for the instruments**, which have to ask the camera for the
+// sizes the monitor asks for: pat-diag used to probe 960x540 and 640x360, which
+// no step is, and a tool asking a size the monitor never asks for proves
+// nothing about the ones it does.
+func ScaleSizes(width, height int) [][2]int {
+	var out [][2]int
+	for _, frac := range []float64{1, 0.75, 0.5} {
+		out = append(out, [2]int{even16(int(float64(width) * frac)), even16(int(float64(height) * frac))})
+	}
+	return out
+}
 
 // atFullSize says whether the scale is at the first step, that is whether the
 // picture is the one the user asked for.

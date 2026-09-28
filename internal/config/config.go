@@ -235,17 +235,34 @@ func Default() Config {
 // And readable buys nothing — this is not a label, it is an address, and nobody
 // types it.
 //
+// **And it is a fingerprint of something nobody can guess.** Hashed from the
+// computer's name alone, it could not be read but it could be confirmed:
+// whoever suspected "desktop-anna" computed the hash and compared it with public
+// DNS. The seed is the machine's own GUID, asked of the system, and the name
+// only where there is none. It reaches new installations only: every
+// configuration that has ever had a node was saved with its name in full.
+//
 // Deterministic: the same machine always gives the same name, even before the
 // configuration has been saved for the first time. If there is no way to tell
 // the machine apart it falls back to the bare name — better a possible
 // collision than a different name at every start, which would be a new node
 // every time.
 func DefaultFunnelHostname() string {
-	h, err := os.Hostname()
-	if err != nil || strings.TrimSpace(h) == "" {
+	h, _ := os.Hostname()
+	return funnelHostnameFrom(machineSecret(), h)
+}
+
+// funnelHostnameFrom is DefaultFunnelHostname on the answers it is handed: the
+// machine's secret, and its name for where there is none.
+func funnelHostnameFrom(secret, host string) string {
+	seed := strings.TrimSpace(secret)
+	if seed == "" {
+		seed = strings.ToLower(strings.TrimSpace(host))
+	}
+	if seed == "" {
 		return "patmon"
 	}
-	sum := sha256.Sum256([]byte(strings.ToLower(strings.TrimSpace(h))))
+	sum := sha256.Sum256([]byte(seed))
 	return "patmon-" + hex.EncodeToString(sum[:3])
 }
 

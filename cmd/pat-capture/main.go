@@ -906,6 +906,11 @@ func main() {
 	fmt.Println()
 
 	if !pass {
+		// os.Exit runs no defer, and the recorder's last segment is written by
+		// its close: a failing run is the one whose tail most needs looking at.
+		if rec != nil {
+			rec.close()
+		}
 		os.Exit(1)
 	}
 }

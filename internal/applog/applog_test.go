@@ -162,8 +162,50 @@ func TestAFailedWriteDoesNotPropagate(t *testing.T) {
 		t.Errorf("a failed write propagated the error: %v", err)
 	}
 	// And it does not retry forever, otherwise every log line would generate as
-	// much noise as the log itself.
+	// much noise as the log itself. **Asked of the handle**, because Write
+	// answers nil on every road, so its answer cannot say whether it gave up.
+	// Put back and watched failing.
+	if w.f != nil {
+		t.Error("after a failed write the dead handle is still kept, and every line will retry it")
+	}
 	if _, err := w.Write([]byte("another one\n")); err != nil {
 		t.Errorf("second write: %v", err)
+	}
+}
+
+// **A rotation another process refuses deletes nothing.** The spares were
+// shifted and the oldest deleted before the current file's move was tried, so
+// with the file held open elsewhere every spare went within Keep lines.
+//
+// **The defect was put back and this test fails with it**: with the spares
+// shifted first, the three are gone.
+func TestARefusedRotationKeepsTheSpares(t *testing.T) {
+	dir := t.TempDir()
+	w, err := New(dir, "monitor.log")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer w.Close()
+	for i := 1; i <= Keep; i++ {
+		if err := os.WriteFile(w.numbered(i), []byte(fmt.Sprintf("spare %d\n", i)), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// A second handle without share-delete, as another instance opens it.
+	other, err := os.OpenFile(filepath.Join(dir, "monitor.log"), os.O_WRONLY|os.O_APPEND, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer other.Close()
+
+	line := []byte(strings.Repeat("x", 1023) + "\n")
+	for range MaxBytes/len(line) + 2*Keep {
+		w.Write(line)
+	}
+	for i := 1; i <= Keep; i++ {
+		got, err := os.ReadFile(w.numbered(i))
+		if err != nil || string(got) != fmt.Sprintf("spare %d\n", i) {
+			t.Errorf("spare %d was lost to a rotation that could not happen: %q, %v", i, got, err)
+		}
 	}
 }

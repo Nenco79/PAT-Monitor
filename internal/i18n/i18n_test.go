@@ -456,3 +456,28 @@ func eachCatalogueValue(t *testing.T, visit func(file, where, value string)) {
 		t.Fatalf("%d catalogues read: the test is not looking at them", seen)
 	}
 }
+
+// **A catalogue's file name is lower case.** languages() lowers the name it
+// lists and read() opens the lowered name, on a filesystem that is not
+// forgiving about case: a pt-BR.json would be listed, picked, fail to open, and
+// vanish into English and out of the selector with nothing louder than a
+// Problems() entry. The convention is the cheap half, so it is the one held.
+func TestEveryCatalogueFileIsLowerCase(t *testing.T) {
+	entries, err := fs.ReadDir(FS, ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	n := 0
+	for _, e := range entries {
+		if !strings.HasSuffix(e.Name(), ".json") {
+			continue
+		}
+		n++
+		if e.Name() != strings.ToLower(e.Name()) {
+			t.Errorf("%s is not lower case: it is listed and then cannot be opened", e.Name())
+		}
+	}
+	if n < 2 {
+		t.Fatalf("%d catalogues read: this test is looking in the wrong place", n)
+	}
+}

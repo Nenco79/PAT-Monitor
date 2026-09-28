@@ -574,11 +574,24 @@ func watch(ctx context.Context, jar *cookiejar.Jar, base, profileLevelID string,
 		fmt.Printf("  [%s] %s\n", mark, fmt.Sprintf(format, a...))
 	}
 
+	// **A rate is divided by the time that stream flowed**, from its first
+	// packet: the test's duration also holds the offer, ICE and DTLS, during
+	// which nothing arrives, so dividing by it lowered every rate by the share
+	// the negotiation took — two seconds of twelve printed 30 fps as 25.
+	over := func(wall float64) float64 {
+		if wall > 0 {
+			return wall
+		}
+		return d.Seconds()
+	}
 	check(cs == "connected", "connection state: %s", cs)
+	if vWall > 0 {
+		fmt.Printf("  [    ] time to the first picture: %.1fs of the %s\n", d.Seconds()-vWall, d)
+	}
 	check(videoPackets.Load() > 0, "video: %d RTP packets, %.0f kbit/s",
-		videoPackets.Load(), float64(videoBytes.Load())*8/1000/d.Seconds())
+		videoPackets.Load(), float64(videoBytes.Load())*8/1000/over(vWall))
 	check(audioPackets.Load() > 0, "audio: %d RTP packets, %.0f kbit/s",
-		audioPackets.Load(), float64(audioBytes.Load())*8/1000/d.Seconds())
+		audioPackets.Load(), float64(audioBytes.Load())*8/1000/over(aWall))
 	check(st.SPS > 0 && st.PPS > 0, "parameter sets reassembled: SPS=%d PPS=%d, profile-level-id=%s",
 		st.SPS, st.PPS, st.ProfileLevelID)
 	check(st.IDR > 0, "keyframes reassembled: %d", st.IDR)
@@ -588,7 +601,7 @@ func watch(ctx context.Context, jar *cookiejar.Jar, base, profileLevelID string,
 	// reported as 29.8. The RTP timestamp instead changes once per picture,
 	// which is also how the decoder separates them.
 	check(videoPictures.Load() > 0, "pictures received: %d (%.1f fps)",
-		videoPictures.Load(), float64(videoPictures.Load())/d.Seconds())
+		videoPictures.Load(), float64(videoPictures.Load())/over(vWall))
 	// The NALs are counted on the buffer, which has a ceiling: when it fills
 	// the count covers only the start, and that has to be said instead of being
 	// divided by the whole duration — that way a real 30 fps came out as "15".
