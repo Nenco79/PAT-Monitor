@@ -131,4 +131,40 @@ func TestTheMigratedCameraLinkReachesTheConfiguration(t *testing.T) {
 			"the capture and the server would disagree about which camera was chosen",
 			answer, assigned)
 	}
+
+	// **And it has to be the configuration the server reads.** That is the
+	// store's view, laid over the file by store.Override: an assignment to the
+	// local cfg is read by nobody once the store holds the file, so the test
+	// found it and passed with the override's line deleted. Put back and
+	// watched failing.
+	inOverride := false
+	ast.Inspect(f, func(n ast.Node) bool {
+		call, ok := n.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		sel, ok := call.Fun.(*ast.SelectorExpr)
+		if !ok || sel.Sel.Name != "Override" {
+			return true
+		}
+		ast.Inspect(call, func(m ast.Node) bool {
+			st, ok := m.(*ast.AssignStmt)
+			if !ok {
+				return true
+			}
+			for i, lhs := range st.Lhs {
+				if s, ok := lhs.(*ast.SelectorExpr); ok && s.Sel.Name == "CameraDeviceID" && i < len(st.Rhs) {
+					if id, ok := st.Rhs[i].(*ast.Ident); ok && id.Name == answer {
+						inOverride = true
+					}
+				}
+			}
+			return true
+		})
+		return true
+	})
+	if !inOverride {
+		t.Errorf("the store's Override does not lay %q over the camera: the server "+
+			"reads a configuration where nobody chose one", answer)
+	}
 }

@@ -960,12 +960,24 @@ func run(log *slog.Logger, path string) error {
 		defer close(watchDone)
 		tick := time.NewTicker(time.Second)
 		defer tick.Stop()
+		// **A panic costs one round, not the rest of the night.** Caught
+		// around the whole loop, one bad round stopped the alerts, the clips
+		// and the recogniser until a restart, with the status serving a frozen
+		// list; the round used to run again at the next status request. It is
+		// caught per round, written once with its stack, and the next second
+		// tries again; a panic that repeats every second is not written every
+		// second.
+		roundLog := log
 		for {
 			select {
 			case <-watchCtx.Done():
 				return
 			case now := <-tick.C:
-				watch(now)
+				err := guard.Run(roundLog, "a watching round", func() error { watch(now); return nil })
+				if err != nil && roundLog == log {
+					roundLog = slog.New(slog.DiscardHandler)
+					log.Warn("the watching round goes on after a panic; a repeat is not written again")
+				}
 			}
 		}
 	})
@@ -1313,11 +1325,14 @@ func run(log *slog.Logger, path string) error {
 	// with the post-roll it had, and the writer drains before the process
 	// goes. Bounded, because a disk that does not answer must not keep a
 	// monitor that has been told to quit.
-	rec.Flush(shutdownLimit)
+	// One deadline for the two waits, not one each: the bound is the one
+	// shutdownLimit promises.
+	deadline := time.Now().Add(shutdownLimit)
+	rec.Flush(time.Until(deadline))
 	close(stopClips)
 	select {
 	case <-clipsDone:
-	case <-time.After(shutdownLimit):
+	case <-time.After(time.Until(deadline)):
 		log.Warn("the last clip was still being written when the time ran out")
 	}
 	log.Info("shutdown complete")
