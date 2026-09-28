@@ -610,12 +610,14 @@ func wndProc(hwnd windows.Handle, msg uint32, wparam, lparam uintptr) uintptr {
 		// may be ready now: the only way to quit is the icon, so it is asked
 		// again until it is there, and said once when it is.
 		if !t.iconAdded {
-			if err := t.addIcon(); err != nil {
+			if err := t.addIcon(); err != nil && !t.iconIsThere() {
 				return 0
 			}
 			t.iconAdded = true
 			t.cfg.Log.Info("icon restored after the Explorer restart")
+			t.shown = ""
 			t.resizeIcon("explorer restarted")
+			t.refresh()
 			return 0
 		}
 		t.refresh()
@@ -770,6 +772,19 @@ func (t *Tray) notifyData(flags uint32) *notifyIconData {
 	}
 	nid.CbSize = uint32(unsafe.Sizeof(*nid))
 	return nid
+}
+
+// iconIsThere asks the shell whether our icon exists, by modifying it.
+//
+// **NIM_ADD can report a failure for an icon it did add** — a timeout while
+// Explorer is busy — and from then every retry fails because the icon is
+// already there, while nothing updates it: the colour and the tooltip stayed
+// as they were all night. A modify that succeeds is the proof it is there.
+func (t *Tray) iconIsThere() bool {
+	nid := t.notifyData(nifTip)
+	copyTip(&nid.SzTip, t.tipShown)
+	r, _, _ := procShellNotifyIconW.Call(nimModify, uintptr(unsafe.Pointer(nid)))
+	return r != 0
 }
 
 func (t *Tray) addIcon() error {
