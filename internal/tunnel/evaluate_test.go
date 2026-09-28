@@ -1,10 +1,16 @@
 package tunnel
 
 import (
+	"bytes"
+	"context"
+	"errors"
 	"io"
 	"log/slog"
+	"strings"
 	"testing"
+	"time"
 
+	"tailscale.com/client/local"
 	"tailscale.com/ipn"
 	"tailscale.com/ipn/ipnstate"
 )
@@ -111,5 +117,65 @@ func TestARenamedNodeIsBothAnnouncedAndRecorded(t *testing.T) {
 	tn.checkHostname("https://patmon.quercia-lieve.ts.net")
 	if seen != "" {
 		t.Errorf("callback invoked for an identical name: %q", seen)
+	}
+}
+
+// **QueryFeature is not asked every two seconds.** It goes to Tailscale's
+// control server, and while the funnel attribute is missing evaluate runs on
+// every tick: a tailnet left without it for a day was forty thousand requests
+// with the same answer.
+//
+// **The defect was put back and this test fails with it**: with the query
+// asked unconditionally, a minute of ticks asks it thirty times.
+func TestTheFunnelQuestionIsNotAskedEveryTick(t *testing.T) {
+	tun := New(Config{Hostname: "test"})
+	asked := 0
+	tun.query = func(context.Context, *local.Client, string) (string, string, bool) {
+		asked++
+		return "ask your admin", "https://login.tailscale.com/admin", false
+	}
+	st := &ipnstate.Status{BackendState: ipn.Running.String()}
+
+	for range 30 { // a minute of two-second ticks
+		got, ready := tun.evaluate(t.Context(), nil, st)
+		if ready || got.Phase != PhaseNeedsFunnel || got.ActionText != "ask your admin" {
+			t.Fatalf("the remembered answer was not given: %+v", got)
+		}
+	}
+	if asked != 1 {
+		t.Errorf("QueryFeature asked %d times in a minute, wanted once", asked)
+	}
+
+	// Its time come, it is asked again, and a "done" ends the wait at once.
+	tun.funnel.asked = time.Now().Add(-time.Hour)
+	tun.query = func(context.Context, *local.Client, string) (string, string, bool) {
+		asked++
+		return "", "", true
+	}
+	if _, ready := tun.evaluate(t.Context(), nil, st); !ready || asked != 2 {
+		t.Errorf("a due question was not asked again, or its done was lost: ready=%v asked=%d", ready, asked)
+	}
+}
+
+// **A failure that repeats is written once.** waitReady reads the status every
+// two seconds, and a read that keeps failing wrote an Error line on every tick.
+//
+// **The defect was put back and this test fails with it**: with fail writing
+// unconditionally, thirty ticks write thirty Error lines.
+func TestAFailureThatRepeatsIsWrittenOnce(t *testing.T) {
+	var buf bytes.Buffer
+	tun := New(Config{Hostname: "test",
+		Log: slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelInfo}))})
+
+	for range 30 {
+		tun.fail(StepStatusRead, errors.New("localapi: unavailable"))
+	}
+	if n := strings.Count(buf.String(), "level=ERROR"); n != 1 {
+		t.Errorf("30 identical failures wrote %d Error lines, 1 is wanted", n)
+	}
+	// A different failure is news.
+	tun.fail(StepStatusRead, errors.New("localapi: something else"))
+	if n := strings.Count(buf.String(), "level=ERROR"); n != 2 {
+		t.Errorf("a different failure was not written: %d Error lines", n)
 	}
 }

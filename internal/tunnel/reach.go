@@ -342,8 +342,20 @@ func (t *Tunnel) setReach(code ReachCode, url string, attrs ...any) {
 	}
 	changed := t.state.Reach != code
 	t.state.Reach = code
+	// **A verified address outranks the missing ingress grant.** The warning
+	// is decided once, fifteen seconds after the listener opens, and a grant
+	// arriving later used to leave it in force for the whole session: an amber
+	// icon saying connections from the Internet are refused, over an address a
+	// probe had just come back in through. The probe is the stronger evidence.
+	cleared := code == ReachVerified && t.state.Warning == WarningNoIngress
+	if cleared {
+		t.state.Warning = ""
+	}
 	t.mu.Unlock()
 
+	if cleared {
+		t.cfg.Log.Info("public ingress works after all: the warning is cleared")
+	}
 	if !changed {
 		return
 	}

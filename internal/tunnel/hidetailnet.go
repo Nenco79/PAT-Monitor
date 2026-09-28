@@ -89,7 +89,7 @@ func hideAttr(a slog.Attr, hide func(string) string) slog.Attr {
 	return slog.Attr{Key: a.Key, Value: v}
 }
 
-func hideBoth(s string) string { return withoutTailnet(withoutEmail(s)) }
+func hideBoth(s string) string { return withoutLoginLink(withoutTailnet(withoutEmail(s))) }
 
 // emailAddress matches an address with a domain that has a dot in it, which
 // is what an account's is and what a Go identifier or a `user@host` is not.
@@ -100,6 +100,14 @@ func withoutEmail(s string) string { return emailAddress.ReplaceAllString(s, "<e
 
 // tailnetName matches a name under ts.net: an optional node label, then the
 // tailnet's own.
+// loginLink is the address that signs a node into a tailnet. Until somebody
+// opens it, whoever opens it first can take the node into their own, so it is
+// a key and not a diagnosis: the tray and the page show it whole, the file from
+// Info up keeps where it points and not the key. `-v` still has it.
+var loginLink = regexp.MustCompile(`(?i)(login\.tailscale\.com/a/)[A-Za-z0-9]+`)
+
+func withoutLoginLink(s string) string { return loginLink.ReplaceAllString(s, "${1}<hidden>") }
+
 var tailnetName = regexp.MustCompile(`(?i)\b(?:([a-z0-9-]+)\.)?[a-z0-9-]+\.ts\.net\b`)
 
 // withoutTailnet turns `patmon-1a2b3c.quercia-lieve.ts.net` into

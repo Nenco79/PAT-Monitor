@@ -83,3 +83,34 @@ func TestTheAccountsEmailStaysOutOfTheLogAtEveryLevel(t *testing.T) {
 		t.Errorf("text that is not an address was hidden:\n%s", buf.String())
 	}
 }
+
+// **The sign-in link is a key, and the file keeps where it points and not the
+// key.** Until somebody opens it, whoever opens it first can take the node
+// into their own tailnet, and the log is the file people attach to an issue
+// while they are stuck at exactly that step.
+//
+// **The defect was put back and this test fails with it**: without the
+// pattern, the Info line carries the link whole.
+func TestTheSignInLinkStaysOutOfTheLog(t *testing.T) {
+	var buf bytes.Buffer
+	tn := New(Config{
+		Hostname: "patmon-1a2b3c",
+		Log:      slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})),
+	})
+	link := "https://login.tailscale.com/a/1a2b3c4d5e6f"
+	tn.cfg.Log.Info("remote access", "phase", "needs-login", "open", link)
+	tn.cfg.Log.Info("To authenticate, visit:\n\n\t" + link)
+
+	if strings.Contains(buf.String(), "1a2b3c4d5e6f") {
+		t.Errorf("the sign-in key reached the log:\n%s", buf.String())
+	}
+	if !strings.Contains(buf.String(), "login.tailscale.com/a/<hidden>") {
+		t.Errorf("the line no longer says where the link points:\n%s", buf.String())
+	}
+
+	buf.Reset()
+	tn.cfg.Log.Debug("go to", "url", link)
+	if !strings.Contains(buf.String(), "1a2b3c4d5e6f") {
+		t.Error("the debug line lost the link too")
+	}
+}

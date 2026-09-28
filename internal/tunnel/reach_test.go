@@ -339,15 +339,41 @@ func TestTheOutcomeDoesNotOverwriteTheRestOfTheState(t *testing.T) {
 		Warning:   WarningNoIngress,
 	})
 
-	tu.setReach(ReachVerified, "https://example.ts.net")
+	tu.setReach(ReachFailed, "https://example.ts.net")
 
 	st := tu.State()
 	if st.Phase != PhaseRunning || st.PublicURL != "https://example.ts.net" ||
 		st.Warning != WarningNoIngress {
 		t.Errorf("the state was overwritten: %+v", st)
 	}
-	if st.Reach != ReachVerified {
-		t.Errorf("outcome %q, wanted %q", st.Reach, ReachVerified)
+	if st.Reach != ReachFailed {
+		t.Errorf("outcome %q, wanted %q", st.Reach, ReachFailed)
+	}
+}
+
+// **A verified address clears the missing-grant warning.** The warning is
+// decided once, fifteen seconds after the listener opens; a grant arriving
+// later left an amber icon saying the Internet is refused, over an address the
+// probe had just come back in through.
+//
+// **The defect was put back and this test fails with it**: with setReach
+// touching only the outcome, the warning outlives the verification.
+func TestAVerifiedAddressClearsTheMissingGrantWarning(t *testing.T) {
+	tu := testTunnel(t)
+	tu.setState(State{
+		Phase:     PhaseRunning,
+		PublicURL: "https://example.ts.net",
+		Warning:   WarningNoIngress,
+	})
+
+	tu.setReach(ReachVerified, "https://example.ts.net")
+
+	st := tu.State()
+	if st.Warning != "" {
+		t.Errorf("the warning %q survived a verified address", st.Warning)
+	}
+	if st.Phase != PhaseRunning || st.PublicURL != "https://example.ts.net" {
+		t.Errorf("the rest of the state was overwritten: %+v", st)
 	}
 }
 

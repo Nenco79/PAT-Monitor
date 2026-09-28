@@ -289,7 +289,26 @@ type Tunnel struct {
 	// the prober writes it and whoever serves the request reads it, and those
 	// are two different goroutines.
 	reachNonce atomic.Value
+
+	// query asks the control server how to enable a feature; askFunnel
+	// remembers its answer. See askFunnel.
+	query  func(ctx context.Context, lc *local.Client, feature string) (text, url string, done bool)
+	funnel featureAnswer
 }
+
+// featureAnswer is the last thing QueryFeature said, and when to ask again.
+type featureAnswer struct {
+	text, url string
+	asked     time.Time
+	wait      time.Duration
+}
+
+// The cadence QueryFeature is asked at while the funnel attribute is missing:
+// at once, then after featureFirstWait, doubling to featureMaxWait.
+const (
+	featureFirstWait = 30 * time.Second
+	featureMaxWait   = 5 * time.Minute
+)
 
 func New(cfg Config) *Tunnel {
 	// No default is invented here: `config.Default` already has one, and it is
@@ -307,6 +326,7 @@ func New(cfg Config) *Tunnel {
 		cfg:     cfg,
 		enabled: make(chan struct{}),
 		state:   State{Phase: PhaseOff},
+		query:   askTailscale,
 	}
 }
 
@@ -369,8 +389,9 @@ func (t *Tunnel) setState(s State) {
 //
 // **It answers nil even when it fails**, and every one of run's own failure
 // paths does exactly that: missing prerequisites end up in State, where the
-// user can read them and put them right, and the waiting continues. The
-// monitor on the home network has to keep working regardless.
+// user can read them and put them right, and the waiting continues. A failure
+// past them is tried again, with a backoff: see run. The monitor on the home
+// network has to keep working regardless.
 //
 // A panic is one more failure and is declared the same way, on a step nobody
 // chose: left to propagate it would come out of the errgroup and switch off
@@ -398,6 +419,14 @@ func (t *Tunnel) Run(ctx context.Context, handler http.Handler) error {
 // run is the tunnel's whole life, and every road out of it answers nil: see
 // Run, which is where that contract is argued and where a panic is turned into
 // a failure like the others.
+//
+// **A failure after the prerequisites is tried again, and it used not to be.**
+// A first certificate slower than its two minutes, or a transient error from
+// ListenFunnel or Serve, ended remote access for the life of the process:
+// Enable had already fired, so the page's switch answered "ok" and changed
+// nothing, and only a restart brought it back. Each attempt is a whole node
+// life, closed before the next; the wait starts at retryFirstWait and doubles
+// to retryMaxWait, and starts over after a life that lasted longer than that.
 func (t *Tunnel) run(ctx context.Context, handler http.Handler) error {
 	// Permission is waited for without consuming anything. Until it arrives the
 	// tunnel does not exist as far as the system is concerned: no registered
@@ -408,6 +437,34 @@ func (t *Tunnel) run(ctx context.Context, handler http.Handler) error {
 		return nil
 	}
 
+	wait := retryFirstWait
+	for {
+		began := time.Now()
+		if !t.live(ctx, handler) || ctx.Err() != nil {
+			return nil
+		}
+		if time.Since(began) > retryMaxWait {
+			wait = retryFirstWait
+		}
+		t.cfg.Log.Debug("remote access: trying again", "in", wait)
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-time.After(wait):
+		}
+		wait = min(2*wait, retryMaxWait)
+	}
+}
+
+// The cadence a failed node life is tried again at.
+const (
+	retryFirstWait = 30 * time.Second
+	retryMaxWait   = 10 * time.Minute
+)
+
+// live is one life of the node, from its start to the end of serving, and
+// says whether it ended in a failure worth trying again.
+func (t *Tunnel) live(ctx context.Context, handler http.Handler) (retry bool) {
 	srv := &tsnet.Server{
 		Dir:      moveTheNode(t.cfg.FormerStateDir, t.cfg.StateDir, os.Rename, t.cfg.Log),
 		Hostname: t.cfg.Hostname,
@@ -438,27 +495,32 @@ func (t *Tunnel) run(ctx context.Context, handler http.Handler) error {
 	t.setState(State{Phase: PhaseStarting})
 	if err := srv.Start(); err != nil {
 		t.fail(StepNodeStart, err)
-		return nil
+		return true
 	}
 
 	// Waits for the node to be logged in and the prerequisites to be satisfied,
 	// reporting meanwhile what is missing.
 	if err := t.waitReady(ctx, srv); err != nil {
-		return nil
+		return ctx.Err() == nil
 	}
 
 	ln, err := srv.ListenFunnel("tcp", ":443")
 	if err != nil {
 		t.fail(StepFunnelListen, err)
-		return nil
+		return true
 	}
 	defer ln.Close()
 
 	t.setState(State{Phase: PhaseCertificate,
 		Action: ActionWaitCertificate})
 	if err := t.warmCertificate(ctx, srv); err != nil {
+		// Quitting inside the wait for the certificate is an ordinary exit,
+		// and written as a failure it was a tunnel fault in the morning's log.
+		if ctx.Err() != nil {
+			return false
+		}
 		t.fail(StepCertificate, err)
-		return nil
+		return true
 	}
 
 	t.logServeConfig(ctx, srv)
@@ -514,10 +576,10 @@ func (t *Tunnel) run(ctx context.Context, handler http.Handler) error {
 
 	if err := httpSrv.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		t.fail(StepFunnelServe, err)
-		return nil
+		return true
 	}
 	t.setState(State{Phase: PhaseOff})
-	return nil
+	return false
 }
 
 // sayOnce lets a single line through for each message repeated in a row.
@@ -762,6 +824,36 @@ func askTailscale(ctx context.Context, lc *local.Client, feature string) (text, 
 	return strings.TrimSpace(info.Text), info.URL, info.Complete
 }
 
+// askFunnel asks QueryFeature about the funnel, and remembers the answer.
+//
+// **The question goes to Tailscale's control server**, not to the node:
+// evaluate runs every two seconds, and while the tailnet never grants the
+// attribute — somebody leaving it for days — that was forty thousand requests a
+// day with an answer that does not change. What says the attribute has arrived
+// is the node's own caps, which evaluate reads first and for nothing, so the
+// query only supplies the text and the link, and those do not need two seconds.
+// It is asked at once, then at a cadence that grows, and a "done" is never
+// remembered: it ends the wait the moment it is said.
+func (t *Tunnel) askFunnel(ctx context.Context, lc *local.Client) (text, url string, done bool) {
+	a := &t.funnel
+	if !a.asked.IsZero() && time.Since(a.asked) < a.wait {
+		return a.text, a.url, false
+	}
+	text, url, done = t.query(ctx, lc, "funnel")
+	if done {
+		*a = featureAnswer{}
+		return text, url, true
+	}
+	a.text, a.url, a.asked = text, url, time.Now()
+	switch {
+	case a.wait == 0:
+		a.wait = featureFirstWait
+	case a.wait < featureMaxWait:
+		a.wait = min(2*a.wait, featureMaxWait)
+	}
+	return text, url, false
+}
+
 // evaluate turns Tailscale's state into the next step to take.
 //
 // The two prerequisites — HTTPS certificates and the funnel attribute — are
@@ -815,7 +907,7 @@ func (t *Tunnel) evaluate(ctx context.Context, lc *local.Client, st *ipnstate.St
 		return State{Phase: PhaseStarting}, true
 	}
 
-	text, url, done := askTailscale(ctx, lc, "funnel")
+	text, url, done := t.askFunnel(ctx, lc)
 	if done {
 		return State{Phase: PhaseStarting}, true
 	}
@@ -911,7 +1003,22 @@ func (t *Tunnel) fail(step FailedStep, err error) {
 	// a log message and as text shown to the user: the first rule wanted
 	// English, the second wanted the reader's language, and the two could not
 	// be satisfied together while it was a single string.
-	t.cfg.Log.Error("remote access failed", "step", string(step), "error", err)
+	//
+	// **A failure that repeats is said once**: waitReady reads the status every
+	// two seconds, and a read that keeps failing wrote the same Error line
+	// eighteen hundred times an hour, rotating away the lines that explained
+	// the night. The same step with the same error is the condition lasting,
+	// and what is written is its appearance and its end — the end being the
+	// next phase, which setState writes.
+	t.mu.RLock()
+	again := t.state.Phase == PhaseError && t.state.FailedStep == step &&
+		t.state.Detail == err.Error()
+	t.mu.RUnlock()
+	if again {
+		t.cfg.Log.Debug("remote access failed (again)", "step", string(step), "error", err)
+	} else {
+		t.cfg.Log.Error("remote access failed", "step", string(step), "error", err)
+	}
 	t.setState(State{
 		Phase:      PhaseError,
 		Action:     ActionFailed,
