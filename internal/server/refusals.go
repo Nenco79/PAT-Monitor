@@ -29,10 +29,12 @@ type refusalRun struct {
 	what  string        // the message of the first line; the summary reuses it
 	quiet time.Duration // how long without refusals closes the run
 
-	mu    sync.Mutex
-	n     int
-	since time.Time
-	timer *time.Timer
+	mu      sync.Mutex
+	n       int
+	since   time.Time
+	last    time.Time // the latest refusal: close measures the quiet from it
+	timer   *time.Timer
+	stopped bool
 }
 
 // refusalQuiet is how long a run of refusals has to stay silent to be over.
@@ -51,16 +53,21 @@ func newRefusalRun(log *slog.Logger, what string) *refusalRun {
 // go through forLog first.
 func (q *refusalRun) refuse(args ...any) {
 	q.mu.Lock()
+	now := time.Now()
 	first := q.n == 0
 	if first {
-		q.since = time.Now()
+		q.since = now
 	}
 	q.n++
+	q.last = now
 	n := q.n
-	if q.timer == nil {
+	// **The timer is armed once and never Reset.** Reset on a timer that has
+	// already fired while its function waits for the lock arms it a second
+	// time, and close then dropped the handle: the orphan closed the next run
+	// early and stop could not reach it. close measures the quiet from last
+	// instead, and re-arms itself for what is left.
+	if q.timer == nil && !q.stopped {
 		q.timer = guard.After(q.log, "closing a run of refusals", q.quiet, q.close)
-	} else {
-		q.timer.Reset(q.quiet)
 	}
 	q.mu.Unlock()
 
@@ -74,6 +81,11 @@ func (q *refusalRun) refuse(args ...any) {
 // close ends the run, if it is still quiet, and says how it went.
 func (q *refusalRun) close() {
 	q.mu.Lock()
+	if left := q.quiet - time.Since(q.last); left > 0 && !q.stopped {
+		q.timer = guard.After(q.log, "closing a run of refusals", left, q.close)
+		q.mu.Unlock()
+		return
+	}
 	n, since := q.n, q.since
 	q.n, q.timer = 0, nil
 	q.mu.Unlock()
@@ -89,6 +101,7 @@ func (q *refusalRun) close() {
 func (q *refusalRun) stop() {
 	q.mu.Lock()
 	defer q.mu.Unlock()
+	q.stopped = true
 	if q.timer != nil {
 		q.timer.Stop()
 	}

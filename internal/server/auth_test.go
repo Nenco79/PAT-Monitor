@@ -163,3 +163,27 @@ func TestAFullTableDoesNotClearSomebodyElsesLockout(t *testing.T) {
 			"addresses now clears one's own")
 	}
 }
+
+// **A login that was verifying while the sessions were revoked does not come
+// out of it with a session.** argon2 takes a tenth of a second, and the hash
+// it verifies against is read before it starts: a change or a reset landing in
+// that window was undone by the create that followed.
+//
+// **The defect was put back and this test fails with it**: with the generation
+// check removed from createAt, the stale login gets its token.
+func TestALoginVerifiedAcrossARevocationGetsNoSession(t *testing.T) {
+	s := newSessionStore(time.Hour)
+	defer s.close()
+
+	gen := s.current()
+	s.revokeAll() // the owner changes the password while argon2 runs
+	if token, err := s.createAt(gen, "192.0.2.7", anyRoad); err == nil {
+		t.Fatalf("a login verified against the old password got a session: %q", token)
+	}
+	if n := s.count(); n != 0 {
+		t.Errorf("%d sessions are open after the revocation", n)
+	}
+	if _, err := s.createAt(s.current(), "192.0.2.7", anyRoad); err != nil {
+		t.Errorf("a login begun after the revocation was refused: %v", err)
+	}
+}

@@ -387,6 +387,12 @@ old `Warn` put back. Measured on the running monitor with `-v`, three hundred
 posts carrying a 60 KB `Origin` wrote 110 KB of Debug lines; the uncut Warn
 would have been some 18 MB, and at the default level there is one line.
 
+**And `requireAuth`'s two refusals a third party can provoke had the same
+shape**: a command from a sibling origin in the owner's browser, and a home
+cookie carried to the Funnel, each wrote a Warn per request with the path the
+caller wrote, and the `{name}` of a clip route or the catch-all behind `GET /`
+takes any length. They are runs too, and the path goes through `forLog`.
+
 The direction to remember is that the volume of the log is not decided by
 whoever writes the line: it is decided by whoever makes it be written. It holds
 for a viewer that retries, for an audio sender, for a dependency, and for a
@@ -624,6 +630,14 @@ including the caller's**: if the password is being changed because it has fallen
 into somebody's hands, leaving already-admitted devices alive defeats the point
 of the change.
 
+**And a login already verifying when they die does not come out alive.** argon2
+takes a tenth of a second against a hash read before it starts, so a guess in
+flight across a change or a reset used to create its session right after the
+revocation, which is the one caller the revocation exists for. The store counts
+its revocations, a login reads the count before the hash, and `createAt` refuses
+when it has moved; the first-time setup revokes too, because a session left from
+before a reset is refused only while there is no password.
+
 **`/ws` is not a page.** The two guards in `requireAuth` — no password, no
 session — answered the same request differently: 303 to `/setup` for the first,
 401 for the second. To a WebSocket handshake a redirect means nothing, the
@@ -653,8 +667,13 @@ being encrypted end to end, which is the phone with Tailscale switched off on
 the way out of the house. **The tailnet has an IPv6 range too**, and it sits
 inside the private one: until a review found it, a node reached over IPv6 was
 classed as the local network, and its session refused at the Funnel with a
-warning about a carried cookie. The token is refused, not revoked: revoking would let
-whoever holds a copy log the owner out.
+warning about a carried cookie. **And "born at home" is decided by the road and
+not by the class**, for the reason `credentials` already learnt: a phone on a
+dual-stack Wi-Fi reaches the plain-HTTP listener from a global IPv6 address,
+classes as the Internet, and its cookie crossed the Wi-Fi in clear all the same.
+Only the Funnel, recognised by what Tailscale put on the connection, and the
+tailnet are encrypted; everything else was born at home. The token is refused,
+not revoked: revoking would let whoever holds a copy log the owner out.
 
 **And the browser's copy slides with the server's.** The renewal was sliding on
 the server and fixed in the browser, whose cookie took its `MaxAge` at login: a

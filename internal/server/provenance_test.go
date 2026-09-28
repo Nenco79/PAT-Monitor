@@ -154,6 +154,42 @@ func TestASessionOpenedAtHomeDoesNotOpenThePublicAddress(t *testing.T) {
 	}
 }
 
+// **A phone on a dual-stack Wi-Fi is at home, although its address is
+// public.** It reaches the plain-HTTP listener from its global IPv6 address,
+// which classes as the Internet, and its cookie crossed the Wi-Fi in clear;
+// decided by the class, the session opened there was accepted at the public
+// address.
+//
+// **The defect was put back and this test fails with it**: with bornAtHome
+// deciding by the class again, the session answers 200 from the Funnel.
+func TestADualStackPhoneAtHomeIsBornAtHome(t *testing.T) {
+	s, _ := serverWithPassword(t, "a-long-password")
+
+	r := httptest.NewRequest(http.MethodGet, "/", nil)
+	r.RemoteAddr = "[2001:db8::40]:5555"
+	if c := requestOrigin(r).Class; c != originInternet {
+		t.Fatalf("the global IPv6 address was classed %v, the case is not the one meant", c)
+	}
+	token, err := s.sessions.create("", requestOrigin(r))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if code := statusWith(s, token, fromTheFunnel); code != http.StatusUnauthorized {
+		t.Errorf("a session opened in clear over IPv6 answered %d from the Funnel, wanted 401", code)
+	}
+
+	// The Funnel's own sessions still open the Funnel.
+	f := httptest.NewRequest(http.MethodGet, "/", nil)
+	fromTheFunnel(f)
+	token, err = s.sessions.create("", requestOrigin(f))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if code := statusWith(s, token, fromTheFunnel); code != http.StatusOK {
+		t.Errorf("a session opened through the Funnel answered %d there, wanted 200", code)
+	}
+}
+
 // commandWith posts a detection toggle with a session cookie.
 func commandWith(s *Server, token string, headers map[string]string) int {
 	r := httptest.NewRequest(http.MethodPost, "/api/detect",

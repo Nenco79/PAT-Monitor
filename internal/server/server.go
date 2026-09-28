@@ -322,9 +322,19 @@ type Server struct {
 	refusalsSince time.Time
 
 	// crossSite and setupElsewhere are the two public refusals, written as
-	// runs: see refusalRun.
-	crossSite      *refusalRun
-	setupElsewhere *refusalRun
+	// runs: see refusalRun. commandElsewhere and wrongRoad are requireAuth's
+	// two refusals a third party can provoke, and they are runs for the same
+	// reason: whoever provokes them would otherwise decide how many lines.
+	// ownNamesList is OwnNames' last answer, and ownNamesAt when it came:
+	// see ownNames.
+	ownNamesMu   sync.Mutex
+	ownNamesList []string
+	ownNamesAt   time.Time
+
+	crossSite        *refusalRun
+	setupElsewhere   *refusalRun
+	commandElsewhere *refusalRun
+	wrongRoad        *refusalRun
 }
 
 // refuseViewer writes a viewer's refusal **as an alert, not as an event**.
@@ -404,6 +414,8 @@ func New(opts Options) (*Server, error) {
 	}
 	s.crossSite = newRefusalRun(s.log, "credentials refused: the submission did not come from our own pages")
 	s.setupElsewhere = newRefusalRun(s.log, "first-time setup refused: request not from this PC")
+	s.commandElsewhere = newRefusalRun(s.log, "command refused: it did not come from our own pages")
+	s.wrongRoad = newRefusalRun(s.log, "session refused: opened on the home network and presented from the Internet")
 	s.routes()
 	return s, nil
 }
@@ -422,6 +434,8 @@ func (s *Server) Close() {
 	s.sessions.close()
 	s.crossSite.stop()
 	s.setupElsewhere.stop()
+	s.commandElsewhere.stop()
+	s.wrongRoad.stop()
 }
 
 // Handler returns the complete HTTP handler.
@@ -571,8 +585,7 @@ func (s *Server) requireAuth(next http.Handler) http.Handler {
 			// A cookie that only ever crossed the house in clear, presented at
 			// the public address: somebody carried it there. The owner's own
 			// browser cannot do it, so this line is worth reading.
-			s.log.Warn("session refused: opened on the home network and presented "+
-				"from the Internet", "from", from.Addr, "path", r.URL.Path)
+			s.wrongRoad.refuse("from", from.Addr, "path", forLog(r.URL.Path))
 		}
 		if verdict == sessionInvalid || verdict == sessionWrongRoad {
 			if !answersWithAPage(r) {
@@ -593,8 +606,7 @@ func (s *Server) requireAuth(next http.Handler) http.Handler {
 		// already use; reads are left alone, because a cross-origin page cannot
 		// read what they answer.
 		if r.Method != http.MethodGet && r.Method != http.MethodHead && !fromOurOwnPages(r) {
-			s.log.Warn("command refused: it did not come from our own pages",
-				"path", r.URL.Path, "from", from.Addr,
+			s.commandElsewhere.refuse("path", forLog(r.URL.Path), "from", from.Addr,
 				"origin", forLog(r.Header.Get("Origin")),
 				"sec_fetch_site", forLog(r.Header.Get("Sec-Fetch-Site")))
 			writeJSONError(w, http.StatusForbidden, ErrCrossSite)
@@ -1142,6 +1154,9 @@ func (s *Server) apiLogin(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return // the caller has gone: there is nobody to answer
 	}
+	// The generation is read before the hash, so that a change landing while
+	// argon2 runs is seen by createAt below and not undone by it.
+	gen := s.sessions.current()
 	verified := config.VerifyPassword(s.conf().PasswordHash, req.Password)
 	release()
 
@@ -1163,7 +1178,12 @@ func (s *Server) apiLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.limiter.success(key)
-	token, err := s.sessions.create(key, requestOrigin(r))
+	token, err := s.sessions.createAt(gen, key, requestOrigin(r))
+	if errors.Is(err, errRevokedMeanwhile) {
+		s.log.Warn("login refused: the password changed while it was being verified", "from", key)
+		authError(w, r, isForm, "/login", http.StatusUnauthorized, ErrWrongPassword)
+		return
+	}
 	if err != nil {
 		authError(w, r, isForm, "/login", http.StatusInternalServerError, ErrSessionFailed)
 		return
@@ -1421,6 +1441,10 @@ func (s *Server) apiSetup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.limiter.success(key)
+	// A session left over from before a reset is refused while there is no
+	// password, and would be valid again from here: closing them all is the
+	// belt under the generation check in apiLogin.
+	s.sessions.revokeAll()
 	s.log.Info("password set during the initial setup", "from", key)
 	if isForm {
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
@@ -1859,7 +1883,7 @@ func (s *Server) hashSlot(r *http.Request) (release func(), ok bool) {
 // it happened.
 func (s *Server) refuseCredentials(w http.ResponseWriter, r *http.Request, isForm bool, page string, err error) {
 	if errors.Is(err, errCrossSite) {
-		s.crossSite.refuse("path", r.URL.Path, "from", clientKey(r),
+		s.crossSite.refuse("path", forLog(r.URL.Path), "from", clientKey(r),
 			"host", forLog(r.Host),
 			"origin", forLog(r.Header.Get("Origin")),
 			"sec_fetch_site", forLog(r.Header.Get("Sec-Fetch-Site")))

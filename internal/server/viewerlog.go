@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"patmonitor/internal/guard"
 	"patmonitor/internal/rtc"
 	"patmonitor/internal/tunnel"
 )
@@ -54,6 +53,11 @@ type origin struct {
 	Addr string
 	// Class is the same thing for whoever has to decide something.
 	Class originClass
+	// Funnel says the request came through the Funnel, as Tailscale put it on
+	// the connection. It is not the class: a public IPv6 address reaching the
+	// house's plain-HTTP listener is "Internet" too, and only this tells the
+	// encrypted road from the one in clear.
+	Funnel bool
 }
 
 // Public says whether the request arrived from the Internet. It is the
@@ -75,7 +79,7 @@ func (o origin) Public() bool { return o.Class == originInternet }
 // caller could write. The same caveat as clientKey applies.
 func requestOrigin(r *http.Request) origin {
 	if src, ok := tunnel.SourceAddr(r.Context()); ok {
-		return origin{Kind: "Internet (Funnel)", Addr: src.Addr().String(), Class: originInternet}
+		return origin{Kind: "Internet (Funnel)", Addr: src.Addr().String(), Class: originInternet, Funnel: true}
 	}
 
 	host := r.RemoteAddr
@@ -183,12 +187,31 @@ func (s *Server) ownName(host string) bool {
 		host = h
 	}
 	host = strings.TrimSuffix(host, ".")
-	for _, n := range s.opts.OwnNames() {
+	for _, n := range s.ownNames() {
 		if n = strings.TrimSuffix(n, "."); n != "" && strings.EqualFold(host, n) {
 			return true
 		}
 	}
 	return false
+}
+
+// ownNamesFresh is how long the system's answer to OwnNames is reused.
+//
+// The names are asked for at each submission so that they stay fresh, and
+// that is the point of asking; but a refused submission is not a login, and
+// every one of them used to enumerate the adapters before the limiter was ever
+// consulted, as often as the caller liked. A few seconds keep the answer as
+// fresh as a person can notice and make the rest a lookup.
+const ownNamesFresh = 5 * time.Second
+
+// ownNames is OwnNames, remembered for ownNamesFresh.
+func (s *Server) ownNames() []string {
+	s.ownNamesMu.Lock()
+	defer s.ownNamesMu.Unlock()
+	if s.ownNamesAt.IsZero() || time.Since(s.ownNamesAt) > ownNamesFresh {
+		s.ownNamesList, s.ownNamesAt = s.opts.OwnNames(), time.Now()
+	}
+	return s.ownNamesList
 }
 
 // watchSession follows a session and writes its report.
@@ -223,12 +246,22 @@ func (s *Server) watchSession(ctx context.Context, notify func(path string), v *
 				"cause", cause,
 				"remedy", remedy,
 			}, facts.LogArgs()...)...)
-		<-doneOrCtx(ctx, v)
-		// A session that ends without ever having connected is a fault, not a
-		// visit: reporting it as a visit would hide it among the others.
-		log.Warn("viewer disconnected without ever establishing media",
-			"duration", v.Since().Round(time.Second).String())
-		return
+
+		// **The declaration is ours and the deadline is pion's**, and they are
+		// not the same number: ICE goes on checking for thirty seconds, so a
+		// phone whose candidates arrive late can still find its pair after the
+		// line above. That viewer used to watch for an hour under a closing line
+		// saying media never passed, with no samples and no path on its page. So
+		// the wait goes on, with no deadline, until the session ends.
+		path, ok = waitForPath(ctx, v, 0)
+		if !ok {
+			// A session that ends without ever having connected is a fault, not
+			// a visit: reporting it as a visit would hide it among the others.
+			log.Warn("viewer disconnected without ever establishing media",
+				"duration", v.Since().Round(time.Second).String())
+			return
+		}
+		log.Info("viewer connected late", "after", v.Since().Round(time.Second).String())
 	}
 	if notify != nil {
 		notify(path)
@@ -285,14 +318,18 @@ const negotiationTimeout = 20 * time.Second
 // artefacts show, and that is where it is worth writing down.
 const lossWarnPercent = 2.0
 
-// waitForPath waits for ICE to choose a candidate pair.
+// waitForPath waits for ICE to choose a candidate pair, for at most timeout,
+// or until the session ends when timeout is zero.
 func waitForPath(ctx context.Context, v *rtc.Viewer, timeout time.Duration) (string, bool) {
 	// Half a second: negotiation at home finishes in a few tens of
 	// milliseconds, and this wait is also what delays the status line shown to
 	// the viewer.
 	tick := time.NewTicker(500 * time.Millisecond)
 	defer tick.Stop()
-	deadline := time.After(timeout)
+	var deadline <-chan time.Time // nil: never
+	if timeout > 0 {
+		deadline = time.After(timeout)
+	}
 
 	for {
 		select {
@@ -308,19 +345,6 @@ func waitForPath(ctx context.Context, v *rtc.Viewer, timeout time.Duration) (str
 			}
 		}
 	}
-}
-
-// doneOrCtx closes when the session or the context ends.
-func doneOrCtx(ctx context.Context, v *rtc.Viewer) <-chan struct{} {
-	out := make(chan struct{})
-	guard.Go(nil, "waiting for the session to end", func() {
-		defer close(out)
-		select {
-		case <-ctx.Done():
-		case <-v.Done():
-		}
-	})
-	return out
 }
 
 // logSessionEnd closes a session's report.

@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"crypto/subtle"
 	"encoding/base64"
+	"errors"
 	"net"
 	"net/http"
 	"net/netip"
@@ -50,22 +51,38 @@ const (
 // network in clear. The LAN listener is plain HTTP by design, so its cookie
 // can be read by anybody who can see the traffic; the tailnet and the Funnel
 // are encrypted, and this PC's own connections never reach a wire.
+//
+// **It is decided by the road, not by the class.** A phone on a dual-stack
+// Wi-Fi reaches the LAN listener from its global IPv6 address, which classes as
+// "Internet" like the Funnel does, and its cookie crossed the Wi-Fi in clear
+// all the same: decided by the class, that cookie was accepted at the public
+// address. Only the Funnel and the tailnet are encrypted, so everything else
+// was born at home.
 func bornAtHome(o origin) bool {
-	switch o.Class {
-	case originLocal, originThisPC, originUnknown:
-		return true
-	}
-	return false
+	return !o.Funnel && o.Class != originTailnet
 }
 
 // sessionStore keeps the sessions in memory. A restart of the app invalidates
 // them, which is acceptable and in some ways desirable.
 type sessionStore struct {
-	mu   sync.Mutex
-	m    map[string]session
-	ttl  time.Duration
-	stop chan struct{}
+	mu  sync.Mutex
+	m   map[string]session
+	ttl time.Duration
+	// generation counts the revocations. A login reads it before it reads the
+	// hash it verifies against, and create refuses when it has moved: see
+	// errRevokedMeanwhile.
+	generation uint64
+	stop       chan struct{}
 }
+
+// errRevokedMeanwhile is a login that verified a password which stopped being
+// the password while it was being verified.
+//
+// argon2 takes a tenth of a second, and a change or a reset landing inside it
+// used to be undone by the session created right after: whoever was guessing
+// in a loop at that moment came out of the revocation with a live session,
+// which is exactly the case the revocation exists for.
+var errRevokedMeanwhile = errors.New("the sessions were revoked while the password was being verified")
 
 func newSessionStore(ttl time.Duration) *sessionStore {
 	s := &sessionStore{
@@ -79,6 +96,19 @@ func newSessionStore(ttl time.Duration) *sessionStore {
 
 // create generates a new session token for a caller arriving from `from`.
 func (s *sessionStore) create(remote string, from origin) (string, error) {
+	return s.createAt(s.current(), remote, from)
+}
+
+// current is the revocation generation now in force.
+func (s *sessionStore) current() uint64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.generation
+}
+
+// createAt creates a session only if no revocation has happened since gen was
+// read.
+func (s *sessionStore) createAt(gen uint64, remote string, from origin) (string, error) {
 	raw := make([]byte, 32)
 	if _, err := rand.Read(raw); err != nil {
 		return "", err
@@ -87,6 +117,9 @@ func (s *sessionStore) create(remote string, from origin) (string, error) {
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if gen != s.generation {
+		return "", errRevokedMeanwhile
+	}
 	now := time.Now()
 	s.m[token] = session{expires: now.Add(s.ttl), remote: remote,
 		bornAtHome: bornAtHome(from), cookieSet: now}
@@ -193,6 +226,7 @@ func (s *sessionStore) revokeAll() int {
 	defer s.mu.Unlock()
 	n := len(s.m)
 	s.m = make(map[string]session)
+	s.generation++
 	return n
 }
 
