@@ -231,6 +231,36 @@ func (g *bitrateGovernor) release() (int, bool) {
 	return g.current, true
 }
 
+// releaseAll realigns the governors when nobody is watching any more, and says
+// what the encoder has to be commanded.
+//
+// **The quality realigns with the cap.** That governor is not called at all
+// with no viewers, so without this `current` and its two windows stay those of
+// the last session: whoever arrives afterwards gets somebody else's discount,
+// decided on a scene from ten minutes ago. See `qualityGovernor.release`.
+//
+// **And the scale is not called either.** `target` is called only with
+// somebody watching, so its windows stay those of the last session: whoever
+// arrives afterwards gets a veto decided on a scene from ten minutes ago, and a
+// last estimate that is nobody's any more. The **step** stays, and that is the
+// difference: that describes what the pipeline is really sending, not a
+// judgement.
+//
+// **The command is judged against what is in force, not against the network's
+// governor.** A discount is the quality loop's, inside a cap that stays where
+// it was: in a still room the encoder sits at 300 while `g.current` is 2500, so
+// `g.release` finds nothing to release and answers "unchanged". The encoder
+// then stayed at 300 after the last viewer left, and the next one's governors
+// all believed it was at the cap — the climb, the motion jump and the scale's
+// break all ask for something below the cap — so a hard scene got 300 kbit/s at
+// full size with nothing in the loop able to raise it.
+func releaseAll(g *bitrateGovernor, quality *qualityGovernor, scale *scaleGovernor, inForce int64) (int, bool) {
+	kbps, changed := g.release()
+	quality.release(kbps)
+	scale.release()
+	return kbps, changed || inForce != int64(kbps)
+}
+
 func roundToStep(kbps int) int {
 	return (kbps + bitrateStepKbps/2) / bitrateStepKbps * bitrateStepKbps
 }
@@ -502,10 +532,12 @@ const bitrateLossSevere = 0.10
 
 // bitrateLossReduction is how much of the loss translates into a reduction.
 //
-// At 90% loss it takes the bitrate to a little over half on every turn, that is
-// from 2500 to the minimum in four seconds: as fast as it has to be, because
-// while one insists the link goes on not getting through, and progressive instead
-// of a single step, so a moderate loss does not empty the quality in one go.
+// At 90% loss it takes the bitrate to a little over half on every report, that
+// is from 2500 to the minimum in four seconds while the receiver goes on
+// declaring it: as fast as it has to be, because while one insists the link goes
+// on not getting through, and progressive instead of a single step, so a
+// moderate loss does not empty the quality in one go. **Per report, not per
+// turn**: see lossToCut.
 const bitrateLossReduction = 0.5
 
 // overshootTolerance is how much the encoder may overshoot before it is said.
@@ -583,7 +615,29 @@ func (h *Hub) recordLoss(fraction float64, now time.Time) {
 	if now.Sub(h.lossWorstAt) > lossWindow || fraction >= h.lossWorst {
 		h.lossWorst = fraction
 		h.lossWorstAt = now
+		h.lossUncut = true
 	}
+}
+
+// lossToCut is the loss the bitrate governor may cut for on this turn: the
+// recent worst once, and zero until a report renews it.
+//
+// **A cut is multiplicative, and the window holds a value for three seconds.**
+// Handing the governor the window on every turn applied one report's loss as a
+// fresh cut on every tick it stayed in the window — a single 20% burst took
+// 2500 to 1600, and one report at 90% took it to the floor. The window is for
+// holding a value against missed reports, which is right for believableDrop and
+// atLeastWhatWeDelivered, and those still read recentLoss; what compounds is
+// the cut, and that is given once per report kept. The climb needs no guard of
+// its own: a cut restarts the rise wait, which is longer than the window.
+func (h *Hub) lossToCut(now time.Time) float64 {
+	h.lossMu.Lock()
+	defer h.lossMu.Unlock()
+	if !h.lossUncut || h.lossWorstAt.IsZero() || now.Sub(h.lossWorstAt) > lossWindow {
+		return 0
+	}
+	h.lossUncut = false
+	return h.lossWorst
 }
 
 // recentLoss is the worst fraction lost declared recently, zero if nobody has
@@ -758,11 +812,11 @@ func (h *Hub) RunBitrateControl(ctx context.Context) error {
 			//
 			// The two governors have to be told in two different ways: the
 			// **bitrate** is passed the current value, which for it is a
-			// do-nothing; the **scale** is told zero, which in its vocabulary is
-			// "I do not know" and not "zero bandwidth". Giving it the current
-			// bitrate means passing off a number of ours as a measurement of the
-			// network, and from life that brought it down to 960 without anybody
-			// having measured anything.
+			// do-nothing; the **scale** is passed the real estimate with the
+			// judgement of how credible it is beside it, below. Giving it the
+			// current bitrate means passing off a number of ours as a measurement
+			// of the network, and from life that brought it down to 960 without
+			// anybody having measured anything.
 			//
 			// Two different reasons not to believe a low estimate, and they have
 			// to be kept apart because they describe two different faults:
@@ -967,22 +1021,9 @@ func (h *Hub) RunBitrateControl(ctx context.Context) error {
 			var kbps int
 			var changed bool
 			if viewers == 0 {
-				kbps, changed = g.release()
-				// **And the quality realigns with it.** This governor is not
-				// called at all with no viewers, so without this line `current`
-				// and its two windows stay those of the last session: whoever
-				// arrives afterwards gets somebody else's discount, decided on a
-				// scene from ten minutes ago. See `qualityGovernor.release`.
-				quality.release(kbps)
-				// **And the scale is not called either.** `target` is called only
-				// with somebody watching, so its windows stay those of the last
-				// session: whoever arrives afterwards gets a veto decided on a
-				// scene from ten minutes ago, and a last estimate that is nobody's
-				// any more. The **step** stays, and that is the difference: that
-				// describes what the pipeline is really sending, not a judgement.
-				scale.release()
+				kbps, changed = releaseAll(g, quality, scale, h.targetKbps.Load())
 			} else {
-				kbps, changed = g.target(video, loss, now)
+				kbps, changed = g.target(video, h.lossToCut(now), now)
 			}
 			// The quality decides how much **needs** to be spent, inside that cap.
 			//

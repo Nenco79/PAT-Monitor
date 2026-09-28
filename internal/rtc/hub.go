@@ -297,6 +297,8 @@ type Hub struct {
 	// was losing had already left.
 	lossWorst   float64
 	lossWorstAt time.Time
+	// lossUncut says the value kept has not been cut for yet: see lossToCut.
+	lossUncut bool
 	// videoBytes counts the encoded bytes that came out of the encoder, and
 	// measuredKbps the throughput derived from them. They serve to check that the
 	// encoder really does what it is asked: see checkOvershoot.

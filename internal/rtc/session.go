@@ -89,6 +89,9 @@ type sessionSnapshot struct {
 	pli         uint32
 	nack        uint32
 	valid       bool
+	// audioValid is valid for the audio counter, which is read on its own:
+	// the audio stream can be unbound while the video still answers.
+	audioValid bool
 }
 
 // selectedPair is the candidate pair ICE is really using.
@@ -233,6 +236,7 @@ func (v *Viewer) Report() SessionReport {
 		if s := v.stats.Get(v.audioSSRC); s != nil {
 			cur.audioBytes = s.OutboundRTPStreamStats.BytesSent +
 				s.OutboundRTPStreamStats.HeaderBytesSent
+			cur.audioValid = true
 		}
 	}
 
@@ -261,7 +265,12 @@ func (v *Viewer) Report() SessionReport {
 		return rep
 	}
 	rep.VideoKbps = int(float64(cur.videoBytes-prev.videoBytes) * 8 / 1000 / secs)
-	rep.AudioKbps = int(float64(cur.audioBytes-prev.audioBytes) * 8 / 1000 / secs)
+	// The audio counter is judged on its own readings, for the same reason: a
+	// turn with the video's and not the audio's subtracted a large total from
+	// zero here as well.
+	if prev.audioValid && cur.audioValid && cur.audioBytes >= prev.audioBytes {
+		rep.AudioKbps = int(float64(cur.audioBytes-prev.audioBytes) * 8 / 1000 / secs)
+	}
 	rep.PLI = int(cur.pli - prev.pli)
 	rep.NACK = int(cur.nack - prev.nack)
 	rep.Lost = int(cur.lost - prev.lost)

@@ -452,9 +452,18 @@ func (g *scaleGovernor) target(availKbps int, credible bool, qp int, lim qpLimit
 
 	// The veto's window is fed on every turn, before any exit: it is the only way
 	// for it to always contain the same number of keyframes.
+	//
+	// **And a missing reading ages it**, which is the rule the quality loop's
+	// window and sentWindow already keep. Without it the readings from before a
+	// gap in the quantiser — a camera stall, a restart landing back on the same
+	// step — stayed, and the first readings after it were averaged with them: a
+	// hard scene read as the healthy one before the gap, and vetoed a credible
+	// descent.
 	qpVeto := 0
 	if qpKnown {
 		qpVeto = g.noteQP(qp)
+	} else if len(g.recentQP) > 0 {
+		g.recentQP = g.recentQP[1:]
 	}
 
 	// Straight after a size change nothing is judged: the encoder has just been

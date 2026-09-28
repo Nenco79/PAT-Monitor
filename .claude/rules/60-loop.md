@@ -203,7 +203,11 @@ staying too low costs only sharpness.
   cap=2500 lost=89.8%` with the bitrate stuck at 2500 and RTT 1.7 s, dying and
   reviving four times. Above **10%** it comes down without asking the estimate's
   permission, removing half the lost fraction — threshold and factor from
-  libwebrtc's loss-based controller.
+  libwebrtc's loss-based controller. **Once per report, not once per turn**:
+  the loss is held for three seconds against missed reports, and handed to the
+  governor on every tick it compounded — one 20% burst followed by zeros took
+  2500 to 1600. `lossToCut` gives each kept value to the cut once; the window
+  still answers the other readers, which hold a value rather than multiply it.
 - **Only the video's report block is video loss.** With BUNDLE one receiver
   report can carry a block per stream, and every block used to be counted: audio
   lost on the way read as the picture being too big for the link. The block
@@ -584,13 +588,19 @@ in memory went on answering after what it described had ended.**
   born at full size, otherwise the first sample would be thrown away at every
   start.
 - **And the discount does not outlive whoever had it.** With no viewers
-  `release` puts the encoder back at the ceiling and this governor is not called
-  at all: `current` and the two windows stayed those of the last session — A
-  leaves with a discount at 1191, B arrives ten minutes later on a scene exactly
-  at target, where the right answer is **no command**, and the first tick asks
-  for 2102. And until it realigns, `current` says 1191 while the encoder sits at
-  the ceiling: the projection reads that gap as an encoder producing 65% more
-  and cuts.
+  `releaseAll` puts the encoder back at the ceiling and this governor is not
+  called at all: `current` and the two windows stayed those of the last
+  session — A leaves with a discount at 1191, B arrives ten minutes later on a
+  scene exactly at target, where the right answer is **no command**, and the
+  first tick asks for 2102. And until it realigns, `current` says 1191 while
+  the encoder sits at the ceiling: the projection reads that gap as an encoder
+  producing 65% more and cuts. **And "puts the encoder back" was only true when
+  the discount was the network's.** The command was decided by the network's
+  governor, which under this governor's discount is still at the cap and so has
+  nothing to release: the encoder stayed at 300 with nobody watching, and the
+  next viewer's governors all believed it was at the cap — the one position
+  from which none of the climb, the motion jump or the scale's break raises
+  anything. The release is now judged against the bitrate in force.
 
 **And there was a fifth, one floor up, which would have brought the fourth back
 for good.** All three `release` functions are called from one place — `viewers

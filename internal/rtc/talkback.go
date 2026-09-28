@@ -208,12 +208,8 @@ func (t *Talkback) acquire(viewer int64, now time.Time) (Player, bool) {
 			"error", err, "retry_in", talkOpenRetry)
 		return nil, false
 	}
-	// The track may have ended in the meantime: closing straight away what was
-	// just opened is better than leaving it open with no owner.
-	if t.speaker != 0 {
-		_ = p.Close()
-		return nil, false
-	}
+	// Nobody else can have taken the floor meanwhile: `opening` refused every
+	// other caller for as long as the device was opening.
 	t.speaker, t.player = viewer, p
 	t.since, t.lastPkt = now, now
 	if t.lastEnd.IsZero() || now.Sub(t.lastEnd) >= talkCooldown {

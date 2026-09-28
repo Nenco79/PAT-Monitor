@@ -694,8 +694,9 @@ func (g *qualityGovernor) byteCeiling(want, capKbps, meanThroughput int) int {
 
 // release realigns the governor when nobody is watching any more.
 //
-// **With no viewers the encoder goes back to the cap** — `bitrateGovernor.release`
-// does that — and this governor knew nothing about it: it is not called at all at
+// **With no viewers the encoder goes back to the cap** — `releaseAll` commands
+// it, whether the discount in force was the network's or this governor's — and
+// this governor knew nothing about it: it is not called at all at
 // zero viewers, so `current` and the two windows stayed those of the last
 // session. Measured: A leaves with a discount at 1191 and a window of 26; B
 // arrives ten minutes later on a scene exactly at the target — where the right
