@@ -289,6 +289,10 @@ function row(v) {
   actions.append(keep);
 
   actions.append(button('ghost danger', 'delete', 'clips.delete', () => {
+    // A command already on its way is looked at before the question: asked
+    // first, the confirmation was answered and then the delete silently not
+    // sent.
+    if (inFlight.has(v.name)) return;
     if (!confirm(T('clips.confirm'))) return;
     const wasPlaying = v.name === chosen;
     command(v.name, 'delete').then((done) => {
