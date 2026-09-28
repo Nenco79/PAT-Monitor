@@ -44,26 +44,24 @@ monitor.
 **Whether raw is granted is a state of the endpoint, and it moves under Windows
 Update.** The same laptop gave `modo=raw` in `baselines/capture-intel.txt` and
 refused it later with the **same** Intel driver and the **same** Elevoc APO
-build: what changed in between is that the endpoint and the four APO components
-were re-installed by a Windows update, which their `LastArrivalDate` shows and
-nothing else does. And the condition written above did not hold either — raw has
-been refused while the shared path measured RMS -38.7 dBFS with a floor of 380
-LSB, that is, no zeroing at all. So neither the machine nor the zeroing is the
+build: in between, the endpoint and the four APO components were re-installed
+by a Windows update, which only their `LastArrivalDate` shows. And raw has been
+refused while the shared path measured RMS -38.7 dBFS with a floor of 380 LSB,
+that is, no zeroing at all. So neither the machine nor the zeroing is the
 premise: **the premise is the refusal, whenever it comes**, and a comment saying
 "on this machine raw is refused" ages into a false sentence without anybody
 touching a line.
 
-**The road is therefore announced even when it worked**, and the line that says
-so was missing for as long as the fallback existed. Raw refused plus exclusive
-granted means `RawMode` is true and nothing is wrong, so the warning below fires
-for neither — and its `reason`, which carries the HRESULT, is the only place the
-refusal is written down. The log said `mode=exclusive` and never why; finding
-that it was `AUDCLNT_E_RAW_MODE_UNSUPPORTED` took a throwaway program to read
-`Stream.RawError`, on a machine that was sitting right there. It is `Info` and
-not `Warn` — the signal is clean — and what it names is the price: the
-microphone is nobody else's while the monitor runs. It follows the same "only if
-it changed" guard as the open, because the road is a **state** and the recheck
-would write it every two minutes all night.
+**The road is therefore announced even when it worked**. Raw refused plus
+exclusive granted means `RawMode` is true and nothing is wrong, so the warning
+below fires for neither — and its `reason`, which carries the HRESULT, is the
+only place the refusal is written down. Without the line the log said
+`mode=exclusive` and never why: `AUDCLNT_E_RAW_MODE_UNSUPPORTED` could be read
+only from `Stream.RawError`. It is `Info` and not `Warn` — the signal is clean —
+and what it names is the price: the microphone is nobody else's while the
+monitor runs. It follows the same "only if it changed" guard as the open,
+because the road is a **state** and the recheck would write it every two minutes
+all night.
 
 Three traps, all paid for:
 
@@ -110,19 +108,18 @@ absent`, because silence must not be left to the watcher to interpret.
 
 ### A panic is a fault of the part it happened in, and the camera does not go off for it
 
-The chapter above is an invariant of our code, and **one floor below it there
-was nothing holding it up**: a panic in any goroutine ends the process, and this
-program has nineteen of them. A bug in the recogniser, in the recordings, in the
-talk-back or in the notification-area icon switched the camera off — at night,
-with nobody there to start it again. That is the separate lives of audio and
-video broken by the runtime, where a rule written in Go cannot reach.
+The chapter above is an invariant of our code, and **one floor below it nothing
+holds it up**: a panic in any goroutine ends the process, and this program has
+nineteen of them. A bug in the recogniser, in the recordings, in the talk-back
+or in the notification-area icon switched the camera off — at night, with
+nobody there to start it again.
 
 **No machinery for restarting was invented, and that is the whole design.** The
 monitor already knows how to come back from a fault: `Pipeline.Run` restarts the
 video with a backoff and a healthy-run reset, `superviseAudio` restarts the
 microphone, and both write the line saying what happened. What they did not know
-is that a panic **is** a fault. `guard.Run` turns it into an error, and
-machinery that has been running for months does the rest.
+is that a panic **is** a fault. `guard.Run` turns it into an error, and the
+existing machinery does the rest.
 
 Measured live, with `-simulate-panic`, on a binary with no console:
 
@@ -141,8 +138,7 @@ for the ones beside it. Written inside each of them it would be a property one
 has to go and check; written in the list, whatever is **not** wrapped is
 something the monitor cannot do without — the pipeline, the HTTP server.
 
-**A recover catches its own goroutine and nobody else's**, and that is the
-property that decides whether any of this protects anything. Guarding a
+**A recover catches its own goroutine and nobody else's**. Guarding a
 supervisor covers the call chain under it and **not** the goroutines that chain
 starts: those are separate stacks, and a panic in one of them ends the process
 exactly as before. A monitor with its boundaries guarded and fifteen bare `go`
@@ -160,14 +156,14 @@ console, where a panic is the answer one wants, printed where one is looking.
 timeout**. Swallowing a panic there would turn a crash into a monitor hung with
 the camera on — and a hang is the harder of the two to diagnose, because there
 is nothing to read. So the catching is done inside, and the error goes into the
-send like any other. It is not a hypothesis: the audio capture runs on a COM
-thread, so the live test's panic came out as `audio capture: panic in a COM
-thread`, the supervisor retried, and the microphone was back a second later.
+send like any other. The audio capture runs on a COM thread, so the live test's
+panic came out as `audio capture: panic in a COM thread`, the supervisor
+retried, and the microphone was back a second later.
 
 **The innermost boundary wins, and that is right.** That same panic never
 reached the `the audio capture` guard one floor up: whoever is closest knows
-best what to do with it, and here what wincom did was hand it to the supervisor
-in the shape the supervisor already understands.
+best what to do with it, and wincom handed it to the supervisor in the shape the
+supervisor already understands.
 
 **A subsystem declares its own fault in its own vocabulary rather than letting
 the panic out.** `tunnel.Run` answers `nil` on every one of its failure paths —
@@ -200,18 +196,15 @@ runtime's own and **refuses rather than guesses**: a shape it does not recognise
 gives nothing, because a plausible wrong frame sends the reader to the wrong
 function and the whole stack is on the same line for exactly that case.
 
-**And `AllSteps` was a hand-written list, which is how this was found.** Adding
-`StepPanic` to the tunnel should have made the catalogue's check ask for a word
-in both languages; it asked for nothing, because the list the check reads is
-written by hand and the new code never reached it. The whole suite stayed green
-over a failure that would have come out on the page as a bare key. It is the
-first entry of "Guards, and how they fail" — *a hand-written list protects
-exactly what somebody remembered* — met by walking into it, and there is now a
-test that derives the list from the source instead.
+**`AllSteps` is a hand-written list, so a test checks it against the source.**
+Adding `StepPanic` to the tunnel made the catalogue's check ask for no word,
+because the new code never reached that list, and the whole suite stayed green
+over a failure that would have come out on the page as a bare key: the first
+entry of "Guards, and how they fail".
 
-**Wrapping a `go` statement moves when its arguments are evaluated**, and that
-is the one way this sweep can change behaviour rather than only protect it. A
-`go f(x, y)` evaluates `x` and `y` **at once** and runs `f` later; turned into
+**Wrapping a `go` statement moves when its arguments are evaluated**, the one
+way this sweep can change behaviour rather than only protect it. A `go f(x, y)`
+evaluates `x` and `y` **at once** and runs `f` later; turned into
 `guard.Go(log, "…", func() { f(x, y) })` both are read whenever that goroutine
 gets round to it. Fifteen of the sixteen sites carried locals or constants and
 were unmoved; the sixteenth read `r.Header.Get("User-Agent")` from an HTTP
@@ -225,8 +218,7 @@ possible: `guard.Run` hands back whatever the function returned as well, so a
 caller that answers a panic differently — the tunnel files one under a step
 whose sentence reaches the page and the notification area — would put "an
 unexpected fault inside the monitor" over an ordinary error the day that
-function grows a real `return err`. Today those functions answer nil, which is
-exactly when a confusion costs nothing to remove.
+function grows a real `return err`.
 
 **A goroutine is started in three ways, and the guard reads all three.** The
 `go` statement is the obvious one; `time.AfterFunc` runs its function in a
@@ -237,26 +229,22 @@ rule, because there the interesting thing is not that it is caught but **which
 of the two decisions was taken**: `aside(…)` says the monitor can outlive this
 part, and a body that catches for itself says it cannot. It found two that
 carried neither — the orderly shutdown, which had no catch at all, and remote
-access, whose protection was real and lived a package away, so the list said
-nothing about it.
+access, whose protection lived a package away, so the list said nothing about
+it.
 
-**And that was a review's finding about the guard rather than about the code.**
-The timer's body is two lines that cannot panic; what was wrong is that the
-test asserted the rule as *absolute and mechanical* while reading one construct
-out of three. **A guard whose green covers more than it read is worse than a
-missing guard**, because the next person reads the claim and not the code — the
-same shape as the list of known words this file already refuses elsewhere.
+The test once asserted the rule as *absolute and mechanical* while reading one
+construct out of three. **A guard whose green covers more than it read is worse
+than a missing guard**, because the next person reads the claim and not the
+code.
 
-**A library's callback is a fourth, and a security audit found it where it
-mattered.** Pion calls what is registered with `pc.OnTrack` and its siblings on
-goroutines of its own, which no `guard.Go` started: the talk-back's receive loop
-ran there, fed by a viewer's packets through the decoder and the resampler, and
-a panic in it would have ended the process with the camera on — the accessory
-this chapter names by name. The bodies are ours, so each catches for itself with
+**A library's callback is a fourth.** Pion calls what is registered with
+`pc.OnTrack` and its siblings on goroutines of its own, which no `guard.Go`
+started: the talk-back's receive loop runs there, fed by a viewer's packets
+through the decoder and the resampler, and a panic in it would end the process
+with the camera on. The bodies are ours, so each catches for itself with
 `guard.Run`, and `TestEveryCallbackAPeerConnectionRunsIsGuarded` reads them; it
-named all three with the wrapping taken out. What the chapter below says about
-a panic in a library's own code is unchanged: that one is still nobody's to
-catch.
+named all three with the wrapping taken out. A panic in a library's own code is
+still nobody's to catch, as the chapter below says.
 
 **`-simulate-panic` is the instrument**, and it exists for the same reason
 `-simulate-fault` does: a fault does not happen on command, and checking what
@@ -271,8 +259,7 @@ A panic's trace is written by the runtime **straight to file descriptor 2**. It
 does not go through `slog`, through `Fanout`, or through anything else of ours,
 and with `-H=windowsgui` the monitor has no standard error at all. So the one
 event this log was invented for — a process that dies in the night — was the one
-event it could not record, which is exactly the episode the chapter above
-records as already having happened once.
+event it could not record.
 
 Measured with a throwaway probe built both ways:
 
@@ -289,9 +276,9 @@ The second row is the monitor as it really runs, and the first is a console
 somebody is watching. Hence the rule: **we stand in for a standard error that is
 not there, and never take away one that is** — whoever runs
 `pat-monitor 2>somewhere` has asked for the traces to go there and gets them
-there. What the redirection does **not** cost is the console, and that was not
-obvious: `os.Stderr` is built once at start-up from the handle of that moment,
-so it goes on writing where it always did. The log's two destinations stay two.
+there. What the redirection does **not** cost is the console: `os.Stderr` is
+built once at start-up from the handle of that moment, so it goes on writing
+where it always did. The log's two destinations stay two.
 
 **The handle is given up before the file behind it is closed**, at every
 rotation and on a write that fails. A closed handle's value is handed out again
@@ -301,25 +288,23 @@ of fault all of this exists to remove. The first test of that ordering **passed
 with the defect put back**, because two recorded names say nothing about a third
 event neither of them names: it now asks the file whether it is still open.
 
-**And the log is deliberately never closed.** This was measured and not
-reasoned: with `defer logFile.Close()` in `main`, a process that panicked left
-`crash traces=this file` in the log and then **no trace at all**. A deferred
+**And the log is deliberately never closed.** Measured: with
+`defer logFile.Close()` in `main`, a process that panicked left
+`"crash traces"="this file"` in the log and then **no trace at all**. A deferred
 close runs while the panic is unwinding, that is, an instant before the runtime
-writes — the destination was taken away by the very line that had announced it.
-Nothing is lost by not closing, because this writer buffers nothing and the
-handle goes back to the system when the process ends; what it buys is that the
-log is the **last** thing alive, which is what a witness has to be. **No unit
-test can see this**, and none does: it took `-simulate-panic now` on a binary
-with no console, which is why that flag has a value that nothing catches.
+writes. Nothing is lost by not closing, because this writer buffers nothing and
+the handle goes back to the system when the process ends; what it buys is that
+the log is the **last** thing alive, which is what a witness has to be. **No
+unit test can see this**, and none does: it took `-simulate-panic now` on a
+binary with no console, which is why that flag has a value that nothing
+catches.
 
-**A protection that lapses says so in the file.** The re-take after a rotation
-used to discard its error, so a failure left the standard error pointing
-nowhere while the flag went on claiming otherwise — and the start-up line,
-`crash traces: this file`, would have asserted it for the rest of the night.
-`CaptureCrashes` respected that same error and declined, so the two paths
-disagreed about the same fact. It now gives up the flag and writes one line
-into the log itself, which is the only destination this object is sure of: for
-news about the log, there is nowhere else to put it.
+**A protection that lapses says so in the file.** A re-take after a rotation
+that discarded its error would leave the standard error pointing nowhere while
+the flag, and the start-up line `"crash traces"="this file"`, went on claiming
+otherwise for the rest of the night — and `CaptureCrashes` declines on that
+same error. So a failed re-take gives up the flag and writes one line into the
+log itself, the only destination this object is sure of.
 
 **Whether it is in force is said in the log**, on the line that already names
 the file. Reading it after a night that ended with the camera off, "there is no
@@ -331,9 +316,8 @@ word separates them.
 The chapter above makes a panic survivable; **it does not make the process
 survivable**. What is left — a runtime throw that no recover can catch, a panic
 in a goroutine started by a library rather than by us, memory exhausted — still
-ends it, and then the camera is off until somebody notices in the morning. The
-obvious answer is to have Windows put it back, and the obvious answer does not
-work.
+ends it, and then the camera is off until somebody notices in the morning.
+Having Windows put it back does not work.
 
 `RegisterApplicationRestart` is the right shape for this program: it writes no
 registry key, creates no scheduled task, installs no service and spawns no
@@ -380,18 +364,16 @@ is why a monitor started inside a Remote Desktop session is deaf for its whole
 life, and a service in session 0 is on the wrong side of the same boundary. It
 would also have no notification area, which is this program's only presence.
 
-So the monitor is not restarted, and that is a decision with a measurement under
-it rather than an omission. What is left in its place is the diagnosis: after
-the chapter above, a death that used to leave a switched-off webcam and nothing
-else now leaves the trace that caused it, in the log, where whoever comes back
-in the morning is already looking.
+So the monitor is not restarted, a decision with a measurement under it rather
+than an omission. What is left in its place is the diagnosis: after the chapter
+above, a death leaves the trace that caused it in the log, where whoever comes
+back in the morning is already looking.
 
 **And the reason this is written down is that it is invisible from the code.**
 `RegisterApplicationRestart` returns `S_OK`, so an implementation of it would
-look finished, would be reviewed as finished, and would be discovered to do
-nothing on the one night it was needed. Whoever wants to try again should start
-by making a Go program die in a way Windows recognises, and the console output
-above is where that has to begin.
+look finished and would be discovered to do nothing on the one night it was
+needed. Whoever wants to try again should start by making a Go program die in a
+way Windows recognises, from the console output above.
 
 ### COM's `BOOL` is four bytes, Go's `bool` is one
 
@@ -629,85 +611,8 @@ even really be chosen, while on the device's return the capture would go back to
 it with nobody having asked: there is an entry for it, "microphone chosen · not
 connected".
 
-**At rest it took the font, weight and colour of the value it replaced, and
-the arrow said it could be pressed — and that stopped holding the day the rows
-became lines.** With the name of a reading on the left and its value flush
-right, a `<select>` cannot join the column, and **the reason is that the two
-engines size it differently**. Measured in Chrome, the box follows the
-**chosen** entry — picking the long microphone takes it from 158 px to 348 —
-so there it is always snug. On the phone it follows the **longest**, and that is
-the only thing separating the two boxes of the same panel: "Prima webcam
-disponibile" is the longest entry of its own list, so it looked snug there too,
-while "Predefinito di Windows" sat against a device name 2.7 times its width and
-left the gap that was reported, in those words, as a value centred in its
-field. (The half about the phone is an inference from the photograph: there is
-no WebKit on this machine to ask. What is measured is Chrome and the widths of
-the two lists.) `text-align: right` cures it in
-Chrome and **not** on the phone, whose engine does not honour it inside the
-control, and the half that cannot be verified from this machine is the half the
-monitor is watched on.
-
-So the name stays where the control puts it, the control has the frame it never
-had — a hairline, a radius, a ground — and **its width is ours, not the
-control's**. The frame alone was not enough, and it was reported again in one
-line: one long and one short, no improvement. It could not be otherwise while
-the width came from the control, because what the control measures is the list,
-and the two lists are different. A width the page decides is a number the
-engines do not get a vote on: the two fields start and end at the same place as
-each other whatever is chosen and whatever the list holds, and choosing the long
-microphone no longer moves anything.
-
-**It was three fifths of the row, and it is now what the row has left**, which
-is the same change and the same reason as the readings beside it: the name
-column is fixed, and everything after it belongs to the value. A share was the
-right answer while the readings ended at the right edge, because the box had to
-end there too; with the readings starting at a fixed offset the box starts
-there as well, so the two boxes go on matching each other by construction. What
-must go with it is `min-width: 0`, or a long entry sizes the control and pushes
-it onto a line of its own.
-
-**A field drawn as a field costs no agreement between engines**, and it says the
-true thing the panel wanted to say anyway — two of those rows are pressed and
-twelve are read. The typography is still the value's, and the arrow is still the
-same glyph as "Details". Five things that design required:
-
-- **The menu is drawn by the page, and it stays a real `<select>`.**
-  `appearance: base-select` is the only road that removes the blue without
-  removing the control: with a normal `<select>` the entries accept a background
-  but **the highlight of the chosen row does not** — it stays the Windows
-  accent, unreachable from any sheet — and dressing only the entries gives a
-  menu half ours and half theirs, stranger than one left whole to the browser. A
-  list drawn by us would cost keyboard and screen reader. Where the base
-  appearance does not exist, the declaration is invalid and the system menu
-  remains.
-- **Two marks for two different things, and order is not enough.** Teal says
-  "this is the chosen one", light grey "this is under the finger"; written in
-  the obvious order, the chosen entry under the finger lost its teal. The case
-  of both together is declared.
-- **The `<button>` with `<selectedcontent>` inside must be written in the
-  markup**, otherwise there is no box for `text-overflow` to act on and the name
-  leaves the control, passing under the arrow. They are empty, so where that
-  specification does not exist the parser ignores them; and the page replaces
-  the **options**, not the children — `replaceChildren` would carry the button
-  away on the first state round.
-- **The target is large and the row does not grow**: vertical padding plus an
-  equal and opposite margin, pressed on 30 px and laid out on 18. The wrapper
-  wants `display: flow-root`, otherwise that margin **collapses** with its own
-  and the focus ring ends up over the row's label; and that is where the ring
-  sits, on the wrapper and not on the control.
-- **The menu width is our decision**, and must be declared: `max-content` up to
-  420 px with the name **wrapping** beyond that ceiling. Without it an anchored
-  menu shrinks to whatever fits between the box and the window edge — the same
-  page gave 420 px in the first column and **158 in the fifth**, that is, four
-  lines for a name, and with Windows's eighty-eight-character names it carried
-  on for half a page. In the box it is cut with an ellipsis, because there is a
-  grid row to respect and whoever opens the list opens it to read. **Shortening
-  the names was the wrong road**: it removed information from everyone for a
-  defect that was elsewhere.
-
-The font is 13 px like the rest, and below 16 iOS zooms the page by itself on
-the first focus: that is the price of consistency with the grid, and it is a
-**choice**.
+How the box is drawn — its frame, its width, the menu — is in the pages'
+slice, under "On the night page, "it works" is not news".
 
 Verified from a real browser driven over the DevTools protocol on the box's four
 branches. **What is worth the effort is the first open with nothing open and

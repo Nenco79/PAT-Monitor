@@ -41,11 +41,10 @@ that, iOS zooms the page by itself at the first focus and never puts it back.
 `--accent: var(--c-home)` written on `:root` immediately becomes the dark's
 colour, and elements inherit **that value**, not the reference: `body.day` can
 redefine `--c-home` all it likes, it no longer reaches it. `/setup`'s "Set
-password" button, on the cream page, came out for months with the teal tuned for
-near-black, and there was nothing to read — the page draws, the token exists, no
-error anywhere. So `body.day` recomputes **both** aliases: fixing `--accent`
-alone is not enough, because `--phase: var(--accent)` has already resolved on
-`:root` too.
+password" button, on the cream page, came out with the teal tuned for
+near-black, and no error anywhere. So `body.day` recomputes **both** aliases:
+fixing `--accent` alone is not enough, because `--phase: var(--accent)` has
+already resolved on `:root` too.
 
 **And the palette is written in four places**: the earth in `body.day` of
 `style.css` and in `onboarding.css`'s `:root`, the tray panel copies six values
@@ -58,23 +57,23 @@ thinks to write: **a comparison between what is in both is blind to what is
 missing in one** — removing the repairing line, the token disappears from the
 intersection and the test goes green.
 
-**And a `font` shorthand carrying a token can be dropped whole, silently.**
-Reported from a photograph of a browser this machine has not got: the details
-panel's group headings came out at the size an `h2` has when nobody styles it.
-Measured off the picture — rows at 13 px and headings at ~19.5, which is exactly
-`1.5em` of 13 — so `font: 600 var(--t-micro)/1.4 var(--sans)` was not applied
-there at all, while the same version on an iPhone renders it at 11. **The
+**And a `font` shorthand carrying a token can be dropped whole, silently.** In
+a browser this machine has not got, the details panel's group headings came out
+at the size an `h2` has when nobody styles it: measured off a photograph, rows
+at 13 px and headings at ~19.5, exactly `1.5em` of 13 — so `font: 600
+var(--t-micro)/1.4 var(--sans)` was not applied there at all, while the same
+version on an iPhone renders it at 11. **The
 element with a rule of its own in the browser is where it shows**: on a `<span>`
 a dropped declaration leaves the inherited size and nobody notices; on an `h2`,
 a `<button>` or an `<input>` the browser has an opinion and that is what
 appears.
 
-**And the same headings change size with the orientation of the phone**, which
-is a second mechanism and not the same one: reported level with the readings in
-portrait and **larger** than them in landscape, on one page where they are 11 px
-against 13. That is WebKit's text inflation — it enlarges text inside a block it
-considers wide, by a factor that depends on the size it starts from, so the
-smallest text grows the most and the order of the two sizes inverts. `html {
+**And the same headings change size with the orientation of the phone**, by a
+second mechanism: level with the readings in portrait and **larger** than them
+in landscape, on one page where they are 11 px against 13. That is WebKit's text
+inflation — it enlarges text inside a block it considers wide, by a factor that
+depends on the size it starts from, so the smallest text grows the most and the
+order of the two sizes inverts. `html {
 text-size-adjust: 100% }` in both sheets says the sizes are ours; **`100%` and
 not `none`**, because what has to stop is the automatic inflation, not the
 reader's own zoom. Verified to be a no-op here — the computed font of all 354
@@ -119,11 +118,10 @@ from the pixels at 8:1 with a **real** click:
 	border  #3FA8A4   8 px → 1 px CSS     border-color on focus
 
 Six pixels of band, of which three are the **gap** that shows the dark ground
-through. At rest the border is one, of one pixel, and there is no outline —
-**the first report was looking at the control at rest while the question was
-about a clicked control.** And it shows only there for a specification reason: a
-text field matches `:focus-visible` **even with the mouse**, and Chromium does
-the same with `<select>`, while buttons take the ring from the keyboard. The gap
+through. At rest the border is one, of one pixel, and there is no outline. It
+shows on a clicked field for a specification reason: a text field matches
+`:focus-visible` **even with the mouse**, and Chromium does the same with
+`<select>`, while buttons take the ring from the keyboard. The gap
 is now **one** pixel (`--focus-w`, `--focus-gap`): the band drops from 6 to 4
 and the dark line disappears. **And it was three writings in three sheets, with
 one already gone its own way** — `.lang select` had 2px/2px against the others'
@@ -141,24 +139,23 @@ measures `#7A7264` at 4.48:1 on the card, "just below the threshold" — and the
 seventeen `<text>` elements of the illustrations were exactly `#7A7264`. The
 margin was not two hundredths: inside the explainer that ground is not the card
 at all, `.art` there being `--card-sunk`, so the real figure was **4.04:1**.
-Seventeen hex values were not corrected: the attribute was removed and a rule
-added, `.art svg text:not([fill]) { fill: var(--muted) }`. **The `:not([fill])`
+The seventeen fills were not corrected but removed, with a rule added,
+`.art svg text:not([fill]) { fill: var(--muted) }`. **The `:not([fill])`
 is the part that counts** — a CSS rule beats a presentation attribute, so a
 `fill` written there would have greyed out the six labels that say something
 **with** their colour.
 
-**And then the same defect was found in the value that had replaced it, one
-surface further out.** `#6E6659` was chosen against the **card**, where it is
-5.34:1, and the sheet's own comment closes the question the right way — *text
-that sits outside the cards uses `--ink-2`*. The tray panel paints its status
+The value that replaced it, `#6E6659`, had the same defect one surface further
+out. It was chosen against the **card**, where it is 5.34:1, and the sheet's own
+comment closes the question the right way — *text that sits outside the cards
+uses `--ink-2`*. The tray panel paints its status
 lines and its ghost labels straight onto `--ground`, which is neither: there
 `#6E6659` measures **4.27:1**, under the threshold. **A token is only as
 measured as its worst surface, and the surface nobody thought of is the one in
 another package.**
 
-It is why it shows in the light face and not the dark one, which is the form the
-report arrived in — *the light mode looks less contrasted than the dark*. In the
-dark palette `--ground` is the **darkest** of the three surfaces, so muted on
+It is why it shows in the light face and not the dark one. In the dark palette
+`--ground` is the **darkest** of the three surfaces, so muted on
 ground is the best of them at 5.42:1; in the light one the order inverts and the
 ground is the lightest, so the same pairing is the worst. **Two palettes that
 are mirror images in lightness are not mirror images in contrast**, and nothing
@@ -170,28 +167,26 @@ surface that forced it is the only one that was failing and the other two
 improve. Measured with an instrument checked first against the three canonical
 figures, 21.00 for white on black and the 4.54 and 7.00 of the reference greys.
 
-**Three numbers in the sheet's own comment were wrong, and the re-measurement is
-what found them**: `#7A7264` on the ground is 3.58 and not "3.0", the explainer
-figure is 4.04 and not the 4.28 written there, and `.art` was described as
-sunken when the rule above it says `background: var(--card)`. None of them
-changed a decision — the colour was rejected for the right reason — which is
-exactly why they survived: **a number nobody acts on is a number nobody
-checks.**
+Three numbers in the sheet's own comment were wrong: `#7A7264` on the ground is
+3.58 and not "3.0", the explainer figure is 4.04 and not the 4.28 written there,
+and `.art` was described as sunken when the rule above it says `background:
+var(--card)`. None of them changed a decision — the colour was rejected for the
+right reason — which is exactly why they survived: **a number nobody acts on is
+a number nobody checks.**
 
 **What was not done is the other repair, and it is left written down rather than
-taken.** The faithful reading of that comment is that the panel's rows want
-`--ink-2` and not `--muted` at all, since they are text outside a card: it is
-6.07:1 on the ground and it would leave every page untouched. It costs the tray
-palette a field and its guard a row, and it is a change to what the panel says
-rather than to what it measures, so it is a decision and not a correction.
+taken.** The panel's rows, being text outside a card, could want `--ink-2` and
+not `--muted` at all: it is 6.07:1 on the ground and would leave every page
+untouched. It costs the tray palette a field and its guard a row, and it changes
+what the panel says rather than what it measures, so it is a decision and not a
+correction.
 
 **Three literals remain, the ones depicting somebody else's interface**:
 `login.tailscale.com` in the fake browser bar, the device row in the Tailscale
 panel, the Windows taskbar clock. Those do not annotate the drawing, they
 populate it: making them follow our palette would mean repainting somebody
-else's interface. The boundary is that, and not "it is a literal": the little
-window of **our own** tray, drawn beside them, follows the token, because there
-following the palette makes the drawing more faithful and not less.
+else's interface. The little window of **our own** tray, drawn beside them,
+follows the token, because there the palette makes the drawing more faithful.
 
 **The shadow is a whole token, not a shade.** Identical geometry in the two
 sheets and two colours — pure black at night, warm ink by day — and that is not
@@ -200,19 +195,17 @@ the night one it **cannot go** because `#2E2A24` on `#171512` is lighter than
 the ground, that is, a halo.
 
 **And a token present on one side and missing on the other is what then forces
-hand-writing.** None of the shape tests catches it — the one on literals sees
-the defect **after** somebody has written it, the one on used tokens sees only
-what somebody actually uses — so there is
-`TestBothPaletteSheetsDeclareTheSameNames`, which compares **names** and not
-values, with three argued exceptions: an entry is added to that list only when
-declaring the token in the other sheet would mean **inventing** something — the
-veil of a video that is not there, the plum of a step that does not exist there
-— not copying it. **And the same shape one level deeper**: that test merges
-`:root` and `body.day` into one set, and rightly, but that way a token declared
-**only** in `body.day` passes, and the result would be an invalid line on the
-**night pages** with nothing complaining.
-`TestTheDayPaletteOverridesNothingTheNightOneLacks` closes the direction that
-counts.
+hand-writing.** The test on literals sees the defect **after** somebody has
+written it, the one on used tokens sees only what somebody actually uses, so
+`TestBothPaletteSheetsDeclareTheSameNames` compares **names** and not values,
+with three argued exceptions: an entry is added to that list only when declaring
+the token in the other sheet would mean **inventing** something — the veil of a
+video that is not there, the plum of a step that does not exist there — not
+copying it. **And the same shape one level deeper**: that test merges `:root`
+and `body.day` into one set, so a token declared **only** in `body.day` passes,
+and the result would be an invalid line on the **night pages** with nothing
+complaining. `TestTheDayPaletteOverridesNothingTheNightOneLacks` closes the
+direction that counts.
 
 **Exemptions are written by name, not by prefix.** A `--preview-` prefix
 exempted for ever even names not yet written, and among those is a
@@ -233,9 +226,8 @@ up on.
 **The stage is pure black in daylight too, and it has a name.** `onboarding.css`
 declared `#14110D` with the reason "warm black: it is the letterbox around the
 image", and `style.css` declares the same letterbox `#000` with the **opposite**
-and argued reason. They were not two components: it is the same one, the
-configuration's preview, so the drawing of the stage contradicted the stage. It
-is now `--stage`, declared in both sheets with the same value. **And the dark
+and argued reason — for one component, the configuration's preview. It is now
+`--stage`, declared in both sheets with the same value. **And the dark
 island inside the light page has a name of its own**: the band under the preview
 and the VU meter are not the night palette — they are one- or two-point drifts
 from the dark's `--card`, `--ground-deep` and `--ink-2` — and not the day's
@@ -260,10 +252,9 @@ light it: **a probe that does not know this absolves every page.**
 
 **And `:hover` is a declaration about a pointer, which a phone has not got.**
 A tap leaves the element hovered until the next one lands somewhere else, so on
-a phone "Details" stayed lit after being pressed — reported as the colour
-Windows gives the control under the mouse, and that is exactly what it was: the
-same rule, on a device with no pointer to move away. It was read as a stuck
-focus and it is not; the ring is `:focus-visible` and wants a keyboard.
+a phone "Details" stayed lit after being pressed: the hover rule, on a device
+with no pointer to move away. It is not a stuck focus; the ring is
+`:focus-visible` and wants a keyboard.
 
 Every hover in the four sheets therefore sits inside `@media (hover: hover)`,
 which describes the **primary** pointer: a laptop with a touchscreen keeps its
@@ -276,20 +267,18 @@ the details and leaves the ground transparent. The one exception is by name and
 not by prefix — the picker's `option` rows, where the hover half shares its
 declaration with the `:focus` half and the menu closes on the choice, so
 nothing stays lit behind it. `TestNoHoverIsDeclaredOutsideAPointer` reads the
-sheets — the list of them from the embedded folder and not by hand, because a
-hand-written list watches what somebody remembered and the fifth stylesheet is
-exactly the one that gets added without being added here — and it **counts the
-rules it found inside a pointer block**, failing below eight: a guard that
-reads lines goes blind at the first reformat, and there green would mean
-nothing. Verified to catch in both ways: unwrapping one rule, and breaking the
-pattern so that nothing is read at all.
+sheets — the list of them from the embedded folder and not by hand, since the
+fifth stylesheet is exactly the one that gets added without being added here
+(see "Guards, and how they fail") — and it **counts the rules it found inside a
+pointer block**, failing below eight: a guard that reads lines goes blind at the
+first reformat. Verified to catch in both ways: unwrapping one rule, and
+breaking the pattern so that nothing is read at all.
 
-**And taking the hover off a phone left the press with no answer**, which the
-first version of this did not notice: `button:active` only cancelled the lift
-that the hover gives, so with no hover there was nothing left to cancel. The
-press now carries the mark the hover carried — brightness on a filled button,
-the faint ground on a ghost, which are the ones where nothing else answers a
-press. **Not on `.toggle`**: a lit one carries the teal of `aria-pressed`, and
+**And taking the hover off a phone left the press with no answer**:
+`button:active` only cancelled the lift that the hover gives, so with no hover
+there was nothing left to cancel. The press now carries the mark the hover
+carried — brightness on a filled button, the faint ground on a ghost, which are
+the ones where nothing else answers a press. **Not on `.toggle`**: a lit one carries the teal of `aria-pressed`, and
 a ground written after that rule beats it at equal weight, so the mark would
 read as the switch going off under the finger — they keep the brightness, and
 their real answer to a press is the state flipping. Verified by forcing
@@ -299,11 +288,10 @@ touch does not make a browser recognise a press.
 ### The night page states, the onboarding explains
 
 Two registers, and the difference is not taste: it is **who is reading, and
-when**. The configuration path is done once, in daylight, in front of a
-computer, and whoever does it knows nothing yet: there a sentence explaining why
-a cost is being paid is what stops them closing the window. The viewer is looked
-at at three in the morning, one-handed, for two seconds: there every extra word
-is a word that does not get read.
+when**. Whoever takes the configuration path knows nothing yet, and there a
+sentence explaining why a cost is being paid is what stops them closing the
+window. The viewer is looked at at three in the morning, one-handed, for two
+seconds: there every extra word is a word that does not get read.
 
 The rule in one line: **on the night page say what is true now and what to do;
 not why.** Three consequences follow: **no declared cause** when it does not
@@ -321,29 +309,25 @@ closed but present — and that is what gets whoever is installing to the end.
 **And there is a third reader, whose register is neither: `README.md`.** It is
 read by somebody deciding whether to install, and then installing, so it says
 what the program does and how to run it — the **arguments** live here. The
-defect was importing this file's voice into it: "which is a real temptation",
-"worth knowing before installing rather than after", "a defect with a label
-rather than a feature with a warning" — reasons for decisions, in a document
-whose reader has not taken any. Trimming the asides and keeping every fact took
-2270 words to 1979, and nothing was lost, because in each case the fact was
-already in the sentence and the clause was arguing for it. **The test is not
-whether a sentence is true: it is whether its reader has a use for it.**
+defect was importing this file's voice into it: reasons for decisions, in a
+document whose reader has not taken any. Trimming the asides and keeping every
+fact took 2270 words to 1979, and nothing was lost, because in each case the
+fact was already in the sentence and the clause was arguing for it. **The test
+is not whether a sentence is true: it is whether its reader has a use for it.**
+A commit correcting the README is the shape to watch, because a document being
+edited is a document in the editor's voice.
 
-Two of those asides were mine, added the same evening in a commit that was
-correcting the README's claims — which is the shape to watch, because a document
-being edited is a document in the editor's voice.
-
-**But a condition the reader cannot observe is not a condition.** The rule
-everybody states is conditions before instructions — the circumstance first, so
-that whoever it does not concern can skip the rest. The last screen obeyed it
-and defeated it: *"if the router gives the computer a different number the
-address changes, and the right one is always in the icon next to the clock"*.
-Nobody watches their router hand out addresses, so the reader cannot tell
-whether it applies to them; what they will meet, months later, is a bookmark
-that does not open. **The test is not whether the condition comes first: it is
-whether the reader can tell that it has happened.** So the sentence starts from
-the symptom — "if one day it stops opening" — and the mechanism survives as half
-a clause, which the onboarding is allowed to keep.
+**But a condition the reader cannot observe is not a condition.** Conditions
+before instructions puts the circumstance first, so that whoever it does not
+concern can skip the rest. The last screen obeyed it and defeated it: *"if the
+router gives the computer a different number the address changes, and the right
+one is always in the icon next to the clock"*. Nobody watches their router hand
+out addresses, so the reader cannot tell whether it applies to them; what they
+will meet, months later, is a bookmark that does not open. **The test is not
+whether the condition comes first: it is whether the reader can tell that it has
+happened.** So the sentence starts from the symptom — "if one day it stops
+opening" — and the mechanism survives as half a clause, which the onboarding is
+allowed to keep.
 
 **And no measurement finds it.** The two mechanical rules the guidelines agree
 on are one idea per sentence and an average around 25 words, and that sentence
@@ -453,6 +437,86 @@ themselves**: centring the readings, which breaks the one column they form, and
 right-aligning the names, which makes ragged the left edge a list of fourteen
 names is scanned down. Both treat the symptom — the two are far apart — and
 neither asks which of the two should move.
+
+**At rest it took the font, weight and colour of the value it replaced, and
+the arrow said it could be pressed — and that stopped holding the day the rows
+became lines.** With the name of a reading on the left and its value flush
+right, a `<select>` cannot join the column, and **the reason is that the two
+engines size it differently**. Measured in Chrome, the box follows the
+**chosen** entry — picking the long microphone takes it from 158 px to 348 —
+so there it is always snug. On the phone it follows the **longest**, and that is
+the only thing separating the two boxes of the same panel: "Prima webcam
+disponibile" is the longest entry of its own list, so it looked snug there too,
+while "Predefinito di Windows" sat against a device name 2.7 times its width and
+left the gap that was reported, in those words, as a value centred in its
+field. (The half about the phone is an inference from the photograph: there is
+no WebKit on this machine to ask. What is measured is Chrome and the widths of
+the two lists.) `text-align: right` cures it in
+Chrome and **not** on the phone, whose engine does not honour it inside the
+control, and the half that cannot be verified from this machine is the half the
+monitor is watched on.
+
+So the name stays where the control puts it, the control has the frame it never
+had — a hairline, a radius, a ground — and **its width is ours, not the
+control's**. The frame alone was not enough, and it was reported again in one
+line: one long and one short, no improvement. It could not be otherwise while
+the width came from the control, because what the control measures is the list,
+and the two lists are different. A width the page decides is a number the
+engines do not get a vote on: the two fields start and end at the same place as
+each other whatever is chosen and whatever the list holds, and choosing the long
+microphone no longer moves anything.
+
+**It was three fifths of the row, and it is now what the row has left**, which
+is the same change and the same reason as the readings beside it: the name
+column is fixed, and everything after it belongs to the value. A share was the
+right answer while the readings ended at the right edge, because the box had to
+end there too; with the readings starting at a fixed offset the box starts
+there as well, so the two boxes go on matching each other by construction. What
+must go with it is `min-width: 0`, or a long entry sizes the control and pushes
+it onto a line of its own.
+
+**A field drawn as a field costs no agreement between engines**, and it says the
+true thing the panel wanted to say anyway — two of those rows are pressed and
+twelve are read. The typography is still the value's, and the arrow is still the
+same glyph as "Details". Five things that design required:
+
+- **The menu is drawn by the page, and it stays a real `<select>`.**
+  `appearance: base-select` is the only road that removes the blue without
+  removing the control: with a normal `<select>` the entries accept a background
+  but **the highlight of the chosen row does not** — it stays the Windows
+  accent, unreachable from any sheet — and dressing only the entries gives a
+  menu half ours and half theirs, stranger than one left whole to the browser. A
+  list drawn by us would cost keyboard and screen reader. Where the base
+  appearance does not exist, the declaration is invalid and the system menu
+  remains.
+- **Two marks for two different things, and order is not enough.** Teal says
+  "this is the chosen one", light grey "this is under the finger"; written in
+  the obvious order, the chosen entry under the finger lost its teal. The case
+  of both together is declared.
+- **The `<button>` with `<selectedcontent>` inside must be written in the
+  markup**, otherwise there is no box for `text-overflow` to act on and the name
+  leaves the control, passing under the arrow. They are empty, so where that
+  specification does not exist the parser ignores them; and the page replaces
+  the **options**, not the children — `replaceChildren` would carry the button
+  away on the first state round.
+- **The target is large and the row does not grow**: vertical padding plus an
+  equal and opposite margin, pressed on 30 px and laid out on 18. The wrapper
+  wants `display: flow-root`, otherwise that margin **collapses** with its own
+  and the focus ring ends up over the row's label; and that is where the ring
+  sits, on the wrapper and not on the control.
+- **The menu width is our decision**, and must be declared: `max-content` up to
+  420 px with the name **wrapping** beyond that ceiling. Without it an anchored
+  menu shrinks to whatever fits between the box and the window edge — the same
+  page gave 420 px in the first column and **158 in the fifth**, that is, four
+  lines for a name, and with Windows's eighty-eight-character names it carried
+  on for half a page. In the box it is cut with an ellipsis, because there is a
+  grid row to respect and whoever opens the list opens it to read. **Shortening
+  the names was the wrong road**: it removed information from everyone for a
+  defect that was elsewhere.
+
+The font is 13 px like the rest, and below 16 iOS zooms the page by itself on
+the first focus: that is the price of consistency with the grid, and it is a
+**choice**.
 
 **And a heading must not be quieter than what it governs.** The three group
 words took the eyebrow's `--muted`, which is the **labels' own colour**, at 11 px

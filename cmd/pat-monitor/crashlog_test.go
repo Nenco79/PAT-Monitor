@@ -14,7 +14,7 @@ import (
 // until the night it matters: a deferred close runs **while a panic is
 // unwinding**, gives the standard error back, and the runtime's trace is
 // written an instant later to nowhere. Measured, with the close in place: the
-// log said `crash traces=this file` and then carried no trace at all.
+// log said `"crash traces"="this file"` and then carried no trace at all.
 //
 // Nothing is lost by not closing. applog.Writer buffers nothing, so there is
 // no flush to miss, and the handle goes back to the system when the process

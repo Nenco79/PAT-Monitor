@@ -21,18 +21,22 @@ re-derived by reading the code.**
 
 **The index is here and the chapters are in `.claude/rules/`**, sliced by the
 code they govern so that each one arrives when that code is opened instead of
-all of them at every session. The document is ninety thousand words, and loading
-it whole takes two thirds of a context window before anything has been typed —
-which is not a matter of tidiness: **an instruction nobody can hold is an
-instruction nobody follows.** Nothing is summarised to make it fit. The slices
-are plain markdown, they read in order, and the index below says which chapter
-is in which.
+all of them at every session — which is not a matter of tidiness: **an
+instruction nobody can hold is an instruction nobody follows.** The record was
+condensed once: the narration went, and every heading and every number stayed,
+checked mechanically against the text before. What a session in each package
+starts with has a ceiling in words in `internal/doc`, and it only goes down.
+The slices are plain markdown, they read in order, and the index below says
+which chapter is in which.
 
-**Both lists are written by hand, so both are watched.** `internal/doc` fails if
-a chapter is missing from the index, listed without being written, filed out of
-order or at the wrong depth, written into two slices at once, or sitting in a
-slice that declares no code — it had already lost one chapter, and an incomplete
-index looks exactly like an index.
+**One list is written by hand and the other is generated, and both are
+watched.** The table of slices is written by hand, and `internal/doc` fails if
+it misses a slice or names one that is not there; the list under it is
+generated from the headings, and the package fails if what is committed differs
+from what the generator would write. It also fails if a chapter is written into
+two slices at once or sits in a slice that declares no code. The list had
+already lost one chapter while it was typed, and an incomplete index looks
+exactly like an index.
 
 **What is not here is what has not been demonstrated.** The milestones are
 closed and the plan has finished its cycle; what is left is measurements nobody
@@ -106,12 +110,15 @@ transcript, because that is the output the build of that date produced.
 
 ## The headings are the rules
 
-A minute of reading against ninety thousand words.
-
 The chapters themselves are in `.claude/rules/`, and this is which is where.
 The `paths` at the top of each slice are what actually decides when it arrives,
 so they are the authority and this table is the map; to go the other way, from
 a heading to its file, `grep -rn` the heading.
+
+The list under the table is generated: after adding, renaming, moving or
+deleting a heading, run `go test ./internal/doc -run TestTheIndexIsTheHeadings
+-update` and commit what it writes. The flag belongs to that package alone, so
+`go test ./... -update` stops at the first package that does not define it.
 
 | slice | what it carries |
 |---|---|
@@ -132,6 +139,7 @@ a heading to its file, `grep -rn` the heading.
 | `150-pages.md` | the palettes, the viewer, the guided path, the meters |
 | `160-craft.md` | how to edit this codebase, how guards fail, the method |
 
+<!-- index: generated from the headings by go test ./internal/doc -run TestTheIndexIsTheHeadings -update; do not edit -->
 - **What this file is**
 - **If you have just cloned this**
 - **Language**
@@ -142,8 +150,8 @@ a heading to its file, `grep -rn` the heading.
   - Audio is captured in WASAPI raw mode
   - When raw is refused, exclusive mode remains
   - Audio and video must not be able to switch each other off
-  - A panic is a fault of the part it happened in, and the camera does not
-    go off for it
+  - A panic is a fault of the part it happened in, and the camera does not go
+    off for it
     - The runtime's last words do not pass through the log, and are made to
     - Nothing restarts the monitor, and Windows cannot be asked to
   - COM's `BOOL` is four bytes, Go's `bool` is one
@@ -158,8 +166,7 @@ a heading to its file, `grep -rn` the heading.
   - A permission Windows is still asking about is not an absence
   - A microphone muted in Windows is a cause, and it was only in the log
   - The picture stopping is a fault, and `Ready` cannot say so
-  - The machine must not fall asleep, and who is holding it awake is
-    readable
+  - The machine must not fall asleep, and who is holding it awake is readable
   - A shutdown that does not finish keeps the camera
   - Codes cross the API, words stay at the edges
     - The tunnel phases are codes, and the pages hold the dictionary
@@ -175,8 +182,8 @@ a heading to its file, `grep -rn` the heading.
         Chinese
   - Alerts are the set of what is wrong now, not a list of events
   - Motion is measured on the merged frame, with the camera's breathing removed
-  - Crying and barking are recognised by shape, and the floor is measured by the
-    room
+  - Crying and barking are recognised by shape, and the floor is measured by
+    the room
   - The media clock chases the real cadence, not the nominal one
   - SDP constraints, all discovered as "codec is not supported by remote"
 - **The loop: what the monitor decides, and in what order**
@@ -334,6 +341,7 @@ a heading to its file, `grep -rn` the heading.
   - The same character is harmless in a comment and fatal in a string
 - **Guards, and how they fail**
 - **Method, as it turned out to be necessary**
+<!-- end of index -->
 
 ## Language
 
@@ -384,12 +392,6 @@ the node silently. The bare name remains as a fallback for a machine with no way
 to distinguish itself. The two places that produce it call the same
 `config.DefaultFunnelHostname()`: written twice it would give two public
 addresses for one monitor.
-
-**No real name goes into the repository.** A tailnet name is publicly resolvable
-DNS tied to an account, and once committed it stays in the history after the
-correction: the examples use `quercia-lieve.ts.net`, which does not exist. The
-same holds for node addresses under `100.64.0.0/10` and for auth keys, which
-must not appear even once.
 
 **"baby monitor" in lower case is the category, not the product.** A rename goes
 through whole identifiers, never through substring replacement.

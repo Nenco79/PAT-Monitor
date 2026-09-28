@@ -132,7 +132,7 @@ func (w *Writer) open() error {
 			// that was never there.** CaptureCrashes respects this same error
 			// and declines; here it was discarded, so a failure left the
 			// standard error pointing nowhere while the flag went on claiming
-			// otherwise — and the start-up line, "crash traces: this file",
+			// otherwise — and the start-up line, `"crash traces"="this file"`,
 			// would have gone on asserting it for the life of the process.
 			//
 			// The line is written into the file directly, because this is the

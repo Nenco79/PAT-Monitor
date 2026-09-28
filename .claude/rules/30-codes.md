@@ -17,12 +17,11 @@ whoever draws the page** — who is also the only one who knows what language th
 are speaking in. A sentinel value in a natural language is a decision taken in
 that language, and it survives only until someone translates.
 
-The rule cost the product's worst fault, narrowly missed. Microphone health
-travelled in JSON as a **sentence**, and three places compared it: `trayStatus`,
-`app.js`, `onboarding.js`. **Translating the interface would have switched those
-three comparisons off with no error anywhere**, and what was switching off is
-the alert for a microphone delivering zeros: green page, still meter, child
-crying and nobody hearing.
+Microphone health once travelled in JSON as a **sentence**, and three places
+compared it: `trayStatus`, `app.js`, `onboarding.js`. **Translating the
+interface would have switched those three comparisons off with no error
+anywhere**, and what was switching off is the alert for a microphone delivering
+zeros: green page, still meter, child crying and nobody hearing.
 
 Now `MicHealth.Code()` produces `ok`, `digital-silence`, `quiet`, and the device
 name sits beside `MicrophoneActive` instead of being replaced by the word
@@ -143,16 +142,14 @@ thing: `né Tailscale né noi possiamo vederlo` is an assertion only the authors
 can make. What went with the "I" is a clause that promised a support nobody
 gives — `mentre sistemiamo questo`, when nobody is sorting anything out.
 
-**And the rule is about the program, not about one family.** The error family
-was fixed first; the **eight status messages** had kept the persona — `Riprovo`,
-`Sto aspettando`, `Sto preparando il collegamento sicuro`, `Controllo che
-risponda` — and there the remedy is a different shape, because the sentence is:
-a failure denies (`Non è stato possibile …`) while a state names itself —
-`Nuovo tentativo`, `In attesa`, `Preparazione del collegamento sicuro`,
-`Verifica della raggiungibilità da fuori casa`. English and German were
-impersonal in all eight (`Trying again`, `Waiting`, `Preparing the secure
-connection`, `Checking that it answers`), so the persona was one language
-against two.
+**And the rule is about the program, not about one family.** The **eight status
+messages** had kept the persona — `Riprovo`, `Sto aspettando`, `Sto preparando
+il collegamento sicuro`, `Controllo che risponda` — and there the remedy is a
+different shape, because the sentence is: a failure denies (`Non è stato
+possibile …`) while a state names itself — `Nuovo tentativo`, `In attesa`,
+`Preparazione del collegamento sicuro`, `Verifica della raggiungibilità da fuori
+casa`. English and German were impersonal in all eight (`Trying again`,
+`Waiting`, `Preparing the secure connection`, `Checking that it answers`).
 
 **And the plural of the guide stays, because the base has it**: `Proviamo se si
 vede e si sente` is English's `Let's see whether it sees and hears` and German's
@@ -164,18 +161,16 @@ the reader's own voice for the same reason.
 what would catch a persona is a list of first-person conjugations, and that is
 the guard that absolves every sentence built with a verb it has never met — a
 passive and a nominal form are not distinguishable from an impersonal one by
-any parser. What found the eight was translating against English, which is an
+any parser. The eight were found by translating against English, which is an
 act and not a check.
 
 **One apostrophe, and it is `’`.** The catalogues held both marks — forty
 Italian values with the straight one against nineteen with the typographic —
-and nobody had chosen that: it is whichever keyboard was in front of whoever
-added the entry. **The mixture was not only ugly: it was hiding two spelling
-mistakes.** Two entries wrote `e'` and `puo'` for *è* and *può*, a typewriter
-standing in for an accent, and they were the two added through a tool that could
-not reach the accented keys — in a file that already spells one thing two ways,
-a third way looks like the second. `po'` is not one of them and stays: it is an
-apocope of *poco*, and it really does take an apostrophe.
+because nobody had chosen. **The mixture was not only ugly: it was hiding two
+spelling mistakes.** Two entries wrote `e'` and `puo'` for *è* and *può*, a
+typewriter standing in for an accent: in a file that already spells one thing
+two ways, a third way looks like the second. `po'` is not one of them and stays:
+it is an apocope of *poco*, and it really does take an apostrophe.
 `TestTheInterfaceHasOneApostrophe` reads the embedded catalogues rather than a
 list of languages, so one added tomorrow is covered with nothing to remember.
 
@@ -185,20 +180,18 @@ nessuna immagine`, `Microfono: permesso disattivato`, `Spettatori: 1 ·
 dispositivi registrati: 2`, `Attivo da 2h14m` — and so does everything else the
 tray says: `tray.note.`, `tray.verdict.`, `tray.where.`.
 
-**They did not, and nobody had decided that either.** They were a **readout** —
-`thing: state`, the shape of a gauge — opening lower case, in forty entries
-across five languages, following a convention **nobody had written down**. It is
-defensible on its own: the same fact is a sentence in the page's banner,
-`Nessuna immagine dalla telecamera`, and a reading under the pointer. What is
-not defensible is that it had never been chosen.
+They used to be a **readout** — `thing: state`, the shape of a gauge — opening
+lower case, in forty entries across five languages, following a convention
+**nobody had written down**. It is defensible on its own — the same fact is a
+sentence in the page's banner, `Nessuna immagine dalla telecamera`, and a
+reading under the pointer — but it had never been chosen.
 
 **German is the control, and it reads the same way in both directions.** Under
 the old rule its eight fault lines were the only capitalised ones — correctly,
 because every one of them opens on a noun — while its one line beginning on an
 adverb, `aktiv seit`, was lower case like everyone else's. Under the new one
 German needed **one change of ten**, and the other four languages needed ten of
-ten: the language that looked like the exception turns out to have been there
-already.
+ten.
 
 **And the change made the rule guardable, which the old one could not be.** *No
 forced capital* depends on whether that word in that language takes one, which
@@ -207,9 +200,7 @@ eight correct German entries, and one carrying a list of languages that
 capitalise nouns is the guard that absolves everything it has never met. Sentence
 case depends on **position** and nothing else, so
 `TestEveryStatusLineOpensWithACapital` holds it in every language.
-**A convention became checkable by becoming stricter**, which is the reverse of
-how these usually go, and it is the reason it was worth doing rather than
-merely writing the old one down.
+**A convention became checkable by becoming stricter.**
 
 **`tray.viewers.` stays lower case, and it is the boundary somebody will
 otherwise "fix" next.** Those three are **fragments**, not lines: `summary`
@@ -217,23 +208,22 @@ joins one onto the end of a `tray.where.`, so a capital there would put
 `· 1 Spettatore` in the middle of a sentence. The guard skips that prefix by
 name, with this argument beside it.
 
-**And it settled a thing that had been left open.** The tooltip shows either a
-`tray.note.` — a sentence, with a full stop — or, when there is none, a
-`tray.fault.`; under the same pointer, in the same pixel. They used to disagree
-about their first letter, which is the one thing a reader notices there. They no
-longer do. **What still differs is the full stop**, and that is right: a
+The tooltip shows either a `tray.note.` — a sentence, with a full stop — or,
+when there is none, a `tray.fault.`, under the same pointer, in the same pixel,
+so the two now agree on their first letter, which is the one thing a reader
+notices there. **What still differs is the full stop**, and that is right: a
 sentence ends and a reading does not.
 
 **And where the two languages disagree on a tense, one of them is wrong — it is
 the future one.** It found three: `viewer.mic.insecure` promised in English that
 the browser *will not* grant the microphone while the Italian said it *does
 not*; the same for whether the page moves on, and for playing the audio. Those
-are standing properties, not events, and the guides all say the same thing —
-present tense unless it is genuinely later in time. **The check is worth more
-than the rule**, because it needs no judgement: it is two translations of one
-fact, and a fact does not change tense in translation. What stays future is what
-both languages agree is future — the device that will appear in the Tailscale
-list, the bookmark one will not have to look for again.
+are standing properties, not events: present tense unless it is genuinely later
+in time. **The check is worth more than the rule**, because it needs no
+judgement: it is two translations of one fact, and a fact does not change tense
+in translation. What stays future is what both languages agree is future — the
+device that will appear in the Tailscale list, the bookmark one will not have to
+look for again.
 
 **And nothing compares a term against itself inside one language.** Italian said
 *da fuori casa* in fifteen places and *da fuori* in eleven — not one outlier but
@@ -245,29 +235,24 @@ outside* and two *from outside your home*.
 **What settled that it was drift and not variation is where the two sat.** Each
 was one line from a short one: the fork's title above its own lead, and a box's
 label above the alt text of the code inside it — the same screen saying it both
-ways. Read on their own, both had a case for being explicit.
+ways.
 
 **And English converged the other way, on the short form, which is not an
-inconsistency.** The majority is twenty-six to two, and the pair *At home … from
-outside* runs through the whole interface anchoring it —
-`tray.where.home-and-away` is literally that pair — while the long form makes
-*Access from outside your home did not open: {step}* out of a line that has to
-fit a tooltip. Italian has
-no such pair to lean on, and *fuori* on its own is a bare adverb. **The term is
-chosen per language for the same reason the language is: by whoever reads it.**
+inconsistency.** The pair *At home … from outside* runs through the whole
+interface anchoring it — `tray.where.home-and-away` is literally that pair —
+while the long form makes *Access from outside your home did not open: {step}*
+out of a line that has to fit a tooltip. Italian has no such pair to lean on,
+and *fuori* on its own is a bare adverb. **The term is chosen per language for
+the same reason the language is: by whoever reads it.**
 
-**The first version of this paragraph asserted that English was uniform, and had
-counted Italian.** Twenty-six — the Italian total — carried across to a language
-nobody had measured, and it stood because it was plausible. It is the same
-defect as a constant written beside a measurement that contradicts it, one step
-earlier: **a number belongs to the thing it was measured on, and moving it to
-another claim is not an inference.** What found it was re-running the count
-while reviewing, not rereading the sentence.
+A count carried from Italian to English — twenty-six, the Italian total — once
+stood because it was plausible: **a number belongs to the thing it was measured
+on, and moving it to another claim is not an inference.** It is caught by
+re-running the count while reviewing, not by rereading the sentence.
 
-**The two that could not take the words as they stand are the interesting
-ones**: where the sentence already carries *casa*, repeating it reads worse than
-the ambiguity — *In casa e da fuori casa* says one word twice in four — and both
-were resolved by moving a word rather than by keeping the short form.
+**Where the sentence already carries *casa*, a word is moved rather than the
+short form kept**: repeating it reads worse than the ambiguity — *In casa e da
+fuori casa* says one word twice in four.
 
 **And the same drift twice over one word doing two jobs.** *The device you watch
 from* is a claim about **scope** — it tells the reader whether the sentence
@@ -275,11 +260,9 @@ concerns them — while *the phone* names a **gesture**, and scanning a code or
 saving something to a home screen really is done with a phone. Three of the
 scope claims had been narrowed to the phone: nothing to install *on the phone
 you watch from*, *the phone* calling the meeting point, and the password asked
-for by *every phone or computer*. All three understate what they assert, and the
-second gives the game away — the paragraph said *phone* while the aria-label of
-the drawing beside it, in the same box, already said *device*. The rule is
-therefore not one term but **which of the two jobs the sentence is doing**, and
-the gestures keep the phone.
+for by *every phone or computer*. All three understate what they assert. The
+rule is therefore not one term but **which of the two jobs the sentence is
+doing**, and the gestures keep the phone.
 
 **What stays an enumeration stays one, and that is a decision.** The fork says
 *phone, tablet or computer* and so does the arrival, next to a line that says
@@ -291,15 +274,16 @@ thing I own?"**
 **Lengthening a term is a layout change**, and in an illustration nothing clips
 it: the fork's two captions were measured against their cards in every language
 — 309-477 inside 276-510 in Italian, 302-484 in German, which is 26 px of room —
-because that is the lesson the tray address already taught. And the probe declared itself first: it searched forward from an anchor
-that sits **inside** the figure, so it measured the next one and reported
-somebody else's words. **A tool that names what it measured is a tool that can
-be caught.**
+because that is the lesson the tray address already taught. The probe had
+searched forward from an anchor that sits **inside** the figure, so it measured
+the next one and reported somebody else's words, and it showed because it
+declared what it measured: **a tool that names what it measured is a tool that
+can be caught.**
 
 **A second pass over all nine, each read against the other eight, changed a
 hundred and seventy-seven entries — a hundred and thirty-nine of them in the
-six catalogues that had been green for months**, and the kinds are the lesson rather than the count. Not one was a
-guard's business, and most were invisible from the language itself:
+six catalogues that had been green for months.** Not one was a guard's
+business, and most were invisible from the language itself:
 
 - **meaning that no longer matched the others**: Spanish `en breve`, which is
   *soon* and not *briefly*, on the link that opens the explainer; the Spanish
@@ -325,8 +309,7 @@ the talk-back claim to have been heard, which that chapter forbids, and one
 English correction was undone by `TestEveryLanguageHasDistinctMenuAccelerators`,
 which holds the pending step's three labels on one letter. **Reading a
 catalogue against English finds what English says; reading it against eight
-finds what the language says wrongly** — which is the whole of the method this
-chapter keeps asking for, applied once to what had already shipped.
+finds what the language says wrongly.**
 
 ##### German: the decisions, because nobody here can check the sentences
 

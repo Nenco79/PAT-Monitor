@@ -186,7 +186,7 @@ func main() {
 		// Closing it gives the standard error back, and a deferred close runs
 		// **while a panic is unwinding** — that is, an instant before the
 		// runtime writes the trace. Measured: with the close in place, a
-		// process that panicked left `crash traces=this file` in the log and
+		// process that panicked left `"crash traces"="this file"` in the log and
 		// then no trace at all, which is the exact silence this was built to
 		// remove. No unit test can see it; it took `-simulate-panic now` on a
 		// binary with no console.

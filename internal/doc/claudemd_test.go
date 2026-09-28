@@ -1,15 +1,23 @@
-// Package doc holds no code: it holds the guard on the one list `CLAUDE.md`
-// keeps about itself.
+// Package doc holds no code: it holds the guards on the index `CLAUDE.md`
+// keeps of itself.
 //
 // That file's own rule is that two lists of the same thing always diverge, and
 // its table of contents is a second list of its headings. It is kept anyway,
 // and deliberately — "read in sequence, the table of contents **is** the list
 // of rules" — because a rule one has to stumble upon is a rule nobody reads
-// before breaking it. What cannot be kept is the divergence, and when this
-// guard was written the index had already lost a chapter: "The reserve for the
-// parameter sets is not where it looks", that is, a rule unreachable from the
-// one page meant to carry all of them. Nothing had said so, because **an
+// before breaking it. What cannot be kept is the divergence, and when the first
+// guard here was written the index had already lost a chapter: "The reserve for
+// the parameter sets is not where it looks", that is, a rule unreachable from
+// the one page meant to carry all of them. Nothing had said so, because **an
 // incomplete index looks exactly like an index.**
+//
+// **So the list of headings is no longer written by hand: it is generated from
+// them** (`index_test.go`), and a missing, invented, reordered, doubled or
+// misfiled entry — each of which had a test of its own while the list was
+// typed — is now a difference from the render, which is the one thing that test
+// compares. The table of slices above it is still written by hand, because what
+// it says about each slice is prose, and it is watched like any hand-written
+// list.
 //
 // **The index and the chapters are in separate files, and holding those
 // together is what this package is for.** `CLAUDE.md` carries the front page
@@ -17,8 +25,8 @@
 // boundaries so that each one arrives on its own when Claude reads the code it
 // governs. The slices are contiguous and their names carry the order, so
 // concatenating them in that order reproduces the document — which is what
-// every test below reads. **A document split across sixteen files can lose a
-// chapter in a way one file could not**: it can fall out between two slices,
+// every test below reads. **A document split across files can lose a chapter in
+// a way one file could not**: it can fall out between two slices,
 // and nothing at the edges would look wrong. That is the direction the tiling
 // test covers, and it is the reason the split was allowed at all.
 package doc
@@ -41,12 +49,12 @@ const rulesDir = "../../.claude/rules"
 // there next, which is a hole with a name rather than an argued exception.
 const theIndexOwnChapter = "The headings are the rules"
 
-// chapter is a heading, or the entry that must stand for it. Depth is the
-// number of hashes, so 2 for `##` and 5 for `#####`.
+// chapter is a heading. Depth is the number of hashes, so 2 for `##` and 5 for
+// `#####`.
 //
-// `where` and `line` are for the message and nothing else; what the order test
-// compares is the position in the sequence, because a line number means nothing
-// once the document is fourteen files.
+// `where` and `line` are for the message and nothing else: the order of the
+// document is the position in the sequence, because a line number means nothing
+// once the document is several files.
 type chapter struct {
 	title string
 	depth int
@@ -92,14 +100,14 @@ func sliceNumber(name string) int {
 // **The order is carried by the filenames and not by a list written here**,
 // because a list here would be the second list this whole package exists to
 // refuse: it would have to be edited every time a slice is added, and the day
-// somebody forgot, the order test would be comparing the document against a
-// stale idea of itself.
+// somebody forgot, the index would be generated from a stale idea of the
+// document.
 //
 // **They are sorted by the number and not as text**, which is not a nicety: as
 // text, `110-` sorts before `20-`, so the first slice added past ninety-nine
-// would silently move to the front of the document and the order test would
-// start accusing the index of a defect that is in the sort. Reading the number
-// also means the gaps can stay ten wide without anybody having to pad them.
+// would silently move to the front of the document, and the generated index
+// would follow it there without a word. Reading the number also means the gaps
+// can stay ten wide without anybody having to pad them.
 func ruleFiles(t *testing.T) []string {
 	t.Helper()
 	found, err := filepath.Glob(filepath.Join(rulesDir, "*.md"))
@@ -131,18 +139,17 @@ func sources(t *testing.T) []source {
 	return out
 }
 
-// title normalises the one way the two forms legitimately differ: the index
-// puts its top level in bold, and both wrap at 79 columns. Everything else is
-// compared as written — the heading **is** the rule, so an entry that
-// paraphrases it is not that rule.
+// title is a heading's text with its whitespace collapsed and any bold taken
+// out, which is the form the index is rendered from. Nothing else is touched —
+// the heading **is** the rule, so an entry that paraphrased it would not be that
+// rule.
 func title(s string) string {
 	return strings.Join(strings.Fields(strings.ReplaceAll(s, "**", "")), " ")
 }
 
 // chapters reads the headings, which are the original, from every source in
 // order. Fenced code blocks are skipped: a `#` inside one is somebody else's
-// syntax, and counting it would make this guard demand an index entry for a
-// shell comment.
+// syntax, and counting it would put a shell comment in the index.
 func chapters(t *testing.T) []chapter {
 	t.Helper()
 
@@ -168,155 +175,6 @@ func chapters(t *testing.T) []chapter {
 		t.Fatal("no heading read: this test is looking in the wrong place")
 	}
 	return out
-}
-
-// entries reads the list. An entry can be **wrapped over several lines**, so a
-// line that does not open a new item belongs to the one above it: reading the
-// first line alone would compare half a title and then accuse the chapter of
-// not existing.
-func entries(t *testing.T, md string) []chapter {
-	t.Helper()
-
-	_, after, ok := strings.Cut(md, "## "+theIndexOwnChapter)
-	if !ok {
-		t.Fatalf("the chapter %q is not there: this test is looking in the wrong place", theIndexOwnChapter)
-	}
-	body, _, _ := strings.Cut(after, "\n## ")
-
-	var out []chapter
-	for i, line := range strings.Split(body, "\n") {
-		indent := len(line) - len(strings.TrimLeft(line, " "))
-		if item := strings.TrimLeft(line, " "); strings.HasPrefix(item, "- ") {
-			if indent%2 != 0 {
-				t.Errorf("the index entry %q is indented by %d, which is not a level", title(item[2:]), indent)
-			}
-			out = append(out, chapter{title(item[2:]), indent/2 + 2, "CLAUDE.md", i + 1})
-			continue
-		}
-		// A continuation: it belongs to the entry above.
-		if text := strings.TrimSpace(line); text != "" && len(out) > 0 {
-			out[len(out)-1].title = title(out[len(out)-1].title + " " + text)
-		}
-	}
-	if len(out) == 0 {
-		t.Fatal("no entry read from the index: this test is looking in the wrong place")
-	}
-	return out
-}
-
-// The direction that gets forgotten: a chapter written and nobody to say so.
-// Whoever writes it has it in front of them, and cannot see that the page
-// carrying every rule has stopped carrying theirs.
-func TestEveryChapterIsInTheIndex(t *testing.T) {
-	md := readCLAUDE(t)
-
-	listed := make(map[string]bool)
-	for _, e := range entries(t, md) {
-		listed[e.title] = true
-	}
-	for _, c := range chapters(t) {
-		if c.title == theIndexOwnChapter {
-			if listed[c.title] {
-				t.Errorf("the index lists the chapter it lives in, %q", c.title)
-			}
-			continue
-		}
-		if !listed[c.title] {
-			t.Errorf("%s:%d %q is a chapter and the index does not carry it", c.where, c.line, c.title)
-		}
-	}
-}
-
-// And the opposite direction: a chapter renamed or deleted and its entry left
-// standing. It is not dangerous, it is **false** — the index promises a rule
-// the file no longer states, and whoever goes looking for it finds nothing.
-func TestTheIndexInventsNoChapter(t *testing.T) {
-	md := readCLAUDE(t)
-
-	real := make(map[string]bool)
-	for _, c := range chapters(t) {
-		real[c.title] = true
-	}
-	for _, e := range entries(t, md) {
-		if !real[e.title] {
-			t.Errorf("the index carries %q, which is not a chapter of the file", e.title)
-		}
-	}
-}
-
-// "Read in sequence, the table of contents is the list of rules": the sequence
-// is part of what it asserts. A chapter moved without its entry moving leaves
-// an order that is neither the old one nor the new one.
-//
-// **What is compared is the position in the sequence, not the line number**,
-// and the difference stopped being cosmetic when the document became fourteen
-// files: line 40 of the second slice comes after line 300 of the first, so a
-// check on line numbers would have declared the order broken at every slice
-// boundary — that is, it would have failed for the one reason that is not a
-// defect, and been switched off for it.
-func TestTheIndexKeepsTheDocumentsOrder(t *testing.T) {
-	md := readCLAUDE(t)
-
-	at := make(map[string]int)
-	for i, c := range chapters(t) {
-		at[c.title] = i + 1
-	}
-
-	previous, from := 0, ""
-	for _, e := range entries(t, md) {
-		position, ok := at[e.title]
-		if !ok {
-			continue // the other direction's business
-		}
-		if position < previous {
-			t.Errorf("the index puts %q after %q, the file the other way round", e.title, from)
-		}
-		previous, from = position, e.title
-	}
-}
-
-// **A rule said twice is the one thing a list of rules must not do**, and the
-// three tests above all let it through.
-//
-// The order check compares `line < previous`, which admits two entries pointing
-// at the same heading; "every chapter is in the index" is satisfied by the first
-// of them and "the index invents no chapter" by both, because neither counts
-// occurrences. So a duplicate — which is exactly what an edit made by hand
-// produces, the index being written by hand on purpose — passed all three, and
-// the table of contents would have asserted a rule twice while the file states
-// it once.
-func TestTheIndexSaysEachRuleOnce(t *testing.T) {
-	md := readCLAUDE(t)
-
-	seen := make(map[string]int)
-	for _, e := range entries(t, md) {
-		seen[e.title]++
-		if seen[e.title] == 2 {
-			t.Errorf("the index carries %q twice (the second at line %d): read in "+
-				"sequence the table of contents is the list of rules, and a rule "+
-				"listed twice is two rules", e.title, e.line)
-		}
-	}
-	if len(seen) == 0 {
-		t.Fatal("no index entry was read: this test is looking at nothing")
-	}
-}
-
-// The nesting is carried by the indentation, two spaces to the level, and it is
-// the only thing saying which rule is a case of which. A `####` filed at the
-// margin reads as a chapter in its own right.
-func TestTheIndentationCarriesTheNesting(t *testing.T) {
-	md := readCLAUDE(t)
-
-	depth := make(map[string]int)
-	for _, c := range chapters(t) {
-		depth[c.title] = c.depth
-	}
-	for _, e := range entries(t, md) {
-		if d, ok := depth[e.title]; ok && d != e.depth {
-			t.Errorf("the index files %q at level %d, the file writes it with %d hashes", e.title, e.depth, d)
-		}
-	}
 }
 
 // theAlwaysLoadedSlice is the one slice that declares no `paths`, so that the
@@ -420,12 +278,11 @@ func TestEveryGlobNamesSomethingThatExists(t *testing.T) {
 
 // **The slices tile the document, and this is the direction one file could not
 // lose.** A chapter can now be in two slices at once — which is what a
-// copy-and-paste during a re-slice produces — and every test above lets it
-// through: the index carries it once, so "every chapter is listed" is satisfied
-// by the first copy, "the index invents nothing" by both, and the order check
-// by neither. The document would state a rule twice while the index says it
-// once, which is the mirror image of the duplicate the index test already
-// refuses.
+// copy-and-paste during a re-slice produces — and the index cannot see it: it
+// is generated from the headings, so it would print the duplicated one twice
+// and `TestTheIndexIsTheHeadings` would pass on it. The document would state a
+// rule twice, and this is the only test that counts the headings rather than
+// copying them.
 func TestNoChapterIsInTwoSlices(t *testing.T) {
 	seen := make(map[string]chapter)
 	for _, c := range chapters(t) {
@@ -461,8 +318,6 @@ var theUngovernedPackages = map[string]bool{
 // on it with the front page and nothing else — which reads exactly like a
 // package that has no rules rather than one whose rules never arrive.
 func TestEveryPackageIsGovernedBySomeSlice(t *testing.T) {
-	const root = "../../"
-
 	var globs []string
 	for _, path := range ruleFiles(t) {
 		g, _ := frontmatter(t, path)
@@ -470,35 +325,53 @@ func TestEveryPackageIsGovernedBySomeSlice(t *testing.T) {
 	}
 
 	checked := 0
+	for _, pkg := range packageDirs(t) {
+		if theUngovernedPackages[pkg] {
+			continue
+		}
+		checked++
+		governed := false
+		for _, g := range globs {
+			if governs(g, pkg) {
+				governed = true
+				break
+			}
+		}
+		if !governed {
+			t.Errorf("no slice names %s, so its rules never reach whoever works on it", pkg)
+		}
+	}
+	if checked < 20 {
+		t.Fatalf("%d packages read: this guard is looking at nothing", checked)
+	}
+}
+
+// packageDirs are the directories under `internal/` and `cmd/`, as
+// slash-separated paths from the root of the repository.
+func packageDirs(t *testing.T) []string {
+	t.Helper()
+	const root = "../../"
+
+	var out []string
 	for _, parent := range []string{"internal", "cmd"} {
 		dirs, err := os.ReadDir(filepath.Join(root, parent))
 		if err != nil {
 			t.Fatalf("%s cannot be listed: %v", parent, err)
 		}
 		for _, d := range dirs {
-			if !d.IsDir() {
-				continue
-			}
-			pkg := parent + "/" + d.Name()
-			if theUngovernedPackages[pkg] {
-				continue
-			}
-			checked++
-			governed := false
-			for _, g := range globs {
-				if strings.HasPrefix(g, pkg+"/") {
-					governed = true
-					break
-				}
-			}
-			if !governed {
-				t.Errorf("no slice names %s, so its rules never reach whoever works on it", pkg)
+			if d.IsDir() {
+				out = append(out, parent+"/"+d.Name())
 			}
 		}
 	}
-	if checked < 20 {
-		t.Fatalf("%d packages read: this guard is looking at nothing", checked)
-	}
+	return out
+}
+
+// governs says whether a slice's glob brings it into a session working on pkg:
+// the glob names something inside that directory. The coverage test and the
+// word budget both ask it, so that "governed" means one thing in both.
+func governs(glob, pkg string) bool {
+	return strings.HasPrefix(glob, pkg+"/")
 }
 
 // mapped reads the table in the index that says which slice carries what.
@@ -544,11 +417,10 @@ func TestTheMapNamesEverySlice(t *testing.T) {
 }
 
 // **The number in the name is the slice's place in the document**, and it is the
-// only thing that says so: the index gives the order, and the guard above reads
-// that order off these numbers. So a name without one has no place, and two
-// names with the same one have a place that depends on how the rest of the name
-// happens to spell — which is the sort deciding the document instead of the
-// author. The gaps are ten wide so that a slice can be cut out of another one
+// only thing that says so: the index is generated in the order these numbers
+// give. So a name without one has no place, and two names with the same one
+// have a place that depends on how the rest of the name happens to spell —
+// which is the sort deciding the document instead of the author. The gaps are ten wide so that a slice can be cut out of another one
 // without renaming its neighbours, which is how `70-network.md` and
 // `80-encoder.md` came to exist.
 func TestEverySliceSaysWhereItGoesAndNoTwoSayTheSame(t *testing.T) {

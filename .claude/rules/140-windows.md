@@ -824,12 +824,9 @@ loading.
 
 #### A notice gets the rows it needs, and an answer sits under its question
 
-Everything in this panel is centred, which is argued where the drawing of it is;
-the price is that **a line too long for its rectangle loses its first word and
-its last**, and reads as a line. That is the worst way to be truncated — one
-cannot even tell something is missing — and the panel knew it in one place only:
-the note beside the icon buttons' fallback says exactly that, about a label
-almost nobody ever sees.
+Everything in this panel is centred, so **a line too long for its rectangle
+loses its first word and its last**, and reads as a line: the worst way to be
+truncated, because one cannot even tell something is missing.
 
 **Measured at 96 dpi against the 236 px of a full-width row**, in the five Latin
 catalogues, it was reachable in eight places:
@@ -843,149 +840,128 @@ catalogues, it was reachable in eight places:
 | the widest command label | `Beenden und Monitor ausschalten`, **210** — 26 px of room |
 
 **Chinese arrived afterwards and is under the room in every one of them** — 212,
-175, 147, 121 and 141 px for the same five rows — which is worth a line because
-it is the direction nobody predicts: the script with no spaces, the one this
-section worried about, is the one that never needs the second row. A Han glyph
-is wider than a letter and a Chinese sentence is far shorter in glyphs, and the
-second effect is the larger. **The instrument was checked against this table
-before the row was added**, and it reproduced 447, 434 and 408 to the pixel.
+175, 147, 121 and 141 px for the same five rows: a Han glyph is wider than a
+letter and a Chinese sentence is far shorter in glyphs, and the second effect is
+the larger. **The instrument was checked against this table before the row was
+added**, and it reproduced 447, 434 and 408 to the pixel.
 
-**Portuguese sits with the Latin five and Japanese with Chinese**, which is the
-same split in two new places: `remote-no-ingress` 371 and 222, `no-password` 303
-and 213, `mic-filtered` 230 and 224, Portuguese first; European Portuguese
-gives 371, 314 and 230. The Japanese numbers are
-the second writing: the first had `no-password` at 257, which wrapped with two
-syllables alone on the second row, and 30-codes.md says how that was found.
-The instrument reproduced 447, 434, 408 and Chinese's 212 before it was
-believed.
+**Portuguese sits with the Latin five and Japanese with Chinese**:
+`remote-no-ingress` 371 and 222, `no-password` 303 and 213, `mic-filtered` 230
+and 224, Portuguese first; European Portuguese gives 371, 314 and 230. The
+Japanese `no-password` was 257 in its first writing, which wrapped with two
+syllables alone on the second row; 30-codes.md says how that was found. The
+instrument reproduced 447, 434, 408 and Chinese's 212 before it was believed.
 
-**That last row said 236 — *exactly* the room — and it was wrong**, which is
-worth more than the row. The guard that produced it built `fontGhost` at
-`tBody`, two points above the `tUI` the panel draws it with, so it measured a
-label nobody sees; and it is the very trap the guard beside it names in its own
-comment, *measuring them with the lines' font would say they fit when they do
-not*. It errs strict, so it never went green over a defect — **what it did was
-publish a number**, and a number taken with the wrong instrument is the one kind
-of error this file cannot absorb. The fonts are `create`'s now, and the same fix
-found a second half: `tray.confirm.yes` is the panel's one pill with a word of
-ours on it, so it is drawn two points *larger* than its neighbour "No" and was
-being measured two points small — that half erred lax. Found by a review, not by
-a test: **a guard cannot check the instrument it is made of.**
+**That last row said 236 — *exactly* the room — and it was wrong**. The guard
+that produced it built `fontGhost` at `tBody`, two points above the `tUI` the
+panel draws it with, so it measured a label nobody sees. It errs strict, so it
+never went green over a defect — **what it did was publish a number**, and a
+number taken with the wrong instrument is the one kind of error this file cannot
+absorb. The fonts are `create`'s now, and the same fix found a second half:
+`tray.confirm.yes` is the panel's one pill with a word of ours on it, so it is
+drawn two points *larger* than its neighbour "No" and was being measured two
+points small — that half erred lax. Found by a review, not by a test: **a guard
+cannot check the instrument it is made of.**
 
 **That two-point difference is gone, and the same report removed it.** One font
 served the confirmation's question and the main command: 16 at weight 600, which
 is right for a title and wrong for a button standing beside others at 14 — `Sì,
-procedi` two points larger than `No, lascia stare`, which is what somebody saw
-and called a defect. It was defensible while the main command painted itself a
-different colour, that is, was a different object; once the mark went to the
-focus alone, the size was the only loud thing left. The question keeps 16/600
-and the command takes 14/600, so what separates it from its neighbours is the
-weight.
+procedi` two points larger than `No, lascia stare`. It was defensible while the
+main command painted itself a different colour; once the mark went to the focus
+alone, the size was the only loud thing left. The question keeps 16/600 and the
+command takes 14/600, so what separates it from its neighbours is the weight.
 
-**And the guards built their own fonts by hand**, which is the list this
-paragraph already records going wrong once. There is one list now, `makeFonts`,
-and the panel and its guards both call it.
+**And the guards built their own fonts by hand**: there is one list now,
+`makeFonts`, and the panel and its guards both call it.
 
 **The one that matters is the fourth row.** `tray.confirm.revoke.title` is the
 question asked before cutting off everybody who is watching — *¿Desconectar
 todos los aparatos?* — and on one row, in three of the five languages, it was
-cut at both ends. A destructive command was asking its question in a sentence
-nobody could read.
+cut at both ends: a destructive command asking its question in a sentence nobody
+could read.
 
 **An ellipsis was put there first, and it was the wrong repair.** It makes the
-cut visible, and what was wanted was the sentence: these lines are the answer to
-the question the panel is opened for, and half an answer is not one. So the
-status lines **wrap**, into as many rows as `measureLines` measures for them,
-and the ellipsis stays underneath as the floor for whatever does not fit even
-there.
+cut visible, but these lines are the answer the panel is opened for, and half an
+answer is not one. So the status lines **wrap**, into as many rows as
+`measureLines` measures for them, and the ellipsis stays underneath as the floor
+for whatever does not fit even there.
 
 **`maxStatusRows` is three, and it is measured rather than chosen.** Two was the
-guess, and it was made by dividing a width by a width — which is not how text
-wraps. English's `remote-no-ingress` is *narrower* than German's and needs one
-row more, because it breaks into *access from outside: open, but / nothing gets
+guess, made by dividing a width by a width — which is not how text wraps.
+English's `remote-no-ingress` is *narrower* than German's and needs one row
+more, because it breaks into *access from outside: open, but / nothing gets
 through from the / Internet* while the German happens to break in two. The three
-confirmation titles need the third row for a different reason: they are drawn in
-the pill's font, 16 at weight 600. **A cap derived from an arithmetic that does
-not model the mechanism is a cap that is wrong in the cases nobody predicted**,
-and here the guard found all four within a second of being written.
+confirmation titles need the third row because they are drawn in the pill's
+font, 16 at weight 600. **A cap derived from an arithmetic that does not model
+the mechanism is a cap that is wrong in the cases nobody predicted**, and here
+the guard found all four within a second of being written.
 
-What the cap is for is the panel and not the sentence: these lines sit above the
-QR code, so every row they take pushes the code, the address and every command
-down, and a notice free to grow makes a panel that no longer fits beside the
-icon. `TestEveryStatusLineFitsTheRowsItIsGiven` keeps the two in step, in every
+The cap is for the panel and not the sentence: these lines sit above the QR
+code, so every row they take pushes the code, the address and every command
+down, and a notice free to grow no longer fits beside the icon.
+`TestEveryStatusLineFitsTheRowsItIsGiven` keeps the two in step, in every
 language, because **what overflows is a translation and not the base.**
 
 **And wrapping brought a defect of its own, in the one line that is not a
 sentence.** The counters are a pair of facts joined by a middot, and the wrap
-broke *aparatos registrados:* from its *3*, leaving a row carrying a lone digit
-— which reads as a fault rather than as a number. The space before each
-placeholder is non-breaking now, in every catalogue: **a figure is not
-separable from the label that names it**, and that is a typographic fact rather
-than a change of wording, so not one sentence moved.
+broke *aparatos registrados:* from its *3*, leaving a lone digit on a row, which
+reads as a fault rather than as a number. The space before each placeholder is
+non-breaking now, in every catalogue: **a figure is not separable from the label
+that names it**, a typographic fact rather than a change of wording.
 
 **Chinese is the exception and it argues the rule rather than breaking it.**
 There the join is a full-width colon, which carries its own blank — a
 non-breaking space after it draws as a second gap — so `tray.line.watching`
 writes none, and what keeps the figure off a row of its own is that the whole
 line is 256 px against the other five's 296 to 335. `tray.line.uptime` keeps it,
-because there the space between the Han and the Latin clock **is** a space and
-the reason it must not break is unchanged.
+because there the space between the Han and the Latin clock **is** a space.
 
 **And the guard counted rows and never the width, which is the half that lets
 the worst case through.** `DT_CALCRECT` with `DT_WORDBREAK` returns the width of
 the widest line and goes **past** the box it was given when nothing in the text
 can be broken — so a sentence with no break opportunity measures **one row**,
-passes a count of rows, and is drawn cut at both ends, which is the failure this
-whole section exists for. Measured with an unbreakable line put in: 391 px in a
-row of 236, one row, green. It costs nothing in the five Latin languages, where
-a space is always available; it was written for the script that has none, where
-whether GDI breaks between characters is a property of the flags and not of the
-sentence.
+passes a count of rows, and is drawn cut at both ends. Measured with an
+unbreakable line put in: 391 px in a row of 236, one row, green. It was written
+for the script that has no spaces, where whether GDI breaks between characters
+is a property of the flags and not of the sentence.
 
 **That script has since arrived, and the answer is that `DT_WORDBREAK` alone
 breaks between Han characters.** MSDN documents `DT_NOFULLWIDTHCHARBREAK` as
 *preventing* a break at a double-byte character and says it has no effect unless
-`DT_WORDBREAK` is specified — that is, the flag already passed here is the one
-that allows it, and the flag that would have caused the defect is one nobody
-set. Confirmed by looking: the panel wraps a Chinese sentence mid-phrase with no
-space anywhere in it. **So the guard stayed silent in the case it was added
-for**, and that is the right outcome to write down rather than the
-disappointing one: what it now holds is that the answer was measured instead of
+`DT_WORDBREAK` is specified — the flag already passed here is the one that
+allows it. Confirmed by looking: the panel wraps a Chinese sentence mid-phrase
+with no space anywhere in it. **So the guard stayed silent in the case it was
+added for**, and what it now holds is that the answer was measured instead of
 assumed.
 
 **The commands do not wrap and must fit**, because a button has one height and a
-taller one among the others is a crooked column. The ellipsis is there
-underneath — it has to be, since `tray.menu.todo` carries Tailscale's own
-sentence and **a line is not a width**: `firstLine` takes one line of it and it
-had been drawing `ve this machine in the Tailscale` for as long as it had
-existed. But **an ellipsis on a word somebody chose is a word chosen badly**, so
-`TestEveryCommandLabelFitsThePanel` measures the ones that are ours.
+taller one among the others is a crooked column. The ellipsis stays underneath,
+because **a line is not a width**: the one line `firstLine` took of Tailscale's
+sentence in `tray.menu.todo` drew `ve this machine in the Tailscale` for as long
+as it existed. But **an ellipsis on a word somebody chose is a word chosen
+badly**, so `TestEveryCommandLabelFitsThePanel` measures the ones that are ours.
 
-**And then the sentence was taken off the button altogether**, which is what
-that paragraph had been arguing for without noticing. The step Tailscale is
-waiting on used to be one key, `tray.menu.todo`, carrying their prose: what
-appeared was `Da fare: approve this machin…` — a paragraph cut mid-word, in
-another language, on the one command the reader has to press. **The ellipsis was
-there and it did not help**: a cut sentence does not read as a short one, it
-reads as a defect, and it was reported as one.
+**And then the sentence was taken off the button altogether**. What
+`tray.menu.todo` drew was `Da fare: approve this machin…` — a paragraph cut
+mid-word, in another language, on the one command the reader has to press.
+**The ellipsis was there and it did not help**: a cut sentence does not read as
+a short one, it reads as a defect.
 
 The division is the panel's own, the one the permission's notice already makes:
 **the line names the thing and the button says what pressing does.** The
-explanation goes to the status rows, which wrap into as many as they are given —
-theirs when their control server answers, since it composes it knowing the
-tailnet and the reader's role, ours when it does not. The button carries a short
-label of ours per action, so `TestEveryCommandLabelFitsThePanel` measures it like
-every other, and the truncation is gone rather than decorated.
+explanation goes to the status rows, which wrap — theirs when their control
+server answers, since it composes it knowing the tailnet and the reader's role,
+ours when it does not. The button carries a short label of ours per action, so
+`TestEveryCommandLabelFitsThePanel` measures it like every other, and the
+truncation is gone rather than decorated.
 
 **And moving it there was half the repair, which a review found.** The sentence
 was still going through a sixty-character cut written when its destination was a
-menu item — so it arrived on the wrapping line already truncated, with two of its
+menu item, so it arrived on the wrapping line already truncated, with two of its
 three rows unused. **A limit written for one destination does not travel to the
-next**, and the defect that had been reported on the button reappeared on the
-line, in the same commit that was supposed to have removed it. What bounds it now
-is the panel: `measureLines` clamps to `maxStatusRows` and `drawWrapped` carries
-`DT_END_ELLIPSIS`, so the cut is at the end of the last row, where it can be
-seen.
+next**: what bounds it now is the panel, `measureLines` clamping to
+`maxStatusRows` and `drawWrapped` carrying `DT_END_ELLIPSIS`, so the cut is at
+the end of the last row, where it can be seen.
 
 **Measured at 96 dpi in the 236 px of a row, in every language**, rows needed of
 the three there are:
@@ -997,35 +973,33 @@ the three there are:
 | `other-user` | **3** | 2 | 2 | 2 | 2 | 2 | 2 | 2 | 2 |
 | `approve` | 6 | 5 | 5 | 6 | 6 | 5 | 5 | 5 | **4** |
 
-**Five of the six fit everywhere, German's `other-user` fits exactly** — one word
-more and it does not — and `approve` is the one exception, named in the guard
-with its reason: it is an explanation rather than an instruction, it is read on
-the pages too where the whole of it is right, and in the panel its first three
-rows carry the half that says what to do. The guard asserts the exception **in
-both directions**, so shortening that sentence until it fits fails and asks for
-the exception to be removed.
+**Five of the six fit everywhere, German's `other-user` fits exactly**, and
+`approve` is the one exception, named in the guard with its reason: it is an
+explanation rather than an instruction, it is read on the pages too where the
+whole of it is right, and in the panel its first three rows carry the half that
+says what to do. The guard asserts the exception **in both directions**, so
+shortening that sentence until it fits fails and asks for the exception to be
+removed.
 
 **The guard had not known this source existed**, which is the first failure this
-repository lists: its list of texts is hand-written, the step's sentence arrived
-after it, and nothing went red only because the sixty-character cut upstream was
-arriving first. **A guard green because of a defect somewhere else is not a
-guard.**
+repository lists: its list of texts is hand-written, and nothing went red only
+because the sixty-character cut upstream was arriving first. **A guard green
+because of a defect somewhere else is not a guard.**
 
 **And the flattening had to move into this package to be guardable at all.** It
 lived in `cmd/pat-monitor`, so the guard here measured the catalogue's value
-while the panel drew a transformed one — measuring something the program does
-not do, one package apart, which is where that shape is hardest to see. It
-belongs here anyway: the newlines have to go **because these rows wrap**, which
-is a fact about them and about nothing else.
+while the panel drew a transformed one. It belongs here anyway: the newlines
+have to go **because these rows wrap**, which is a fact about them and about
+nothing else.
 
 **And the obvious spelling of it destroyed French.** `strings.Fields` splits on
 `unicode.IsSpace`, which answers true for **U+00A0** — so joining its fields
-turned every non-breaking space into an ordinary one, undoing at the last step
-before drawing exactly what `TestASpaceBeforePunctuationIsNotBreakable` defends
-the catalogues for, and leaving the panel free to end a row on a bare colon.
-Three of the six French sentences that reach this row carry one. The separator
-is now decided by what it is for: anything the box may break on collapses to one
-space, and the one space that exists **in order not to be broken** is kept.
+turned every non-breaking space into an ordinary one, undoing what
+`TestASpaceBeforePunctuationIsNotBreakable` defends the catalogues for and
+leaving the panel free to end a row on a bare colon. Three of the six French
+sentences that reach this row carry one. The separator is now decided by what
+it is for: anything the box may break on collapses to one space, and the one
+space that exists **in order not to be broken** is kept.
 
 **Three of the six actions never produced a button and still do not**, and that
 is a reading rather than a decision: `wait-certificate` says in as many words
@@ -1037,9 +1011,8 @@ fails instead of quietly producing a panel with no command.
 **The three labels share one accelerator, and the guard folds them into one
 slot.** They are alternatives — only one can be on the panel at a time — so
 demanding three distinct letters would be a rule stricter than the thing it
-guards, and it would spend three of a language's free letters on one row.
-Sharing is also what one wants from the keyboard: whatever the step is, it
-answers to the same key.
+guards, spending three of a language's free letters on one row; and whatever the
+step is, it answers to the same key.
 
 **And a command that answers a line goes under that line.** `flyCmd.lead` puts a
 command between the status and the code. Its first user was the Windows settings
@@ -1048,30 +1021,29 @@ bottom it sat four rows from the sentence it belongs to, with the code and the
 address in between, where it reads as belonging to the address.
 
 **Then a photograph found the same defect on the tunnel's step.** With a
-permission refused *and* a step waiting, the settings command sat under the
-lines while *Open the device list* sat below the code, just above the address
-and several rows away from Tailscale's own sentence, which was the thing it
-answered. The slot had been declared single, "a second one would be a second
-main answer", and that argument confused **position** with **mark**. The mark
-is still single, because it belongs to the focus, and where the focus opens is
-decided in *One mark for one thing* above. What is no longer single is the
-row. `leadIndices` returns every lead, `layout` stacks
-them in composition order (settings first, then the step), and `place` zips
-them with `leadYs`, which comes out of the same pass. The slot is still not a
-general one: each of the two answers a sentence a few lines up, and a third
-would have to show the same thing. `TestTheTunnelStepIsAnsweredUnderItsOwnLineToo`
-holds it, and it was seen to fail with the step's `lead` removed.
+permission refused *and* a step waiting, *Open the device list* sat below the
+code, just above the address and several rows away from Tailscale's sentence,
+which was the thing it answered. The slot had been declared single, "a second
+one would be a second main answer", and that argument confused **position** with
+**mark**. The mark is still single, because it belongs to the focus, and where
+the focus opens is decided in *One mark for one thing* above; what is no longer
+single is the row. `leadIndices` returns every lead, `layout` stacks them in
+composition order (settings first, then the step), and `place` zips them with
+`leadYs`, which comes out of the same pass. The slot is still not a general one:
+each of the two answers a sentence a few lines up, and a third would have to
+show the same thing. `TestTheTunnelStepIsAnsweredUnderItsOwnLineToo` holds it,
+and it was seen to fail with the step's `lead` removed.
 
 **Marking the second one `lead` without generalising would have deleted it.**
 `rows` skips every lead, while the old `layout` and `place` drew only the first,
-so a second lead was left out of the column and drawn nowhere. That is why the
-change goes through `leadIndices` and not through the flag alone.
+so a second lead was drawn nowhere — which is why the change goes through
+`leadIndices` and not through the flag alone.
 
 **It wears no pill**, and that is *One mark for one thing* met from the other
 side: the focus falls on the first command, which is this one, and the selected
-command already wears the accent. A filled pill on top of that is two marks for
-the same thing. The pill stays with the tunnel's step, which is a different
-question and is the one thing the monitor is waiting on somebody for.
+command already wears the accent, so a filled pill on top would be two marks for
+the same thing. The pill stays with the tunnel's step, which is the one thing
+the monitor is waiting on somebody for.
 
 **Every one of these was found by looking**, and most of them only by looking:
 the arithmetic in `layout` is right in every one of those panels, and
@@ -1079,35 +1051,31 @@ the arithmetic in `layout` is right in every one of those panels, and
 word. `TestLookAtThePanel` is the instrument — `PATMON_LOOK=<folder>`,
 `PATMON_LOOK_LANG=<tag>`, one PNG per state — and it is kept for the reason the
 pulse's is: **what a photograph answers, no assertion about the same panel
-does.** The guards came after it, and each one is what the photograph taught
-written down so that nobody has to take it again.
+does.** Each guard is what the photograph taught, written down.
 
 #### Two folders are two glyphs, and the word stays on the control
 
 The two commands that open the clips folder and the log folder are **two glyphs
-side by side just above "Exit"**. They open nothing of the monitor's: they lead
-to what the monitor has **left behind**, so they sit at the end, after the
-commands that act on it and before the only one that switches it off. Two whole
-rows for two destinations opened rarely lengthened the panel by eighty pixels in
-order to write the word "folder" twice, which is the one half that does not
-distinguish them.
+side by side just above "Exit"**. They lead to what the monitor has **left
+behind**, so they sit at the end, after the commands that act on it and before
+the only one that switches it off. Two whole rows for two destinations opened
+rarely lengthened the panel by eighty pixels to write the word "folder" twice,
+the one half that does not distinguish them.
 
-**They are two kinds of content and not two folders**, and that is the decision
-that counts: the set has a folder, and it has **one** — two folder glyphs side
-by side would be the same drawing twice, that is, two commands indistinguishable
-from outside. What separates them is what is inside, `video` and `file-text`,
-which is also what one is looking for when opening one or the other.
+**They are two kinds of content and not two folders**: the set has a folder, and
+it has **one** — two folder glyphs side by side would be two commands
+indistinguishable from outside. What separates them is what is inside, `video`
+and `file-text`, which is also what one is looking for when opening one or the
+other.
 
 **And among the glyphs that say "video" the silhouette won, not the subject.**
-The first was `movie`, the film strip: it says "film" instead of "recordings",
-at the panel's size its eight holes smudge into a band that reads as a ticket,
-and above all it is **symmetric** — next to the sheet the two silhouettes
-resemble each other, and two commands side by side either are distinguished at a
-glance or are not. The camera has the lens sticking out on one side, which is a
-difference visible before the drawing is recognised. Also tried and discarded
-were `folder`, which says "folder" and not "video", and `camera`, which says
-"photography". **All four were looked at** — as characters, on a grid of 34 —
-rather than chosen by name.
+`movie`, the film strip, says "film" instead of "recordings", at the panel's
+size its eight holes smudge into a band that reads as a ticket, and above all it
+is **symmetric** — next to the sheet the two silhouettes resemble each other.
+The camera has the lens sticking out on one side, a difference visible before
+the drawing is recognised. `folder` says "folder" and not "video", and `camera`
+says "photography". **All four were looked at** — as characters, on a grid of
+34 — rather than chosen by name.
 
 **The word does not disappear, it stops being drawn.** The control's text
 remains, so Narrator reads it and the accelerator letter goes on responding: it
@@ -1118,15 +1086,14 @@ with no label and no tooltip, mouse users have to try them once to learn them �
 a real tooltip is a `comctl32` control, and without a manifest it would be the
 grey v5 one inside a panel drawn by us.
 
-**The glyph is engraved onto the button's background, not over it.** The bitmap
-arrives with `BitBlt`, which just copies, so what lies outside the stroke must
-already carry the right colour — possible because the glyph falls in the pill's
-**flat centre**, the same property for which `pill` does not sample its own
-centre. A different background — focus, pressed — is a different key in the
-cache and not a case to handle; if it were not, a square would appear around the
-glyph **only on the button with focus**, that is, it would show only by tabbing
-that far. `TestTheEngravingCarriesTheButtonBackground` nails it, on the three
-real colour pairs.
+**The glyph is engraved onto the button's background, not over it.** `BitBlt`
+just copies, so what lies outside the stroke must already carry the right
+colour — possible because the glyph falls in the pill's **flat centre**, the
+same property for which `pill` does not sample its own centre. A different
+background — focus, pressed — is a different key in the cache; if it were not,
+a square would appear around the glyph **only on the button with focus**.
+`TestTheEngravingCarriesTheButtonBackground` nails it, on the three real colour
+pairs.
 
 **The `d` strings are verbatim, and a tolerant reader would be the defect.** The
 strings in `internal/tray/glyph_windows.go` are copied from the `<svg>`
@@ -1136,24 +1103,23 @@ a rotated ellipse, an unknown command return an error instead of being skipped.
 Skipping them would give a glyph **plausible and wrong**, which nobody sees
 until they look at somebody else's panel.
 
-How the engraving works, which is the non-obvious part: **a round stroke is the
-set of points within half a stroke of the line**, so by measuring that distance
-the round caps and joins — the set's two `stroke-linecap` and `stroke-linejoin`
-— come for free, with no special case for corners. Only the band at the edge is
-sampled: beyond half a pixel diagonal from the stroke the outcome is already
-decided, and that is nine tenths of the pixels. And **a glyph is looked at**, as
-always: first as characters on a grid of 40, then on the real panel photographed
-from outside.
+How the engraving works: **a round stroke is the set of points within half a
+stroke of the line**, so by measuring that distance the round caps and joins —
+the set's two `stroke-linecap` and `stroke-linejoin` — come for free, with no
+special case for corners. Only the band at the edge is sampled: beyond half a
+pixel diagonal from the stroke the outcome is already decided, and that is nine
+tenths of the pixels. And **a glyph is looked at**: first as characters on a
+grid of 40, then on the real panel photographed from outside.
 
 #### How to look at a panel that closes when you look at it
 
-This is the method part, and it is needed next time. The panel closes on losing
-activation, so it cannot be inspected with anything that steals focus. It is
-driven from a separate process: send it the **icon's message** (`WM_APP+1` with
-the event in `lParam`'s low word, not a real `WM_CONTEXTMENU`, which reaches
-nobody), attach the input queues with `AttachThreadInput` to read and move
-focus, post a `WM_KEYDOWN` and count **how many steps one press makes** — one
-button, measured, when it looked as though they all scrolled.
+The panel closes on losing activation, so it cannot be inspected with anything
+that steals focus. It is driven from a separate process: send it the **icon's
+message** (`WM_APP+1` with the event in `lParam`'s low word, not a real
+`WM_CONTEXTMENU`, which reaches nobody), attach the input queues with
+`AttachThreadInput` to read and move focus, post a `WM_KEYDOWN` and count **how
+many steps one press makes** — one button, measured, when it looked as though
+they all scrolled.
 
 Two traps of the tool, which accused the code in the right place for the wrong
 reason: **without declaring the DPI** the system answers in virtualised
@@ -1167,22 +1133,20 @@ because we do not handle `WM_PRINTCLIENT`.
 when it became `+0:262D32 +2:B4B4B4 +18:121517`: the first is ours, the third is
 the ground, and the second belongs to neither.
 
-**And it wants a screen that is on.** Run with the session locked or the display
+**And it wants a screen that is on.** With the session locked or the display
 asleep, every photograph comes back **black** — with the right rectangle, the
-right size and no error anywhere, which is the shape of failure this file keeps
-a list of. What separates the two is the file: a panel is 35 to 50 kB of PNG and
-a black one is 1 to 4. **A number is what tells a picture of nothing from a
-picture**, and it is cheaper than opening them. Measured on the same five states
-an hour apart: 1.4 to 4.1 kB locked, 15.5 to 37.3 unlocked, with the rectangles
-identical to the byte — so the instrument reports success, reports the right
-geometry, and hands over nothing.
+right size and no error anywhere. What separates the two is the file: a panel is
+35 to 50 kB of PNG and a black one is 1 to 4. **A number is what tells a picture
+of nothing from a picture**, and it is cheaper than opening them. Measured on
+the same five states an hour apart: 1.4 to 4.1 kB locked, 15.5 to 37.3
+unlocked, with the rectangles identical to the byte.
 
 **And a fixture that draws a state the program cannot produce is worse than no
 photograph.** Two were found together: the confirmation's *Yes* was given the
 main command's style while `askInside` builds both answers with the plain one,
 so the picture carried a weight nothing draws — 73 px against 62 in Italian; and
 the step's row was given a sentence and an address but no action code, so the
-photograph came back with no command at all, which is how that one was caught.
-**The instrument's whole value is that it shows what is really there**, and a
-fixture is the one place that can be untrue without anybody noticing.
+photograph came back with no command at all. **The instrument's whole value is
+that it shows what is really there**, and a fixture is the one place that can be
+untrue without anybody noticing.
 

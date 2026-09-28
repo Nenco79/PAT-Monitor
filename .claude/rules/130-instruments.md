@@ -293,8 +293,8 @@ an issue, and it carried the public name in full four times at the default
 level: the tunnel coming up, the certificate twice, and the serve configuration,
 which is keyed by it. The reachability probe's errors added more, because
 net/http puts the URL inside them, and so did the server's refusal of a setup
-from the Funnel, whose `Host` is that name. A tailnet name is DNS tied to an
-account, and it is the thing this repository refuses in a commit. So
+from the Funnel, whose `Host` is that name. It is the name the first IMPORTANT
+line of `CLAUDE.md` keeps out of every commit, for the reason given there. So
 `tunnel.HideTailnet` wraps the root handler and writes it as
 `patmon-1a2b3c.<tailnet>.ts.net` from Info up. The node's label stays, because
 it says which installation a line is about, and `-v` keeps the whole name for
