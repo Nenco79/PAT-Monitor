@@ -39,9 +39,11 @@ func (s Snapshot) Bytes() int {
 
 // Snapshot returns what the ring holds right now.
 //
-// The audio is cut to the video's window: a packet older than the first frame
-// would give a clip that starts with sound over a black screen, and one more
-// recent than the last would stretch the audio track past the video one.
+// The audio is cut to the video's window **at the pre-roll's edge**: a packet
+// older than the first frame would give a clip that starts with sound over a
+// black screen, and one more recent than the last belongs to the post-roll,
+// which the recorder collects itself. A clip whose camera stops in the middle
+// keeps the sound after it, and WriteClip lets the last frame last as long.
 //
 // **What falls outside the cut is not a negligible remainder.** The
 // misalignment is at most one packet, twenty milliseconds, only if the audio

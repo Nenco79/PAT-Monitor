@@ -20,7 +20,8 @@ const (
 
 	// minSampleDuration keeps the duration above zero. Two frames delivered at
 	// the same instant really do happen — on AMD a third of the intervals are
-	// bursts, `min 0s` — and a sample of zero duration is not a sample.
+	// bursts, `min 0s` — and a sample of zero duration is not a sample. It is
+	// borrowed from the interval after, not added: see videoDurations.
 	minSampleDuration = time.Millisecond
 )
 
@@ -63,8 +64,29 @@ func WriteClip(w io.Writer, s Snapshot) error {
 	if err != nil {
 		return err
 	}
+	video := videoDurations(s.Video)
+	var audio []time.Duration
+	if len(s.Audio) > 0 {
+		audio = audioDurations(s.Audio)
+		// **The picture lasts as long as the sound that follows it.** A clip
+		// in progress keeps the room's audio after the camera has stopped —
+		// the sound is what is worth having then — and the last frame has
+		// no successor to take its end from. Its end is the audio track's,
+		// which is measured: what is invented is only in the other direction.
+		var videoEnd, audioEnd time.Duration
+		for _, d := range video {
+			videoEnd += d
+		}
+		audioEnd = s.Audio[0].At.Sub(s.Video[0].At)
+		for _, d := range audio {
+			audioEnd += d
+		}
+		if audioEnd > videoEnd {
+			video[len(video)-1] += audioEnd - videoEnd
+		}
+	}
 	for i, f := range s.Video {
-		if err := clip.AddVideo(f.Data, videoDuration(s.Video, i)); err != nil {
+		if err := clip.AddVideo(f.Data, video[i]); err != nil {
 			return err
 		}
 	}
@@ -73,14 +95,14 @@ func WriteClip(w io.Writer, s Snapshot) error {
 		// this interval is never negative.
 		clip.SetAudioDelay(s.Audio[0].At.Sub(s.Video[0].At))
 		for i := range s.Audio {
-			clip.AddAudio(s.Audio[i].Data, audioDuration(s.Audio, i))
+			clip.AddAudio(s.Audio[i].Data, audio[i])
 		}
 	}
 	return clip.Marshal(w)
 }
 
-// videoDuration is how long frame i lasts, that is, the interval up to the next
-// one.
+// videoDurations is how long each frame lasts, that is, the interval up to the
+// next one.
 //
 // **There is no cap, and one must not be added**: if the camera stops for three
 // seconds, the truth is that that picture stayed on screen for three seconds.
@@ -92,21 +114,36 @@ func WriteClip(w io.Writer, s Snapshot) error {
 // The last one has no successor and takes the previous one's duration:
 // declaring an invented one would be the only figure in the clip that does not
 // come from a measurement.
-func videoDuration(frames []Frame, i int) time.Duration {
-	var d time.Duration
-	switch {
-	case i+1 < len(frames):
-		d = frames[i+1].At.Sub(frames[i].At)
-	case i > 0:
-		d = frames[i].At.Sub(frames[i-1].At)
-	default:
-		// A single frame: there is no interval to derive it from.
-		d = opusFrameDuration
+//
+// **Each frame is placed where it arrived, and a burst borrows.** A frame
+// arriving with its predecessor still needs a duration, and that millisecond
+// used to be added: nothing took it back, so on AMD, where a third of the
+// intervals are bursts, the picture ended up behind the sound — some 140 ms on
+// an ordinary clip, 0.6 s on one at the length ceiling. A frame's end is now its
+// successor's arrival, pushed later only as far as the floor needs, and the
+// next interval pays it back.
+func videoDurations(frames []Frame) []time.Duration {
+	out := make([]time.Duration, len(frames))
+	var pos time.Duration // where the current frame starts on the timeline
+	for i := range frames {
+		var end time.Duration
+		switch {
+		case i+1 < len(frames):
+			end = frames[i+1].At.Sub(frames[0].At)
+		case i > 0:
+			end = pos + frames[i].At.Sub(frames[i-1].At)
+		default:
+			// A single frame: there is no interval to derive it from.
+			end = pos + opusFrameDuration
+		}
+		end = max(end, pos+minSampleDuration)
+		out[i] = end - pos
+		pos = end
 	}
-	return max(d, minSampleDuration)
+	return out
 }
 
-// audioDuration is how long packet i lasts, **rounded to a whole number of Opus
+// audioDurations is how long each packet lasts, **a whole number of Opus
 // frames**.
 //
 // The sum is not done on the raw interval as it is for video, and the reason is
@@ -116,15 +153,30 @@ func videoDuration(frames []Frame, i int) time.Duration {
 // the block, not how much sound is inside it. Declaring 12.6 ms for a packet
 // holding 20 would be false on every line.
 //
-// Rounding to whole frames makes all the jitter fall on one of them, and **a
-// gap stays a gap**: a microphone reopening after half a second is worth
+// **A gap stays a gap**: a microphone reopening after half a second is worth
 // twenty-five frames, and those twenty-five are declared instead of bringing
 // everything else forward.
-func audioDuration(packets []Packet, i int) time.Duration {
-	if i+1 >= len(packets) {
-		return opusFrameDuration
+//
+// **The gap is measured against where the packet was due, not against the
+// previous arrival.** Each gap used to be rounded on its own and floored at a
+// frame, so a late packet was counted twice — once as a gap, once when the next
+// short interval was raised to a whole frame — and every stall followed by a
+// burst moved the audio twenty milliseconds later for the rest of the clip. Now
+// a packet lies right after the previous one unless it arrived at least a frame
+// after it was due, and then the whole frames of that lateness, and no more,
+// are declared as a gap: a late packet absorbs its own lateness.
+func audioDurations(packets []Packet) []time.Duration {
+	out := make([]time.Duration, len(packets))
+	var pos time.Duration // where the current packet starts, from the first
+	for i := range packets {
+		out[i] = opusFrameDuration
+		if i+1 < len(packets) {
+			due := pos + opusFrameDuration
+			if late := packets[i+1].At.Sub(packets[0].At) - due; late >= opusFrameDuration {
+				out[i] += late / opusFrameDuration * opusFrameDuration
+			}
+		}
+		pos += out[i]
 	}
-	gap := packets[i+1].At.Sub(packets[i].At)
-	frames := (gap + opusFrameDuration/2) / opusFrameDuration
-	return max(frames, 1) * opusFrameDuration
+	return out
 }

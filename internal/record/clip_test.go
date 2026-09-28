@@ -172,20 +172,123 @@ func TestAGapKeepsTheTwoTracksOnTheSameClock(t *testing.T) {
 	// On the timeline a sample sits where the sum of the durations before it
 	// puts it. That has to match the wall clock.
 	var sum time.Duration
+	vd := videoDurations(video)
 	for i := range video {
 		if actual := video[i].At.Sub(video[0].At); sum != actual {
 			t.Fatalf("frame %d falls at %v on the timeline but arrived at %v", i, sum, actual)
 		}
-		sum += videoDuration(video, i)
+		sum += vd[i]
 	}
 
 	sum = delay
+	ad := audioDurations(audio)
 	for i := range audio {
 		actual := audio[i].At.Sub(video[0].At)
 		if gap := sum - actual; gap > opusFrameDuration || gap < -opusFrameDuration {
 			t.Fatalf("packet %d falls at %v but arrived at %v: %v of slide", i, sum, actual, gap)
 		}
-		sum += audioDuration(audio, i)
+		sum += ad[i]
+	}
+}
+
+// **A burst of frames borrows its millisecond, it does not add it.** On AMD a
+// third of the intervals are bursts, and each used to push every later frame a
+// millisecond later: the picture ended up behind the sound.
+//
+// **The defect was put back and this test fails with it**: with the floor added
+// per frame, the last frame falls fifty milliseconds late.
+func TestABurstOfFramesDoesNotPushThePictureLate(t *testing.T) {
+	var video []Frame
+	at := t0
+	for i := range 100 { // ends on an ordinary interval, which pays the last burst back
+		video = append(video, Frame{At: at})
+		if i%2 == 0 {
+			at = at.Add(66 * time.Millisecond)
+		} // the odd ones arrive with their successor: a burst
+	}
+	vd := videoDurations(video)
+	var sum time.Duration
+	for i := range len(video) - 1 {
+		sum += vd[i]
+	}
+	if actual := video[len(video)-1].At.Sub(video[0].At); sum != actual {
+		t.Errorf("the last frame falls at %v on the timeline but arrived at %v", sum, actual)
+	}
+	for i, d := range vd {
+		if d < minSampleDuration {
+			t.Fatalf("frame %d has a duration of %v", i, d)
+		}
+	}
+}
+
+// **A late packet absorbs its own lateness.** A stall followed by a burst, and
+// jitter of 31 then 9 ms, each counted the lateness twice when every gap was
+// rounded on its own, and the audio drifted twenty milliseconds later every
+// time.
+//
+// **The defect was put back and this test fails with it**: with each gap
+// rounded on its own, five stalls leave the last packet a hundred milliseconds
+// late.
+func TestAStallAndABurstDoNotMoveTheAudioLate(t *testing.T) {
+	var audio []Packet
+	base := time.Duration(0)
+	for range 5 {
+		// Due every 20 ms; the microphone stalls, then hands two over at once.
+		for _, off := range []time.Duration{0, 60, 60, 80, 100, 120} {
+			audio = append(audio, Packet{At: t0.Add(base + off*time.Millisecond)})
+		}
+		base += 140 * time.Millisecond
+	}
+	for _, off := range []time.Duration{0, 31, 40} { // jitter, no gap
+		audio = append(audio, Packet{At: t0.Add(base + off*time.Millisecond)})
+	}
+
+	ad := audioDurations(audio)
+	var sum time.Duration
+	for i := range audio {
+		actual := audio[i].At.Sub(audio[0].At)
+		if slide := sum - actual; slide > opusFrameDuration || slide < -opusFrameDuration {
+			t.Fatalf("packet %d falls at %v but arrived at %v: %v of slide", i, sum, actual, slide)
+		}
+		sum += ad[i]
+	}
+}
+
+// **The picture lasts as long as the sound after it.** The camera stopping in
+// the middle of a clip left the room's audio running past the last frame, and
+// the last frame took only the previous interval: the file's two tracks ended
+// seconds apart.
+func TestTheLastFrameLastsUntilTheSoundEnds(t *testing.T) {
+	var buf bytes.Buffer
+	const step = 100 * time.Millisecond
+	r := NewRing(nil)
+	feedGOP(t, r, sps720p, t0, 20, step)
+	for i := range 50 {
+		r.WriteAudio([]byte{0xfc, byte(i)}, t0.Add(time.Duration(i)*opusFrameDuration))
+	}
+	s := r.Snapshot()
+	// The camera stops; the microphone goes on for three more seconds.
+	for i := range 150 {
+		s.Audio = append(s.Audio, Packet{Data: []byte{0xfc, byte(i)},
+			At: t0.Add(time.Second + time.Duration(i)*opusFrameDuration)})
+	}
+	if err := WriteClip(&buf, s); err != nil {
+		t.Fatalf("WriteClip: %v", err)
+	}
+	var pres pmp4.Presentation
+	if err := pres.Unmarshal(bytes.NewReader(buf.Bytes())); err != nil {
+		t.Fatalf("the file does not read back: %v", err)
+	}
+	dur := func(i int) time.Duration {
+		tr := pres.Tracks[i]
+		total := int64(tr.TimeOffset)
+		for _, s := range tr.Samples {
+			total += int64(s.Duration)
+		}
+		return time.Duration(total) * time.Second / time.Duration(tr.TimeScale)
+	}
+	if v, a := dur(0), dur(1); v+50*time.Millisecond < a {
+		t.Errorf("the video track lasts %v and the audio %v: the picture ends first", v, a)
 	}
 }
 
@@ -224,7 +327,7 @@ func TestALateMicrophoneIsDeclaredInTheFile(t *testing.T) {
 // Two frames delivered in the same instant — on AMD a third of the intervals
 // are bursts — do not produce a sample of zero duration.
 func TestTwoFramesInTheSameInstantStillHaveADuration(t *testing.T) {
-	if got := videoDuration([]Frame{{At: t0}, {At: t0}}, 0); got < minSampleDuration {
+	if got := videoDurations([]Frame{{At: t0}, {At: t0}})[0]; got < minSampleDuration {
 		t.Errorf("two deliveries in the same instant gave a duration of %v", got)
 	}
 }

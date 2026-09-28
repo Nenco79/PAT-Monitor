@@ -62,3 +62,33 @@ func TestNoClipIsWrittenOnANearlyFullDisk(t *testing.T) {
 		t.Error("a disk that could not be asked was declared full")
 	}
 }
+
+// **A disk that cannot be asked after a full one is not declared to have room.**
+// The unanswered branch shared the recovery line, which then said there was
+// room with free_mb=0.
+//
+// **The defect was put back and this test fails with it**: with the two
+// branches shared again, the recovery line is written on no answer.
+func TestNoAnswerAfterAFullDiskIsNotRoom(t *testing.T) {
+	var free uint64 = MinFreeBytes - 1
+	var askErr error
+	var logged bytes.Buffer
+	s := NewStore(t.TempDir(), StoreConfig{
+		FreeSpace: func(string) (uint64, error) { return free, askErr },
+		Log:       slog.New(slog.NewTextHandler(&logged, nil)),
+	})
+	ring := NewRing(nil)
+	feedGOP(t, ring, sps720p, t0, 20, step)
+	clip := Clip{Snapshot: ring.Snapshot(), Code: "motion", At: t0}
+	if err := s.Save(clip); !errors.Is(err, ErrDiskFull) {
+		t.Fatalf("on a full disk Save answered %v", err)
+	}
+
+	askErr = errors.New("the share is gone")
+	if err := s.Save(clip); err != nil {
+		t.Errorf("a disk that could not be asked refused the clip: %v", err)
+	}
+	if strings.Contains(logged.String(), "clips are saved again") {
+		t.Errorf("no answer about the disk was written as room on it:\n%s", logged.String())
+	}
+}

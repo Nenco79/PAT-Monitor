@@ -466,3 +466,48 @@ func TestTheManualCodeCanBecomeAFileName(t *testing.T) {
 		t.Errorf("the name %q is not a clip name: the routes would refuse it", name)
 	}
 }
+
+// **Two clips with one name are two recordings.** The second used to truncate
+// the first — a kept one included — through os.Create, and Keep and Release
+// replaced whatever was under the new name.
+//
+// **The defect was put back and this test fails with it**: with os.Create on
+// the name and no check before the renames, the first clip is replaced.
+func TestAClipNeverReplacesAnotherWithTheSameName(t *testing.T) {
+	dir := t.TempDir()
+	s := NewStore(dir, StoreConfig{})
+	ring := NewRing(nil)
+	feedGOP(t, ring, sps720p, t0, 20, step)
+	snap := ring.Snapshot()
+
+	if err := s.Save(Clip{Snapshot: snap, Code: "motion", At: t0, Keep: true}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Save(Clip{Snapshot: snap, Code: "motion", At: t0}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Save(Clip{Snapshot: snap, Code: "motion", At: t0}); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := s.List()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 3 {
+		t.Fatalf("three clips of one second left %d files", len(entries))
+	}
+
+	// The prunable one whose kept twin exists cannot take its name.
+	clip := clipPrefix + t0.Local().Format(nameLayout) + "-motion" + clipSuffix
+	if _, err := s.Keep(clip); err == nil {
+		t.Error("Keep replaced a kept clip of the same name")
+	}
+	if entries, _ := s.List(); len(entries) != 3 {
+		t.Errorf("after the refused Keep there are %d clips", len(entries))
+	}
+	for _, e := range namesIn(t, dir) {
+		if strings.HasSuffix(e, partSuffix) {
+			t.Errorf("a clip was left half-named: %s", e)
+		}
+	}
+}

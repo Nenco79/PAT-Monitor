@@ -51,8 +51,13 @@ func TestALinkWithAClipsNameIsNotFollowed(t *testing.T) {
 
 	ring := NewRing(nil)
 	feedGOP(t, ring, sps720p, t0, 20, step)
-	if err := s.Save(Clip{Snapshot: ring.Snapshot(), Code: "motion", At: at}); err == nil {
-		t.Error("a Save wrote through the link")
+	// A name that is taken is not written: the clip goes under the next free
+	// one, and the link stays a link.
+	if err := s.Save(Clip{Snapshot: ring.Snapshot(), Code: "motion", At: at}); err != nil {
+		t.Errorf("the clip was not saved under another name: %v", err)
+	}
+	if st, err := os.Lstat(filepath.Join(clips, name)); err != nil || st.Mode()&os.ModeSymlink == 0 {
+		t.Error("a Save wrote through the link, or replaced it")
 	}
 	if got, _ := os.ReadFile(secret); string(got) != "not a clip" {
 		t.Errorf("the link's target was overwritten: %d bytes now", len(got))

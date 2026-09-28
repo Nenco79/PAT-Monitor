@@ -192,7 +192,13 @@ func (s *Store) free() (uint64, bool) {
 // fits.
 func (s *Store) room() error {
 	free, ok := s.free()
-	if !ok || free >= MinFreeBytes {
+	if !ok {
+		// No answer is not room: the clip is written, and the disk-full state
+		// stays whatever the last real answer made it, rather than a line
+		// saying there is room with free_mb=0.
+		return nil
+	}
+	if free >= MinFreeBytes {
 		if s.full {
 			s.full = false
 			s.cfg.Log.Info("clips are saved again: there is room on the disk",
@@ -206,6 +212,37 @@ func (s *Store) room() error {
 			"dir", s.dir, "free_mb", free>>20)
 	}
 	return ErrDiskFull
+}
+
+// nameTries is how many seconds Save moves a clip's instant on to find a free
+// name. Two clips of one code in one second is already rare; five is never.
+const nameTries = 5
+
+// partSuffix is what a clip is called while it is being written. It is not a
+// clip's name, so nothing lists, serves or prunes it as one.
+const partSuffix = ".part"
+
+// taken says whether a name is already in the folder, as anything at all.
+func (s *Store) taken(name string) bool {
+	_, err := os.Lstat(filepath.Join(s.dir, name))
+	return err == nil
+}
+
+// sweepParts removes what an interrupted Save left behind. A write takes
+// seconds, so anything an hour old is nobody's.
+func (s *Store) sweepParts(now time.Time) {
+	entries, err := os.ReadDir(s.dir)
+	if err != nil {
+		return
+	}
+	for _, e := range entries {
+		if !strings.HasSuffix(e.Name(), clipSuffix+partSuffix) || !e.Type().IsRegular() {
+			continue
+		}
+		if info, err := e.Info(); err == nil && now.Sub(info.ModTime()) > time.Hour {
+			os.Remove(filepath.Join(s.dir, e.Name()))
+		}
+	}
 }
 
 // Save writes a clip and prunes the folder.
@@ -240,15 +277,32 @@ func (s *Store) Save(c Clip) error {
 	// runs at the end of this function and does not see the state somebody has
 	// in mind. With a tight quota the clip just asked for would be the only
 	// candidate to vanish.
-	name := prefixFor(c.Keep) + c.At.Local().Format(nameLayout) + "-" + c.Code + clipSuffix
-	path := filepath.Join(s.dir, name)
-
-	// A name that is already there and is not a plain file is not written
-	// through: see resolve.
-	if st, err := os.Lstat(path); err == nil && !st.Mode().IsRegular() {
-		return fmt.Errorf("record: %s is not a plain file", name)
+	//
+	// **A name already taken is another recording, and it is not overwritten.**
+	// Two clips of the same code in the same local second — the repeated hour of
+	// the autumn clock change, a clip cut short and its alert raised again — used
+	// to share one name, and the second truncated the first, a kept one
+	// included. The instant moves on by a second until the name is free, which
+	// keeps the name's shape and costs the name a second of precision.
+	var name, path string
+	for step := range nameTries {
+		name = prefixFor(c.Keep) + c.At.Add(time.Duration(step)*time.Second).Local().Format(nameLayout) +
+			"-" + c.Code + clipSuffix
+		path = filepath.Join(s.dir, name)
+		if !s.taken(name) {
+			break
+		}
+		if step == nameTries-1 {
+			return fmt.Errorf("record: no free name for a %s clip at %s", c.Code, c.At.Local().Format(nameLayout))
+		}
 	}
-	f, err := os.Create(path)
+
+	// **Written aside and moved into place**, so that a clip whose writing is
+	// interrupted — the process exiting in the middle — never carries a clip's
+	// name: a half-written file opens and does not read, which is worse than an
+	// absent one, because it is discovered when it is needed.
+	part := path + partSuffix
+	f, err := os.Create(part)
 	if err != nil {
 		return err
 	}
@@ -256,10 +310,11 @@ func (s *Store) Save(c Clip) error {
 	if cerr := f.Close(); err == nil {
 		err = cerr
 	}
+	if err == nil {
+		err = os.Rename(part, path)
+	}
 	if err != nil {
-		// A half-written file opens and does not read: worse than an absent
-		// one, because it is discovered when it is needed.
-		os.Remove(path)
+		os.Remove(part)
 		return err
 	}
 
@@ -357,6 +412,11 @@ func (s *Store) Keep(name string) (string, error) {
 		return name, nil // already kept: pressing twice is not an error
 	}
 	renamed := prefixFor(true) + strings.TrimPrefix(name, clipPrefix)
+	// On Windows a rename replaces what is there, and what is there is another
+	// recording: refused rather than lost.
+	if s.taken(renamed) {
+		return "", fmt.Errorf("record: %s already exists", renamed)
+	}
 	if err := os.Rename(path, filepath.Join(s.dir, renamed)); err != nil {
 		return "", err
 	}
@@ -388,6 +448,9 @@ func (s *Store) Release(name string) (string, error) {
 		return name, nil // already prunable: pressing twice is not an error
 	}
 	renamed := prefixFor(false) + strings.TrimPrefix(name, keptPrefix)
+	if s.taken(renamed) {
+		return "", fmt.Errorf("record: %s already exists", renamed)
+	}
 	if err := os.Rename(path, filepath.Join(s.dir, renamed)); err != nil {
 		return "", err
 	}
@@ -420,6 +483,7 @@ func (s *Store) Prune(now time.Time) (int, error) {
 //
 // **Deletion starts from the oldest**, and only among the prunable ones.
 func (s *Store) prune(now time.Time) (int, error) {
+	s.sweepParts(now)
 	entries, err := s.list(false)
 	if err != nil {
 		return 0, err

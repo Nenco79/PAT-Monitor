@@ -53,8 +53,13 @@ outside. What it closes is a way for the viewer's routes to read files that were
 never clips. `resolve` and the listing now ask `Lstat` for a plain file, which
 refuses a link and a junction alike, `Open` checks that what it opened is what
 it looked at, and `Save` will not write through a name that is not a plain file.
-**It changes nothing for a real clip**: saving under a name that is already a
-plain file still overwrites it, as before. `TestALinkWithAClipsNameIsNotFollowed`
+**Nor through one that is**: a name already taken is another recording — two
+clips of one code in one local second, the autumn's repeated hour — and the
+second used to truncate the first, a kept one included, while Keep and Release
+renamed over whatever was there. `Save` now moves the instant on a second until
+the name is free, writes under a `.part` name and moves it into place, so an
+interrupted write never carries a clip's name; the renames refuse a name that
+exists. `TestALinkWithAClipsNameIsNotFollowed`
 failed on all four counts against the old store. It skips where a symbolic link
 cannot be made, since Windows wants Developer Mode or a privilege for one; on
 this machine it could be made, so the test ran.
