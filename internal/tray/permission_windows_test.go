@@ -300,3 +300,13 @@ func TestTheTunnelStepIsAnsweredUnderItsOwnLineToo(t *testing.T) {
 		}
 	}
 }
+
+// leadIndex is the first command drawn above the code, or -1. It is the tests'
+// shorthand for leadIndices; the panel itself reads all of them.
+func (f *flyout) leadIndex() int {
+	ix := f.leadIndices()
+	if len(ix) == 0 {
+		return -1
+	}
+	return ix[0]
+}

@@ -290,6 +290,25 @@ func TestTheResourceIsWalkedFromTheStart(t *testing.T) {
 	if want := len(im) + 3; nReloc != want {
 		t.Fatalf("%d relocations for %d leaves", nReloc, want)
 	}
+	// **And each one where a leaf's address is.** Counted and not placed, a
+	// relocation one field off — on the size instead of the address — passed
+	// with the right number and linked icons that point somewhere else. Put
+	// back and watched failing.
+	relocAt := int(binary.LittleEndian.Uint32(sec[24:]))
+	leaves := map[uint32]bool{}
+	for _, o := range leafOffsets(t, obj[start:start+size], 0) {
+		leaves[uint32(o)] = true
+	}
+	for k := range nReloc {
+		at := binary.LittleEndian.Uint32(obj[relocAt+10*k:])
+		if !leaves[at] {
+			t.Errorf("relocation %d fixes up offset %d, which is no leaf's address", k, at)
+		}
+		delete(leaves, at)
+	}
+	if len(leaves) != 0 {
+		t.Errorf("%d leaves have no relocation: they would point at the start of the file", len(leaves))
+	}
 
 	kinds := readDirectory(t, rsrc, 0)
 	icons, ok := kinds[rtIcon]
@@ -400,6 +419,25 @@ func readDirectory(t *testing.T, rsrc []byte, off int) map[uint32]int {
 	return out
 }
 
+// leafOffsets walks the whole tree from off and returns where every
+// IMAGE_RESOURCE_DATA_ENTRY sits: its first field is the address the linker
+// fixes up.
+func leafOffsets(t *testing.T, rsrc []byte, off int) []int {
+	t.Helper()
+	named := int(binary.LittleEndian.Uint16(rsrc[off+12:]))
+	numbered := int(binary.LittleEndian.Uint16(rsrc[off+14:]))
+	var out []int
+	for k := range named + numbered {
+		v := binary.LittleEndian.Uint32(rsrc[off+dirSize+k*entrySize+4:])
+		if v&0x80000000 != 0 {
+			out = append(out, leafOffsets(t, rsrc, int(v&^0x80000000))...)
+		} else {
+			out = append(out, int(v))
+		}
+	}
+	return out
+}
+
 // readLeaf resolves an IMAGE_RESOURCE_DATA_ENTRY. The RVA it holds is relative
 // to the section, because in the object the section sits at zero and the
 // relocation has not been applied yet: it is exactly what the linker will find
@@ -445,9 +483,13 @@ func TestTheFileDetailsAreWalkedFromTheStart(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(blob)%4 != 0 && len(blob) != int(binary.LittleEndian.Uint16(blob)) {
-		t.Fatalf("declared length %d, bytes %d",
-			binary.LittleEndian.Uint16(blob), len(blob))
+	// Two conditions and not one joined by &&, which could not fail: the blob
+	// is always a multiple of four, so the length was never compared.
+	if len(blob)%4 != 0 {
+		t.Fatalf("a blob of %d bytes is not aligned to four", len(blob))
+	}
+	if declared := int(binary.LittleEndian.Uint16(blob)); declared != len(blob) {
+		t.Fatalf("declared length %d, bytes %d", declared, len(blob))
 	}
 
 	root := readNode(t, blob)

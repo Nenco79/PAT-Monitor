@@ -3,6 +3,7 @@
 package tray
 
 import (
+	"log/slog"
 	"testing"
 	"time"
 )
@@ -73,8 +74,44 @@ func TestTheWindowFollowsTheSystemSetting(t *testing.T) {
 
 // The value asked of the system is never zero, but if it were the window would
 // vanish and the three pages would come back: that is what the fallback is for.
+//
+// **It is handed the answer**, because asked of the system it never met the
+// zero and passed with the fallback deleted. Put back and watched failing.
 func TestTheFallbackIsNeverAClosedWindow(t *testing.T) {
-	if doubleClickTime() <= 0 {
-		t.Errorf("double-click window not positive: %v", doubleClickTime())
+	if got := doubleClickFrom(0); got <= 0 {
+		t.Errorf("a zero from the system gave a window of %v", got)
+	}
+	if got := doubleClickFrom(700); got != 700*time.Millisecond {
+		t.Errorf("the system's 700 ms became %v", got)
+	}
+}
+
+// **A WM_CLOSE from outside quits the monitor, the one Run posts does not.**
+// The window is top-level, so `taskkill` without /F closes it: the icon went and
+// the monitor went on with the camera on and nothing on the screen.
+//
+// **The defect was put back and this test fails with it**: with the close
+// destroying the window alone, OnQuit is never called.
+func TestAnOutsideCloseQuitsTheMonitor(t *testing.T) {
+	quits := 0
+	tr := &Tray{cfg: Config{OnQuit: func() { quits++ }, Log: slog.New(slog.DiscardHandler)}}
+	instanceMu.Lock()
+	instance = tr
+	instanceMu.Unlock()
+	t.Cleanup(func() {
+		instanceMu.Lock()
+		instance = nil
+		instanceMu.Unlock()
+	})
+
+	wndProc(0, wmClose, 0, 0)
+	if quits != 1 {
+		t.Errorf("a close from outside called OnQuit %d times, wanted once", quits)
+	}
+
+	tr.closingOurselves.Store(true)
+	wndProc(0, wmClose, 0, 0)
+	if quits != 1 {
+		t.Error("the close Run posts on its way out asked to quit again")
 	}
 }

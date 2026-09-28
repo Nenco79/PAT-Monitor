@@ -304,6 +304,13 @@ func iconSizeFor(hwnd windows.Handle) int {
 	if mon == 0 {
 		return smallIconSize()
 	}
+	// **Where the calls are not there, the session's size.** A missing export
+	// panics in LazyProc.Call instead of answering, and the fallback this
+	// function promises for a Windows without them was a recovered panic and
+	// a monitor with no icon.
+	if procGetDpiForMonitor.Find() != nil || procGetSystemMetricsForDpi.Find() != nil {
+		return smallIconSize()
+	}
 	var dpiX, dpiY uint32
 	if h, _, _ := procGetDpiForMonitor.Call(mon, mdtEffectiveDPI,
 		uintptr(unsafe.Pointer(&dpiX)), uintptr(unsafe.Pointer(&dpiY))); h != 0 || dpiX == 0 {

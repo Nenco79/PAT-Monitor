@@ -293,6 +293,13 @@ with `wParam` 0 and then 1. The log says the rest. It exercises the real
 procedure on the real window, which is everything here except how long Windows
 waits.
 
+**And being top-level makes it what `taskkill` without /F closes.** That posts
+`WM_CLOSE`, the handler destroyed the window, the loop ended and Run returned
+nil — and the monitor, whose tray runs aside, went on with the camera on and no
+icon to say so. The close Run posts on its own way out sets a flag first; any
+other `WM_CLOSE` calls `OnQuit`, so an outside close ends the monitor in order,
+like Quit.
+
 ### The executable's icon lives in the PE, and we write the resource
 
 **They are two different icons: the tray's is drawn by the program while it

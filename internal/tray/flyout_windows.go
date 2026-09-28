@@ -461,7 +461,7 @@ func (f *flyout) compose(st Status) {
 	if f.url != "" {
 		url := f.url
 		f.cmds = append(f.cmds, flyCmd{label: forDisplay(url), style: styleText, do: func() {
-			if err := setClipboard(url); err != nil {
+			if err := setClipboard(t.hwnd, url); err != nil {
 				t.cfg.Log.Warn("address not copied", "error", err)
 				return
 			}
@@ -677,8 +677,12 @@ func (f *flyout) create(iconRect rect) error {
 	// which is by definition on the right screen.
 	procSetWindowPos.Call(hwnd, 0, uintptr(iconRect.Left), uintptr(iconRect.Top),
 		10, 10, swpNoZOrder|swpNoActivate)
-	if d, _, _ := procGetDpiForWindow.Call(hwnd); d > 0 {
-		f.dpi = int32(d)
+	// A Windows without the call keeps the default: a missing export panics
+	// rather than answering.
+	if procGetDpiForWindow.Find() == nil {
+		if d, _, _ := procGetDpiForWindow.Call(hwnd); d > 0 {
+			f.dpi = int32(d)
+		}
 	}
 
 	// --- corners, dark frame and glass: all documented, all DWM's ------------
@@ -1087,17 +1091,6 @@ func (f *flyout) leadIndices() []int {
 	return out
 }
 
-// leadIndex is the first command drawn above the code, or -1. Callers that
-// only care whether there is a lead at all, and which one comes first, use
-// this instead of leadIndices.
-func (f *flyout) leadIndex() int {
-	ix := f.leadIndices()
-	if len(ix) == 0 {
-		return -1
-	}
-	return ix[0]
-}
-
 // rowHeight is the height of the tallest command in the row.
 func (f *flyout) rowHeight(row []int) int32 {
 	var h int32
@@ -1258,6 +1251,9 @@ const spiGetNonClientMetrics = 0x0029
 func (f *flyout) messageFace() (string, byte) {
 	var m nonClientMetricsW
 	m.Size = uint32(unsafe.Sizeof(m))
+	if procSystemParametersInfoForDpi.Find() != nil {
+		return messageFaceFrom(m.MessageFont, false)
+	}
 	ok, _, _ := procSystemParametersInfoForDpi.Call(
 		spiGetNonClientMetrics, uintptr(m.Size), uintptr(unsafe.Pointer(&m)),
 		0, uintptr(f.dpi))

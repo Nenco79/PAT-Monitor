@@ -76,6 +76,13 @@ func TestEveryIconUpdateAsksForTheTooltipToo(t *testing.T) {
 	if nid.UFlags&nifIcon == 0 {
 		t.Error("the redraw does not carry the icon")
 	}
+
+	// **And a balloon is an update too.** It carried NIF_INFO alone, and the
+	// icon had no tooltip after it until something else changed. Put back and
+	// watched failing.
+	if b := tr.notifyData(balloonFlags); b.UFlags&nifShowtip == 0 || b.UFlags&nifTip == 0 {
+		t.Error("a balloon does not carry the tooltip: after it the icon has none")
+	}
 }
 
 // **At the bottom of the pulse the icon is still readable.**
@@ -118,10 +125,15 @@ func TestStoppingThePulseRestoresTheFullColour(t *testing.T) {
 	tr.pulsing = true
 	tr.dim = pulseDepth
 	// With no window the redraw has nowhere to go, and must not even try: what
-	// matters here is that the dimming goes back to zero.
+	// matters here is that the dimming goes back to zero. repaintIcon returns
+	// without a window, so no icon is made and none is left to destroy.
 	tr.hwnd = 0
 
 	tr.setPulse(false)
+	if tr.icon != 0 {
+		t.Error("an icon was made with no window to show it")
+		destroyIcon(tr.icon)
+	}
 	if tr.pulsing {
 		t.Error("the pulse is still on")
 	}

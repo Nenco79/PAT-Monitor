@@ -34,6 +34,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 	"unsafe"
 
@@ -218,8 +219,20 @@ type Tray struct {
 	cfg Config
 
 	hwnd windows.Handle
-	icon windows.Handle
-	size int
+	// posted is hwnd for the goroutines that are not the message loop's —
+	// Notify's callers and the stop — which may only post to it. hwnd itself
+	// is the loop's, and reading it from elsewhere raced with its creation
+	// and its destruction.
+	posted atomic.Uintptr
+	// closingOurselves says the WM_CLOSE on its way is the one Run posts when
+	// its context ends. Any other is somebody closing the window from outside.
+	closingOurselves atomic.Bool
+	// iconAdded is false while the notification area does not have our icon:
+	// after an Explorer restart whose NIM_ADD was refused, the one-second
+	// timer adds it again.
+	iconAdded bool
+	icon      windows.Handle
+	size      int
 
 	// The phase of the icon currently drawn: it is redrawn only when it
 	// changes.
@@ -325,7 +338,11 @@ func (t *Tray) Run(ctx context.Context) error {
 	if err := t.addIcon(); err != nil {
 		return fmt.Errorf("notification area icon: %w", err)
 	}
+	t.iconAdded = true
 	t.resizeIcon("icon added")
+	// A balloon asked for before the window existed was queued and never
+	// posted: it is posted now.
+	procPostMessageW.Call(uintptr(t.hwnd), msgBalloon, 0, 0)
 
 	// Declaring that it is here.
 	//
@@ -345,7 +362,10 @@ func (t *Tray) Run(ctx context.Context) error {
 	guard.Go(t.cfg.Log, "the stop of the message loop", func() {
 		select {
 		case <-ctx.Done():
-			procPostMessageW.Call(uintptr(t.hwnd), wmClose, 0, 0)
+			t.closingOurselves.Store(true)
+			if h := t.posted.Load(); h != 0 {
+				procPostMessageW.Call(h, wmClose, 0, 0)
+			}
 		case <-stop:
 		}
 	})
@@ -386,8 +406,8 @@ func (t *Tray) Notify(title, text string) {
 	t.mu.Lock()
 	t.pending = append(t.pending, balloon{title, text})
 	t.mu.Unlock()
-	if t.hwnd != 0 {
-		procPostMessageW.Call(uintptr(t.hwnd), msgBalloon, 0, 0)
+	if h := t.posted.Load(); h != 0 {
+		procPostMessageW.Call(h, msgBalloon, 0, 0)
 	}
 }
 
@@ -465,6 +485,7 @@ func (t *Tray) createWindow() error {
 		return fmt.Errorf("creating the hidden window: %w", err)
 	}
 	t.hwnd = windows.Handle(hwnd)
+	t.posted.Store(hwnd)
 
 	name, _ := windows.UTF16PtrFromString("TaskbarCreated")
 	r, _, _ := procRegisterWindowMessageW.Call(uintptr(unsafe.Pointer(name)))
@@ -476,6 +497,7 @@ func (t *Tray) destroy() {
 	t.removeIcon()
 	destroyIcon(t.icon)
 	if t.hwnd != 0 {
+		t.posted.Store(0)
 		procDestroyWindow.Call(uintptr(t.hwnd))
 		t.hwnd = 0
 	}
@@ -545,6 +567,13 @@ func newGesture(when *time.Time, now time.Time, within time.Duration) bool {
 // doubleClickTime is the system interval, with a fallback if the call fails.
 func doubleClickTime() time.Duration {
 	ms, _, _ := procGetDoubleClickTime.Call()
+	return doubleClickFrom(ms)
+}
+
+// doubleClickFrom is the interval for the system's answer in milliseconds. It
+// is handed the answer so that the fallback can be tested: the system never
+// answers zero here, so asking it cannot reach that branch.
+func doubleClickFrom(ms uintptr) time.Duration {
 	if ms == 0 {
 		return 500 * time.Millisecond
 	}
@@ -577,10 +606,34 @@ func wndProc(hwnd windows.Handle, msg uint32, wparam, lparam uintptr) uintptr {
 			t.pulse()
 			return 0
 		}
+		// A notification area that refused the icon after an Explorer restart
+		// may be ready now: the only way to quit is the icon, so it is asked
+		// again until it is there, and said once when it is.
+		if !t.iconAdded {
+			if err := t.addIcon(); err != nil {
+				return 0
+			}
+			t.iconAdded = true
+			t.cfg.Log.Info("icon restored after the Explorer restart")
+			t.resizeIcon("explorer restarted")
+			return 0
+		}
 		t.refresh()
 		return 0
 
+	// **A WM_CLOSE from outside is a request to quit, not to lose the icon.**
+	// The window is top-level so that it hears TaskbarCreated, and that makes
+	// it what `taskkill` without /F closes: the icon went, Run returned nil,
+	// and the monitor went on with the camera on and nothing on the screen
+	// saying so. The one Run posts is told apart by the flag it sets; any
+	// other ends the monitor in order, as Quit does.
 	case msg == wmClose:
+		if !t.closingOurselves.Load() && !t.endingSession {
+			t.cfg.Log.Info("the tray's window was closed from outside: the monitor is closing")
+			if t.cfg.OnQuit != nil {
+				t.cfg.OnQuit()
+			}
+		}
 		procDestroyWindow.Call(uintptr(hwnd))
 		return 0
 
@@ -674,8 +727,12 @@ func wndProc(hwnd windows.Handle, msg uint32, wparam, lparam uintptr) uintptr {
 	case wmTaskbarCreated != 0 && msg == wmTaskbarCreated:
 		t.shown = ""
 		if err := t.addIcon(); err != nil {
-			t.cfg.Log.Warn("icon not restored after the Explorer restart", "error", err)
+			t.cfg.Log.Warn("icon not restored after the Explorer restart, trying again every second",
+				"error", err)
+			t.iconAdded = false
+			return 0
 		}
+		t.iconAdded = true
 		t.resizeIcon("explorer restarted")
 		return 0
 	}
@@ -779,19 +836,6 @@ func (t *Tray) removeIcon() {
 // test.
 func (t *Tray) worthTellingTheShell() bool { return t.hwnd != 0 && !t.endingSession }
 
-// refresh brings the icon and the tooltip back in line with the state of now.
-//
-// **The shell is written to only if something changed.** This function runs once
-// a second all night, and the tooltip talks about nothing that changes every
-// second: it says how the monitor is, where it can be seen and who is watching.
-// Rewriting the same bytes is a call to the notification area — which is in
-// another process — thirty-six thousand times in ten hours, to change nothing.
-//
-// The comparison is on the **text about to be shown**, not on the state: the
-// state also carries things that change constantly, like how long the monitor
-// has been on, which do not appear in the tooltip. Comparing `Status` would
-// never skip a round. The time goes in the panel, where whoever reads it asked
-// for it by opening it.
 // resizeIcon redraws the icon when the screen it sits on wants another size.
 //
 // **It is called on the icon's arrival as well, not only on a scale change**:
@@ -810,6 +854,19 @@ func (t *Tray) resizeIcon(reason string) {
 	t.refresh()
 }
 
+// refresh brings the icon and the tooltip back in line with the state of now.
+//
+// **The shell is written to only if something changed.** This function runs once
+// a second all night, and the tooltip talks about nothing that changes every
+// second: it says how the monitor is, where it can be seen and who is watching.
+// Rewriting the same bytes is a call to the notification area — which is in
+// another process — thirty-six thousand times in ten hours, to change nothing.
+//
+// The comparison is on the **text about to be shown**, not on the state: the
+// state also carries things that change constantly, like how long the monitor
+// has been on, which do not appear in the tooltip. Comparing `Status` would
+// never skip a round. The time goes in the panel, where whoever reads it asked
+// for it by opening it.
 func (t *Tray) refresh() {
 	st := t.status()
 	tip := t.tooltip(st)
@@ -950,9 +1007,17 @@ func pulseDim(elapsed time.Duration) float64 {
 // over them.
 const redrawFlags = nifIcon | nifTip
 
+// balloonFlags are the fields a balloon's update carries: the balloon, and the
+// tooltip, for redrawFlags' reason.
+const balloonFlags = nifInfo | nifTip
+
 // repaintIcon redraws the icon with the current dimming and delivers it to the
 // notification area, bringing back the tooltip that was already in force.
 func (t *Tray) repaintIcon() {
+	// With no window there is nothing to redraw and nobody to tell.
+	if t.hwnd == 0 {
+		return
+	}
 	if err := t.setIcon(t.shown); err != nil {
 		t.cfg.Log.Warn("tray icon not updated", "error", err)
 		return
@@ -1009,7 +1074,12 @@ func (t *Tray) drainBalloons() {
 	t.mu.Unlock()
 
 	for _, b := range queue {
-		nid := t.notifyData(nifInfo)
+		// **With the tooltip**, because under version 4 an update that does
+		// not carry it takes it away, and refresh does not write it again
+		// while its text is unchanged: after a balloon the icon had no
+		// tooltip until something else moved.
+		nid := t.notifyData(balloonFlags)
+		copyTip(&nid.SzTip, t.tipShown)
 		copyInfo(&nid.SzInfoTitle, b.title)
 		copyBig(&nid.SzInfo, b.text)
 		nid.DwInfoFlags = niifInfo
@@ -1078,12 +1148,15 @@ func (t *Tray) open(target string) {
 // It serves the one menu entry with a real reason to exist: the public address
 // has to be transferred to a phone, and transcribing it by hand from a screen is
 // the quickest way of getting it wrong.
-func setClipboard(s string) error {
+//
+// The clipboard is opened with a window as its owner, as OpenClipboard asks:
+// with none, EmptyClipboard leaves no owner and SetClipboardData may refuse.
+func setClipboard(owner windows.Handle, s string) error {
 	utf16, err := windows.UTF16FromString(s)
 	if err != nil {
 		return err
 	}
-	if r, _, err := procOpenClipboard.Call(0); r == 0 {
+	if r, _, err := procOpenClipboard.Call(uintptr(owner)); r == 0 {
 		return err
 	}
 	defer procCloseClipboard.Call()
