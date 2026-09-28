@@ -3299,20 +3299,24 @@ func (p *Pipeline) runVideo(ctx context.Context, sinks Sinks) error {
 	// transform instead of replacing it. In here nobody is calling Feed or
 	// ProcessOutput on it at the same instant, which is the only condition under
 	// which stopping and restarting it is safe.
-	applyReconfig := func() {
+	applyReconfig := func() error {
 		want := int(p.wantReconfig.Swap(0))
 		if want <= 0 {
-			return
+			return nil
 		}
 		p.brMu.Lock()
 		p.lastReconfig = time.Now()
 		p.brMu.Unlock()
+		// **A failed reconfiguration is a capture fault, and it was said not
+		// to be.** It stops the transform before it renegotiates, and every
+		// failure after the stop leaves it stopped: carrying on meant five
+		// seconds waiting for an encoder that would ask for nothing, and then
+		// a restart with a message about a stall. Returning restarts at once,
+		// with the reason.
 		if err := enc.ReconfigureBitrate(want); err != nil {
-			// It is not a capture fault: it is a road that did not work, and
-			// the other one remains. It is said once and we carry on.
-			p.cfg.Log.Warn("bitrate reconfiguration failed, carrying on",
-				"kbps", want, "error", err)
+			return fmt.Errorf("bitrate reconfiguration to %d kbit/s left the encoder stopped: %w", want, err)
 		}
+		return nil
 	}
 
 	// **Nothing else reconfigures the encoder live, and nothing downstream
@@ -3328,7 +3332,9 @@ func (p *Pipeline) runVideo(ctx context.Context, sinks Sinks) error {
 
 	for ctx.Err() == nil {
 		applyFormat()
-		applyReconfig()
+		if err := applyReconfig(); err != nil {
+			return err
+		}
 
 		ev, err := enc.NextEvent(5 * time.Second)
 		if err != nil {

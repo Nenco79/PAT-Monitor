@@ -439,19 +439,28 @@ func (e *VideoEncoder) SetBitrate(kbps int) error {
 	// encoder free to exceed the bandwidth the network has declared it can
 	// carry. It is the kind of slip that gives no error and shows up only as
 	// lost packets.
-	if e.cfg.RateControl == RateQuality {
-		return e.codec.setUINT32(codecMaxBitRate, bps)
+	if e.rateControl == RateQuality {
+		return e.kept(kbps, e.codec.setUINT32(codecMaxBitRate, bps))
 	}
 	// In capped CRF **both** move: the cap because it is the network's limit,
 	// the mean because in PeakConstrainedVBR it is the target the encoder works
 	// around. Moving only one would leave the two telling different stories —
 	// and which of them the encoder listens to is not something to guess at.
-	if e.cfg.RateControl == RateCapped {
+	if e.rateControl == RateCapped {
 		if err := e.codec.setUINT32(codecMaxBitRate, bps); err != nil {
 			return err
 		}
 	}
-	return e.codec.setUINT32(codecMeanBitRate, bps)
+	return e.kept(kbps, e.codec.setUINT32(codecMeanBitRate, bps))
+}
+
+// kept records kbps as the bitrate in force when the command it followed
+// succeeded, and hands the command's error back.
+func (e *VideoEncoder) kept(kbps int, err error) error {
+	if err == nil {
+		e.kbps.Store(int64(kbps))
+	}
+	return err
 }
 
 // ReconfigureBitrate changes the bitrate by reconfiguring the transform instead
@@ -518,6 +527,7 @@ func (e *VideoEncoder) reconfigure(cfg VideoEncoderConfig) error {
 		}
 	}
 	e.cfg = cfg
+	e.kbps.Store(int64(cfg.BitrateKbps))
 
 	// The ICodecAPI is realigned too: the output type and the codec properties
 	// are two distinct stores describing the same thing, and leaving one behind

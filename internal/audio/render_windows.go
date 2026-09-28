@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 	"unsafe"
 
@@ -62,6 +63,10 @@ type Player struct {
 	log      Logger
 	cancel   context.CancelFunc
 	finished chan struct{}
+	// openFailed says the open's failure was handed to NewPlayer, whose caller
+	// reports it: the goroutine does not write it again as playback
+	// interrupted.
+	openFailed atomic.Bool
 
 	mu    sync.Mutex
 	queue []int16
@@ -100,7 +105,7 @@ func NewPlayer(rate int, deviceID string, log Logger) (*Player, error) {
 	guard.Go(nil, "the audio output", func() {
 		defer close(p.finished)
 		err := comThread(func() error { return p.serve(ctx, deviceID, started) })
-		if err != nil && ctx.Err() == nil && log != nil {
+		if err != nil && ctx.Err() == nil && log != nil && !p.openFailed.Load() {
 			log.Warn("audio playback interrupted", "error", err)
 		}
 	})
@@ -119,6 +124,16 @@ func NewPlayer(rate int, deviceID string, log Logger) (*Player, error) {
 			return nil, err
 		}
 	case <-p.finished:
+		// Both can be ready at once, and the select picks at random: the real
+		// reason may be waiting in started.
+		select {
+		case err := <-started:
+			if err != nil {
+				cancel()
+				return nil, err
+			}
+		default:
+		}
 		// The thread left without saying anything.
 		cancel()
 		return nil, fmt.Errorf("the audio output closed before it opened")
@@ -185,6 +200,7 @@ func (p *Player) take(n int) []int16 {
 // serve opens the device and keeps it fed for as long as the context lives.
 func (p *Player) serve(ctx context.Context, deviceID string, started chan<- error) error {
 	failed := func(err error) error {
+		p.openFailed.Store(true)
 		started <- err
 		return err
 	}

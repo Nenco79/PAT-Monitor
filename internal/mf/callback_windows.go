@@ -196,6 +196,16 @@ func cbInvoke(this, result unsafe.Pointer) uintptr {
 		return sOK
 	}
 	defer cb.leave()
+	// **The body is ours and the thread is Media Foundation's**, so a panic
+	// here would unwind into C and end the process with the camera on — the
+	// rule for library callbacks the capture chapter states. It is caught and
+	// kept as the callback's failure, which is what Diagnose shows when the
+	// encoder then goes silent.
+	defer func() {
+		if r := recover(); r != nil {
+			cb.fail(fmt.Errorf("panic in the encoder's event callback: %v", r))
+		}
+	}()
 
 	ev, err := cb.events.endGetEvent(result)
 	if err != nil {
@@ -228,7 +238,12 @@ func cbInvoke(this, result unsafe.Pointer) uintptr {
 	// No check on the closed flag here: enter() passed, so close() has not
 	// begun, and if it begins now it waits for this call to leave before
 	// anything is released.
-	_ = cb.events.beginGetEvent(this)
+	//
+	// A re-arm that fails is the one cause of that silence there is, so it is
+	// kept for Diagnose rather than dropped.
+	if err := cb.events.beginGetEvent(this); err != nil {
+		cb.fail(fmt.Errorf("listening for the next event: %w", err))
+	}
 	return sOK
 }
 

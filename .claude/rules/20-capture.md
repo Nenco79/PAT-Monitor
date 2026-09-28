@@ -83,8 +83,11 @@ Three traps, all paid for:
   applied by the audio engine, which here does not take part: without reapplying
   them the audio arrives clean and six times quieter, enough to make a level
   meter look stuck. They are read back from `IAudioEndpointVolume` downstream,
-  so the user's slider is followed instead of inventing a constant; mute is
-  respected, and is a silence to be declared.
+  and the gain brings the sensitivity to the endpoint's **maximum whatever the
+  Windows slider says** — the slider moves for meetings and games, and a
+  monitor that inherited it could go deaf over something done the day before;
+  `mic_gain_db` is this program's own knob. Mute is respected, and is a silence
+  to be declared.
 
 The fault is silent: green page, still meter, zero signal.
 

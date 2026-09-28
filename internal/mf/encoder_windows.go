@@ -73,7 +73,9 @@ type outputDataBuffer struct {
 	Sample   *Sample
 	Status   uint32
 	_        uint32
-	Events   uintptr
+	// Events is a collection the transform may hand over with the output,
+	// and the caller has to release it: see Take.
+	Events *ole.IUnknown
 }
 
 // outputStreamInfo is MFT_OUTPUT_STREAM_INFO.
@@ -556,8 +558,18 @@ type VideoEncoder struct {
 	// is needed.
 	d3dResult error
 	// cfg is kept because the encoder can ask to renegotiate the output while
-	// it works, and at that moment we need to know what was asked of it.
+	// it works, and at that moment we need to know what was asked of it. It is
+	// the video loop's: read and written only there.
 	cfg VideoEncoderConfig
+	// rateControl is cfg.RateControl, for SetBitrate, which runs on the
+	// congestion control's thread: it does not change live, and reading it
+	// out of cfg raced with reconfigure writing cfg whole.
+	rateControl RateControl
+	// kbps is the bitrate in force, commanded by either road. A stream change
+	// renegotiates the output with it, and not with the bitrate cfg was built
+	// with, which SetBitrate never touched: the renegotiation would otherwise
+	// put the old number back into the output type.
+	kbps atomic.Int64
 	// lastQP and qpSeen hold the last frame's quantiser. They are separate
 	// because "it does not declare it" and "it declares zero" are two different
 	// things, and confusing them would give a mute encoder that looks perfect.
@@ -636,6 +648,8 @@ func NewVideoEncoder(cfg VideoEncoderConfig) (*VideoEncoder, error) {
 // the start because starting without them answers E_FAIL.
 func (e *VideoEncoder) configure(cfg VideoEncoderConfig) error {
 	e.cfg = cfg
+	e.rateControl = cfg.RateControl
+	e.kbps.Store(int64(cfg.BitrateKbps))
 	if e.async {
 		if err := e.unlock(); err != nil {
 			return err
@@ -1112,6 +1126,12 @@ func (e *VideoEncoder) Take(fn func(data []byte) error) (bool, error) {
 	r, _, _ := syscall.SyscallN(e.t.vtbl().ProcessOutput,
 		uintptr(unsafe.Pointer(e.t)), 0, 1,
 		uintptr(unsafe.Pointer(&buffer)), uintptr(unsafe.Pointer(&status)))
+	// **What the transform hands over is ours to release**, on every road out
+	// of here. None of the encoders measured fills it; one that did would leak
+	// an object per frame, millions a day.
+	if buffer.Events != nil {
+		defer buffer.Events.Release()
+	}
 
 	// MF_E_TRANSFORM_NEED_MORE_INPUT: there is nothing yet, and it is not an
 	// error.
@@ -1126,7 +1146,11 @@ func (e *VideoEncoder) Take(fn func(data []byte) error) (bool, error) {
 	// transform reconfigures itself, and ignoring it blocks the stream forever.
 	const streamChange = 0xC00D6D61
 	if uint32(r) == streamChange {
-		if err := e.negotiateOutput(e.cfg); err != nil {
+		cfg := e.cfg
+		if k := e.kbps.Load(); k > 0 {
+			cfg.BitrateKbps = int(k)
+		}
+		if err := e.negotiateOutput(cfg); err != nil {
 			return false, fmt.Errorf("the encoder changed output format and the new one cannot be set: %w", err)
 		}
 		return false, nil

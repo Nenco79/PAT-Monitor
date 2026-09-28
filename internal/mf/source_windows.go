@@ -42,6 +42,13 @@ func (a *activate) activateObject(iid *ole.GUID) (*ole.IUnknown, error) {
 	return obj, nil
 }
 
+// shutdownObject shuts down the object activateObject built. It is for the
+// roads where nothing else will: once a Source Reader holds the source, the
+// reader shuts it down when it is released.
+func (a *activate) shutdownObject() {
+	syscall.SyscallN(a.vtblActivate().ShutdownObject, uintptr(unsafe.Pointer(a)))
+}
+
 // ---------- camera enumeration ----------
 
 // Device is a video source on the system.
@@ -176,6 +183,15 @@ func newSourceReader(link string, dev *D3DDevice) (*SourceReader, error) {
 		return nil, fmt.Errorf("camera open: %w", err)
 	}
 	defer src.Release()
+	// **Until the reader holds the source, a failure shuts it down here.**
+	// Released alone it dropped our reference and left the device's source
+	// alive, which can keep the camera busy for the retries that follow.
+	handed := false
+	defer func() {
+		if !handed {
+			act.shutdownObject()
+		}
+	}()
 
 	attrs, err := NewAttributes(3)
 	if err != nil {
@@ -202,6 +218,7 @@ func newSourceReader(link string, dev *D3DDevice) (*SourceReader, error) {
 	if err := check("MFCreateSourceReaderFromMediaSource", r); err != nil {
 		return nil, err
 	}
+	handed = true
 	return reader, nil
 }
 
@@ -630,6 +647,10 @@ func (r *SourceReader) ReadSample() (*Sample, time.Duration, error) {
 		return nil, 0, err
 	}
 	if flags&streamFlagEndOfStream != 0 {
+		// A sample may come with the flag, and it is ours to release.
+		if sample != nil {
+			sample.Release()
+		}
 		return nil, 0, fmt.Errorf("the camera closed the stream")
 	}
 	// The timestamp is in units of 100 ns.

@@ -128,9 +128,10 @@ type Stream struct {
 	// exclusive mode the engine is not there, and that gain goes with it. On
 	// this machine it is **30 dB** — the slider at 100% of a scale that goes to
 	// +30 — and without reapplying it the audio is heard six times quieter than
-	// before while not being filtered. Reapplying it here reproduces what the
-	// engine would have done, and it follows the user's slider instead of
-	// inventing a constant.
+	// before while not being filtered. It brings the sensitivity to the
+	// endpoint's **maximum whatever the Windows slider says**, which is a
+	// decision and not an oversight: see sensitivityGain. mic_gain_db is this
+	// program's own knob.
 	GainDB float64
 	// Muted reports the endpoint's mute, which in exclusive mode is stepped
 	// over just like the volume. It has to be respected: it is an explicit
@@ -246,6 +247,24 @@ func ListCaptureDevices() ([]CaptureDevice, error) {
 		return nil
 	})
 	return out, err
+}
+
+// procPropVariantClear frees what a PROPVARIANT points to. go-wca has no
+// wrapper for it.
+var procPropVariantClear = windows.NewLazySystemDLL("ole32.dll").NewProc("PropVariantClear")
+
+// clearPropVariant releases what IPropertyStore::GetValue allocated.
+//
+// **A value read is memory COM handed over**, and the format's blob was never
+// released: a few hundred bytes at every open and every raw-mode recheck, in a
+// process meant to run for weeks.
+//
+// **It is not called on the friendly name, and must not be.** go-wca's
+// PROPVARIANT.String frees the string it copies, with CoTaskMemFree, so that
+// value is already released; clearing it too freed it twice, and pat-capture
+// died of heap corruption (0xC0000374) before its first line of report.
+func clearPropVariant(pv *wca.PROPVARIANT) {
+	procPropVariantClear.Call(uintptr(unsafe.Pointer(pv)))
 }
 
 // deviceFriendlyName reads the endpoint's readable name; if it is not available
@@ -549,7 +568,8 @@ func isNotAligned(err error) bool {
 // The property is a BLOB and go-ole does not expose BLOBs, so the PROPVARIANT
 // is read by hand: after the 8 bytes of header come the size and the pointer to
 // the data. The contents are copied into Go memory, so they stay valid even
-// after the PROPVARIANT has been released.
+// after the PROPVARIANT has been released — which clearPropVariant does, on the
+// way out.
 func deviceFormat(dev *wca.IMMDevice) (*wca.WAVEFORMATEX, error) {
 	var ps *wca.IPropertyStore
 	if err := dev.OpenPropertyStore(wca.STGM_READ, &ps); err != nil {
@@ -561,6 +581,7 @@ func deviceFormat(dev *wca.IMMDevice) (*wca.WAVEFORMATEX, error) {
 	if err := ps.GetValue(&wca.PKEY_AudioEngine_DeviceFormat, &pv); err != nil {
 		return nil, fmt.Errorf("PKEY_AudioEngine_DeviceFormat: %w", describeAudclnt(err))
 	}
+	defer clearPropVariant(&pv)
 	// data is declared unsafe.Pointer and not uintptr on purpose: the memory
 	// belongs to COM and not to the Go heap, but going through a uintptr would
 	// need a conversion that go vet rightly flags as suspicious.
