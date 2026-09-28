@@ -826,6 +826,7 @@ func run(log *slog.Logger, path string) error {
 			MicHealth:         lvl.Health().Code(),
 			Viewers:           hub.Stats.ViewersNow.Load(),
 			TalkbackBusy:      hub.TalkbackActive(),
+			TalkbackSpeaker:   hub.TalkbackSpeaker(),
 			// If a clip is in progress the recorder knows, and it is the only
 			// one: the bar's button does not colour on being pressed, it waits
 			// for this answer. See `Status.Recording`.

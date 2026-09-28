@@ -163,9 +163,18 @@ function sessionExpired(r) {
   return true;
 }
 
+// inFlight are the clips with a command on its way.
+//
+// **A second press before the list is redrawn is not sent.** Both presses carry
+// the row's old name, and the first renames the file: the second then found no
+// clip under that name and the page reported a refusal for a clip that was kept.
+const inFlight = new Set();
+
 // command runs an action on a clip and returns the name the clip exists under
 // afterwards, which the lock changes.
 async function command(name, action) {
+  if (inFlight.has(name)) return null;
+  inFlight.add(name);
   hideError();
   try {
     const r = await fetch('/api/clips/' + encodeURIComponent(name) + '/' + action,
@@ -189,6 +198,8 @@ async function command(name, action) {
   } catch (e) {
     showError('');
     return null;
+  } finally {
+    inFlight.delete(name);
   }
 }
 

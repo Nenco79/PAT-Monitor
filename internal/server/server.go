@@ -181,12 +181,17 @@ type Status struct {
 	// alert lasts: that is how the page tells a new fault from the previous one,
 	// without the server having to keep a history.
 	//
-	// TalkbackBusy says somebody is speaking into the room. The page uses it for
-	// a question about itself: if I pressed to speak and the monitor does not
-	// confirm it, my voice is not getting through — either because somebody else
-	// has the floor, or because the packets are not arriving at all. Both are
-	// cured the same way, so there is no need to tell them apart.
+	// TalkbackBusy says somebody is speaking into the room.
 	TalkbackBusy bool `json:"talkbackBusy"`
+	// TalkbackSpeaker is **whose** voice it is: the session the page was told
+	// at the offer, zero for nobody. The page uses it for a question about
+	// itself — if I pressed to speak and the monitor is not hearing me, my
+	// voice is not getting through, either because somebody else has the floor
+	// or because my packets are not arriving. **Busy alone could not answer the
+	// first**: somebody else speaking answered "yes" to every page, and the
+	// second talker's button stayed lit, speaking into nothing, for as long as
+	// the first went on.
+	TalkbackSpeaker int64 `json:"talkbackSpeaker"`
 	// Recording says a clip is under way, asked for by hand or by an event.
 	//
 	// **The state is held by the monitor and not by the browser.** A clip lasts
@@ -1583,6 +1588,9 @@ type signalMessage struct {
 	// if got wrong would attach the microphone to the wrong track with no error
 	// at all.
 	TalkMid string `json:"talkMid,omitempty"`
+	// Session is the viewer's own session, with the offer, so that the page
+	// can recognise itself in Status.TalkbackSpeaker.
+	Session int64 `json:"session,omitempty"`
 }
 
 func (s *Server) wsSignaling(w http.ResponseWriter, r *http.Request) {
@@ -1662,6 +1670,7 @@ func (s *Server) wsSignaling(w http.ResponseWriter, r *http.Request) {
 		SDP:        offer,
 		ICEServers: s.opts.Hub.ICEServers(),
 		TalkMid:    viewer.TalkMid(),
+		Session:    viewer.ID(),
 	}); err != nil {
 		return
 	}

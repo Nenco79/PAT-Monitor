@@ -546,6 +546,10 @@ func New(cfg Config) *Hub {
 // correctly and nothing occurs.
 func (h *Hub) TalkbackActive() bool { return h.talk.Active() }
 
+// TalkbackSpeaker is the session whose voice the room is hearing, zero if
+// nobody's: see server.Status.TalkbackSpeaker.
+func (h *Hub) TalkbackSpeaker() int64 { return h.talk.Speaker() }
+
 // WaitReady waits for the first keyframe with the parameter sets to arrive, as
 // they are needed to build a correct SDP.
 func (h *Hub) WaitReady(ctx context.Context) error {

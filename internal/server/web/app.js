@@ -166,6 +166,7 @@ function connect() {
     }
 
     if (msg.type === 'offer') {
+      mySession = msg.session || 0;
       await handleOffer(msg.sdp, msg.iceServers, msg.talkMid);
     } else if (msg.type === 'candidate' && pc) {
       try {
@@ -1478,23 +1479,31 @@ talkBtn.addEventListener('click', () => {
 // packets that the monitor drops: green button, no sound in the room, and no way
 // of noticing. The same happens if the voice does not arrive at all. The two are
 // cured the same way — try again shortly — so there is no need to tell them
-// apart: it is enough to ask the monitor whether it is hearing anybody, and to
-// believe it rather than one's own button.
+// apart: it is enough to ask the monitor **whose** voice it is hearing, and to
+// believe it rather than one's own button. Asking only whether it was hearing
+// anybody answered yes to the second talker too.
 //
 // Two readings and not one: the state is read every three seconds and the first
 // can fall before the first packet has arrived.
 let talkUnconfirmed = 0;
-function checkTalk(busy) {
+// mySession is this page's session, told with the offer. Zero until then, and
+// from a monitor that does not say it: there "somebody" is all that can be
+// asked, and it is asked.
+let mySession = 0;
+async function checkTalk(busy, speaker) {
   if (talkBtn.getAttribute('aria-pressed') !== 'true') {
     talkUnconfirmed = 0;
     return;
   }
-  if (busy) {
+  if (mySession ? speaker === mySession : busy) {
     talkUnconfirmed = 0;
     return;
   }
   if (++talkUnconfirmed >= 2) {
-    stopTalk();
+    // **Stopped first, then said.** stopTalk paints the button off, and
+    // painting it off clears the talk warning: said before it, the failure
+    // was on screen for one microtask.
+    await stopTalk();
     showWarning('talk', T('viewer.talk.failed'));
   }
 }
@@ -1531,8 +1540,22 @@ function sinceLabel(since) {
   return TN(hours, 'viewer.since.hours');
 }
 
+//
+// **The same alert is not drawn again.** The bar is an assertive live region,
+// and the status round came every three seconds: rebuilding its children with
+// the same words each time is what a screen reader announces, all night. What
+// is already shown only has its "since" updated, and only when it changes.
 function showAlert(a) {
   clearTimeout(recoveryTimer);
+  const shown = `${a.id}|${a.code}|${a.level}`;
+  const cls = 'alertbar show' + (a.level === 'fault' ? '' : ' ' + a.level);
+  const since = alertBar.querySelector('.when');
+  if (alertBar.dataset.shown === shown && since && alertBar.className === cls) {
+    const label = sinceLabel(a.since);
+    if (since.textContent !== label) since.textContent = label;
+    return;
+  }
+  alertBar.dataset.shown = shown;
   alertBar.innerHTML = '';
   const text = document.createElement('b');
   text.textContent = a.code ? alertText(a.code) : T('viewer.alert.unknown');
@@ -1540,13 +1563,14 @@ function showAlert(a) {
   when.className = 'when';
   when.textContent = sinceLabel(a.since);
   alertBar.append(text, when);
-  alertBar.className = 'alertbar show' + (a.level === 'fault' ? '' : ' ' + a.level);
+  alertBar.className = cls;
 }
 
 // The recovery shows for a few seconds and then goes: it is good news, and good
 // news left on the screen becomes part of the frame.
 function showRecovery(code) {
   clearTimeout(recoveryTimer);
+  delete alertBar.dataset.shown;
   alertBar.textContent = code ? recoveredText(code) : T('viewer.recovered.unknown');
   alertBar.className = 'alertbar show recovered';
   recoveryTimer = setTimeout(() => { alertBar.className = 'alertbar'; }, 8000);
@@ -1651,12 +1675,31 @@ function updateAlerts(list) {
 async function pollStatus() {
   try {
     const res = await fetch('/api/status');
-    if (res.status === 401) {
+    // **A 403 is a missing password, and it is a way out too.** A reset from
+    // the tray clears the password, and the route then answers 403: read as a
+    // state, the error body threw at the first number and the empty catch
+    // below stopped the alert bar for as long as the page stayed open. The
+    // login forwards to the setup.
+    if (res.status === 401 || res.status === 403) {
       location.href = '/login';
       return;
     }
+    if (!res.ok) return;
     const s = await res.json();
     lastState = s;
+
+    // **What says something is wrong goes first**, so that a detail row that
+    // throws cannot keep the alarm from being drawn.
+    updateAlerts(s.alerts);
+    renderRemote(s.remote);
+    paintDetect(s);
+    // A recording in progress is declared by the monitor, not by the press: it
+    // is the room that is being recorded, and it has to be seen from a second
+    // phone opened with the clip already running. It is also the only way of
+    // putting the pill out — the clip ends by itself, ten seconds later, with
+    // nobody pressing anything.
+    paintRecord(!!s.recording);
+    checkTalk(s.talkbackBusy, s.talkbackSpeaker);
 
     el('s-ver').textContent = s.version || '—';
     el('s-enc').textContent = s.encoder ? `${s.encoder} (${s.encoderVendor})` : '—';
@@ -1687,17 +1730,6 @@ async function pollStatus() {
     el('s-path').textContent = mediaPath || '—';
     el('s-up').textContent = s.uptime || '—';
     el('s-dev').textContent = s.devices;
-
-    renderRemote(s.remote);
-    paintDetect(s);
-    // A recording in progress is declared by the monitor, not by the press: it
-    // is the room that is being recorded, and it has to be seen from a second
-    // phone opened with the clip already running. It is also the only way of
-    // putting the pill out — the clip ends by itself, ten seconds later, with
-    // nobody pressing anything.
-    paintRecord(!!s.recording);
-    checkTalk(s.talkbackBusy);
-    updateAlerts(s.alerts);
 
     // Digital silence is not said **here as well**: the bar at the top announces
     // it, with the sound. Saying it twice on the same page with different words

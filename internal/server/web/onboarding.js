@@ -431,7 +431,12 @@ function closePreview() {
   // sixty rounds a second with nothing to say so.
   vuActive = false;
   vuPeak = 0;
-  if (previewWs) { previewWs.onclose = null; previewWs.close(); previewWs = null; }
+  if (previewWs) {
+    previewWs.onerror = null;
+    previewWs.onclose = null;
+    previewWs.close();
+    previewWs = null;
+  }
   if (previewPc) { previewPc.close(); previewPc = null; }
 }
 
@@ -510,6 +515,12 @@ function openPreview() {
       state.textContent = T('onb.prev.failed') + ': ' +
         (reasons[m.reason] ? T(reasons[m.reason])
                            : m.reason || T('onb.prev.server-error'));
+      // **The reason is the last word.** The monitor closes the socket right
+      // after it, and the close — and the error of an abnormal one — used to
+      // write "closed by the monitor" over it: the one line that says why the
+      // camera cannot be seen was on screen for an instant.
+      ws.onerror = null;
+      ws.onclose = null;
     }
   };
 
@@ -1180,9 +1191,16 @@ el('tray-line-2').textContent = T('tray.line.uptime', {since: '2h14m3s'});
 // The preview opens when it is needed and closes when it is not needed any more:
 // keeping a WebRTC session alive for the whole path would mean occupying the
 // encoder while the user reads Tailscale's page.
+//
+// **It asks whether a preview was requested, not whether one arrived.** The
+// observer fires on every class write, the heartbeat writes the rows' classes
+// every second, and with the camera refused no offer ever arrives: asked about
+// the connection, it reopened the socket once a second, and the status line
+// flickered between "opening" and the failure. A failed preview is opened again
+// by "Check again", which is what that button is for.
 const watch = new MutationObserver(() => {
-  if (step === 1 && !previewPc) openPreview();
-  if (step !== 1 && previewPc) closePreview();
+  if (step === 1 && !previewWs) openPreview();
+  if (step !== 1 && previewWs) closePreview();
 });
 watch.observe(document.body, {attributes: true, subtree: true, attributeFilter: ['class']});
 
