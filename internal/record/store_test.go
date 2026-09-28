@@ -497,13 +497,23 @@ func TestAClipNeverReplacesAnotherWithTheSameName(t *testing.T) {
 		t.Fatalf("three clips of one second left %d files", len(entries))
 	}
 
-	// The prunable one whose kept twin exists cannot take its name.
-	clip := clipPrefix + t0.Local().Format(nameLayout) + "-motion" + clipSuffix
-	if _, err := s.Keep(clip); err == nil {
-		t.Error("Keep replaced a kept clip of the same name")
+	// **No two share a stem under the two prefixes**, or the lock on the
+	// prunable one would be refused for ever. Put back as a search under one
+	// prefix and watched failing.
+	stems := map[string]bool{}
+	for _, e := range entries {
+		stem := strings.TrimPrefix(strings.TrimPrefix(e.Name, keptPrefix), clipPrefix)
+		if stems[stem] {
+			t.Errorf("two clips share %s under the two prefixes", stem)
+		}
+		stems[stem] = true
 	}
-	if entries, _ := s.List(); len(entries) != 3 {
-		t.Errorf("after the refused Keep there are %d clips", len(entries))
+	for _, e := range entries {
+		if !e.Kept {
+			if _, err := s.Keep(e.Name); err != nil {
+				t.Errorf("the lock on %s was refused: %v", e.Name, err)
+			}
+		}
 	}
 	for _, e := range namesIn(t, dir) {
 		if strings.HasSuffix(e, partSuffix) {

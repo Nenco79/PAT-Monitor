@@ -63,3 +63,36 @@ func TestALinkWithAClipsNameIsNotFollowed(t *testing.T) {
 		t.Errorf("the link's target was overwritten: %d bytes now", len(got))
 	}
 }
+
+// **Nor through a link at the name the clip is written aside under.** Save
+// writes to `<name>.part` and moves it into place; created as it came, a link
+// planted there had its target overwritten, and the rename put the link on the
+// clip's name. Put back and watched failing.
+func TestALinkAtTheAsideNameIsNotFollowed(t *testing.T) {
+	dir := t.TempDir()
+	clips := filepath.Join(dir, "clips")
+	if err := os.MkdirAll(clips, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	secret := filepath.Join(dir, "secret.txt")
+	if err := os.WriteFile(secret, []byte("not a clip"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	at := t0.Add(4 * time.Second)
+	name := clipPrefix + at.Local().Format(nameLayout) + "-motion" + clipSuffix
+	if err := os.Symlink(secret, filepath.Join(clips, name+partSuffix)); err != nil {
+		t.Skipf("cannot make a symbolic link here: %v", err)
+	}
+	s := NewStore(clips, StoreConfig{})
+	ring := NewRing(nil)
+	feedGOP(t, ring, sps720p, t0, 20, step)
+	if err := s.Save(Clip{Snapshot: ring.Snapshot(), Code: "motion", At: at}); err != nil {
+		t.Fatalf("the clip was not saved: %v", err)
+	}
+	if got, _ := os.ReadFile(secret); string(got) != "not a clip" {
+		t.Errorf("the link's target was overwritten: %d bytes now", len(got))
+	}
+	if st, err := os.Lstat(filepath.Join(clips, name)); err != nil || !st.Mode().IsRegular() {
+		t.Error("the clip's name is not a plain file: the link was moved onto it")
+	}
+}

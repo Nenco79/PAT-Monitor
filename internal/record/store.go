@@ -284,12 +284,16 @@ func (s *Store) Save(c Clip) error {
 	// to share one name, and the second truncated the first, a kept one
 	// included. The instant moves on by a second until the name is free, which
 	// keeps the name's shape and costs the name a second of precision.
+	//
+	// **Under either prefix**: a kept clip and a prunable one of the same
+	// second are one name to the lock, which renames between the two, so the
+	// second would be a clip whose lock is refused for ever.
 	var name, path string
 	for step := range nameTries {
-		name = prefixFor(c.Keep) + c.At.Add(time.Duration(step)*time.Second).Local().Format(nameLayout) +
-			"-" + c.Code + clipSuffix
+		stem := c.At.Add(time.Duration(step)*time.Second).Local().Format(nameLayout) + "-" + c.Code + clipSuffix
+		name = prefixFor(c.Keep) + stem
 		path = filepath.Join(s.dir, name)
-		if !s.taken(name) {
+		if !s.taken(prefixFor(true)+stem) && !s.taken(prefixFor(false)+stem) {
 			break
 		}
 		if step == nameTries-1 {
@@ -301,8 +305,16 @@ func (s *Store) Save(c Clip) error {
 	// interrupted — the process exiting in the middle — never carries a clip's
 	// name: a half-written file opens and does not read, which is worse than an
 	// absent one, because it is discovered when it is needed.
+	//
+	// **And the aside name is not trusted either.** Whatever is there — a link
+	// planted with that name, a remainder of an interrupted write — is removed,
+	// which removes a link and not its target, and the file is created only if
+	// nothing has appeared since: written through a link, the clip overwrote
+	// the file it pointed at, and the rename put the link itself on the clip's
+	// name.
 	part := path + partSuffix
-	f, err := os.Create(part)
+	os.Remove(part)
+	f, err := os.OpenFile(part, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
 	if err != nil {
 		return err
 	}
