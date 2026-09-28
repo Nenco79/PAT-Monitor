@@ -394,3 +394,85 @@ func TestWithNoThroughputTheLossesDecide(t *testing.T) {
 		t.Error("with 5%% lost the drop has to be believed anyway")
 	}
 }
+
+// **The last viewer leaving takes the encoder back to the cap, whoever made the
+// discount.** A discount from the quality loop sits inside a cap that stays at
+// the preset, so the network's governor finds nothing to release: the encoder
+// stayed at 300 with nobody watching, and the next viewer's governors all
+// believed it was at the cap, which is the one position from which none of them
+// raises anything.
+//
+// **The defect was put back and this test fails with it**: with the command
+// judged on the network's governor alone, the release answers "unchanged".
+func TestTheLastViewerLeavingTakesTheEncoderBackToTheCap(t *testing.T) {
+	g := newBitrateGovernor(2500)
+	quality := newQualityGovernor(30, 2500)
+	quality.current = 300 // the still room's discount
+
+	kbps, changed := releaseAll(g, quality, nil, 300)
+	if !changed || kbps != 2500 {
+		t.Errorf("released to %d kbit/s, changed=%v: the encoder stays at the discount", kbps, changed)
+	}
+	if quality.current != 2500 {
+		t.Errorf("the quality loop still believes %d", quality.current)
+	}
+
+	// With the encoder already at the cap there is nothing to command.
+	if _, changed := releaseAll(g, quality, nil, 2500); changed {
+		t.Error("a release with the encoder at the cap commanded it again")
+	}
+}
+
+// **One loss report is one cut.** The window holds a loss for three seconds
+// against missed reports, and handing it to the governor on every turn made
+// each tick a fresh multiplicative cut: one 20% burst followed by zeros took
+// 2500 to 1600.
+//
+// **The defect was put back and this test fails with it**: with recentLoss
+// handed to the governor, four ticks cut four times.
+func TestOneLossReportIsOneCut(t *testing.T) {
+	h := New(Config{BitrateKbps: 2500})
+	g := newBitrateGovernor(2500)
+
+	h.recordLoss(0.20, t0)
+	cuts := 0
+	kbps := 2500
+	for i := range 4 {
+		now := t0.Add(time.Duration(i) * time.Second)
+		if i > 0 {
+			h.recordLoss(0, now) // every later report says nothing was lost
+		}
+		var changed bool
+		if kbps, changed = g.target(2500, h.lossToCut(now), now); changed {
+			cuts++
+		}
+	}
+	if cuts != 1 || kbps != 2250 {
+		t.Errorf("one report of 20%% gave %d cuts, ending at %d kbit/s; want one, at 2250", cuts, kbps)
+	}
+
+	// A report that renews the loss is a new cut.
+	now := t0.Add(4 * time.Second)
+	h.recordLoss(0.20, now)
+	if loss := h.lossToCut(now); loss != 0.20 {
+		t.Errorf("a renewed loss was not handed over: %v", loss)
+	}
+}
+
+// **Severe loss that goes on is cut on every report.** Tied to the window's
+// worst being replaced, reports of 0.90, 0.89, 0.88 were cut once in three
+// seconds. Put back and watched failing.
+func TestSevereLossThatGoesOnIsCutOnEveryReport(t *testing.T) {
+	h := New(Config{BitrateKbps: 2500})
+	cuts := 0
+	for i, f := range []float64{0.90, 0.89, 0.88, 0.89} {
+		now := t0.Add(time.Duration(i) * time.Second)
+		h.recordLoss(f, now)
+		if h.lossToCut(now) >= bitrateLossSevere {
+			cuts++
+		}
+	}
+	if cuts != 4 {
+		t.Errorf("four severe reports gave %d cuts, wanted four", cuts)
+	}
+}

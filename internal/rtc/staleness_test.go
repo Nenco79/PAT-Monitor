@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pion/interceptor/pkg/stats"
 	"github.com/pion/webrtc/v4"
 )
 
@@ -120,5 +121,51 @@ func TestAMissingStatsSampleIsNotASampleOfZero(t *testing.T) {
 	if stored.valid {
 		t.Error("a snapshot nobody could read was stored as valid: the next " +
 			"report subtracts from it")
+	}
+}
+
+// onlyVideo answers for the video stream and not for the audio one, which is
+// the shape of a teardown that unbinds the audio first.
+type onlyVideo struct{ ssrc uint32 }
+
+func (o onlyVideo) Get(ssrc uint32) *stats.Stats {
+	if ssrc != o.ssrc {
+		return nil
+	}
+	s := &stats.Stats{}
+	s.OutboundRTPStreamStats.BytesSent = 5 << 20
+	s.OutboundRTPStreamStats.PacketsSent = 31000
+	return s
+}
+
+// **The audio counter is subtracted only across two readings of it.** Validity
+// was decided by the video's, so a turn that read the video and not the audio
+// subtracted a large audio total from zero, in uint64.
+//
+// **The defect was put back and this test fails with it**, with an audio
+// bitrate of about 9.8e15 kbit/s.
+func TestAMissingAudioReadingIsNotAReadingOfZero(t *testing.T) {
+	pc, err := webrtc.NewPeerConnection(webrtc.Configuration{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pc.Close()
+	v := &Viewer{pc: pc, hub: New(Config{FPS: 30}), closed: make(chan struct{}),
+		stats: onlyVideo{ssrc: 1}, videoSSRC: 1, audioSSRC: 2}
+	now := time.Now()
+
+	v.statsMu.Lock()
+	v.lastSnap = sessionSnapshot{
+		at: now.Add(-15 * time.Second), videoBytes: 4 << 20, audioBytes: 128 << 10,
+		packetsSent: 30000, valid: true, audioValid: true,
+	}
+	v.statsMu.Unlock()
+
+	rep := v.Report()
+	if rep.AudioKbps < 0 || rep.AudioKbps > 10000 {
+		t.Errorf("audio_kbps came back as %d: subtracted from a reading that was never made", rep.AudioKbps)
+	}
+	if rep.VideoKbps <= 0 {
+		t.Errorf("the video, which was read, gave %d", rep.VideoKbps)
 	}
 }

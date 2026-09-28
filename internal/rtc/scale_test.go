@@ -705,3 +705,30 @@ func TestTheRealignmentLooksAtTheCadenceToo(t *testing.T) {
 			step, moved, want)
 	}
 }
+
+// **A gap in the quantiser ages the scale's veto window.** The readings from
+// before it used to stay and be averaged with the first ones after it, so a
+// hard scene read as the healthy one before the gap.
+//
+// **The defect was put back and this test fails with it**: with a missing
+// reading leaving the window alone, the first reading after the gap averages
+// to 29.
+func TestAGapInTheQuantiserAgesTheScalesWindow(t *testing.T) {
+	g := newScaleGovernor(1280, 720, 30)
+	lim := qpThresholds()
+	now := t0
+	tick := func(qp int) {
+		now = now.Add(time.Second)
+		g.target(2500, true, qp, lim, false, now)
+	}
+	for range scaleQPWindow {
+		tick(27)
+	}
+	for range scaleQPWindow {
+		tick(-1) // the camera stalls: no reading
+	}
+	tick(36)
+	if veto := g.noteQP(0); veto != 36 {
+		t.Errorf("after the gap the window reads %d, wanted the new scene's 36", veto)
+	}
+}
