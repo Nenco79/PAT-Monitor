@@ -48,15 +48,17 @@ at first is **delivery regularity**, not the totals: a stream arriving in bursts
 instead of at a cadence propagates intact to the browser's playback buffer,
 where it becomes constant delay, while the totals would stay perfect.
 
-**And on AMD that line says a third, and always has**: 32-36% of intervals in
-bursts — `min 0s`, that is, two frames delivered in the same instant and then a
-67 ms gap — against **0%** on Quick Sync. That encoder emits frames two at a
-time. It is not a regression, and that is said by the only test that can
-establish it: rebuilding `pat-capture` from before the changes and re-measuring
-in the same session, the line said 37%, identical. Nobody knew because on that
-machine no measurement had ever been taken, and that is why the reference is now
-per machine: **a number never taken is not "good", it is unknown**, and the
-first time one looks at it, it looks like a fault.
+**And on AMD that line has never said zero**: a third in August (the reference
+that `capture-amd.txt` replaced, in its history), 32-36% of intervals in bursts
+— `min 0s`, that is, two frames delivered in the same instant and then a 67 ms
+gap — against **0%** on Quick Sync, and 19-29% in September on a newer driver,
+for the builds before and after the simplification alike. That encoder emits
+frames two at a time. It is not a regression, and that is said by the only test
+that can establish it: rebuilding `pat-capture` from before the changes and
+re-measuring in the same session, the line said 37%, identical. Nobody knew
+because on that machine no measurement had ever been taken, and that is why the
+reference is now per machine: **a number never taken is not "good", it is
+unknown**, and the first time one looks at it, it looks like a fault.
 
 Latency is measured only from the browser, and lives in `baselines/latency.txt`
 (raw data in `webrtc_internals_dump.txt`, **ignored by git** because the ICE

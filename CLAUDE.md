@@ -105,7 +105,7 @@ everywhere is emphasis nowhere:
 **The documents beside this one have their own readers.** `README.md` is for
 whoever installs the program and says what it does rather than why; the open
 issues are what has not been demonstrated; `baselines/` is evidence, so it is
-re-measured and never rewritten — two of those files carry a verbatim Italian
+re-measured and never rewritten — one of those files carries a verbatim Italian
 transcript, because that is the output the build of that date produced.
 
 ## The headings are the rules
@@ -358,11 +358,12 @@ translation of the interface, on a par with the others — it is a catalogue, no
 a leftover.
 
 **A report is evidence, and evidence is not rewritten.**
-`baselines/capture-intel.txt` and `baselines/capture-amd.txt` carry a verbatim
-Italian transcript, because that is the output the build of that date produced.
-Rewriting one means writing lines the program never emitted. What is ours — the
-header, where the verdict lives — is English, and the header says so. The
-numbers below it do not depend on a language.
+`baselines/capture-intel.txt` carries a verbatim Italian transcript, because
+that is the output the build of that date produced. Rewriting one means writing
+lines the program never emitted. **Re-measuring replaces the file whole**, and
+the old one stays in the history. What is ours — the header, where the verdict
+lives — is English, and the header says so. The numbers below it do not depend
+on a language.
 
 ## The names
 
