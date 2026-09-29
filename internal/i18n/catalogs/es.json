@@ -14,8 +14,8 @@
   "clips.filter.all": "Todas",
   "clips.filters": "Filtrar por tipo",
   "clips.keep": "Conservar",
-  "clips.keep.off": "Consérvala: la limpieza automática no la borra.",
-  "clips.keep.on": "Conservada. Pulsa para devolverla a las que caducan.",
+  "clips.keep.off": "Consérvala: la limpieza automática no la elimina.",
+  "clips.keep.on": "Conservada. Pulsa para ponerla de nuevo entre las que caducan.",
   "clips.kind.manual": "Manual",
   "clips.note": {
     "one": "{n} grabación · {mb} MB · conservadas: {kept}",

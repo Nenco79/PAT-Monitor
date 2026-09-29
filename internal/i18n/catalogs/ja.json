@@ -14,7 +14,7 @@
   "clips.filters": "種類で絞り込む",
   "clips.keep": "保護",
   "clips.keep.off": "保護する: 自動削除の対象から外れます。",
-  "clips.keep.on": "保護中です。押すと、期限が来たら消える録画に戻ります。",
+  "clips.keep.on": "保護中です。押すと保護が解除され、自動削除の対象に戻ります。",
   "clips.kind.manual": "手動",
   "clips.note": {
     "other": "{n} 件の録画 · {mb} MB · 保護: {kept}"

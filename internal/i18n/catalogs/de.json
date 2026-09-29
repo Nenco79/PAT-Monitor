@@ -14,8 +14,8 @@
   "clips.filter.all": "Alle",
   "clips.filters": "Nach Art filtern",
   "clips.keep": "Behalten",
-  "clips.keep.off": "Behalte sie: Die automatische Aufräumung löscht sie nicht.",
-  "clips.keep.on": "Behalten. Drücke, um sie wieder zu den ablaufenden zu legen.",
+  "clips.keep.off": "Behalte diese Aufnahme: Die automatische Bereinigung löscht sie nicht.",
+  "clips.keep.on": "Diese Aufnahme wird behalten. Drücke, damit sie wieder automatisch gelöscht werden kann.",
   "clips.kind.manual": "Manuell",
   "clips.note": {
     "one": "{n} Aufnahme · {mb} MB · behalten: {kept}",

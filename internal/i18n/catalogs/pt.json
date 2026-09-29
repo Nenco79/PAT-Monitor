@@ -15,7 +15,7 @@
   "clips.filters": "Filtrar por tipo",
   "clips.keep": "Manter",
   "clips.keep.off": "Manter: a limpeza automática não a exclui.",
-  "clips.keep.on": "Mantida. Pressione para devolvê-la às que expiram.",
+  "clips.keep.on": "Mantida. Pressione para colocá-la de volta entre as que expiram.",
   "clips.kind.manual": "Manual",
   "clips.note": {
     "one": "{n} gravação · {mb} MB · mantidas: {kept}",
@@ -29,7 +29,7 @@
   },
   "clips.title": "Gravações",
   "clips.undo": "Desfazer",
-  "clips.zip-limit": "É possível baixar no máximo {max} gravações de uma vez.",
+  "clips.zip-limit": "Não é possível baixar mais de {max} gravações de uma vez.",
   "err.already-set": "A senha já foi definida.",
   "err.bad-request": "Solicitação inválida.",
   "err.cam-list-failed": "Não foi possível listar as câmeras.",
