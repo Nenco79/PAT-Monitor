@@ -1071,7 +1071,8 @@ a second literal copied out of the palette would be the wrong idea.
 
 They are **Tabler Icons v3.46.0**, MIT, taken verbatim: `microphone`,
 `mood-cry`, `dog`, `walk` in the bar, plus `volume-off`, `maximize` and
-`minimize` for the full-screen rail — and `video` and `file-text` in the tray's
+`minimize` for the full-screen rail, `download`, `trash`, `star`, `check`,
+`arrow-back-up` and `x` on the recordings page — and `video` and `file-text` in the tray's
 panel, which is the same set arriving as Go source. **Whoever adds one adds it
 here too**, and the count is not kept anywhere: the licence note covers the set
 and not the list, so a name forgotten in this sentence costs nothing legally and

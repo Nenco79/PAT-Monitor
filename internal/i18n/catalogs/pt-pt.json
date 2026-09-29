@@ -4,19 +4,33 @@
   "auth.unreachable": "Não é possível contactar o servidor.",
   "clips.back": "Voltar ao monitor",
   "clips.codec": "Este browser não consegue reproduzir o áudio destas gravações. A imagem funciona; para ouvir o som, transfira o ficheiro. Atualizar o iOS para a versão 17 ou posterior resolve.",
-  "clips.confirm": "Eliminar esta gravação? Não é possível anular.",
   "clips.delete": "Eliminar",
+  "clips.deleted": {
+    "one": "Gravação eliminada",
+    "other": "{n} gravações eliminadas"
+  },
   "clips.download": "Transferir",
   "clips.empty": "Ainda não há gravações. É guardada uma a cada evento na divisão, e outra sempre que a pedir na página do monitor.",
+  "clips.filter.all": "Todas",
+  "clips.filters": "Filtrar por tipo",
   "clips.keep": "Manter",
   "clips.keep.off": "Manter: a limpeza automática não a elimina.",
   "clips.keep.on": "Mantida. Prima para a devolver às que expiram.",
+  "clips.kind.manual": "Manual",
   "clips.manual": "Gravação manual",
   "clips.note": {
     "one": "{n} gravação · {mb} MB · mantidas: {kept}",
     "other": "{n} gravações · {mb} MB · mantidas: {kept}"
   },
+  "clips.select": "Selecionar",
+  "clips.select.cancel": "Cancelar",
+  "clips.select.kept": "Mantida: retire a estrela para a poder eliminar.",
+  "clips.selected": {
+    "one": "{n} selecionada",
+    "other": "{n} selecionadas"
+  },
   "clips.title": "Gravações",
+  "clips.undo": "Anular",
   "err.already-set": "A palavra-passe já foi definida.",
   "err.bad-request": "Pedido inválido.",
   "err.cam-list-failed": "Não foi possível listar as câmaras.",

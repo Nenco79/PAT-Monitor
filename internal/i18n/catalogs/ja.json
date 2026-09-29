@@ -4,18 +4,30 @@
   "auth.unreachable": "サーバーに接続できません。",
   "clips.back": "見守りカメラに戻る",
   "clips.codec": "このブラウザーでは、これらの録画の音声を再生できません。映像は見られます。音声を聞くには、ファイルをダウンロードしてください。iOS を 17 以降に更新すると解決します。",
-  "clips.confirm": "この録画を削除しますか? 元に戻すことはできません。",
   "clips.delete": "削除",
+  "clips.deleted": {
+    "other": "{n} 件の録画を削除しました"
+  },
   "clips.download": "ダウンロード",
   "clips.empty": "録画はまだありません。部屋で何か起きるたびに 1 件、見守りカメラのページから録画を頼むたびに 1 件保存されます。",
+  "clips.filter.all": "すべて",
+  "clips.filters": "種類で絞り込む",
   "clips.keep": "保護",
   "clips.keep.off": "保護する: 自動削除の対象から外れます。",
   "clips.keep.on": "保護中です。押すと、期限が来たら消える録画に戻ります。",
+  "clips.kind.manual": "手動",
   "clips.manual": "手動録画",
   "clips.note": {
     "other": "{n} 件の録画 · {mb} MB · 保護: {kept}"
   },
+  "clips.select": "選択",
+  "clips.select.cancel": "キャンセル",
+  "clips.select.kept": "保護中です。削除するには星を外してください。",
+  "clips.selected": {
+    "other": "{n} 件を選択"
+  },
   "clips.title": "録画",
+  "clips.undo": "元に戻す",
   "err.already-set": "パスワードはすでに設定されています。",
   "err.bad-request": "無効なリクエストです。",
   "err.cam-list-failed": "カメラの一覧を取得できませんでした。",

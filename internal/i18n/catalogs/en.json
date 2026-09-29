@@ -4,19 +4,33 @@
   "auth.unreachable": "Cannot reach the server.",
   "clips.back": "Back to the monitor",
   "clips.codec": "This browser cannot play the audio of these recordings. The picture works; for the sound, download the file. Updating iOS to 17 or later fixes it.",
-  "clips.confirm": "Delete this recording? It cannot be undone.",
   "clips.delete": "Delete",
+  "clips.deleted": {
+    "one": "Recording deleted",
+    "other": "{n} recordings deleted"
+  },
   "clips.download": "Download",
   "clips.empty": "No recordings yet. One is saved for every event in the room, and one every time you ask for one from the monitor page.",
+  "clips.filter.all": "All",
+  "clips.filters": "Filter by kind",
   "clips.keep": "Keep",
   "clips.keep.off": "Keep it: the automatic cleanup does not delete it.",
   "clips.keep.on": "Kept. Press to put it back among the ones that expire.",
+  "clips.kind.manual": "Manual",
   "clips.manual": "Manual recording",
   "clips.note": {
     "one": "{n} recording · {mb} MB · kept: {kept}",
     "other": "{n} recordings · {mb} MB · kept: {kept}"
   },
+  "clips.select": "Select",
+  "clips.select.cancel": "Cancel",
+  "clips.select.kept": "Kept: take the star off to delete it.",
+  "clips.selected": {
+    "one": "{n} selected",
+    "other": "{n} selected"
+  },
   "clips.title": "Recordings",
+  "clips.undo": "Undo",
   "err.already-set": "The password is already set.",
   "err.bad-request": "Invalid request.",
   "err.cam-list-failed": "The cameras could not be listed.",

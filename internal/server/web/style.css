@@ -1045,7 +1045,8 @@ video {
    it never appears at all. Clipped, the name is still there for whoever listens
    and gone for whoever looks. */
 .viewer.fs .bar button > span,
-.on-video > span {
+.on-video > span,
+.clips-say {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -2153,8 +2154,19 @@ video {
 
    The column here is not flexible with `order` as in the viewer: there the order
    changes with the state — the access box goes up or down — here it does not. A
-   `flex` with nothing to reorder is a machine with no job. */
-.clips { display: block; padding-bottom: var(--s6); }
+   `flex` with nothing to reorder is a machine with no job.
+
+   **On a wide screen the page is a column, not the window.** At 1280 px the
+   data sat on the left and its three commands 800 px away on the right, and
+   which clip "Delete" belonged to was a matter of following a line across the
+   screen. 760 holds the data's floor and the three pills side by side with air
+   to spare, and below it the rule has nothing to hold back. */
+.clips {
+  display: block;
+  max-width: 760px;
+  margin-inline: auto;
+  padding-bottom: var(--s6);
+}
 
 .clips-head {
   display: flex;
@@ -2163,6 +2175,16 @@ video {
   gap: var(--s4);
   padding: var(--s4) var(--s5);
   border-bottom: 1px solid var(--line);
+}
+
+/* The name of the page and the summary of what is in it: beside it where
+   there is room, under it where there is not. */
+.clips-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: var(--s3);
+  row-gap: 2px;
 }
 
 /* **A heading takes a heading's step.** On `--t-lead`, which in the scale is the
@@ -2212,34 +2234,47 @@ video {
   font-size: var(--t-ui);
   line-height: 1.6;
 }
+/* The summary is the heading's second line: it has the notes' size and none
+   of the box padding the empty state has, because it is not a box. */
 .clips-note {
-  padding: var(--s3) var(--s5);
+  padding: 0;
   font-size: var(--t-small);
+  line-height: 1.4;
   font-variant-numeric: tabular-nums;
 }
+
+/* **A day is a heading and its rows.** The heading stays at the top while its
+   rows scroll under it, so a long list never loses which day it is, and it
+   sits on the page's ground so the rows pass beneath it rather than through.
+   The words are the browser's, lower-case where the language writes them so;
+   the first letter is raised here because this is a heading. */
+.clips-day h2 {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: 0;
+  padding: var(--s4) var(--s5) var(--s2);
+  background: var(--ground);
+  border-bottom: 1px solid var(--line-soft);
+  font-size: var(--t-ui);
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--ink-2);
+}
+.clips-day h2::first-letter { text-transform: uppercase; }
 
 .clips-list { margin: 0; padding: 0; list-style: none; }
 
 .clip-row {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: var(--s2);
-  padding: var(--s2) var(--s5);
+  padding: 0 var(--s3) 0 var(--s5);
   border-bottom: 1px solid var(--line-soft);
 }
-/* **A row is one area, and the mouse lightens all of it.**
-   With the lighting on `.clip-open`, that is, on the data alone, moving the
-   mouse lit half a row and the three commands stayed dark, and the two halves
-   read as two things placed side by side instead of as one. Now the ground sits
-   on the row, and the buttons keep theirs, which is lighter: "this row, and
-   inside it, this command".
-
-   **And it no longer promises more than there is**: `.clip-open` is `flex: 1`, so
-   the gap between the data and the commands really is pressable and opens the
-   clip. The only lit stretch that cannot be pressed is the one under the three
-   buttons, which their grounds cover entirely as soon as the mouse is over
-   them.
+/* **A row is one area, and the mouse lightens all of it.** The ground sits on
+   the row, not on the button that opens the clip, so the star at its end is
+   lit with it: "this row, and inside it, this command".
 
    Under `hover: hover` like every other hover in this sheet: a tap would
    otherwise leave the row lit until the next one lands elsewhere, which on a
@@ -2249,30 +2284,34 @@ video {
    the clip starts playing. */
 .clip-row:active { background: #FFFFFF08; }
 
-/* The clip that is playing declares itself with the colour of the lit toggles,
-   and with one mark only: see "one mark for one thing".
+/* The clip that is playing, and a clip chosen for deleting, declare themselves
+   with the colour of the lit toggles, and with one mark only: see "one mark for
+   one thing". They cannot happen together — selecting closes nothing, but the
+   row of the open clip is simply one more row to choose.
 
-   The case of the two together is declared, as for the microphone box's entries:
-   without it, at equal specificity the last rule written would win — either the
-   playing row loses its mark under the mouse, or the mouse has no effect
-   precisely on the row being looked at. */
-.clip-row.on { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+   The case of the mark and the mouse together is declared: without it, at equal
+   specificity the last rule written would win — either the marked row loses its
+   mark under the mouse, or the mouse has no effect precisely on the row being
+   looked at. */
+.clip-row.on,
+.clip-row.sel { background: color-mix(in srgb, var(--accent) 12%, transparent); }
 @media (hover: hover) {
-  .clip-row.on:hover { background: color-mix(in srgb, var(--accent) 18%, transparent); }
+  .clip-row.on:hover,
+  .clip-row.sel:hover { background: color-mix(in srgb, var(--accent) 18%, transparent); }
 }
 
 .clip-open {
   flex: 1;
   width: auto;
-  min-width: 180px;
+  min-width: 0;
   display: flex;
   align-items: center;
-  gap: var(--gap-ico);
-  min-height: 48px;
+  gap: var(--s3);
+  min-height: 56px;
   padding: var(--s2) 0;
   background: none;
   border: 0;
-  border-radius: var(--radius-s);
+  border-radius: 0;
   color: var(--ink);
   font: inherit;
   text-align: left;
@@ -2283,33 +2322,94 @@ video {
    data bounce. It goes in the same media block as the lift it undoes: written
    outside, it would be a rule with nothing left to switch off. */
 @media (hover: hover) { .clip-open:hover { filter: none; transform: none; } }
-.clip-open .ico { color: var(--accent); }
-.clip-data { display: flex; flex-direction: column; gap: 2px; }
-.clip-open b { font-weight: 500; font-variant-numeric: tabular-nums; }
-.clip-open span { color: var(--ink-2); font-size: var(--t-small); }
+.clip-open:disabled { opacity: .5; }
+
+/* **The kind is a glyph and a word, and neither is a colour.** The glyph takes
+   the secondary ink, not the accent: the teal on this page means "open" and
+   "chosen", and a list of teal glyphs would say every row is both. What tells a
+   bark from a movement is the drawing. */
+.clip-open .kind { width: 20px; height: 20px; color: var(--ink-2); }
+/* The dot of a clip asked for by hand is filled, as on the "Clip" button, and in
+   the ink of the other glyphs rather than in that button's red: here it names
+   where the clip came from, and a red dot on a list would read as recording now. */
+.i-dot circle { fill: currentColor; stroke: none; }
+
+.clip-data { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.clip-open b { font-weight: 500; }
 .clip-open em {
   color: var(--muted);
   font-size: var(--t-small);
   font-style: normal;
   font-variant-numeric: tabular-nums;
 }
+/* Why a kept row cannot be chosen, on the row itself while selecting. */
+.clip-open em.why { font-variant-numeric: normal; }
+/* The list takes the focus when the notice it had goes away, and draws no
+   ring for it: nothing there was pressed. */
+.clips-days:focus { outline: none; }
 
-/* A row's commands are the same pills as the monitor's bar, only narrower: the
-   word is not removed — an icon alone on "delete" asks people to guess — but the
-   text drops to the notes' size. */
-/* **Three parallel commands carry three equal widths.** They are the three things
-   done to the same clip, and left at the length of their words they came out in
-   three different sizes — that is, a hierarchy drawn by a fact of spelling
-   instead of by a decision. It is the grid of the monitor bar's three toggles,
-   taken for the same reason: equal widths where things are parallel. */
+/* The selection's box. It is drawn and not an `<input>`: the row is already the
+   button that toggles it, and a control inside a control is two targets where
+   there is one. `aria-pressed` on the row says the state, so the box reads it
+   rather than keeping one of its own. */
+.clip-check {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--muted);
+  border-radius: var(--radius-xs);
+}
+.clip-check .ico { width: 14px; height: 14px; color: var(--ground); visibility: hidden; }
+.clip-open[aria-pressed="true"] .clip-check {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+.clip-open[aria-pressed="true"] .clip-check .ico { visibility: visible; }
+
+/* **The star is the one command a row keeps**, and it is quiet: no frame, no
+   ground, the muted ink until it is on. The glyph is 20 px in a 48 px target,
+   because a finger in the dark needs the target and not the drawing.
+
+   **Lit, it fills.** `icons.css` draws every glyph as an outline that follows
+   its button's colour, and the pill is what lights a toggle; a star with no
+   pill has only its own shape to say it, and a filled star is the one mark
+   every list of this kind already uses for "kept". */
+.clip-star {
+  flex: none;
+  width: 48px;
+  min-height: 48px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 0;
+  color: var(--muted);
+}
+.clip-star .ico { width: 20px; height: 20px; }
+@media (hover: hover) { .clip-star:hover { color: var(--ink-2); transform: none; } }
+.clip-star[aria-pressed="true"] { color: var(--accent); }
+[aria-pressed="true"] > .i-star { fill: currentColor; }
+
+/* **The player's three commands carry three equal widths.** They are the three
+   things done to the same clip, and left at the length of their words they come
+   out in three different sizes — a hierarchy drawn by a fact of spelling instead
+   of by a decision. It is the grid of the monitor bar's three toggles, taken for
+   the same reason: equal widths where things are parallel. */
 .clip-actions {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items: center;
   gap: var(--s2);
-  flex: none;
+  padding: var(--s3) var(--s5);
+  background: var(--card-sunk);
+  border-bottom: 1px solid var(--line);
 }
-.clip-actions button.ghost, .clip-actions a.ghost {
+.clip-actions button.ghost, .clip-actions a.ghost,
+.clips-selcmds button.ghost, .clips-toast button.ghost, .clips-select {
   width: auto;
   min-height: 40px;
   padding: 0 var(--s3);
@@ -2324,9 +2424,14 @@ video {
   justify-content: center;
   gap: var(--gap-ico);
 }
+/* A third of a phone is 108 px, and German's `Herunterladen` with its glyph
+   wants 114: the tighter padding is what keeps the word off the pill's edge.
+   It comes after the shared rule above, which it would otherwise lose to at
+   equal weight. */
+.clip-actions button.ghost, .clip-actions a.ghost { padding: 0 var(--s2); }
 /* **On "Delete" the red is in the bin, not in the pill.**
    A red outline and red text made that command the only different pill of the
-   three, and in a row where nothing is wrong: `--c-stop` is the colour of the
+   three, and in a place where nothing is wrong: `--c-stop` is the colour of the
    fault — the warning band, the broken dot — and stuck on a command that can
    perfectly well be pressed it teaches people to read as an alarm something that
    is not. It is the same mistake the meter avoids by not painting a loud cry in
@@ -2334,20 +2439,108 @@ video {
 
    The glyph does stay red, and it is the second icon not to follow its button's
    colour after the recording dot: there as here the red **is** the meaning. What
-   protects against pressing by mistake was never the colour, it is the
-   confirmation question. */
-.clip-actions .danger .ico { color: var(--c-stop); }
+   protects against pressing by mistake was never the colour: it is the way back,
+   the notice that takes the delete back for a few seconds. */
+.danger .ico { color: var(--c-stop); }
 
 /* **The lock is the bar's toggle, and it does not need a rule of its own.**
    `.clip-actions button.ghost` is worth 0,1,1 and beats `.toggle`, so at rest
-   that button is identical to the other two in the row; lit, `.toggle[aria-
-   pressed="true"]` commands, which is worth 0,2,0. That is, the teal pill arrives
-   by itself, and it is the same as the monitor's toggles: the same shape for the
-   same idea — "this is the state", not "this does a thing".
+   that button is identical to the other two; lit, `.toggle[aria-pressed="true"]`
+   commands, which is worth 0,2,0. That is, the teal pill arrives by itself, and
+   it is the same as the monitor's toggles: the same shape for the same idea —
+   "this is the state", not "this does a thing". */
 
-   There used to be `.clip-kept` here, the badge of a kept clip. It went with the
-   lock's one-way street: since clips asked for by hand are born kept, the way
-   back is needed too, and a badge cannot be pressed. */
+/* **The filters and "Select" flow as one line of chips over the list**, the
+   filters from the left and "Select" pushed to the far end of whichever row it
+   lands on. With the filters as a box of their own, a phone gave "Select" a
+   third row to itself beside the empty half of the second; so the filter box
+   is `display: contents`, and its chips are laid out by this row. The box still
+   carries the group's name for a screen reader, and where an engine drops it
+   with the box, what is lost is the group's label, never a chip. */
+.clips-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--s2);
+  padding: var(--s3) var(--s5);
+}
+.clips-select { margin-left: auto; }
+
+/* **Filters are chips, one per kind in the list, with its count.** A chip is a
+   toggle — the lit pill is the kind being shown — and "All" is the one that is
+   lit when nothing narrows the list. **They wrap rather than scroll**: on a
+   phone a sideways row showed three of five, and a filter that cannot be seen
+   is a filter that does not exist. */
+.clips-filters { display: contents; }
+.chip {
+  flex: none;
+  width: auto;
+  min-height: 40px;
+  padding: 0 var(--s3);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink-2);
+  font-size: var(--t-small);
+  font-weight: 500;
+}
+@media (hover: hover) {
+  .chip:not([aria-pressed="true"]):hover { background: var(--wash); filter: none; transform: none; }
+}
+.chip[aria-pressed="true"] {
+  border-color: color-mix(in srgb, var(--c-home) 60%, transparent);
+  background: color-mix(in srgb, var(--c-home) 22%, transparent);
+  color: var(--ink);
+}
+.chip .n { color: var(--muted); font-variant-numeric: tabular-nums; }
+.chip[aria-pressed="true"] .n { color: var(--ink-2); }
+
+/* **While selecting, the row over the list holds the selection's commands**,
+   at its far end where "Select" was, and it stays at the top of the screen, so
+   the delete is in reach wherever the list is scrolled to. The day headings
+   stop sticking meanwhile: two things pinned to one edge cover each other. */
+.clips-selcmds {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  font-size: var(--t-small);
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+body.selecting .clips-tools {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--ground);
+  border-bottom: 1px solid var(--line);
+}
+body.selecting .clips-day h2 { position: static; }
+
+/* **The notice that takes a delete back.** It floats above the foot of the
+   screen, clear of the home indicator, and it holds for the few seconds the
+   delete waits; pressing "Undo" is the whole of its job. */
+.clips-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--s4) + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  width: max-content;
+  max-width: calc(100vw - 2 * var(--s4));
+  padding: var(--s2) var(--s2) var(--s2) var(--s4);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  font-size: var(--t-ui);
+  color: var(--ink);
+}
 
 /* --- `hidden` has to mean hidden ---------------------------------------- */
 

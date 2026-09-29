@@ -4,19 +4,33 @@
   "auth.unreachable": "Impossibile contattare il server.",
   "clips.back": "Torna al monitor",
   "clips.codec": "Questo browser non riesce a riprodurre l’audio di queste registrazioni. L’immagine si vede; per il suono, scarica il file. Aggiornando iOS alla 17 o successiva si risolve.",
-  "clips.confirm": "Eliminare questa registrazione? Non si torna indietro.",
   "clips.delete": "Elimina",
+  "clips.deleted": {
+    "one": "Registrazione eliminata",
+    "other": "{n} registrazioni eliminate"
+  },
   "clips.download": "Scarica",
   "clips.empty": "Ancora nessuna registrazione. Se ne salva una per ogni evento nella stanza, e una ogni volta che la chiedi dalla pagina del monitor.",
+  "clips.filter.all": "Tutte",
+  "clips.filters": "Filtra per tipo",
   "clips.keep": "Tieni",
   "clips.keep.off": "Tienila: la pulizia automatica non la cancella.",
   "clips.keep.on": "Tenuta. Premi per rimetterla fra quelle che scadono.",
+  "clips.kind.manual": "Manuale",
   "clips.manual": "Registrazione manuale",
   "clips.note": {
     "one": "{n} registrazione · {mb} MB · tenute: {kept}",
     "other": "{n} registrazioni · {mb} MB · tenute: {kept}"
   },
+  "clips.select": "Seleziona",
+  "clips.select.cancel": "Annulla",
+  "clips.select.kept": "Tenuta: togli la stella per poterla eliminare.",
+  "clips.selected": {
+    "one": "{n} selezionata",
+    "other": "{n} selezionate"
+  },
   "clips.title": "Registrazioni",
+  "clips.undo": "Ripristina",
   "err.already-set": "La password è già impostata.",
   "err.bad-request": "Richiesta non valida.",
   "err.cam-list-failed": "Non è stato possibile elencare le telecamere.",

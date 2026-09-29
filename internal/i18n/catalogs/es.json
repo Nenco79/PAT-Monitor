@@ -4,19 +4,33 @@
   "auth.unreachable": "No se puede contactar con el servidor.",
   "clips.back": "Volver al monitor",
   "clips.codec": "Este navegador no puede reproducir el audio de estas grabaciones. La imagen sí se ve; para el sonido, descarga el archivo. Actualizar iOS a la 17 o posterior lo soluciona.",
-  "clips.confirm": "¿Eliminar esta grabación? No se puede deshacer.",
   "clips.delete": "Eliminar",
+  "clips.deleted": {
+    "one": "Grabación eliminada",
+    "other": "{n} grabaciones eliminadas"
+  },
   "clips.download": "Descargar",
   "clips.empty": "Todavía no hay grabaciones. Se guarda una por cada evento en la habitación, y otra cada vez que la pidas desde la página del monitor.",
+  "clips.filter.all": "Todas",
+  "clips.filters": "Filtrar por tipo",
   "clips.keep": "Conservar",
   "clips.keep.off": "Consérvala: la limpieza automática no la borra.",
   "clips.keep.on": "Conservada. Pulsa para devolverla a las que caducan.",
+  "clips.kind.manual": "Manual",
   "clips.manual": "Grabación manual",
   "clips.note": {
     "one": "{n} grabación · {mb} MB · conservadas: {kept}",
     "other": "{n} grabaciones · {mb} MB · conservadas: {kept}"
   },
+  "clips.select": "Seleccionar",
+  "clips.select.cancel": "Cancelar",
+  "clips.select.kept": "Conservada: quita la estrella para poder eliminarla.",
+  "clips.selected": {
+    "one": "{n} seleccionada",
+    "other": "{n} seleccionadas"
+  },
   "clips.title": "Grabaciones",
+  "clips.undo": "Deshacer",
   "err.already-set": "La contraseña ya está establecida.",
   "err.bad-request": "Petición no válida.",
   "err.cam-list-failed": "No se han podido listar las cámaras.",

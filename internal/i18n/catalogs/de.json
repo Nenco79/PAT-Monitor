@@ -4,19 +4,33 @@
   "auth.unreachable": "Der Server ist nicht erreichbar.",
   "clips.back": "Zurück zum Monitor",
   "clips.codec": "Dieser Browser kann den Ton dieser Aufnahmen nicht abspielen. Das Bild läuft; für den Ton lade die Datei herunter. Ein Update auf iOS 17 oder neuer behebt es.",
-  "clips.confirm": "Diese Aufnahme löschen? Das lässt sich nicht rückgängig machen.",
   "clips.delete": "Löschen",
+  "clips.deleted": {
+    "one": "Aufnahme gelöscht",
+    "other": "{n} Aufnahmen gelöscht"
+  },
   "clips.download": "Herunterladen",
   "clips.empty": "Noch keine Aufnahmen. Eine wird bei jedem Ereignis im Raum gespeichert, und eine jedes Mal, wenn du sie auf der Monitorseite anforderst.",
+  "clips.filter.all": "Alle",
+  "clips.filters": "Nach Art filtern",
   "clips.keep": "Behalten",
   "clips.keep.off": "Behalte sie: Die automatische Aufräumung löscht sie nicht.",
   "clips.keep.on": "Behalten. Drücke, um sie wieder zu den ablaufenden zu legen.",
+  "clips.kind.manual": "Manuell",
   "clips.manual": "Manuelle Aufnahme",
   "clips.note": {
     "one": "{n} Aufnahme · {mb} MB · behalten: {kept}",
     "other": "{n} Aufnahmen · {mb} MB · behalten: {kept}"
   },
+  "clips.select": "Auswählen",
+  "clips.select.cancel": "Abbrechen",
+  "clips.select.kept": "Behalten: Nimm den Stern weg, um sie zu löschen.",
+  "clips.selected": {
+    "one": "{n} ausgewählt",
+    "other": "{n} ausgewählt"
+  },
   "clips.title": "Aufnahmen",
+  "clips.undo": "Rückgängig",
   "err.already-set": "Das Passwort ist schon gesetzt.",
   "err.bad-request": "Ungültige Anfrage.",
   "err.cam-list-failed": "Die Kameras konnten nicht aufgelistet werden.",

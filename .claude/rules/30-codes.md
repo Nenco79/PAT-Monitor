@@ -491,8 +491,8 @@ language to walk through them with nothing to fix.
 - **The program does not say `yo`**, and Spanish is where that breaks most
   easily: `Nuevo intento`, `Comprobando si responde desde fuera`, `Es mejor
   pagarla ahora`.
-- **The opening marks are there**: `¿Eliminar esta grabación?` and not `Eliminar
-  esta grabación?`. Spanish is the only one of the five that marks where a
+- **The opening marks are there**: `¿Restablecer la contraseña?` and not
+  `Restablecer la contraseña?`. Spanish is the only one of the five that marks where a
   question begins, and it is the one thing a Spanish reader notices at once when
   it is missing — the mirror of the French non-breaking space, and for the same
   reason: a rule that is invisible to whoever does not read the language. **It

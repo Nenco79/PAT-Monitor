@@ -190,10 +190,12 @@ applied by hand. With hand-made clips born kept, that single road becomes a
 leak: every press would leave a few megabytes on disk that no rule touches
 again, that is, the promise about the disk of whoever hosts us would stop
 holding precisely for the kind of clip the user produces on command. There is
-now `Release`, and on the recordings page the lock is **the bar's toggle**:
-pill, `aria-pressed`, a label that does not move, and a tooltip saying what
-pressing does. The "Kept" badge went with the one-way street — a badge is not
-pressed.
+now `Release`, and on the recordings page the lock is **a star on every row**,
+filled when on, and **the bar's toggle** under the player for the clip that is
+open: `aria-pressed` on both, and a tooltip saying what pressing does. The
+"Kept" badge went with the one-way street — a badge is not pressed. **And a kept
+clip cannot be selected for deleting**: a delete by the handful is exactly the
+rule the lock promises does not touch it, so the star comes off first.
 
 Four decisions not visible from the code:
 
@@ -257,7 +259,13 @@ of the three in a row where nothing is wrong — and a pill is the **resting**
 state of a command that can perfectly well be pressed. On the glyph the same
 shade says one thing and says it at the right moment; on the frame it declares
 the row is an alarm. **What protects against pressing by mistake was never the
-colour: it is the confirmation.**
+colour: it is the way back.** It was a confirmation, "Delete this recording? It
+cannot be undone.", asked before every delete, and a question asked every time
+is answered without being read. Now the clip leaves the list at once and the
+request waits six seconds under a notice that takes it back — `keepalive`, and
+sent on `pagehide`, so that closing the page is not a way of keeping a clip one
+decided to delete. The owner chose it over Nielsen Norman Group's split, which
+keeps a question for what cannot come back and an undo for the routine.
 
 **The two exceptions do not take the same red, and why is the whole criterion.**
 The bin takes `--c-stop`, which is the brick of what is wrong **and of what does
@@ -273,20 +281,34 @@ attribution for a geometry anybody would draw the same.
 
 ### A row of the list is one area
 
+- **A row carries one command, and it is the star.** Download, keep and delete
+  sat as three labelled pills on every row — eighteen buttons for six clips,
+  heavier than the clips, and not the shape of any camera app the owner looked
+  at: Blink, Google, Eufy and Wyze put a clip's commands in its player or behind
+  a menu, and deleting many in a selection mode. The three now live under the
+  player, once, **Delete last**; the row is its kind as a glyph and a word — the
+  viewer bar's own drawings, never a colour — the time and the duration. The
+  size went to the summary: no app shows it per clip.
 - **The highlight sits on the row, not on the button.** `.clip-open:hover` lit
-  the data alone and left the three commands dark, that is, showed two adjacent
-  zones instead of one. The background is now on `.clip-row`, and the buttons
-  keep their own, which is lighter: "this row, and inside it, this command".
-  **And it no longer promises more than there is**: `.clip-open` is `flex: 1`,
-  so the gap in the middle — 750 px out of 1100 — really is pressable and opens
-  the clip. The case of both together is declared: `.clip-row.on` and
+  the data alone and left the commands dark, that is, showed two adjacent zones
+  instead of one. The background is on `.clip-row`. **And it promises no more
+  than there is**: `.clip-open` is `flex: 1`, so all of the row but the star
+  opens the clip. The case of both together is declared: `.clip-row.on` and
   `.clip-row:hover` are both 0,2,0, so without a rule for it the winner would be
   whichever is written last — either the clip that is playing loses its mark
   under the mouse, or the mouse does nothing on precisely the row being looked
   at.
 - **Three parallel commands carried three different widths.** A hierarchy drawn
   by a spelling accident instead of by a decision. **Equal widths where things
-  are parallel**, and measured: 93, 93, 93.
+  are parallel**, under the player now, by `minmax(0, 1fr)`: at 390 px the
+  Japanese `ダウンロード` wraps onto two lines inside its third, where with the
+  commands on the rows it ran off the screen.
+- **Filters are chips of the kinds the list holds, and they wrap.** Scrolling
+  sideways, a phone showed three of five: a filter that cannot be seen does not
+  exist. With one kind in the list there are none. **"Select" ends their row,
+  over the list**: in the heading it sat over the player, and read as the
+  player's. While selecting, that row holds the count, Delete and Cancel —
+  Cancel where Select was — and stays pinned to the top.
 - **A title takes a title step.** "Recordings" sat on `--t-lead`, which in the
   scale is the opening line of a text — a body role, not a heading — and was the
   only `h1` in the product not using one: beside the 40 px pill it read as the

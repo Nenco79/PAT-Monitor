@@ -4,19 +4,33 @@
   "auth.unreachable": "Serveur injoignable.",
   "clips.back": "Retour au moniteur",
   "clips.codec": "Ce navigateur ne peut pas lire l’audio de ces enregistrements. L’image s’affiche\u00a0; pour le son, télécharge le fichier. Mettre iOS à jour vers la 17 ou au-delà résout le problème.",
-  "clips.confirm": "Supprimer cet enregistrement\u00a0? On ne peut pas revenir en arrière.",
   "clips.delete": "Supprimer",
+  "clips.deleted": {
+    "one": "Enregistrement supprimé",
+    "other": "{n} enregistrements supprimés"
+  },
   "clips.download": "Télécharger",
   "clips.empty": "Aucun enregistrement pour l’instant. On en sauvegarde un à chaque événement dans la pièce, et un autre chaque fois que tu en demandes un depuis la page du moniteur.",
+  "clips.filter.all": "Tous",
+  "clips.filters": "Filtrer par type",
   "clips.keep": "Garder",
   "clips.keep.off": "Le garder\u00a0: le nettoyage automatique ne le supprime pas.",
   "clips.keep.on": "Gardé. Appuie pour le remettre parmi ceux qui expirent.",
+  "clips.kind.manual": "Manuel",
   "clips.manual": "Enregistrement manuel",
   "clips.note": {
     "one": "{n} enregistrement · {mb}\u00a0Mo · gardés\u00a0: {kept}",
     "other": "{n} enregistrements · {mb}\u00a0Mo · gardés\u00a0: {kept}"
   },
+  "clips.select": "Sélectionner",
+  "clips.select.cancel": "Annuler",
+  "clips.select.kept": "Gardé\u00a0: retire l’étoile pour pouvoir le supprimer.",
+  "clips.selected": {
+    "one": "{n} sélectionné",
+    "other": "{n} sélectionnés"
+  },
   "clips.title": "Enregistrements",
+  "clips.undo": "Rétablir",
   "err.already-set": "Le mot de passe est déjà défini.",
   "err.bad-request": "Demande invalide.",
   "err.cam-list-failed": "Impossible de lister les caméras.",
