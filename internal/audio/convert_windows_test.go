@@ -92,7 +92,10 @@ func TestToMonoS16Int16(t *testing.T) {
 // ones pat-wasapi's own converter did not have: on such an endpoint it handed
 // the analyser nothing, and reported "no sample received" about a microphone
 // that was delivering. A 16-bit sample must come back unchanged, because the
-// count of exact zeros is the figure the instrument exists for.
+// count of exact zeros is the figure the instrument exists for. For the same
+// reason the wider integers floor, and the rows that show it are the negative
+// values that are not a multiple of the 16-bit step: -1 and -65537 are where
+// truncating toward zero reads one LSB high, and -65536 alone cannot see it.
 func TestFirstChannelS16ReadsEveryFormat(t *testing.T) {
 	const loud = 0x7000 // on channel 1, on the 16-bit scale
 	for _, c := range []struct {
@@ -102,8 +105,8 @@ func TestFirstChannelS16ReadsEveryFormat(t *testing.T) {
 		want []int16
 	}{
 		{"int16", StreamFormat{BitsPerSample: 16}, []int64{0, 1, -1, 32767, -32768}, []int16{0, 1, -1, 32767, -32768}},
-		{"int24", StreamFormat{BitsPerSample: 24}, []int64{0, 0x123456, -256, 0x7FFFFF, -0x800000}, []int16{0, 0x1234, -1, 32767, -32768}},
-		{"int32", StreamFormat{BitsPerSample: 32}, []int64{0, 0x12345678, -65536}, []int16{0, 0x1234, -1}},
+		{"int24", StreamFormat{BitsPerSample: 24}, []int64{0, 0x123456, -256, -1, 0x7FFFFF, -0x800000}, []int16{0, 0x1234, -1, -1, 32767, -32768}},
+		{"int32", StreamFormat{BitsPerSample: 32}, []int64{0, 0x12345678, -65536, -1, -65537}, []int16{0, 0x1234, -1, -1, -2}},
 	} {
 		c.f.Channels = 2
 		bps := c.f.BitsPerSample / 8

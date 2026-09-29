@@ -971,8 +971,10 @@ var assetTypes = map[string]string{
 // serveAsset serves an embedded file, with the content type of its extension.
 //
 // An extension missing from assetTypes is a mistake in the route that names
-// it, so it panics where the route is registered, which every test that builds
-// a server goes through, rather than serving a file with no type.
+// it, so it panics rather than serving a file with no type: where the route is
+// registered, which every test that builds a server goes through, and at each
+// request for the four pages whose own handlers serve them, which only a test
+// that asks for that page goes through.
 func (s *Server) serveAsset(name string) http.HandlerFunc {
 	contentType, ok := assetTypes[path.Ext(name)]
 	if !ok {

@@ -45,9 +45,10 @@ const (
 	// It is not the break the other way round, and it is tied to it by the
 	// arithmetic of the step: going up, the pixels grow by about three quarters
 	// and the quantiser worsens by 4-5 points, so that cost has to fit between
-	// the two thresholds. Starting from reference+3 one arrives at reference+8,
-	// that is exactly at the limit and no further. Whoever touches `qpBreakSpan`
-	// has to touch this too.
+	// the two thresholds. Starting from reference+3 one arrives at reference+7,
+	// or at reference+8 at worst, which is the break itself, where the scale
+	// steps down again: the step fits with no margin at its upper cost. Whoever
+	// touches `qpBreakSpan` has to touch this too.
 	qpClimbSpan = 3
 )
 

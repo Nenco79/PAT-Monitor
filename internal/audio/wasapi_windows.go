@@ -305,7 +305,7 @@ const (
 func describeAudclnt(err error) error {
 	// wincom.Code answers zero for an error that is not an OleError, and no
 	// OleError carries zero: go-ole makes one only from a failed HRESULT.
-	code := uint32(wincom.Code(err))
+	code := wincom.Code(err)
 	if code == 0 {
 		return err
 	}

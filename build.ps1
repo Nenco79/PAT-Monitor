@@ -54,9 +54,12 @@ $ErrorActionPreference = 'Stop'
 $env:Path = "C:\Program Files\Go\bin;$env:Path"
 $env:CGO_ENABLED = '0'          # a single static binary, no runtime to install
 
-# New-Stage lays out what ships in $Stage: the binary just built, LICENSE,
-# NOTICE and licenses\. -Release zips it and -Msix packs it, and $What is the
-# word the refusals use for which of the two is being made.
+# Assert-Stageable refuses what must not ship, and New-Stage lays out what
+# does in $Stage: the binary just built, LICENSE, NOTICE and licenses\.
+# -Release zips it and -Msix packs it, and $What is the word the refusals use
+# for which of the two is being made. They are two functions because the
+# refusals come first in both: -Msix looks for the SDK before it lays anything
+# out, and a dirty tree has to be the answer on a machine without one too.
 #
 # **A build from a dirty tree matches no commit**, and the whole identifier
 # argument in internal/version rests on that not happening: `r` names a commit,
@@ -79,8 +82,8 @@ $env:CGO_ENABLED = '0'          # a single static binary, no runtime to install
 # whoever unpacks this has the thing as it is meant to sit on disk, and the
 # download half, when it is written, maps one onto the other with nothing to
 # translate.
-function New-Stage {
-    param([string]$What, [string]$Stage, [string]$Dirty, [string]$Sha)
+function Assert-Stageable {
+    param([string]$What, [string]$Dirty, [string]$Sha)
     if ($Dirty) { throw "the tree has uncommitted changes: a $What must match a commit" }
     if (-not $Sha) { throw "no commit: a $What has to be identifiable" }
 
@@ -88,7 +91,10 @@ function New-Stage {
     if ($LASTEXITCODE -ne 0) { throw "licence collection failed" }
     $stale = & git status --porcelain -- licenses 2>$null
     if ($stale) { throw "licenses\ was stale: commit the regenerated tree, then build again" }
+}
 
+function New-Stage {
+    param([string]$Stage)
     if (Test-Path $Stage) { Remove-Item -Recurse -Force $Stage }
     New-Item -ItemType Directory -Force $Stage | Out-Null
     Copy-Item bin\pat-monitor.exe $Stage
@@ -397,9 +403,10 @@ try {
         }
         if (-not (Test-Path -LiteralPath $keyPath)) { throw "the signing key $keyPath is not there" }
 
-        # The refusals, the licence tree and the layout: see New-Stage.
+        # The refusals, the licence tree and the layout: see Assert-Stageable.
+        Assert-Stageable -What "release" -Dirty $dirty -Sha $sha
         $stage = "dist\PAT-Monitor-$number-windows-amd64"
-        New-Stage -What "release" -Stage $stage -Dirty $dirty -Sha $sha
+        New-Stage -Stage $stage
 
         $zip = "$stage.zip"
         if (Test-Path $zip) { Remove-Item -Force $zip }
@@ -431,6 +438,10 @@ try {
     }
 
     if ($Msix) {
+        # A package is submitted, so the same refusals as a release, and before
+        # the SDK is looked for. See Assert-Stageable.
+        Assert-Stageable -What "package" -Dirty $dirty -Sha $sha
+
         # **The SDK is looked for and not written down.** The version folder
         # under Windows Kits changes with every SDK, and on a CI image it is
         # whatever that image happens to carry: a path spelled here is a build
@@ -450,11 +461,10 @@ try {
         $pkgver = (& go run .\cmd\pat-icon -print-package-version).Trim()
         if ($LASTEXITCODE -ne 0 -or -not $pkgver) { throw "the package version could not be asked for" }
 
-        # A package is submitted, so the same refusals as a release, and the
-        # same layout, which is the shape an installation has on disk, plus the
-        # two things only a package carries. See New-Stage.
+        # The same layout as a release, which is the shape an installation has
+        # on disk, plus the two things only a package carries. See New-Stage.
         $pkg = Join-Path "dist" "PAT-Monitor-$pkgver-x64"
-        New-Stage -What "package" -Stage $pkg -Dirty $dirty -Sha $sha
+        New-Stage -Stage $pkg
         New-Item -ItemType Directory -Force (Join-Path $pkg "Assets") | Out-Null
 
         # pat-icon writes a .syso whatever else it is asked to draw, so the two

@@ -118,7 +118,8 @@ a heading to its file, `grep -rn` the heading.
 The list under the table is generated: after adding, renaming, moving or
 deleting a heading, run `go test ./internal/doc -run TestTheIndexIsTheHeadings
 -update` and commit what it writes. The flag belongs to that package alone, so
-`go test ./... -update` stops at the first package that does not define it.
+`go test ./... -update` fails in every other package, and it still rewrites the
+index when it is stale: use the command above.
 
 | slice | what it carries |
 |---|---|

@@ -1432,7 +1432,7 @@ What that cost, measured in one night's log:
 
 **Every instrument it needed was already there and nobody was loading it.**
 `Stats.LastVideoUnix` is written on every access unit, and its comment says it
-exists "to notice that one stream has stopped while everything else stays
+exists "to notice that the picture has stopped while everything else stays
 alive" — a sentence that had been true and unread for as long as it had been
 written. The same holds one floor up: `SetCamera` argues it needs no grace of
 its own because `capture-stopped` "asks for half a minute of no frames", and no

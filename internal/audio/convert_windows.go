@@ -60,7 +60,14 @@ func FirstChannelS16(src []byte, f StreamFormat, dst []int16) (int, error) {
 		if err != nil {
 			return 0, err
 		}
-		dst[i] = SaturateS16(v * 32768)
+		x := v * 32768
+		if !f.Float {
+			// Floored, as an arithmetic shift would: truncating toward zero
+			// turns every sample within one LSB below zero into an exact
+			// zero, doubling the count this reader exists to report.
+			x = math.Floor(x)
+		}
+		dst[i] = SaturateS16(x)
 	}
 	return frames, nil
 }

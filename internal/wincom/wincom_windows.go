@@ -218,9 +218,14 @@ func Thread(a Apartment, s Sharing, fn func() error) error {
 }
 
 // Code pulls the HRESULT out of a go-ole error. Zero if it is not one of theirs.
-func Code(err error) uintptr {
+//
+// It answers 32 bits because an HRESULT is 32 bits: go-ole keeps the whole
+// register the call returned in, and the x64 ABI leaves its upper half
+// undefined, so a comparison on the wide value could miss the very code it
+// names.
+func Code(err error) uint32 {
 	if oe, ok := errors.AsType[*ole.OleError](err); ok {
-		return oe.Code()
+		return uint32(oe.Code())
 	}
 	return 0
 }
@@ -262,7 +267,7 @@ var ErrDenied = errors.New("Windows refused access to the device (E_ACCESSDENIED
 // would stop recognising the refusal the moment somebody added an fmt.Errorf in
 // between — that is, it would go green and blind on the same edit.
 func Denied(err error) bool {
-	return errors.Is(err, ErrDenied) || DeniedHRESULT(Code(err))
+	return errors.Is(err, ErrDenied) || DeniedHRESULT(uintptr(Code(err)))
 }
 
 // DeniedHRESULT reports whether a bare return code is that refusal. It is for

@@ -109,6 +109,9 @@ func TestARealFailureKeepsItsCode(t *testing.T) {
 	if got := Code(err); got != 0x8007000E {
 		t.Errorf("Code = %#x, wanted 0x8007000E", got)
 	}
+	if got := Code(ole.NewError(0xFFFFFFFF_8007000E)); got != 0x8007000E {
+		t.Errorf("Code on a sign-extended HRESULT = %#x, wanted 0x8007000E", got)
+	}
 	if got := Code(errors.New("boom")); got != 0 {
 		t.Errorf("Code on a foreign error = %#x, wanted 0", got)
 	}

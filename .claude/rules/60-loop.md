@@ -1730,13 +1730,14 @@ difficult the scene is. The quantiser does, which is why libwebrtc also drives
 resolution from there.
 
 So: **the QP brings it down, bandwidth remains the constraint for climbing
-back.** Above 38 it drops a step and looks again — unlike bandwidth, the QP does
+back.** At 38 or above it drops a step and looks again — unlike bandwidth, the QP does
 not say by how much one is out, only that one is. To climb back both things are
 needed: bandwidth with 40% margin **and** QP at or below 33 (`qpClimbAt`, the
 reference plus three). The second condition is not the first reversed, and it
 is computed: the step above has three quarters more pixels, which cost 4-5
-points of QP, so starting from 33 one arrives at 37 or 38, at the break and not
-beyond it; starting from 36 one would end beyond it and come straight back down.
+points of QP, so starting from 33 one arrives at 37, or at 38 at worst, which is
+the break itself, where the scale steps down again: the step fits with no
+margin at its upper cost, and starting from 36 it cannot fit at all.
 
 After a size change, **four seconds** are allowed before listening to the QP
 again: the encoder has just been rebuilt and its first frames carry a keyframe
