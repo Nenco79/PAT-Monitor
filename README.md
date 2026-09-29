@@ -86,7 +86,7 @@ not there: a browser asking for `zh-TW` gets the Simplified catalogue.
 
 <p align="center">
   <img src="images/recordings.png" width="100%"
-       alt="The recordings page: one row per clip with its time, what was recognised, its length and size, and buttons to download, keep or delete it.">
+       alt="The recordings page: the player at the top with the open clip's time and kind, Download and Delete; under it a filter per kind of clip with its count, then the clips grouped by day, each row with what was recognised, its time and length, and a star to keep it.">
 </p>
 
 ## Requirements

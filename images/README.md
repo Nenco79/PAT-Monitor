@@ -31,6 +31,28 @@ protocol at 1180x1000 with a device scale factor of 2, captured whole and then
 cropped to end on a whole element and scaled to 1400 wide. A picture cut across
 the middle of a card reads as a broken layout rather than as a crop.
 
+**`recordings.png` was taken again on 29 September 2026**, after the page became
+a list of kinds, from the build that printed `1.3.0 r99 (0929c0b)`, and not
+the same way: at 1180 wide the short list left the picture mostly empty, so Edge
+drew it 934 wide with a device scale factor of 1.5, which is 1400 wide as
+captured and needs no scaling, and it was cropped to 1400x1604 to end on the
+last row. The monitor ran
+on a scratch configuration with no password of its own, the Funnel and the
+detections off, and the browser asked for `en-US`; the clips are the ones that
+were in `Video\PAT Monitor` that evening, and the picture ends on the last of
+them.
+
+**The player in it is the one thing staged.** The first clip is open, as a press
+on its row opens it, but every clip that evening had a person in the frame, and
+no frame of any of them is in the picture: the video was set to `preload="none"`
+before the row was pressed, so nothing was decoded. A `<video>` that has not
+decoded anything does not know its size and draws a strip, so the box was given
+the clips' own 16:9. Its native controls were then
+removed and a play button drawn at the centre, because a paused Chromium player
+draws its whole bar and not a single button. Everything around the player —
+the line under it, the filters, the list, the highlighted row — is what the
+page drew.
+
 **The two viewer pictures were photographed and not driven, because they cannot
 be driven.** The other three are pages a headless browser can be pointed at;
 these are worth a picture only while there is a real camera pointing at a real
