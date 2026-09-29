@@ -673,16 +673,21 @@ func run(log *slog.Logger, path string) error {
 	sinks := pipeline.Sinks{
 		// **The hub first, then the ring**: the media has priority, the pre-roll
 		// is an accessory. Neither of the two copies a byte.
+		//
+		// **The ring dates with the capture instant, not with now.** A frame
+		// gets here some 80 ms after the camera saw it and a packet some 10
+		// after the microphone heard it, so dated here the sound in a clip led
+		// the picture by the difference. See pipeline.capturedAt.
 		Video: func(au media.AccessUnit) {
 			hub.WriteVideo(au)
-			rec.WriteVideo(au, time.Now())
+			rec.WriteVideo(au, au.At)
 		},
 		// The ring receives the room's audio **during the talk-back too**, where
 		// the hub discards it: there the silence is there to avoid howling, in a
 		// recording it would only erase the room.
-		Audio: func(pkt []byte) {
+		Audio: func(pkt []byte, at time.Time) {
 			hub.WriteAudio(pkt)
-			rec.WriteAudio(pkt, time.Now())
+			rec.WriteAudio(pkt, at)
 		},
 		Motion: func(frame []byte, srcW, srcH int) {
 			now := time.Now()

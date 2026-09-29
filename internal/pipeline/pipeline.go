@@ -190,10 +190,14 @@ func (c *Config) applyDefaults() {
 // from its producer's goroutine and must not block for long: anyone who needs
 // slow processing has to queue internally.
 type Sinks struct {
-	// Video receives an Access Unit (one complete encoded frame).
+	// Video receives an Access Unit (one complete encoded frame), whose At is
+	// when the camera captured it.
 	Video func(media.AccessUnit)
-	// Audio receives an Opus packet ready to send.
-	Audio func(packet []byte)
+	// Audio receives an Opus packet ready to send, and when its first sample
+	// was captured. **The two instants are on one clock**, and that is what
+	// they are for: whoever puts both tracks in one file dates them with these
+	// and not with the moment each callback ran, which differs by the encoder.
+	Audio func(packet []byte, at time.Time)
 	// Motion receives a gray frame of MotionWidth x MotionHeight, **with the
 	// size it was derived from**: the analysis frame is always the same size, so
 	// on its own it never says the source has changed, and a change of source
@@ -3156,6 +3160,10 @@ type videoSession struct {
 	cur    videoFormat
 	gate   cadenceGate
 	motion *motionScaler
+	// datingTold and byCamera are how this session dates its frames, as the log
+	// was last told: it is written when it changes, not per frame, because it
+	// is a property of the camera.
+	datingTold, byCamera bool
 }
 
 // take collects what the encoder has ready and hands it on, one access unit at
@@ -3164,8 +3172,20 @@ type videoSession struct {
 func (v *videoSession) take() error {
 	p := v.p
 	for {
-		got, err := v.enc.Take(func(b []byte) error {
-			for _, au := range v.asm.Write(b) {
+		got, err := v.enc.Take(func(b []byte, pts time.Duration, hasPTS bool) error {
+			clock := mf.SystemTime()
+			at, fromCamera := capturedAt(pts, hasPTS, clock, time.Now())
+			if !v.datingTold || fromCamera != v.byCamera {
+				v.datingTold, v.byCamera = true, fromCamera
+				if fromCamera {
+					p.cfg.Log.Info("frames dated by the camera's clock",
+						"age_ms", (clock - pts).Milliseconds())
+				} else {
+					p.cfg.Log.Info("frames dated on arrival: their timestamp is not the capture instant",
+						"has_timestamp", hasPTS, "age_ms", (clock - pts).Milliseconds())
+				}
+			}
+			for _, au := range v.asm.Write(b, at) {
 				frames := p.Stats.VideoFrames.Add(1)
 				p.simulatePanic("video", frames)
 				if au.Keyframe {
@@ -3825,6 +3845,7 @@ func (p *Pipeline) runAudio(ctx context.Context, sinks Sinks) error {
 			return nil
 		},
 		func(pcm []byte, silent bool) error {
+			arrived := time.Now()
 			if p.cfg.Trace != nil {
 				p.cfg.Trace.MicCallback.Mark(time.Now())
 			}
@@ -3849,6 +3870,7 @@ func (p *Pipeline) runAudio(ctx context.Context, sinks Sinks) error {
 			// dozen samples.
 			frameSamples := enc.FrameSamples()
 			for len(mono) >= frameSamples {
+				at := packetStart(arrived, len(mono), format.SampleRate)
 				pkt, err := enc.Encode(mono[:frameSamples])
 				mono = append(mono[:0], mono[frameSamples:]...)
 				if err != nil {
@@ -3862,7 +3884,7 @@ func (p *Pipeline) runAudio(ctx context.Context, sinks Sinks) error {
 					p.cfg.Trace.AudioEncode.Mark(time.Now())
 				}
 				if sinks.Audio != nil {
-					sinks.Audio(pkt)
+					sinks.Audio(pkt, at)
 				}
 			}
 

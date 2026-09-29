@@ -992,8 +992,9 @@ func (e *VideoEncoder) Feed(s *Sample) error { return e.t.processInput(s) }
 //
 // The bytes are valid only inside fn: they belong to the encoder, which reuses
 // them. It returns false when there was nothing to collect, which on
-// synchronous transforms is normal.
-func (e *VideoEncoder) Take(fn func(data []byte) error) (bool, error) {
+// synchronous transforms is normal. at is the sample's time, in the units of
+// SystemTime, and ok says whether the sample carried one.
+func (e *VideoEncoder) Take(fn func(data []byte, at time.Duration, ok bool) error) (bool, error) {
 	var buffer outputDataBuffer
 
 	// If the encoder allocates the samples itself, which is what hardware
@@ -1104,7 +1105,11 @@ func (e *VideoEncoder) Take(fn func(data []byte) error) (bool, error) {
 	}
 	defer mb.Release()
 
-	if err := mb.WithBytes(fn); err != nil {
+	// **The frame keeps the instant it was captured at**: a transform copies
+	// the input sample's time onto the output, so this is the camera's and
+	// not the moment the bytes came out. A sample with none says so.
+	at, atErr := buffer.Sample.Time()
+	if err := mb.WithBytes(func(b []byte) error { return fn(b, at, atErr == nil) }); err != nil {
 		return true, err
 	}
 	return true, nil

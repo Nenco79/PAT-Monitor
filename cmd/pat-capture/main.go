@@ -231,11 +231,16 @@ func main() {
 		// encoder: a frame identical to its predecessor is a P slice with no
 		// residual, tens of bytes, while a real one at these sizes is
 		// kilobytes. Two populations three orders apart need no threshold.
-		interSizes     []int
-		levelAcc       detect.Accumulator
-		lastLevel      detect.Block
-		prevGray       []byte
-		motionScoreMax float64
+		interSizes []int
+		// videoAges and audioAges are how old each frame and each packet is when
+		// it reaches the sinks, counted from the instant it was captured. Their
+		// difference is what a file dated on arrival puts between the sound and
+		// the picture.
+		videoAges, audioAges []time.Duration
+		levelAcc             detect.Accumulator
+		lastLevel            detect.Block
+		prevGray             []byte
+		motionScoreMax       float64
 	)
 	videoDelivery := fullRun(time.Second / time.Duration(*fps))
 	audioDelivery := fullRun(opusFrameDuration)
@@ -305,6 +310,7 @@ func main() {
 			defer mu.Unlock()
 			now := time.Now()
 			videoDelivery.Mark(now)
+			videoAges = append(videoAges, now.Sub(au.At))
 			videoBytes += int64(len(au.Data))
 			if !au.Keyframe {
 				interSizes = append(interSizes, len(au.Data))
@@ -374,10 +380,12 @@ func main() {
 				return true
 			})
 		},
-		Audio: func(pkt []byte) {
+		Audio: func(pkt []byte, at time.Time) {
 			mu.Lock()
 			defer mu.Unlock()
-			audioDelivery.Mark(time.Now())
+			now := time.Now()
+			audioDelivery.Mark(now)
+			audioAges = append(audioAges, now.Sub(at))
 			audioBytes += int64(len(pkt))
 			if rec != nil {
 				rec.feedAudio(pkt)
@@ -688,6 +696,17 @@ func main() {
 		}
 		fmt.Printf("  [    ] frames between keyframes: %d, bytes p10 %d  median %d  p90 %d  —  under 500 bytes: %d (%d%%)\n",
 			n, at(10), at(50), at(90), tiny, 100*tiny/n)
+	}
+	// **How old each track is when it arrives**, from the instant it was
+	// captured. The clips are dated with the capture instant, so this is not a
+	// fault to find there; it is what dating on arrival would cost, and it is
+	// the number that says how far the capture clock can be trusted — an age
+	// that is always zero means the frames carry no timestamp and fell back.
+	if len(videoAges) > 0 && len(audioAges) > 0 {
+		v, a := percentiles(videoAges), percentiles(audioAges)
+		fmt.Printf("  [    ] age on delivery: video median %v p90 %v, audio median %v p90 %v  —  "+
+			"dated on arrival, the sound would lead the picture by %v\n",
+			v[0], v[1], a[0], a[1], v[0]-a[0])
 	}
 	// The quantiser is the number that says whether the picture will hold up
 	// under movement, and it is not an OK/FAIL: it is a measurement to be read.
@@ -1035,4 +1054,13 @@ func fatal(format string, a ...any) {
 func streamIsConstant(p *pipeline.Pipeline, samples int64) bool {
 	min, max := p.QPStreamRange()
 	return samples > 60 && min > 0 && min == max
+}
+
+// percentiles gives the median and the p90 of a set of durations, to the
+// millisecond.
+func percentiles(d []time.Duration) [2]time.Duration {
+	s := slices.Clone(d)
+	slices.Sort(s)
+	at := func(p int) time.Duration { return s[(p*(len(s)-1))/100].Round(time.Millisecond) }
+	return [2]time.Duration{at(50), at(90)}
 }

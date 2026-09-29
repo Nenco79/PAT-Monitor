@@ -51,6 +51,39 @@ The second direction is the worse of the two, and that is why it is worth the
 paragraph: the first **invents** a fault that has passed, the second **hides**
 one that is happening. Covered by `TestTheCadenceDoesNotSurviveTheCameraStopping`.
 
+### A clip is dated by capture, not by arrival
+
+**The two tracks are late by different amounts.** Measured on the AMD machine
+with `pat-capture`, 720p30, webcam and exclusive microphone: a frame reaches the
+sinks **82 ms** after the camera stamped it (p90 107), a packet of audio **21
+ms** after its first sample. The recorder dated both with `time.Now()` in the
+sink and puts them on one clock in the file, so **the sound led the picture by
+61 ms** — noticed watching a clip, invisible in the file, and past the 45 ms at
+which ITU-R BT.1359 puts a sound lead's detectability, not a measurement here.
+
+**The camera's timestamp is the capture instant, and it survives the
+encoder**: a transform copies the input sample's time onto the output, and it
+is on `MFGetSystemTime`'s clock, so `mf.SystemTime()` minus the stamp is the
+frame's age. The audio's half is arithmetic: a packet began as many samples
+before its block arrived as are still queued (`pipeline.packetStart`).
+
+- **The assembler hands a frame out one `Write` late**, when the next one
+  begins; stamped with the closing call's instant every frame would be one
+  frame later still. `AccessUnit.At` is the instant of the chunk the frame
+  **began** in.
+- **A stamp that cannot be the capture instant is not believed**: none, in the
+  future, or older than a second — a camera counting from its own start would
+  give its uptime. The fallback is arrival, which is what every clip had before,
+  and the log says which road the session took and when it changes.
+- **The live stream is not touched**: the hub still stamps on arrival. Whether
+  a browser shows the same lead has not been measured.
+
+`pat-capture` prints both ages and their difference, `age on delivery`. Covered
+by `TestAnAccessUnitCarriesTheInstantOfItsOwnFrame`,
+`TestAFrameIsDatedWhenTheCameraSawIt` and, for the wiring,
+`TestTheRecorderIsGivenTheCaptureInstant` — all three watched failing with the
+defect put back.
+
 ### SDP constraints, all discovered as "codec is not supported by remote"
 
 - H.264 **constrained** baseline, `42e0xx`. Plain baseline `4200xx` is refused:

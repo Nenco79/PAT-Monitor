@@ -26,8 +26,6 @@ instruction nobody can hold is an instruction nobody follows.** The record was
 condensed once: the narration went, and every heading and every number stayed,
 checked mechanically against the text before. What a session in each package
 starts with has a ceiling in words in `internal/doc`, and it only goes down.
-The slices are plain markdown, they read in order, and the index below says
-which chapter is in which.
 
 **One list is written by hand and the other is generated, and both are
 watched.** The table of slices is written by hand, and `internal/doc` fails if
@@ -186,6 +184,7 @@ index when it is stale: use the command above.
   - Crying and barking are recognised by shape, and the floor is measured by
     the room
   - The media clock chases the real cadence, not the nominal one
+  - A clip is dated by capture, not by arrival
   - SDP constraints, all discovered as "codec is not supported by remote"
 - **The loop: what the monitor decides, and in what order**
   - The sensors

@@ -3,6 +3,7 @@ package media
 import (
 	"encoding/hex"
 	"fmt"
+	"time"
 )
 
 // H.264 NAL unit types (RFC 6184 / ITU-T H.264 table 7-1).
@@ -419,12 +420,20 @@ type AUAssembler struct {
 	// looking at the header of the next NAL, still incomplete. When that NAL
 	// arrives whole it must not be judged as a boundary again.
 	preFlushed bool
+
+	// pendingAt is when the access unit under construction was captured, and
+	// bufAt when the piece still waiting in buf was: an access unit leaves one
+	// Write late, so the instant it goes out with has to be the one it came in
+	// with, not the one of the chunk that closed it.
+	pendingAt, bufAt time.Time
 }
 
 // AccessUnit is one complete coded frame.
 type AccessUnit struct {
 	Data     []byte // Annex-B, start codes included
 	Keyframe bool
+	// At is when the frame was captured, as the chunk that began it declared.
+	At time.Time
 }
 
 // Write adds raw data and returns the access units it completed.
@@ -432,7 +441,20 @@ type AccessUnit struct {
 // An access unit counts as complete when the next one begins: so the last frame
 // stays pending until more data arrives. For a live stream that is the right
 // behaviour (one frame of delay).
-func (a *AUAssembler) Write(chunk []byte) []AccessUnit {
+//
+// at is when the chunk was captured, and each access unit carries the at of the
+// chunk its first NAL arrived in.
+func (a *AUAssembler) Write(chunk []byte, at time.Time) []AccessUnit {
+	carried := len(a.buf) // bytes before this belong to an earlier chunk
+	if carried == 0 {
+		a.bufAt = at
+	}
+	nalAt := func(offset int) time.Time {
+		if offset < carried {
+			return a.bufAt
+		}
+		return at
+	}
 	a.buf = append(a.buf, chunk...)
 
 	starts := findStartCodes(a.buf)
@@ -478,6 +500,9 @@ func (a *AUAssembler) Write(chunk []byte) []AccessUnit {
 			a.pps = append(a.pps[:0], data...)
 		}
 
+		if len(a.pending) == 0 {
+			a.pendingAt = nalAt(starts[i].offset)
+		}
 		a.pending = append(a.pending, 0, 0, 0, 1)
 		a.pending = append(a.pending, data...)
 		if n.IsVCL() {
@@ -506,6 +531,7 @@ func (a *AUAssembler) Write(chunk []byte) []AccessUnit {
 	}
 
 	// Keep the last (possibly incomplete) NAL.
+	a.bufAt = nalAt(lastStart.offset)
 	a.buf = append(a.buf[:0], a.buf[lastStart.offset:]...)
 	return out
 }
@@ -543,7 +569,7 @@ func (a *AUAssembler) flush() *AccessUnit {
 
 	a.pending = a.pending[:0]
 	a.seenVCL = false
-	return &AccessUnit{Data: data, Keyframe: keyframe}
+	return &AccessUnit{Data: data, Keyframe: keyframe, At: a.pendingAt}
 }
 
 // Stats sums up the make-up of an Annex-B bitstream. It is there to check that

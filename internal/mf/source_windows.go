@@ -676,6 +676,20 @@ func (s *Sample) vtblSample() *sampleVtbl {
 	return (*sampleVtbl)(unsafe.Pointer(s.RawVTable))
 }
 
+// Time is the sample's instant, in the units of SystemTime.
+//
+// A sample that carries none answers with an error — MF_E_NO_SAMPLE_TIMESTAMP —
+// and that is not a fault: whoever reads it falls back on the arrival instant.
+func (s *Sample) Time() (time.Duration, error) {
+	var t int64
+	r, _, _ := syscall.SyscallN(s.vtblSample().GetSampleTime,
+		uintptr(unsafe.Pointer(s)), uintptr(unsafe.Pointer(&t)))
+	if err := check("GetSampleTime", r); err != nil {
+		return 0, err
+	}
+	return time.Duration(t) * 100, nil
+}
+
 // Buffer returns the data as a single contiguous block.
 //
 // A sample can have several buffers, and the conversion joins them: it costs a
