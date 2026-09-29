@@ -16,18 +16,17 @@
   "clips.keep.off": "保護する: 自動削除の対象から外れます。",
   "clips.keep.on": "保護中です。押すと、期限が来たら消える録画に戻ります。",
   "clips.kind.manual": "手動",
-  "clips.manual": "手動録画",
   "clips.note": {
     "other": "{n} 件の録画 · {mb} MB · 保護: {kept}"
   },
   "clips.select": "選択",
   "clips.select.cancel": "キャンセル",
-  "clips.select.kept": "保護中です。削除するには星を外してください。",
   "clips.selected": {
     "other": "{n} 件を選択"
   },
   "clips.title": "録画",
   "clips.undo": "元に戻す",
+  "clips.zip-limit": "一度にダウンロードできる録画は {max} 件までです。",
   "err.already-set": "パスワードはすでに設定されています。",
   "err.bad-request": "無効なリクエストです。",
   "err.cam-list-failed": "カメラの一覧を取得できませんでした。",

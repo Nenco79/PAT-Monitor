@@ -17,20 +17,19 @@
   "clips.keep.off": "Tienila: la pulizia automatica non la cancella.",
   "clips.keep.on": "Tenuta. Premi per rimetterla fra quelle che scadono.",
   "clips.kind.manual": "Manuale",
-  "clips.manual": "Registrazione manuale",
   "clips.note": {
     "one": "{n} registrazione · {mb} MB · tenute: {kept}",
     "other": "{n} registrazioni · {mb} MB · tenute: {kept}"
   },
   "clips.select": "Seleziona",
   "clips.select.cancel": "Annulla",
-  "clips.select.kept": "Tenuta: togli la stella per poterla eliminare.",
   "clips.selected": {
     "one": "{n} selezionata",
     "other": "{n} selezionate"
   },
   "clips.title": "Registrazioni",
-  "clips.undo": "Ripristina",
+  "clips.undo": "Annulla",
+  "clips.zip-limit": "Si possono scaricare al massimo {max} registrazioni alla volta.",
   "err.already-set": "La password è già impostata.",
   "err.bad-request": "Richiesta non valida.",
   "err.cam-list-failed": "Non è stato possibile elencare le telecamere.",

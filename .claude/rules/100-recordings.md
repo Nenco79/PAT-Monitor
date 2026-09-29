@@ -191,11 +191,11 @@ leak: every press would leave a few megabytes on disk that no rule touches
 again, that is, the promise about the disk of whoever hosts us would stop
 holding precisely for the kind of clip the user produces on command. There is
 now `Release`, and on the recordings page the lock is **a star on every row**,
-filled when on, and **the bar's toggle** under the player for the clip that is
-open: `aria-pressed` on both, and a tooltip saying what pressing does. The
-"Kept" badge went with the one-way street — a badge is not pressed. **And a kept
-clip cannot be selected for deleting**: a delete by the handful is exactly the
-rule the lock promises does not touch it, so the star comes off first.
+filled when on, with `aria-pressed` and a tooltip saying what pressing does —
+and only there: a Keep under the player too was the same command twice. The
+"Kept" badge went with the one-way street — a badge is not pressed. **The lock is
+against the monitor's cleanup, not the owner**: a kept clip is selected and
+deleted like any other, since every delete can be taken back.
 
 Four decisions not visible from the code:
 
@@ -211,7 +211,7 @@ Four decisions not visible from the code:
 - **`manual` is a code, and it goes through `UsableCode`.** It becomes part of
   the file name, and a malformed code produces a clip that listing, pruning and
   deletion **all skip**: an invisible file taking up space and counting in
-  neither ceiling. The word the page shows lives in `clips.manual`, so the
+  neither ceiling. The word the page shows lives in `clips.kind.manual`, so the
   string is written in two languages, Go and JavaScript, and
   `TestThePageKnowsTheManualClipCode` holds them together.
 - **There is one refusal, and it is told to whoever pressed.** In the first
@@ -285,8 +285,9 @@ attribution for a geometry anybody would draw the same.
   sat as three labelled pills on every row — eighteen buttons for six clips,
   heavier than the clips, and not the shape of any camera app the owner looked
   at: Blink, Google, Eufy and Wyze put a clip's commands in its player or behind
-  a menu, and deleting many in a selection mode. The three now live under the
-  player, once, **Delete last**; the row is its kind as a glyph and a word — the
+  a menu, and deleting many in a selection mode. Download and Delete now share
+  the one line under the player that names the clip, **Delete last**, and the
+  lock is the row's star; the row is its kind as a glyph and a word — the
   viewer bar's own drawings, never a colour — the time and the duration. The
   size went to the summary: no app shows it per clip.
 - **The highlight sits on the row, not on the button.** `.clip-open:hover` lit
@@ -298,17 +299,17 @@ attribution for a geometry anybody would draw the same.
   whichever is written last — either the clip that is playing loses its mark
   under the mouse, or the mouse does nothing on precisely the row being looked
   at.
-- **Three parallel commands carried three different widths.** A hierarchy drawn
-  by a spelling accident instead of by a decision. **Equal widths where things
-  are parallel**, under the player now, by `minmax(0, 1fr)`: at 390 px the
-  Japanese `ダウンロード` wraps onto two lines inside its third, where with the
-  commands on the rows it ran off the screen.
-- **Filters are chips of the kinds the list holds, and they wrap.** Scrolling
-  sideways, a phone showed three of five: a filter that cannot be seen does not
-  exist. With one kind in the list there are none. **"Select" ends their row,
-  over the list**: in the heading it sat over the player, and read as the
-  player's. While selecting, that row holds the count, Delete and Cancel —
-  Cancel where Select was — and stays pinned to the top.
+- **Filters are chips, every kind always, the empty ones greyed**, as the owner
+  asked to see them, and they wrap: scrolling sideways, a phone showed three of
+  five. **"Select" rides on the first day's heading** — in the page heading it
+  sat over the player and read as the player's; on the filters' row it wrapped
+  onto a line of its own — and becomes Cancel there while selecting, the count,
+  Download, Keep and Delete floating at the foot of the screen. **A selection
+  downloads as one ZIP** (`/api/clips.zip`): several downloads from one page are
+  a permission prompt in Chrome and one file on an iPhone. The clips are stored,
+  not deflated, all checked before a byte is sent — a missing one is a 404, not
+  a truncated archive — and each held open only while written: Windows will not
+  rename or delete a file being read.
 - **A title takes a title step.** "Recordings" sat on `--t-lead`, which in the
   scale is the opening line of a text — a body role, not a heading — and was the
   only `h1` in the product not using one: beside the 40 px pill it read as the

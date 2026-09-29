@@ -158,6 +158,7 @@ func TestTheClipRoutesNeedASession(t *testing.T) {
 	}{
 		{http.MethodGet, "/api/clips"},
 		{http.MethodGet, "/api/clips/" + name},
+		{http.MethodGet, "/api/clips.zip?name=" + name},
 		{http.MethodPost, "/api/clips/" + name + "/keep"},
 		{http.MethodPost, "/api/clips/" + name + "/release"},
 		{http.MethodPost, "/api/clips/" + name + "/delete"},

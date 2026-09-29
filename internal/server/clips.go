@@ -1,7 +1,9 @@
 package server
 
 import (
+	"archive/zip"
 	"errors"
+	"io"
 	"net/http"
 	"os"
 
@@ -75,6 +77,90 @@ func (s *Server) apiClipFile(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Disposition", `attachment; filename="`+e.Name+`"`)
 	}
 	http.ServeContent(w, r, e.Name, e.At, f)
+}
+
+// maxZipClips is the most clips one archive carries. A selection is a day or
+// two of events, and the ceiling is there so that a request cannot hold every
+// clip on the disk open at once.
+const maxZipClips = 200
+
+// apiClipsZip hands several clips over as one file, for a selection.
+//
+// **One download and not one per clip**, because a page that starts several
+// at once is asked by Chrome for permission to download "multiple files", and
+// on an iPhone only the first arrives. The clips are already compressed, so
+// they are stored rather than deflated: deflating H.264 costs the CPU and
+// gains nothing.
+//
+// **Every clip is checked before a byte is written, and each is held only while
+// it is written.** Once the archive has begun the status is 200 and cannot
+// change, so a name that is not there — deleted by the cleanup since the page
+// listed it — would come out as a truncated archive: checked first, it is a 404
+// with nothing sent. They are not all kept open through the transfer, though,
+// because on Windows a file somebody is reading cannot be renamed or deleted:
+// twenty clips going to a phone over the Funnel would have refused every Keep,
+// every Delete and the cleanup itself for as long as the download ran. One
+// that vanishes in the moment between the check and its turn is left out and
+// said in the log.
+func (s *Server) apiClipsZip(w http.ResponseWriter, r *http.Request) {
+	clips := s.clipStore(w)
+	if clips == nil {
+		return
+	}
+	names := r.URL.Query()["name"]
+	if len(names) == 0 || len(names) > maxZipClips {
+		writeJSONError(w, http.StatusBadRequest, ErrBadRequest)
+		return
+	}
+	var unique []string
+	seen := map[string]bool{}
+	for _, n := range names {
+		if seen[n] {
+			continue
+		}
+		seen[n] = true
+		f, _, err := clips.Open(n)
+		if err != nil {
+			writeJSONError(w, http.StatusNotFound, ErrNoSuchClip)
+			return
+		}
+		f.Close()
+		unique = append(unique, n)
+	}
+
+	w.Header().Set("Content-Type", "application/zip")
+	w.Header().Set("Content-Disposition", `attachment; filename="clips.zip"`)
+	zw := zip.NewWriter(w)
+	for _, n := range unique {
+		if err := addToArchive(zw, clips, n); err != nil {
+			if errIsMissingClip(err) {
+				s.log.Warn("a clip left the archive: it went while it was being sent", "file", n)
+				continue
+			}
+			s.log.Warn("the clips archive was cut short", "file", n, "error", err)
+			return
+		}
+	}
+	if err := zw.Close(); err != nil {
+		s.log.Warn("the clips archive was cut short", "error", err)
+	}
+}
+
+// addToArchive writes one clip into the archive, holding it open only while
+// it is written. The name inside is the store's, already validated, as for a
+// single download.
+func addToArchive(zw *zip.Writer, clips *record.Store, name string) error {
+	f, e, err := clips.Open(name)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	part, err := zw.CreateHeader(&zip.FileHeader{Name: e.Name, Method: zip.Store, Modified: e.At})
+	if err != nil {
+		return err
+	}
+	_, err = io.Copy(part, f)
+	return err
 }
 
 // apiClipKeep exempts a clip from the retention.

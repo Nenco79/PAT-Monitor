@@ -17,20 +17,19 @@
   "clips.keep.off": "Keep it: the automatic cleanup does not delete it.",
   "clips.keep.on": "Kept. Press to put it back among the ones that expire.",
   "clips.kind.manual": "Manual",
-  "clips.manual": "Manual recording",
   "clips.note": {
     "one": "{n} recording · {mb} MB · kept: {kept}",
     "other": "{n} recordings · {mb} MB · kept: {kept}"
   },
   "clips.select": "Select",
   "clips.select.cancel": "Cancel",
-  "clips.select.kept": "Kept: take the star off to delete it.",
   "clips.selected": {
     "one": "{n} selected",
     "other": "{n} selected"
   },
   "clips.title": "Recordings",
   "clips.undo": "Undo",
+  "clips.zip-limit": "At most {max} recordings can be downloaded at a time.",
   "err.already-set": "The password is already set.",
   "err.bad-request": "Invalid request.",
   "err.cam-list-failed": "The cameras could not be listed.",

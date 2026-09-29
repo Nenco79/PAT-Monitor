@@ -17,20 +17,19 @@
   "clips.keep.off": "Behalte sie: Die automatische Aufräumung löscht sie nicht.",
   "clips.keep.on": "Behalten. Drücke, um sie wieder zu den ablaufenden zu legen.",
   "clips.kind.manual": "Manuell",
-  "clips.manual": "Manuelle Aufnahme",
   "clips.note": {
     "one": "{n} Aufnahme · {mb} MB · behalten: {kept}",
     "other": "{n} Aufnahmen · {mb} MB · behalten: {kept}"
   },
   "clips.select": "Auswählen",
   "clips.select.cancel": "Abbrechen",
-  "clips.select.kept": "Behalten: Nimm den Stern weg, um sie zu löschen.",
   "clips.selected": {
     "one": "{n} ausgewählt",
     "other": "{n} ausgewählt"
   },
   "clips.title": "Aufnahmen",
   "clips.undo": "Rückgängig",
+  "clips.zip-limit": "Es lassen sich höchstens {max} Aufnahmen auf einmal herunterladen.",
   "err.already-set": "Das Passwort ist schon gesetzt.",
   "err.bad-request": "Ungültige Anfrage.",
   "err.cam-list-failed": "Die Kameras konnten nicht aufgelistet werden.",

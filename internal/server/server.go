@@ -516,6 +516,7 @@ func (s *Server) routes() {
 	private("GET /clips", s.serveAsset("clips.html"))
 	private("GET /clips.js", s.serveAsset("clips.js"))
 	private("GET /api/clips", s.apiClips)
+	private("GET /api/clips.zip", s.apiClipsZip)
 	private("GET /api/clips/{name}", s.apiClipFile)
 	private("POST /api/clips/{name}/keep", s.apiClipKeep)
 	private("POST /api/clips/{name}/release", s.apiClipRelease)

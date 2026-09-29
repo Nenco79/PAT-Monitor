@@ -17,20 +17,19 @@
   "clips.keep.off": "Manter: a limpeza automática não a exclui.",
   "clips.keep.on": "Mantida. Pressione para devolvê-la às que expiram.",
   "clips.kind.manual": "Manual",
-  "clips.manual": "Gravação manual",
   "clips.note": {
     "one": "{n} gravação · {mb} MB · mantidas: {kept}",
     "other": "{n} gravações · {mb} MB · mantidas: {kept}"
   },
   "clips.select": "Selecionar",
   "clips.select.cancel": "Cancelar",
-  "clips.select.kept": "Mantida: tire a estrela para poder excluí-la.",
   "clips.selected": {
     "one": "{n} selecionada",
     "other": "{n} selecionadas"
   },
   "clips.title": "Gravações",
   "clips.undo": "Desfazer",
+  "clips.zip-limit": "É possível baixar no máximo {max} gravações de uma vez.",
   "err.already-set": "A senha já foi definida.",
   "err.bad-request": "Solicitação inválida.",
   "err.cam-list-failed": "Não foi possível listar as câmeras.",

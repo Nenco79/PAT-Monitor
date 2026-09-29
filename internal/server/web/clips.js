@@ -1,14 +1,13 @@
 'use strict';
 
 // The recordings page: a listing grouped by day, filters by kind, one player
-// that carries the commands for the clip it is playing, and a selection for
-// deleting several at once.
+// that carries Download and Delete for the clip it is playing, and a selection
+// that downloads, keeps or deletes several at once.
 //
 // The words all come from `T`: there is not one in here. The kinds reuse the
 // keys the viewer's bar already has — `viewer.bark` and its sisters, the word
-// on the switch that turns that detection on — and the player's line reuses the
-// banner's `viewer.alert.` sentence, rather than a second dictionary of the same
-// codes, which would diverge at the first touch.
+// on the switch that turns that detection on — rather than a second dictionary
+// of the same codes, which would diverge at the first touch.
 
 // **The language is `i18n.js`'s, and it is declared there.** This page loads
 // that script first, so `LANG` is already in scope: declaring a second one here
@@ -16,7 +15,6 @@
 // classic scripts share one lexical scope, and the second file then fails to
 // parse **in its entirety**. Not one line of it runs, and the page shows its
 // title and nothing else.
-const WHEN = new Intl.DateTimeFormat(LANG, {dateStyle: 'short', timeStyle: 'medium'});
 const NUMBER = new Intl.NumberFormat(LANG, {maximumFractionDigits: 1});
 
 // **The list is grouped by day, so a row says only the time.** Every row used
@@ -28,6 +26,9 @@ const NUMBER = new Intl.NumberFormat(LANG, {maximumFractionDigits: 1});
 const CLOCK = new Intl.DateTimeFormat(LANG, {timeStyle: 'short'});
 const RELATIVE_DAY = new Intl.RelativeTimeFormat(LANG, {numeric: 'auto'});
 const DAY = new Intl.DateTimeFormat(LANG, {weekday: 'long', day: 'numeric', month: 'long'});
+// DATE is the date alone, for the two days the heading names in words: "today"
+// says which day it is only to whoever knows what today is.
+const DATE = new Intl.DateTimeFormat(LANG, {day: 'numeric', month: 'long'});
 const DAY_AND_YEAR = new Intl.DateTimeFormat(LANG,
   {weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'});
 
@@ -41,7 +42,7 @@ function midnight(d) {
 // rather than divided: a day with the clocks changed lasts 23 or 25 hours.
 function dayName(d, today) {
   const days = Math.round((midnight(d) - midnight(today)) / 86400000);
-  if (days === 0 || days === -1) return RELATIVE_DAY.format(days, 'day');
+  if (days === 0 || days === -1) return RELATIVE_DAY.format(days, 'day') + ' · ' + DATE.format(d);
   return (d.getFullYear() === today.getFullYear() ? DAY : DAY_AND_YEAR).format(d);
 }
 
@@ -69,10 +70,9 @@ function duration(ms) {
 // here the divergence would be silent — the row would show "manual".
 const MANUAL = 'manual';
 
-// eventName is the whole sentence for a clip's event, the one the player's line
-// carries.
+// eventName is the banner's sentence for a code this page has no kind for:
+// the one road a code from a newer monitor still gets a word by.
 function eventName(code) {
-  if (code === MANUAL) return T('clips.manual');
   return TOr('viewer.alert.' + code, code);
 }
 
@@ -173,7 +173,21 @@ function checkTheAudioArrives() {
   }
   const v0 = entries.find((c) => c.name === chosen);
   if (!v0 || !v0.audio) return;
+  // **"None decoded yet" is evidence only after something has played.** A
+  // `timeupdate` also arrives when a source is set and when the position is
+  // moved — which is what pressing Keep does, the lock being a rename — and
+  // there not one sample of sound has been asked for, so the accusation came
+  // up on a browser that plays the audio perfectly. `played` is what this
+  // source has really played, and it starts from nothing with every source.
+  if (playedSeconds(v) < 1) return;
   el('codec').classList.add('show');
+}
+
+// playedSeconds is how much of the current source has really been played.
+function playedSeconds(v) {
+  let s = 0;
+  for (let i = 0; i < v.played.length; i++) s += v.played.end(i) - v.played.start(i);
+  return s;
 }
 
 let entries = [];
@@ -221,8 +235,8 @@ function play(v) {
   chosen = v.name;
   el('player').hidden = false;
   el('clip').src = '/api/clips/' + encodeURIComponent(v.name);
-  el('playing-when').textContent = WHEN.format(new Date(v.at));
-  el('playing-what').textContent = eventName(v.code);
+  el('playing-when').textContent = CLOCK.format(new Date(v.at)) + ' · ';
+  el('playing-what').textContent = kindName(v.code);
   draw();
   el('clip').scrollIntoView({block: 'nearest', behavior: 'smooth'});
 }
@@ -232,6 +246,45 @@ function closePlayer() {
   chosen = null;
   el('clip').removeAttribute('src');
   el('player').hidden = true;
+}
+
+// swapSource points the player at the name a clip has just been given, without
+// the person watching it noticing.
+//
+// **The lock is a rename**, so the old address stops existing the moment the
+// clip is kept, and the player has to be moved: a seek later on asks the old
+// name for a range and gets nothing. Moved bare, though, the video started
+// again from zero and, until the new file's size arrived, took the browser's
+// default shape — the player shrank and grew back, as though the clip had been
+// reloaded, which it had. So the height is held while the new source opens,
+// and the position and the playing state are given back once it has.
+function swapSource(name) {
+  const v = el('clip');
+  const at = v.currentTime;
+  const playing = !v.paused && !v.ended;
+  v.style.height = v.getBoundingClientRect().height + 'px';
+  v.addEventListener('loadedmetadata', () => {
+    v.currentTime = at;
+    v.style.height = '';
+    if (playing) v.play().catch(() => {});
+  }, {once: true});
+  v.addEventListener('error', () => { v.style.height = ''; }, {once: true});
+  v.src = '/api/clips/' + encodeURIComponent(name);
+}
+
+// renamed carries a clip's new name to the two places that hold its old one:
+// the player, if it is the open clip, and the selection.
+//
+// **It is written once, and the two callers share it.** The lock's single
+// command and the selection's each carried a copy, and the copies drifted: a
+// clip kept from its row while selected dropped out of the selection.
+function renamed(old, now) {
+  if (!now || now === old) return;
+  if (chosen === old) {
+    chosen = now;
+    swapSource(now);
+  }
+  if (selected.delete(old)) selected.add(now);
 }
 
 // inFlight are the clips with a command on its way.
@@ -260,10 +313,7 @@ async function command(name, action) {
     // **The new name is said by the server**, which is the only one that knows
     // how it is composed: recomposing it here would be the second copy of the
     // prefix rule, and the two would diverge at the first touch.
-    if (body.name && chosen === name) {
-      chosen = body.name;
-      el('clip').src = '/api/clips/' + encodeURIComponent(body.name);
-    }
+    renamed(name, body.name);
     await load();
     return body.name || name;
   } catch (e) {
@@ -277,6 +327,67 @@ async function command(name, action) {
 // toggleKeep puts the lock on a clip or takes it off.
 function toggleKeep(v) {
   command(v.name, v.kept ? 'release' : 'keep');
+}
+
+// MAX_ZIP is the most clips one archive carries: `maxZipClips` on the
+// monitor's side, and `TestThePageKnowsTheArchiveCeiling` holds the two
+// together. Past it the server refuses, and a refusal met by a download link
+// is shown by nobody: the page says so before asking.
+const MAX_ZIP = 200;
+
+// downloadSelected hands the selection over as files: one clip as itself, more
+// as one archive the monitor composes. **One download, not one per clip**: a
+// page that starts several is asked by Chrome for permission, and on an iPhone
+// only the first arrives.
+function downloadSelected() {
+  const names = [...selected];
+  if (names.length === 0) return;
+  if (names.length > MAX_ZIP) {
+    const box = el('error');
+    box.textContent = T('clips.zip-limit', {max: MAX_ZIP});
+    box.classList.add('show');
+    return;
+  }
+  const a = document.createElement('a');
+  if (names.length === 1) {
+    a.href = '/api/clips/' + encodeURIComponent(names[0]) + '?download';
+  } else {
+    a.href = '/api/clips.zip?' + names.map((n) => 'name=' + encodeURIComponent(n)).join('&');
+  }
+  a.setAttribute('download', '');
+  document.body.append(a);
+  a.click();
+  a.remove();
+}
+
+// keepSelected puts the lock on the selection, or takes it off when every
+// clip in it is kept already — the star's two directions, for a handful.
+//
+// **The selection follows the renames.** The lock changes a clip's name, and
+// a selection holding the old names would lose every clip it had just kept.
+async function keepSelected() {
+  const all = [...selected].map((n) => entries.find((v) => v.name === n)).filter(Boolean);
+  const release = all.length > 0 && all.every((v) => v.kept);
+  const names = all.filter((v) => v.kept === release).map((v) => v.name)
+    .filter((n) => !inFlight.has(n));
+  if (names.length === 0) return;
+  hideError();
+  names.forEach((n) => inFlight.add(n));
+  const answers = await Promise.allSettled(names.map((n) =>
+    fetch('/api/clips/' + encodeURIComponent(n) + '/' + (release ? 'release' : 'keep'), {method: 'POST'})));
+  names.forEach((n) => inFlight.delete(n));
+  let failed = null;
+  for (let i = 0; i < names.length; i++) {
+    const a = answers[i];
+    if (a.status === 'fulfilled' && sessionExpired(a.value)) return;
+    if (a.status !== 'fulfilled' || !a.value.ok) {
+      failed = a.status === 'fulfilled' ? (await bodyOf(a.value)).error || '' : '';
+      continue;
+    }
+    renamed(names[i], (await bodyOf(a.value)).name);
+  }
+  await load();
+  if (failed !== null) showError(failed);
 }
 
 // deleteLater takes clips out of the list and sends the delete once the notice
@@ -397,9 +508,11 @@ function visible(live) {
 // used to sit as three labelled pills on every row — eighteen buttons on a
 // page of six clips, heavier than the clips they were for, and a delete one
 // thumb away from every row of the list. Now the row is pressed to play the
-// clip and the three commands live under the player, once, for the clip that is
-// open; what stays on the row is the one thing worth changing without opening
-// it, which is whether the clip is kept.
+// clip, Download and Delete live under the player for the clip that is open,
+// and what stays on the row is the one thing worth changing without opening
+// it, which is whether the clip is kept. While selecting the star goes: the
+// selection has a Keep of its own, and a star that renames a chosen clip under
+// the finger is a second way of doing the same thing.
 function row(v) {
   const li = document.createElement('li');
   const isSelected = selecting && selected.has(v.name);
@@ -412,11 +525,11 @@ function row(v) {
   open.dataset.name = v.name;
 
   if (selecting) {
-    // **A kept clip cannot be selected**, and that is the lock's promise said
-    // once more: "keep" means no rule touches it, and a delete by the handful
-    // is the rule that would. The star comes off first, deliberately — so the
-    // star stays on that row, and the reason is written on it: a `title` is
-    // never seen on the phone this page is mostly opened on.
+    // **A kept clip can be selected like any other.** It could not, once: the
+    // lock was read as "no rule touches it", a delete by the handful included,
+    // and the star had to come off first. But the lock is against the monitor's
+    // own cleanup, not against the owner, and every delete here can be taken
+    // back for a few seconds — a second protection that only cost a step.
     const box = document.createElement('span');
     box.className = 'clip-check';
     box.setAttribute('aria-hidden', 'true');
@@ -424,7 +537,6 @@ function row(v) {
     if (tick) box.append(tick);
     open.append(box);
     open.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
-    if (v.kept) open.disabled = true;
   }
 
   const k = kindOf(v.code);
@@ -440,12 +552,6 @@ function row(v) {
   const when = document.createElement('em');
   when.textContent = CLOCK.format(new Date(v.at)) + ' · ' + duration(v.ms);
   data.append(what, when);
-  if (selecting && v.kept) {
-    const why = document.createElement('em');
-    why.className = 'why';
-    why.textContent = T('clips.select.kept');
-    data.append(why);
-  }
   open.append(data);
   open.addEventListener('click', () => {
     if (!selecting) {
@@ -458,10 +564,10 @@ function row(v) {
   });
   li.append(open);
 
-  if (!selecting || v.kept) {
+  if (!selecting) {
     // **The star is a glyph alone, and the state is what explains it.** An
-    // icon without its word asks to be guessed, which is why the three
-    // commands under the player keep theirs; a star that fills when pressed is
+    // icon without its word asks to be guessed, which is why the two commands
+    // under the player keep theirs; a star that fills when pressed is
     // the one convention every list of this kind already has, and its name is
     // said to whoever cannot see it by `aria-label`, its effect by `title`.
     const star = document.createElement('button');
@@ -479,22 +585,23 @@ function row(v) {
   return li;
 }
 
-// drawFilters draws one filter per kind in the list, and one for all of them.
+// drawFilters draws one filter per kind, and one for all of them.
 //
-// **They exist only when there is something to tell apart**: with one kind in
-// the list a filter narrows nothing, and a row of buttons that change nothing
-// is a knob that moves nothing.
+// **Every kind is always there**, the ones with no clip greyed out: the row
+// keeps one shape whatever the list holds, and a kind that has not happened
+// is itself something to read. A code this page does not know is added after
+// them when a clip carries it.
 function drawFilters(live) {
   const counts = new Map();
   live.forEach((v) => counts.set(v.code, (counts.get(v.code) || 0) + 1));
   if (filter && !counts.has(filter)) filter = null;
   const box = el('filters');
-  box.hidden = counts.size < 2;
+  box.hidden = live.length === 0;
   if (box.hidden) {
     box.replaceChildren();
     return;
   }
-  const codes = KINDS.map((k) => k.code).filter((c) => counts.has(c));
+  const codes = KINDS.map((k) => k.code);
   counts.forEach((_, c) => { if (!codes.includes(c)) codes.push(c); });
 
   const chip = (code, text, n) => {
@@ -507,46 +614,44 @@ function drawFilters(live) {
     if (g) b.append(g);
     const s = document.createElement('span');
     s.textContent = text;
+    // A kind's word can go on a narrow screen, where the glyph says it; "All"
+    // has no glyph, so its word stays.
+    if (g) s.className = 'w';
     const count = document.createElement('span');
     count.className = 'n';
     count.textContent = String(n);
     b.append(s, count);
+    b.disabled = n === 0;
     b.addEventListener('click', () => {
       filter = code;
-      if (selecting) visibleOnly();
       draw();
     });
     return b;
   };
   box.replaceChildren(chip(null, T('clips.filter.all'), live.length),
-    ...codes.map((c) => chip(c, kindName(c), counts.get(c))));
+    ...codes.map((c) => chip(c, kindName(c), counts.get(c) || 0)));
 }
 
-// visibleOnly drops from the selection what the filter has just hidden: a
-// delete takes what can be seen, never a clip the list no longer shows.
-function visibleOnly() {
-  const shown = new Set(visible(entries.filter((v) => !gone.has(v.name))).map((v) => v.name));
-  selected.forEach((n) => { if (!shown.has(n)) selected.delete(n); });
-}
-
-// drawPlayerActions brings the player's three commands to the clip that is
-// open: where it downloads from, and whether it is kept.
+// drawPlayerActions points the player's Download at the clip that is open,
+// whose name the lock may just have changed.
 function drawPlayerActions() {
   const v = entries.find((c) => c.name === chosen);
   if (!v) return;
   const down = el('player-download');
   down.href = '/api/clips/' + encodeURIComponent(v.name) + '?download';
   down.setAttribute('download', v.name);
-  const keep = el('player-keep');
-  keep.setAttribute('aria-pressed', v.kept ? 'true' : 'false');
-  keep.title = T(v.kept ? 'clips.keep.on' : 'clips.keep.off');
 }
 
 // setSelecting enters or leaves selection mode.
+//
+// **A delete still waiting is sent on the way in.** The notice that takes it
+// back and the selection's bar sit on the same spot, and whoever starts
+// selecting has moved on from the clip they deleted: the two never show
+// together, which is also why their two words can be the same.
 function setSelecting(on) {
+  if (on && pending) sendPending();
   selecting = on;
   selected.clear();
-  document.body.classList.toggle('selecting', on);
   draw();
 }
 
@@ -554,11 +659,11 @@ function draw() {
   const live = entries.filter((v) => !gone.has(v.name));
   drawFilters(live);
 
-  // **A selection holds only what can still be deleted.** A clip kept, renamed
-  // by the lock, deleted from the player or pruned by the monitor while it was
+  // **A selection holds only what is still in the list.** A clip renamed by
+  // the lock, deleted from the player or pruned by the monitor while it was
   // chosen would otherwise go on counting, and the delete would ask for a name
   // that is no longer there.
-  const deletable = new Set(visible(live).filter((v) => !v.kept).map((v) => v.name));
+  const deletable = new Set(visible(live).map((v) => v.name));
   selected.forEach((n) => { if (!deletable.has(n)) selected.delete(n); });
 
   // **The keyboard keeps its place.** Every redraw replaces the rows, and a
@@ -579,11 +684,17 @@ function draw() {
     if (!open || open.key !== key) {
       const section = document.createElement('section');
       section.className = 'clips-day';
+      const head = document.createElement('div');
+      head.className = 'clips-dayhead';
       const h = document.createElement('h2');
       h.textContent = dayName(at, today);
+      head.append(h);
+      // "Select", or "Cancel" while selecting, rides on the first day's
+      // heading: moved there at every redraw, since the rows are rebuilt.
+      if (days.length === 0) head.append(selecting ? cancelButton : selectButton);
       const ul = document.createElement('ul');
       ul.className = 'clips-list';
-      section.append(h, ul);
+      section.append(head, ul);
       days.push(section);
       open = {key, ul};
     }
@@ -607,16 +718,27 @@ function draw() {
     ? TN(live.length, 'clips.note', {mb: NUMBER.format(bytes / 1048576), kept: kept})
     : '';
 
-  // "Select" appears only when there is something a selection could delete.
-  el('select').hidden = selecting || !live.some((v) => !v.kept);
+  // **"Select" is there whenever the list is.** It used to appear only when
+  // something could be deleted, so keeping the last unkept clip made it vanish
+  // under the finger, which reads as a fault.
+  // With no clips there is no heading for them to ride on, and they stay where
+  // the markup put them: hidden, or they would stand under the empty state.
+  selectButton.hidden = selecting || live.length === 0;
+  cancelButton.hidden = !selecting || live.length === 0;
   el('selcmds').hidden = !selecting;
-  el('tools').hidden = el('filters').hidden && el('select').hidden && !selecting;
+  el('tools').hidden = live.length === 0;
   // **Nothing chosen says nothing.** Portuguese and French take the singular
   // for zero, so "0 selected" would read "0 recording selected" there: the
   // count is written only once there is one, and the greyed "Delete" beside it
   // already says there is nothing to delete.
   el('sel-count').textContent = selected.size ? TN(selected.size, 'clips.selected') : '';
   el('sel-delete').disabled = selected.size === 0;
+  el('sel-download').disabled = selected.size === 0;
+  const keepButton = el('sel-keep');
+  keepButton.disabled = selected.size === 0;
+  const allKept = selected.size > 0 &&
+    [...selected].every((n) => (entries.find((v) => v.name === n) || {}).kept);
+  keepButton.setAttribute('aria-pressed', allKept ? 'true' : 'false');
   drawPlayerActions();
 }
 
@@ -645,24 +767,29 @@ async function load() {
 
 // The fixed commands are dressed once: their words and glyphs, from the same
 // `label` the rows use, so a word never lands in a button by `textContent`.
-label(el('select'), null, 'clips.select');
+//
+// "Select" and "Cancel" are held here rather than looked up: `draw` moves them
+// onto the first day's heading, and once a redraw has thrown that heading away
+// they can be out of the document, where `getElementById` does not find them.
+const selectButton = el('select');
+const cancelButton = el('sel-cancel');
+label(selectButton, null, 'clips.select');
 label(el('player-download'), 'download', 'clips.download');
-label(el('player-keep'), 'star', 'clips.keep');
 label(el('player-delete'), 'delete', 'clips.delete');
+label(el('sel-download'), 'download', 'clips.download');
+label(el('sel-keep'), 'star', 'clips.keep');
 label(el('sel-delete'), 'delete', 'clips.delete');
-label(el('sel-cancel'), 'close', 'clips.select.cancel');
+label(cancelButton, 'close', 'clips.select.cancel');
 label(el('toast-undo'), 'undo', 'clips.undo');
 
-el('select').addEventListener('click', () => setSelecting(true));
-el('sel-cancel').addEventListener('click', () => setSelecting(false));
+selectButton.addEventListener('click', () => setSelecting(true));
+cancelButton.addEventListener('click', () => setSelecting(false));
+el('sel-download').addEventListener('click', downloadSelected);
+el('sel-keep').addEventListener('click', keepSelected);
 el('sel-delete').addEventListener('click', () => {
   const names = [...selected];
   setSelecting(false);
   deleteLater(names);
-});
-el('player-keep').addEventListener('click', () => {
-  const v = entries.find((c) => c.name === chosen);
-  if (v) toggleKeep(v);
 });
 el('player-delete').addEventListener('click', () => {
   if (chosen) deleteLater([chosen]);

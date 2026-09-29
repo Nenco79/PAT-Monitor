@@ -17,20 +17,19 @@
   "clips.keep.off": "Consérvala: la limpieza automática no la borra.",
   "clips.keep.on": "Conservada. Pulsa para devolverla a las que caducan.",
   "clips.kind.manual": "Manual",
-  "clips.manual": "Grabación manual",
   "clips.note": {
     "one": "{n} grabación · {mb} MB · conservadas: {kept}",
     "other": "{n} grabaciones · {mb} MB · conservadas: {kept}"
   },
   "clips.select": "Seleccionar",
   "clips.select.cancel": "Cancelar",
-  "clips.select.kept": "Conservada: quita la estrella para poder eliminarla.",
   "clips.selected": {
     "one": "{n} seleccionada",
     "other": "{n} seleccionadas"
   },
   "clips.title": "Grabaciones",
   "clips.undo": "Deshacer",
+  "clips.zip-limit": "Se pueden descargar como máximo {max} grabaciones a la vez.",
   "err.already-set": "La contraseña ya está establecida.",
   "err.bad-request": "Petición no válida.",
   "err.cam-list-failed": "No se han podido listar las cámaras.",

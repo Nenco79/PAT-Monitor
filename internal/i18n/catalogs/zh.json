@@ -16,18 +16,17 @@
   "clips.keep.off": "保留它：自动清理不会删掉它。",
   "clips.keep.on": "已保留。再按一次，把它放回会过期的录像里。",
   "clips.kind.manual": "手动",
-  "clips.manual": "手动录制",
   "clips.note": {
     "other": "{n} 段录像 · {mb}\u00a0MB · 已保留：{kept}"
   },
   "clips.select": "选择",
   "clips.select.cancel": "取消",
-  "clips.select.kept": "已保留：取消星标后才能删除。",
   "clips.selected": {
     "other": "已选择 {n} 段"
   },
   "clips.title": "录像",
   "clips.undo": "撤销",
+  "clips.zip-limit": "一次最多可以下载 {max} 段录像。",
   "err.already-set": "密码已经设置过了。",
   "err.bad-request": "请求无效。",
   "err.cam-list-failed": "无法列出摄像头。",

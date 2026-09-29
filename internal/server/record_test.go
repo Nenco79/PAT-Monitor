@@ -152,11 +152,11 @@ func TestThePageKnowsTheManualClipCode(t *testing.T) {
 		t.Errorf("clips.js does not name the code %q: the row of a clip asked for "+
 			"by hand would show the code instead of its name", record.CodeManual)
 	}
-	// **And the word has to be there**, otherwise the branch found above would
-	// show a key. The catalogue guard looks for it in every language; here it is
-	// only demanded that the page ask for it.
-	if !strings.Contains(js, "T('clips.manual')") {
-		t.Error("clips.js does not ask for the word for a clip asked for by hand")
+	// **And the code has to be given its word**, otherwise the row would show a
+	// key. The catalogue guard looks for the word in every language; here it is
+	// demanded that the page's list of kinds carries the code with it.
+	if !strings.Contains(js, "{code: MANUAL, word: 'clips.kind.manual'") {
+		t.Error("clips.js does not give the manual code its word in KINDS")
 	}
 }
 

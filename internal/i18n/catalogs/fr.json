@@ -17,20 +17,19 @@
   "clips.keep.off": "Le garder\u00a0: le nettoyage automatique ne le supprime pas.",
   "clips.keep.on": "Gardé. Appuie pour le remettre parmi ceux qui expirent.",
   "clips.kind.manual": "Manuel",
-  "clips.manual": "Enregistrement manuel",
   "clips.note": {
     "one": "{n} enregistrement · {mb}\u00a0Mo · gardés\u00a0: {kept}",
     "other": "{n} enregistrements · {mb}\u00a0Mo · gardés\u00a0: {kept}"
   },
   "clips.select": "Sélectionner",
   "clips.select.cancel": "Annuler",
-  "clips.select.kept": "Gardé\u00a0: retire l’étoile pour pouvoir le supprimer.",
   "clips.selected": {
     "one": "{n} sélectionné",
     "other": "{n} sélectionnés"
   },
   "clips.title": "Enregistrements",
-  "clips.undo": "Rétablir",
+  "clips.undo": "Annuler",
+  "clips.zip-limit": "On peut télécharger au plus {max} enregistrements à la fois.",
   "err.already-set": "Le mot de passe est déjà défini.",
   "err.bad-request": "Demande invalide.",
   "err.cam-list-failed": "Impossible de lister les caméras.",

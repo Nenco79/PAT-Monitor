@@ -128,17 +128,14 @@
        reads as a fault. -->
   <div class="clips-player" id="player" hidden>
     <video id="clip" controls playsinline preload="metadata"></video>
+    <!-- **One line under the video: which clip, and what can be done to it.**
+         The commands used to sit on every row, then on a row of their own
+         under a line of their own; Keep is the row's star alone, and what is
+         left here is Download and Delete, Delete last. It is not confirmed:
+         it can be taken back for a few seconds, from the notice at the bottom. -->
     <div class="clips-playing">
-      <span id="playing-when"></span>
-      <span id="playing-what"></span>
-    </div>
-    <!-- **The commands on a clip live here, once, for the clip that is open.**
-         They used to sit on every row. Delete is last, where a hand reaching
-         for the others does not land on it, and it is not confirmed: it can be
-         taken back for a few seconds instead, from the notice at the bottom. -->
-    <div class="clip-actions">
+      <span class="clips-playing-what"><span id="playing-when"></span><span id="playing-what"></span></span>
       <a class="ghost" id="player-download"></a>
-      <button class="ghost toggle" id="player-keep" type="button" aria-pressed="false"></button>
       <button class="ghost danger" id="player-delete" type="button"></button>
     </div>
   </div>
@@ -152,32 +149,24 @@
   <p class="clips-empty" id="empty" hidden data-i18n="clips.empty"></p>
   <p class="warnbox" id="error" role="alert"></p>
 
-  <!-- **The list's own commands sit over the list, not over the player.** In
-       the heading, "Select" stood above the video whenever a clip was open,
-       and read as one of the player's commands. -->
+  <!-- The filters sit over the list, not over the player. -->
   <div class="clips-tools" id="tools" hidden>
     <!-- One filter per kind of clip in the list, built by clips.js: which kinds
          there are is the clips' business, not the page's. -->
     <div class="clips-filters" id="filters" role="group" hidden
          data-i18n-attr="aria-label:clips.filters"></div>
-    <!-- Deleting several clips at once is a mode, not a row of checkboxes
-         always on screen: it is done now and then, after a day of motion, and
-         a box on every row every day is the weight the rows have just lost. -->
-    <button class="ghost clips-select" id="select" type="button" hidden></button>
-    <!-- **While selecting, the same row holds the selection's commands**, and
-         "Cancel" takes the place "Select" had: the way out is where the way in
-         was. The row stays at the top of the screen while it lasts, so what is
-         chosen and the delete are in reach wherever the list is scrolled to. -->
-    <div class="clips-selcmds" id="selcmds" hidden>
-      <span id="sel-count"></span>
-      <button class="ghost danger" id="sel-delete" type="button"></button>
-      <button class="ghost" id="sel-cancel" type="button"></button>
-    </div>
   </div>
 
   <!-- One section per day, each a heading and its list: built by clips.js,
        because the days are the clips' and not the page's. -->
   <div class="clips-days" id="list" tabindex="-1"></div>
+
+  <!-- Acting on several clips at once is a mode, not a row of checkboxes
+       always on screen. "Select" sits on the first day's heading, where
+       clips.js puts it, and while selecting "Cancel" takes its place there:
+       the way out is where the way in was. -->
+  <button class="ghost clips-select" id="select" type="button" hidden></button>
+  <button class="ghost clips-select" id="sel-cancel" type="button" hidden></button>
 
 </div>
 
@@ -185,6 +174,15 @@
      region under it, which is always in the page: a live region that appears
      together with its words is not heard by most screen readers. -->
 <div class="clips-say" id="toast-say" role="status"></div>
+<!-- While selecting, what is chosen and what can be done to it float at the
+     foot of the screen, in reach wherever the list has been scrolled to: the
+     same three things as for one clip, Delete last. -->
+<div class="clips-selbar" id="selcmds" hidden>
+  <span id="sel-count"></span>
+  <button class="ghost" id="sel-download" type="button"></button>
+  <button class="ghost toggle" id="sel-keep" type="button" aria-pressed="false"></button>
+  <button class="ghost danger" id="sel-delete" type="button"></button>
+</div>
 <div class="clips-toast" id="toast" hidden>
   <span id="toast-text"></span>
   <button class="ghost" id="toast-undo" type="button"></button>
