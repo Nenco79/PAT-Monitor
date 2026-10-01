@@ -84,12 +84,12 @@
 
 <ol>
   <li>デバイスで見守りカメラの <code>https://</code> アドレスを開き、サインインします。iPhone または iPad では、先に次のセクションの手順を行ってください。</li>
-  <li>[<strong data-key="viewer.details">詳細</strong>] を押し、続けて [<strong data-key="viewer.push.receive">受信</strong>] を押します。このボタンは [<strong data-key="viewer.push.label">このデバイスへの通知</strong>] の行にあります。</li>
+  <li>[<strong data-key="viewer.more">その他</strong>] を押し、続けて [<strong data-key="viewer.push.receive">受信</strong>] を押します。このボタンは [<strong data-key="viewer.push.label">このデバイスへの通知</strong>] の横にあります。</li>
   <li>ブラウザーから確認されたら、通知を許可します。</li>
   <li>[<strong data-key="viewer.push.test">テスト送信</strong>] を押します。数秒以内に通知が表示されるはずです。表示されない場合は、下にあるデバイスごとの設定を確認してください。</li>
 </ol>
 
-<p>この行が見当たらない場合は、ページが <code>https://</code> アドレスで開かれていないか、iPhone でホーム画面からではなく Safari のタブで開いているか、ブラウザーが通知を受け取れないかのいずれかです。</p>
+<p>通知のカードにボタンがない場合は、カードにその理由が表示されます。理由は、ページが <code>https://</code> アドレスで開かれていないか、iPhone でホーム画面からではなく Safari のタブで開いているか、ブラウザーが通知を受け取れないか、見守りカメラが通知を送信できないかのいずれかです。</p>
 
 <h2>iPhone と iPad</h2>
 
@@ -128,7 +128,7 @@
   <li><strong>Edge</strong>: <strong>[設定] › [システムとパフォーマンス]</strong> で、<strong>[Edge を閉じたときにバックグラウンド拡張機能とアプリの実行を続行する]</strong> をオンのままにします。既定でオンになっています。</li>
   <li><strong>Chrome</strong>: <strong>[設定] › [システム]</strong> で、<strong>[Google Chrome を閉じた際にバックグラウンド アプリの処理を続行する]</strong> をオンにします。ページをアプリとしてインストールすると (アドレスバーのインストール ボタン)、その許可が自動で削除されることもなくなります。</li>
   <li><strong>Firefox</strong>: 開いたままにしておく必要があります。</li>
-  <li><strong>Brave</strong>: 通知には、<code>brave://settings/privacy</code> の <strong>[プッシュメッセージングにGoogleサービスを使用]</strong> をオンにして Brave を再起動する必要があります。オフのままだと通知をオンにできず、その行にそう表示されます。</li>
+  <li><strong>Brave</strong>: 通知には、<code>brave://settings/privacy</code> の <strong>[プッシュメッセージングにGoogleサービスを使用]</strong> をオンにして Brave を再起動する必要があります。オフのままだと通知をオンにできず、そのカードにそう表示されます。</li>
   <li><strong>Windows 本体</strong>: <strong>[設定] › [システム] › [通知]</strong> でブラウザーが許可されている必要があります。[応答不可] をオンにしている場合は、ブラウザーが優先通知に含まれている必要があります。</li>
 </ul>
 
@@ -151,7 +151,7 @@
       <li>「<em data-key="viewer.push.result.refused">通知サービスがメッセージを拒否しました。</em>」: 理由は見守りカメラのログにあります。<code>test notification</code> を含む行に、通知サービス自身が示した理由が記録されています (ログは英語で書かれます)。</li>
     </ul>
   </li>
-  <li>通知をオンにできない場合は、行の下にある [<strong data-key="viewer.push.why">ブラウザーの応答</strong>] を開きます。ブラウザーが備えている機能と、ブラウザーの応答が一覧で表示されます。</li>
+  <li>通知をオンにできない場合は、カード内にある [<strong data-key="viewer.push.why">ブラウザーの応答</strong>] を開きます。ブラウザーが備えている機能と、ブラウザーの応答が一覧で表示されます。</li>
   <li>iPhone では、ホーム画面からアイコンを削除してもう一度追加し、通知をもう一度オンにしてください。</li>
   <li>見守りカメラのログには、アラートごとに、何台のデバイスに送ったかと各プッシュ サービスの応答を記した行があります。デバイスが見守りカメラにつながる場合は、そのデバイスが通知を表示したときにも、かかった時間を記した行が残ります。ログを開くには、時計の横にある見守りカメラのアイコンを右クリックします。パネルの [<strong data-key="tray.menu.logs">ログ フォルダー</strong>] は、紙のページが描かれたボタンで、終了するボタンのすぐ上にあります。</li>
 </ol>

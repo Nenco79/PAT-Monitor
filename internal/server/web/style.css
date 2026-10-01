@@ -610,18 +610,16 @@ input:focus:not(:focus-visible) { outline: none; }
   min-height: 100dvh;
 }
 
-/* The order is written out instead of inherited from the source because one band
-   moves: the "from outside" box sits above the bar when there is a step to take,
-   and below — together with the details — when it only says that it works.
-   Moving it with `order` instead of with two nodes avoids the second copy of the
-   markup, which is the thing that then diverges. */
+/* The order is written out instead of inherited from the source, so that
+   moving a band is one line here. The "from outside" box sits above the bar when
+   there is a step to take; when it only says that it works it is not in this
+   column at all — `placeRemote` moves that one node into the panel's cards. */
 .alertbar { order: 1; }
 .stage    { order: 2; }
 .warnbox  { order: 3; }
 .remote   { order: 4; }
 .bar      { order: 5; }
-.remote.ok { order: 6; }
-.stats    { order: 7; }
+.stats    { order: 6; }
 
 /* The stage stays pure black, not warm: it is the letterbox around the video,
    and a tinted frame shows as a cast over the image. */
@@ -1183,8 +1181,8 @@ video {
 .viewer.fs .bar .ico { width: 20px; height: 20px; }
 
 .stats {
-  /* The last band of the page when the details are open: the bottom inset is
-     here for the same reason it is on the bar, and the sides for the corner. */
+  /* The last band of the page when the panel is open: the bottom inset is here
+     for the same reason it is on the bar, and the sides for the corner. */
   padding: var(--s4) calc(var(--s4) + env(safe-area-inset-right))
            calc(var(--s4) + env(safe-area-inset-bottom))
            calc(var(--s4) + env(safe-area-inset-left));
@@ -1193,176 +1191,257 @@ video {
   font-size: var(--t-small);
   color: var(--muted);
   display: none;
-  /* **The floor of a column is what an inline pair needs to read.**
+}
+.stats.show { display: block; }
 
-     `auto-fit` with a 160 px floor gave **six** columns at 1200 px and the pair
-     written top to bottom in each of them: a reading and its name in a strip
-     narrower than the name. The arrangement is chosen by the width of the
-     container — name over value under ~200 px, name left and value right from
-     ~400 up — so the pair is inline and the floor is 330, which is where that
-     starts to hold. The count then follows the window instead of being declared
-     at three widths: one column on a phone, two on a tablet, three at 1200,
-     four at 1440, each between 330 and 430 px.
+/* **Two bands, one set of columns.** The cards on top and the two groups under
+   them are separate grids with the same tracks, so a card and the group under
+   it start at the same x: one column on a phone, two from 720 px, three from
+   1040, where the readings take two.
 
-     The price is the band between about 600 and 700 px, where one column takes
-     the whole width and the name is far from its reading. It is a window
-     somebody has dragged to that size, and the alternative — capping the row
-     — buys it by making the rules ragged, which is the thing being removed. */
-  /* **`min(330px, 100%)` and not `330px`**: a track cannot go below its own
-     minimum, so on a 320 px phone the 288 px of row held a 330 px column and
-     the page scrolled **sideways by 26 px** — measured, and not crossed by any
-     of the four widths this rule was tuned on. The `min()` says "330, or the
-     row if the row is narrower", which is the one case where a single column
-     has no choice anyway. */
-  grid-template-columns: repeat(auto-fit, minmax(min(330px, 100%), 1fr));
-  gap: 0 var(--s5);
+   **The last card present takes the rest of its row**, and that is what keeps
+   the bands aligned with a card missing. Measured on the owner's screen, where
+   the notifications card was then absent, three tracks left the third empty
+   over a group spanning two, and nothing in the panel shared an edge. That card
+   is always there now; the one still absent is the address, whenever a step is
+   missing and it goes back above the bar. Spanning to the end, the second card
+   sits over the readings; with one card it is the whole row. `of :not([hidden])` because an absent card is still in the DOM, and
+   `stretch` so the cards of one row end on one line. **The start is written as
+   a line**: `auto / -1` reads as a span of one ending at the last line, and
+   the first version, written that way, left the card in the third column.
+
+   **The tracks are `minmax(0, 1fr)`, never a floor in pixels**: a track cannot
+   go below its own minimum, and a 330 px floor once made a 320 px phone scroll
+   sideways by 26 px. */
+.stats-cards,
+.stats-lower {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  /* **One distance between cards, across and down**, and the same between
+     the two bands: 8 px down against 16 across was reported at a glance,
+     because the eye compares the two gaps of one grid. */
+  gap: var(--s4);
+}
+.stats-cards { align-items: stretch; }
+.stats-cards > :nth-child(1 of :not([hidden])):nth-last-child(1 of :not([hidden])) { grid-column: 1 / -1; }
+.stats-lower { margin-top: var(--s4); align-items: start; }
+@media (min-width: 720px) and (max-width: 1039px) {
+  .stats-cards,
+  .stats-lower { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stats-cards > :nth-child(3 of :not([hidden])):nth-last-child(1 of :not([hidden])) { grid-column: 1 / -1; }
+}
+@media (min-width: 1040px) {
+  .stats-cards,
+  .stats-lower { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .stats-cards > :nth-child(2 of :not([hidden])):nth-last-child(1 of :not([hidden])) { grid-column: 2 / -1; }
+  .stats-wide { grid-column: span 2; }
 }
 
+/* ---------- the cards ----------
+
+   **A card is a thing one opens the panel for**, and it is drawn as one: the
+   ground of a card, the radius of a card, a badge with the glyph of what it
+   is. The badge takes the teal of home because these are the monitor's own
+   things, not states — no colour in it says "wrong". */
+.stats-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  min-height: 64px;
+  box-sizing: border-box;
+  padding: var(--s3) var(--s4);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  color: var(--ink-2);
+}
+/* The card that leads elsewhere is the link, whole, and the chevron says it
+   goes. The press carries what the hover carries, as on every link here. */
+a.stats-card {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--s3);
+  text-decoration: none;
+}
+@media (hover: hover) {
+  a.stats-card:hover { border-color: color-mix(in srgb, var(--c-home) 45%, var(--line)); }
+}
+a.stats-card:active { border-color: color-mix(in srgb, var(--c-home) 45%, var(--line)); }
+.card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2) var(--s3);
+}
+.card-badge {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--c-home) 16%, transparent);
+  color: var(--c-home);
+}
+.card-badge .ico { width: 20px; height: 20px; }
+/* The readings' badge is grey: they are not one of the monitor's things but a
+   look under its bonnet, and a row inside a list wants a smaller mark. */
+.card-badge.quiet {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-xs);
+  background: color-mix(in srgb, var(--muted) 16%, transparent);
+  color: var(--ink-2);
+}
+.card-badge.quiet .ico { width: 16px; height: 16px; }
+.card-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  /* A title one word longer than its share would draw over the switch beside
+     it: `Benachrichtigungen` is 160 px where a German card on a 360 px phone
+     leaves 125. It breaks inside the word instead, with a hyphen where the
+     language has the rules. */
+  overflow-wrap: anywhere;
+  hyphens: auto;
+  font-size: var(--t-body);
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--ink);
+}
+.card-go { color: var(--muted); }
+
+/* ---------- the lists ----------
+
+   The camera, the microphone and the readings are lists in a card: rows of one
+   height on the card's ground, a hairline between them and none above the
+   first. */
+.stats-list {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.pick-row,
+.list-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s1) var(--s4);
+  min-height: 52px;
+  box-sizing: border-box;
+  padding: var(--s2) var(--s4);
+}
+.pick-row + .pick-row,
+.list-row { border-top: 1px solid var(--line-soft); }
+.pick-row > :first-child,
+.list-row > :first-child {
+  flex: 0 0 auto;
+  min-width: 7em;
+  font-size: var(--t-ui);
+  color: var(--ink-2);
+}
+/* The version sits under the readings, so its value starts where theirs do:
+   ten ems of their size, not of this row's. */
+.list-row > :first-child { min-width: calc(var(--t-small) * 10); }
+
+/* ---------- the readings, closed ---------- */
+.diag > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  min-height: 52px;
+  box-sizing: border-box;
+  padding: var(--s2) var(--s4);
+  list-style: none;
+  cursor: pointer;
+  font-size: var(--t-ui);
+  color: var(--ink);
+  border-radius: var(--radius);
+}
+.diag > summary::-webkit-details-marker { display: none; }
+.diag-name { flex: 1 1 auto; font-weight: 500; }
+.diag > summary > .ico { color: var(--muted); }
+@media (hover: hover) {
+  .diag > summary:hover > .ico { color: var(--ink); }
+}
+.diag > summary:active > .ico { color: var(--ink); }
+.diag > summary:focus-visible {
+  outline: var(--focus-w) solid var(--phase);
+  outline-offset: calc(-1 * var(--focus-w));
+}
+.diag-body {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+  gap: 0 var(--s5);
+  padding: var(--s1) var(--s4) var(--s2);
+  border-top: 1px solid var(--line-soft);
+}
 /* **A row is one line: the name, then the reading at a fixed distance.**
 
    The readings were flush right, which reads as a column while the column is
-   narrow and stops reading as anything once it is not. Measured on the real
-   page: the empty band between a name and its reading is **223 px median on a
-   390 px phone** and **279 px at 1700**, worst 338 — that is, a two-character
-   number sat a third of a metre of screen away from the word that names it, and
-   at every width, because `space-between` gives the gap whatever is left and
-   what is left is most of the row.
-
-   So the reading starts at a **fixed offset** instead of at the far edge. It is
-   still a column — fourteen readings aligned on one x — only aligned on the
-   edge the eye arrives from, and the distance from a name to its value is now
-   bounded by that offset rather than by the window. Tabular figures stay: they
-   are what keeps the digits of a column the same width.
+   narrow and stops reading as anything once it is not: measured, the empty band
+   between a name and its reading was 223 px median on a 390 px phone and 279 at
+   1700. So the reading starts at a **fixed offset** instead of at the far edge,
+   aligned on the edge the eye arrives from. Tabular figures stay: they keep the
+   digits of a column the same width.
 
    `baseline` and not `center`: the two are different sizes, and it is the
-   writing that has to line up, not the boxes. It wraps, and that is for the
-   long ones — a media path, a version with its commit: they go to a line of
-   their own instead of squeezing the name. */
-.stats > div {
+   writing that has to line up, not the boxes. It wraps, for the long ones — a
+   media path, a resolution with its rate: they go to a line of their own
+   instead of squeezing the name. */
+.rows > div {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  justify-content: flex-start;
   gap: 0 var(--s4);
   padding: var(--s2) 0;
   border-bottom: 1px solid var(--line-soft);
 }
-
-/* **The offset is an em measure and not a share of the row**, which is the
-   whole point: a percentage would put the reading somewhere else in every
-   column the grid happens to make, and the distance being *predictable* is what
-   was bought here. Ten ems is 130 px at this size, against the longest name
-   measured in either language — `Fotogrammi scartati`, 115 px — so it clears it
-   without a table of exceptions. A longer translation does not break it: the
-   name wraps inside its own column and the row grows, which is visible and
+/* **The offset is an em measure and not a share of the row**: a percentage would
+   put the reading somewhere else in every column, and the distance being
+   predictable is what was bought here. Ten ems is 130 px at this size, against
+   the longest name measured — `Fotogrammi scartati`, 115 px. A longer
+   translation wraps inside its own column, which is visible and
    self-correcting rather than silent. */
-.stats > div > :first-child {
+.rows > div > :first-child {
   flex: 0 0 auto;
   min-width: 10em;
 }
-/* The last reading has nothing under it to be separated from: what follows is
-   the link to the recordings, which is a command and carries its own shape. */
-.stats > div:last-of-type { border-bottom: 0; }
-.stats.show { display: grid; }
-
-/* **The heading of a group, and the rule above it.**
-
-   Fourteen readings of one weight are a list read to the end or not at all.
-   Three groups with a word over a hairline say where an argument starts — what
-   is being captured, the way in, what this run has done — and they separate at
-   no cost the two rows that are pressed from the twelve that are read.
-
-   **It is the eyebrow the sheet already has**, the one on `label` and on the
-   "from outside" box: a fourth way of writing a small heading is how a scale
-   stops being a scale.
-
-   `grid-column: 1 / -1` is what makes it a band and not a cell, and the rule
-   sits **above** the label rather than under it: it belongs to the break, not
-   to the group, so the first one does not need it — the panel's own top border
-   is already there.
-
-   **And the colour is a step up from the labels, because the size is a step
-   down.** It was `--muted`, which is the labels' own colour, at 11 px against
-   their 13: a heading smaller *and* no brighter than what it governs is
-   hierarchy the wrong way round, and it held only while a phone's single column
-   said which was which by position. Measured on the real page, both were
-   `rgb(148, 139, 124)` and both began at the same x — so on a wide window the
-   heading sat directly over the first label, quieter than it, and was reported
-   as confusable with one. `--ink-2` is the step the palette already has between
-   the labels and the readings, which is exactly the rank this word holds. */
-.stats-group {
-  grid-column: 1 / -1;
-  /* **The rule under the last row of the group is the break**, now that every
-     row carries one: a border here as well drew two lines a few pixels apart.
-     What is left to the heading is the air above it. */
-  margin: var(--s4) 0 var(--s1);
-  font-weight: 600;
-  font-size: var(--t-micro);
-  line-height: 1.4;
-  font-family: var(--sans);
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  color: var(--ink-2);
-}
-.stats-group:first-child { margin-top: 0; }
+/* The last row of a column has nothing under it to be separated from. */
+.rows > div:last-child { border-bottom: 0; }
 
 .stats b {
   display: inline;
-  /* Left, because the readings now begin at a common x rather than ending at
-     one: see the row above. */
   text-align: left;
   color: var(--ink);
   font-weight: 500;
   font-variant-numeric: tabular-nums;
 }
 
-/* The microphone's box.
+/* The camera's and the microphone's boxes.
 
-   **At rest it is a value of the details, and the arrow says it can be pressed.**
-   As a box — border, ground and 16 px of type in a grid where every other row is
-   a grey 13 px label with an `--ink` value under it — it read from outside as a
-   piece of another page that had landed there, and its row was 66 px tall
-   against the others' 42, that is, the band under "Microphone" widened and the
-   grid lost its step.
+   **The row is the frame, and the arrow says it can be pressed.** The two boxes
+   used to carry a hairline, a radius and a ground of their own, because they sat
+   in a grid of readings and had to be told apart from twelve values that are
+   only read. In a list of two rows on a card that work is done by the card: a
+   row on a card is the shape every settings screen gives a choice, so the box
+   loses its frame and keeps the arrow — the same glyph as "More", the same
+   stroke weight.
 
-   Now it takes the type, weight and colour of the value it replaces (`.stats
-   b`), and what tells it apart is the arrow — the same glyph as "Details", the
-   same shape and the same stroke weight. It is the division this page already
-   uses: one affordance, where it is needed, instead of a box that competes with
-   what is around it.
+   **The name is left where the control puts it**, flush with the start of the
+   field, and that is not an oversight: `text-align: right` cures it in Chrome
+   and **not** on the phone, where the engine does not honour it inside the
+   control — two browsers, two pictures, and the half that cannot be verified
+   from here is the one the monitor is watched on.
 
-   **The type is 13 px like the rest, and what that costs has to be said**: below
-   16, iOS zooms the page by itself when a control takes focus and never puts it
-   back. It is the price of consistency with the grid, and it is a choice — not an
-   oversight as it was elsewhere.
+   **The type is 14 px, and what that costs has to be said**: below 16, iOS
+   zooms the page by itself when a control takes focus and never puts it back.
+   It is the price of matching the row's label, and it is a choice.
 
-   **The target stays big, though.** The vertical padding is there and is
-   cancelled by an equal and opposite margin: whoever presses finds 30 px of
-   usable height, whoever lays out counts 18 — so the row does not grow and the
-   finger does not miss the control in the dark. */
-/* **The cell is one like the others.** The menu is sized by us, so the box can
-   stay short — name clipped with an ellipsis and a tooltip, like every other
-   value in the grid — and what is read in full is in the open list, where the
-   names wrap. */
-
-/* **The two boxes look like what they are, and that is the answer to an
-   alignment that cannot be had.**
-
-   A `<select>` is as wide as its **longest** entry — wanted, because the menu
-   is sized from the same number — so with a short entry chosen the name starts
-   at the left of a wide box: on a panel whose readings are all flush right it
-   read as a value centred in its field, and that is how it was reported.
-   `text-align: right` cures it in Chrome and **not** on the phone, where the
-   engine does not honour it inside the control: two browsers, two pictures, and
-   the half that cannot be verified from here is the one the monitor is watched
-   on.
-
-   So the name is left where the control puts it and the control is given the
-   frame it never had: a hairline, a radius and a ground. Every settings panel
-   draws a field as a field, the row stops pretending to be a reading, and the
-   two rows one can **press** are told apart from the twelve that are read —
-   which is the thing the panel wanted to say anyway. It costs no engine
-   agreement: a border is a border everywhere. */
+   **The target stays big.** The vertical padding is there and is cancelled by
+   an equal and opposite margin: whoever presses finds the row's height, whoever
+   lays out counts a line — the menu is sized by us, and what is read in full is
+   in the open list, where the names wrap. */
 .stats .pick-wrap {
   position: relative;
   /* **It takes what the row has left**, which is the same rule the readings
@@ -1375,10 +1454,9 @@ video {
      pushing it onto a line of its own. */
   flex: 1 1 0;
   min-width: 0;
-  border: 1px solid var(--line);
+  /* No frame of its own: the row on its card is the frame. The radius stays,
+     because the focus ring follows it. */
   border-radius: var(--radius-xs);
-  padding-left: var(--s2);
-  background: var(--card);
   /* **`flow-root` and not `block`, otherwise the negative margin escapes.** With
      an ordinary block the child's margin merges with the parent's: the wrapper's
      box stays 30 px tall like the control, and the focus ring drawn around it
@@ -1389,9 +1467,9 @@ video {
   display: flow-root;
   /* The wrapper carries the arrow at its right edge, and the control fills the
      wrapper, so the two edges coincide and with them the focus ring. It used to
-     be `fit-content` here too, for a box that hugged its name; the box is now a
-     share of the row, and the frame is what says where it ends. */
-  /* The two arrows: the same pair as "Details", here as a **mask**. The colour
+     be `fit-content` here too, for a box that hugged its name; the box is now
+     what the row leaves, and the row is what says where it ends. */
+  /* The two arrows: the same pair as "More", here as a **mask**. The colour
      cannot live inside a `data:` URI — that document inherits nothing from the
      page — so the image carries the shape and `background` supplies the colour,
      as for the language chooser. */
@@ -1460,10 +1538,11 @@ video {
   border: 0;
   /* Needed only by the focus ring, which follows the element's radius. */
   border-radius: var(--radius-xs);
-  /* The value it replaces: `.stats b`, that is 13 px, weight 500, `--ink`. */
+  /* The row's label is 14 px, and the value beside it is the same size, in
+     the readings' ink and weight. */
   color: var(--ink);
   font-weight: 500;
-  font-size: var(--t-small);
+  font-size: var(--t-ui);
   line-height: 1.4;
   font-family: var(--sans);
   cursor: pointer;
@@ -1640,39 +1719,23 @@ video {
 /* ---------- notifications on this device ----------
 
    **The pill a link in this panel already has**, and not the bare `<button>`'s:
-   a screen's primary action is 48 px and body size, and this row is one of
-   fourteen, pressed once. It is `a.ghost`'s size, which is the other thing in
-   the details that is pressed. The switch keeps `.toggle`'s colours, so on and
-   off are the same two faces as the bar's detections. */
-/* **The row spans the grid.** Measured in the nine languages: the two
-   controls are about 250 px, so beside any Latin-script label they do not fit
-   a 330-470 px track and go to a line of their own — and in a grid a row that
-   tall stretches the rows beside it to 78 px, empty, at 1200. Across the whole
-   width it stays one line where there is room and its neighbours keep their
-   38; a phone has one column and nothing beside it to stretch. */
-#push-row { grid-column: 1 / -1; }
-.stats .push-ctl {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: var(--s2);
-}
-.stats .push-ctl button {
+   a screen's primary action is 48 px and body size, and this one is pressed
+   once. The switch keeps `.toggle`'s colours, so on and off are the same two
+   faces as the bar's detections. It sits at the end of the card's head and the
+   title wraps beside it, so the head stays one shape in every language; the
+   test, which exists only while they are on, takes a line of its own. */
+.card-head .card-title { flex-basis: 0; }
+.stats .push-btn {
   display: inline-flex;
   align-items: center;
-  gap: var(--gap-ico);
   width: auto;
   min-height: 40px;
   padding: var(--s2) var(--s4);
   font-size: var(--t-ui);
   font-weight: 500;
 }
-/* The guide and the browser's own answer are sentences about the row, like the
-   pickers' state line: each takes a line of its own under it. */
-.stats .push-guide,
-.stats .push-why {
-  flex-basis: 100%;
-  margin-top: var(--s1);
-}
+/* Under the head the test keeps its own width instead of the column's. */
+.push-card > .push-btn { align-self: flex-start; }
 .stats .push-guide { color: var(--ink-2); }
 .stats .push-why summary { cursor: pointer; color: var(--muted); }
 .stats .push-why pre {
@@ -1683,30 +1746,47 @@ video {
   color: var(--muted);
 }
 
-/* ---------- the link to the recordings ----------
+/* ---------- the "from outside" box as a card ----------
 
-   **It lives inside the details panel, not under it.** As a sibling of the
-   details with an `order` that put it after, it appeared together with them and
-   looked like another thing, because it fell outside the sunken ground and rested
-   on the left. Now it is the grid's last cell — full width and centred, that is,
-   where a list ends and not where another one begins — and its appearing no
-   longer has a rule of its own: `.stats.show` decides it, which is the details'
-   only switch. Two switches for the same thing diverge at the first touch. */
-.stats .clips-link {
-  grid-column: 1 / -1;
-  justify-self: center;
-  margin-top: var(--s3);
+   When it only says that it works, `placeRemote` moves it into the panel, and
+   there it takes a card's frame instead of a band's. Under 540 px the code goes
+   under the address — the band waits until 400, but a card has two more
+   paddings: beside it, the 120 px a camera needs leave the address three lines
+   of a dozen characters. */
+.stats-cards > .remote {
+  /* The band's `order` puts it above the bar in the page's column; in the
+     cards it keeps its place in the source, which is last. */
+  order: 0;
+  padding: var(--s3) var(--s4);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.stats-cards .remote-body { gap: var(--s4); }
+@media (max-width: 540px) {
+  .stats-cards .remote-body { flex-direction: column; align-items: flex-start; }
 }
 
-/* **What the monitor is not** is a `.hint`, the note at the foot of a card that
-   `/setup` already has, so the sign-in card and the details say it in the one
-   voice the sheet has for it rather than a second one a line-height apart. At
-   the foot of the details it spans the grid, below the recordings, so that the
-   recordings stay the last cell and this reads as a footnote. */
-.stats .stats-foot {
-  grid-column: 1 / -1;
-  text-align: center;
+/* **What the monitor is not** is a note at the foot of the panel, across its
+   whole width and flush left beside a mark, so the sign-in card and the
+   panel say it with the same words and this one no longer as six centred
+   lines. The mark is amber, the colour of things worth knowing. It is as wide
+   as the bands above it: held to a measure it ended halfway across, the one
+   edge in the panel that lined up with nothing. */
+.stats-foot {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s3);
+  /* The cards' own gap: one distance in the whole panel. */
+  margin: var(--s4) 0 0;
+  padding: var(--s3) var(--s4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-s);
+  font-size: var(--t-small);
+  line-height: 1.6;
+  color: var(--muted);
 }
+.stats-foot .ico { margin-top: 3px; color: var(--c-note); }
 
 /* ---------- the warning band ----------
 
@@ -1837,9 +1917,10 @@ video {
    missed precisely where it weighs most.
 
    It is not deleted, though: the public address is needed by whoever has to pass
-   it to the other parent. So it goes down among the details, which is the place
-   for things that are looked for instead of being announced. When there is a step
-   to take it stays where it was, above the bar and always visible. */
+   it to the other parent. So it goes into the panel behind "More", as one of its
+   cards, which is the place for things that are looked for instead of being
+   announced. When there is a step to take it stays where it was, above the bar
+   and always visible. */
 .remote.ok {
   --tone: var(--c-ready);
   display: none;

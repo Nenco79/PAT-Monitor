@@ -17,12 +17,18 @@ owner reopened it on 2026-09-30 on one condition, **no publicity**: not on the
 guided path, not in the tray, not among the README's features, and the
 procedure for each device in `docs/notifications.html`.
 
-**The objection is met, not argued away.** The row in Details exists only where
-every condition a page can check holds — an https page, a secure context, a
-service worker, `PushManager`, `Notification` — so where they do not there is no
-button at all, grey or otherwise. On an iPhone `PushManager` exists only in the
-web app saved to the Home Screen, so the same four questions hide the row in a
-Safari tab and show it from the icon, with no user agent read. What a page
+**The objection is met, not argued away.** The switch exists only where every
+condition a page can check holds — an https page, a secure context, a service
+worker, `PushManager`, `Notification` — so where they do not there is no
+button at all, grey or otherwise. **The card is always there, and where there
+is no switch it says why**, which the owner asked for on 2026-10-01: a card
+that appeared on one device and not on the next was a feature nobody could
+find again, and the reason is the half the page can state. One sentence per
+condition — the address is not the https one, an iPhone's Safari tab rather
+than the Home Screen, a browser that cannot, a monitor that cannot send — and
+the link to the guide. On an iPhone `PushManager` exists only in the web app
+saved to the Home Screen, so the tab is told apart by having
+`navigator.standalone` and no `PushManager`, with no user agent read. What a page
 cannot check is stated rather than hidden: a permission the browser refuses is
 a sentence naming where it is switched back on, and a subscription that fails
 is the observed conditions in a closed `<details>`, beside the link to the
@@ -168,17 +174,17 @@ the reason for reading them together:
 - **"Did not answer" was false half the time**: the outcome also covers a 5xx,
   which is an answer. It says the service could not take the message.
 
-**And the row is as wide as the grid**, measured in the nine languages at 360,
-390 and 1200: the two controls are about 250 px, so beside any Latin label
-they take a line of their own in a column, and a row that tall stretched its
-neighbours to 78 px. Across the grid it is one line at 1200 and its neighbours
-keep 38; on a phone the controls wrap together and nothing scrolls sideways.
-Shortening the label, which one reader proposed, buys nothing there — the
-controls alone do not fit beside the shortest candidate.
+**It is a card now, and the row it replaced taught one thing.** As a row of
+the readings grid the two controls, about 250 px, fitted beside no Latin label
+and stretched their neighbours to 78 px. In the card the switch sits at the end
+of the head with the title wrapping beside it, and the test, which exists only
+while they are on, takes a line of its own; and the link to the guide is always
+there, not only after a failure, because whoever reads the card is whoever is
+about to need it.
 
 **The guide is in every language of the interface, and it quotes the
 interface.** `docs/notifications.html` and one `notifications.<tag>.html` per
-catalogue; the row's link is the catalogue's `viewer.push.guide-href`, so each
+catalogue; the card's link is the catalogue's `viewer.push.guide-href`, so each
 language opens its own. Every word the guide quotes carries the key it quotes,
 and `guide_test.go` holds the three halves together, deriving all of it from
 the catalogues: each language links a page declared in that language, each

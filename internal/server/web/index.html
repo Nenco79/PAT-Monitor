@@ -115,10 +115,10 @@
   <!-- Access from outside the house. It stays hidden until there is something to
        say, and "it works" is not something to say: when all is well it would
        repeat every night the address of the page one is already looking at. Then
-       it drops among the details, where the address stays available to whoever
-       has to pass it to somebody else. When a step is missing, though, it sits
-       here, above the bar and always visible. `order` in the stylesheet moves
-       it. -->
+       `placeRemote` in app.js moves this node into the cards behind "More",
+       where the address stays available to whoever has to pass it to somebody
+       else. When a step is missing, though, it sits here, above the bar and
+       always visible, placed by `order` in the stylesheet. -->
   <div class="remote" id="remote">
     <div class="remote-body">
       <div class="remote-text">
@@ -326,7 +326,7 @@
           <path d="M6 12l2 -3l4 -1l3 3l3 1" />
         </svg><span data-i18n="viewer.motion"></span></button>
     </div>
-    <!-- The spacer before "Details", not after: they are the two entries that
+    <!-- The spacer before "More", not after: they are the two entries that
          sit on the right, one because it opens a section and the other because
          it is the last thing one does. It is needed on the **two rows**, where
          it pushes both to the end of the lower row; on the single row it is not
@@ -338,7 +338,11 @@
          open and it is about to be closed again. They are two glyphs and only
          one appears, chosen by `aria-expanded` in the stylesheet: that way the
          state is written once, where a screen reader reads it too, rather than
-         in a line of JavaScript that can forget it. -->
+         in a line of JavaScript that can forget it.
+
+         **It says "More" and not "Details"**, because what it opens is no
+         longer mostly details: the recordings, the notifications and the
+         address come first, and the readings are one closed row among them. -->
     <button class="ghost" id="details" aria-expanded="false"
             aria-controls="stats">
       <svg class="ico i-open" viewBox="0 0 24 24" aria-hidden="true">
@@ -346,156 +350,197 @@
       </svg>
       <svg class="ico i-close" viewBox="0 0 24 24" aria-hidden="true">
         <path d="M6 15l6 -6l6 6" />
-      </svg><span data-i18n="viewer.details"></span></button>
+      </svg><span data-i18n="viewer.more"></span></button>
     <button class="ghost" id="logout" data-i18n="viewer.logout"></button>
     </div>
   </div>
 
   <div class="stats" id="stats">
-    <!-- **What can be pressed comes first, and what is only read follows.**
-         Two of these rows are not readings: they are the choice of which
-         camera and which microphone the monitor uses, the only controls that
-         live in this panel rather than on the bar. Whoever opens the details
-         in order to *do* something is looking for them, and a control halfway
-         down a list of fifteen numbers is not found, it is come across.
-         The rest of the order is unchanged, and the version has gone to the
-         bottom: it is read once, by whoever is reporting something, and it is
-         the one row that says the same thing every night. -->
-    <!-- **Three groups, and the dividers carry a word.** Fourteen readings of
-         the same weight are a list one reads to the end or not at all; a rule
-         with a label above it says where an argument starts, and it separates
-         for free the two rows that are **pressed** from the twelve that are
-         read. The label is the eyebrow this sheet already has — the one on
-         `label` and on the "from outside" box — rather than a fourth way of
-         writing a small heading.
+    <!-- **What is pressed comes first, as cards, and what is only read is
+         closed.** The panel had grown one row at a time into fifteen readings
+         of one weight with the three things people open it for — the
+         recordings, the notifications, the address to pass on — at the bottom
+         or between two numbers. Now those three are the first band, each a
+         card of its own; the camera and the microphone, the only other
+         controls, follow as a list; and the readings, which are asked for by
+         whoever is reporting something, sit behind one closed row.
 
-         They are `h2` because this page has no heading at all: whoever moves
-         by headings had nothing to move by, and these are the first. -->
-    <h2 class="stats-group" data-i18n="viewer.stats.group.capture"></h2>
-    <!-- The camera is not only read: it is chosen, and by the same mechanism as
-         the microphone below — one `makePicker` used twice, because every defect
-         the first box cost applies unchanged to the second.
+         The cards are one grid with the band below, so on a wide window the
+         cards and the two lists share the same columns: three cards over the
+         camera's list and the readings', the second of which takes two. **A
+         card that is absent leaves no hole**: the last card present takes the
+         rest of its row, so without the address the notifications sit over
+         the readings. -->
+    <div class="stats-cards" id="stats-cards">
+      <!-- The recordings are a card that leads elsewhere: the chevron says so,
+           and the whole card is the link, because a finger in the dark aims at
+           a shape rather than at a word. -->
+      <a class="stats-card" id="clips-link" href="/clips">
+        <span class="card-badge"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M15 10l4.553 -2.276a1 1 0 0 1 1.447 .894v6.764a1 1 0 0 1 -1.447 .894l-4.553 -2.276v-3z" />
+          <path d="M3 6m0 2a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2z" />
+        </svg></span>
+        <span class="card-title" data-i18n="clips.title"></span>
+        <svg class="ico card-go" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M9 6l6 6l-6 6" />
+        </svg></a>
+      <!-- **Notifications with the page closed, offered only where they can
+           work.** The switch exists only where this browser, on this page, has
+           every piece a subscription needs — an encrypted address, a service
+           worker, `PushManager` and `Notification`. Elsewhere the card stays
+           and says why in one sentence, `pushUnavailable` in push.js, so there
+           is no grey button that nothing inside the product can unblock. It is
+           not on the bar or on the guided path because it is not promised: the
+           procedure for each device is in the documents the link points at,
+           and the link is always there, because whoever reads the card is
+           whoever is about to need it.
 
-         The line beside it appears only when the chosen camera is not
-         connected, and then it names the one that is: **that is the one thing
-         about a picture that cannot be seen by looking at it.** -->
-    <div><span id="l-cam" data-i18n="viewer.stats.camera"></span>
-      <span class="pick-wrap" id="s-cam-wrap"><select id="s-cam" class="pick"
-              aria-labelledby="l-cam" disabled><button><selectedcontent></selectedcontent></button></select></span>
-      <span id="s-cam-state" class="pick-state" hidden></span></div>
-    <!-- The microphone is not only read: it is chosen.
+           The switch is a pill with a fixed word, like the bar's: what says it
+           is on is `aria-pressed`, not a label that changes under the finger.
+           The bell is the badge's, so the pill carries the word alone. -->
+      <div class="stats-card push-card" id="push-row" hidden>
+        <div class="card-head">
+          <span class="card-badge"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" />
+            <path d="M9 17v1a3 3 0 0 0 6 0v-1" />
+          </svg></span>
+          <span class="card-title" id="l-push" data-i18n="viewer.push.label"></span>
+          <button class="toggle push-btn" id="push-toggle" aria-pressed="false"
+                  aria-describedby="l-push" data-i18n="viewer.push.receive"></button>
+        </div>
+        <!-- The test is under the head and not beside the switch: two pills
+             beside a title leave the title a word per line on a phone, and it
+             exists only while they are on. -->
+        <button class="ghost push-btn" id="push-test" hidden data-i18n="viewer.push.test"></button>
+        <span id="push-state" class="pick-state" hidden></span>
+        <!-- The conditions observed, closed: the reason a subscription fails
+             exists only in the browser, where whoever installs a baby monitor
+             does not look and whoever wrote it cannot. -->
+        <details class="push-why" id="push-why" hidden><summary data-i18n="viewer.push.why"></summary>
+          <pre id="push-facts"></pre></details>
+        <!-- The guide is one page per language, and which one is the
+             catalogue's to say: `viewer.push.guide-href`. The English address
+             stays in the markup for a page whose dictionary has not arrived. -->
+        <a class="push-guide" id="push-guide" target="_blank" rel="noopener"
+           href="https://nenco79.github.io/PAT-Monitor/notifications.html"
+           data-i18n="viewer.push.guide"
+           data-i18n-attr="href:viewer.push.guide-href"></a>
+      </div>
+      <!-- The "from outside" box is the third card when it only says that it
+           works: `placeRemote` in app.js moves that one node here and back, so
+           the address and its code are where the other things one opens this
+           panel for are, and there is still one box to diverge. -->
+    </div>
 
-         The box says **which one is capturing**, which is not always the one
-         written in the configuration — an unplugged microphone makes the default
-         one open — and changing it reopens the capture without restarting
-         anything. The list arrives when the details open, not with the status
-         heartbeat: enumerating the endpoints costs a COM thread, and it is not
-         paid all night for a box almost nobody looks at.
+    <div class="stats-lower">
+      <section class="stats-sec">
+        <!-- The camera and the microphone are chosen, by one `makePicker` used
+             twice, because every defect the first box cost applies unchanged to
+             the second. They are a list of two rows in a card, the shape every
+             settings screen gives a choice, so the two rows that are pressed no
+             longer have to look different from twelve that are read.
 
-         Beside it a word remains for the case where nothing is capturing: the
-         box on its own would give the name of a silent microphone, which is the
-         wrong trust in the worst place. -->
-    <div><span id="l-mic" data-i18n="viewer.stats.microphone"></span>
-      <!-- The `<button>` containing `<selectedcontent>` is the shape the
-           customisable `<select>` specification expects: it is the box the
-           chosen entry ends up in, and without it the long name has nowhere to
-           be cut — the text leaves the control and passes under the arrow. Where
-           that specification is absent, the parser **ignores** both tags (they
-           are empty, so it leaves nothing behind) and the usual `<select>`
-           remains. -->
-      <span class="pick-wrap" id="s-mic-wrap"><select id="s-mic" class="pick"
-              aria-labelledby="l-mic" disabled><button><selectedcontent></selectedcontent></button></select></span>
-      <span id="s-mic-state" class="pick-state" hidden></span></div>
-    <div><span data-i18n="viewer.stats.encoder"></span> <b id="s-enc">—</b></div>
-    <div><span data-i18n="viewer.stats.resolution"></span> <b id="s-res">—</b></div>
-    <div><span data-i18n="viewer.stats.raw"></span> <b id="s-raw">—</b></div>
-    <div><span data-i18n="viewer.stats.level"></span> <b id="s-lvl">—</b></div>
-    <!-- Where the picture is arriving from and who is allowed in: two
-         questions about the way in, and both are asked by whoever is watching
-         from outside the house. -->
-    <h2 class="stats-group" data-i18n="viewer.stats.group.link"></h2>
-    <!-- **Notifications with the page closed, offered only where they can
-         work.** The row is hidden unless this browser, on this page, has every
-         piece a subscription needs — an encrypted address, a service worker,
-         `PushManager` and `Notification`: on the home address in plain HTTP,
-         and in a Safari tab on an iPhone, it does not appear at all, so there is
-         no grey button that nothing inside the product can unblock. It is the
-         first row of the group because it is pressed, and it is not on the bar
-         or on the guided path because it is not promised: the procedure for each
-         device is in the documents the link points at.
+             The line under a box appears only when the chosen device is not
+             the one capturing, and then it names the one that is: **that is the
+             one thing about a picture that cannot be seen by looking at it**,
+             and the box on its own would give the name of a silent microphone,
+             the wrong trust in the worst place.
 
-         The switch is a pill with a fixed word, like the bar's: what says it is
-         on is `aria-pressed`, not a label that changes under the finger. -->
-    <div id="push-row" hidden><span id="l-push" data-i18n="viewer.push.label"></span>
-      <span class="push-ctl">
-        <button class="toggle" id="push-toggle" aria-pressed="false"
-                aria-describedby="l-push"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" />
-          <path d="M9 17v1a3 3 0 0 0 6 0v-1" />
-        </svg><span data-i18n="viewer.push.receive"></span></button>
-        <button class="ghost" id="push-test" hidden data-i18n="viewer.push.test"></button>
-      </span>
-      <span id="push-state" class="pick-state" hidden></span>
-      <!-- The guide is one page per language, and which one is the
-           catalogue's to say: `viewer.push.guide-href`. The English address
-           stays in the markup for a page whose dictionary has not arrived. -->
-      <a class="push-guide" id="push-guide" hidden target="_blank" rel="noopener"
-         href="https://nenco79.github.io/PAT-Monitor/notifications.html"
-         data-i18n="viewer.push.guide"
-         data-i18n-attr="href:viewer.push.guide-href"></a>
-      <!-- The conditions observed, closed: the reason a subscription fails
-           exists only in the browser, where whoever installs a baby monitor
-           does not look and whoever wrote it cannot. -->
-      <details class="push-why" id="push-why" hidden><summary data-i18n="viewer.push.why"></summary>
-        <pre id="push-facts"></pre></details></div>
-    <!-- **"Watching now" is gone, and the strip above is the reason.** That
-         count is written over the picture whenever there are two or more, and
-         deliberately left blank when one is alone — "1" is the normal case and
-         a number that never changes stops being read. So this row repeated, one
-         panel below, a figure the eye had already been given, and what it added
-         was exactly the "1" that decision calls not news.
+             The lists arrive when the panel opens, not with the status
+             heartbeat: enumerating the endpoints costs a COM thread, and it is
+             not paid all night for a box almost nobody looks at. -->
+        <div class="stats-list">
+          <div class="pick-row"><span id="l-cam" data-i18n="viewer.stats.camera"></span>
+            <span class="pick-wrap" id="s-cam-wrap"><select id="s-cam" class="pick"
+                    aria-labelledby="l-cam" disabled><button><selectedcontent></selectedcontent></button></select></span>
+            <span id="s-cam-state" class="pick-state" hidden></span></div>
+          <!-- The `<button>` containing `<selectedcontent>` is the shape the
+               customisable `<select>` specification expects: it is the box the
+               chosen entry ends up in, and without it the long name has nowhere
+               to be cut — the text leaves the control and passes under the
+               arrow. Where that specification is absent, the parser **ignores**
+               both tags (they are empty, so it leaves nothing behind) and the
+               usual `<select>` remains. -->
+          <div class="pick-row"><span id="l-mic" data-i18n="viewer.stats.microphone"></span>
+            <span class="pick-wrap" id="s-mic-wrap"><select id="s-mic" class="pick"
+                    aria-labelledby="l-mic" disabled><button><selectedcontent></selectedcontent></button></select></span>
+            <span id="s-mic-state" class="pick-state" hidden></span></div>
+        </div>
+      </section>
 
-         "Registered devices" stays, and it is a different question: those that
-         can get in without retyping the password, that is, the ones "disconnect
-         everybody" in the tray acts on. It is the number that gets noticed when
-         somebody stays connected and should not, and nothing else on the page
-         says it. The first dropped to zero by itself; this one does not. -->
-    <div><span data-i18n="viewer.stats.path"></span> <b id="s-path">—</b></div>
-    <div><span data-i18n="viewer.stats.devices"></span> <b id="s-dev">—</b></div>
-    <!-- What this run has done since it started, the version included: it is
-         the binary running now, and it is read together with the restarts by
-         whoever is reporting something. -->
-    <h2 class="stats-group" data-i18n="viewer.stats.group.session"></h2>
-    <div><span data-i18n="viewer.stats.keyframes"></span> <b id="s-key">—</b></div>
-    <div><span data-i18n="viewer.stats.keyframe-reqs"></span> <b id="s-plireq">—</b></div>
-    <div><span data-i18n="viewer.stats.restarts"></span> <b id="s-restart">—</b></div>
-    <div><span data-i18n="viewer.stats.dropped"></span> <b id="s-drop">—</b></div>
-    <div><span data-i18n="viewer.stats.uptime"></span> <b id="s-up">—</b></div>
+      <section class="stats-sec stats-wide">
+        <!-- **The readings are one closed row, and they open with nothing to
+             run.** They are what this panel was named after and what almost
+             nobody opening it is looking for: they are read by whoever is
+             reporting something, once, and the version beside them is the one
+             thing such a report always needs, so it stays out where it is seen
+             without opening anything.
 
-    <!-- The version last: it is asked for once, by whoever is reporting
-         something, and it never changes while the monitor runs. It sits above
-         the recordings, which stay the grid’s last cell. -->
-    <div><span data-i18n="viewer.stats.version"></span> <b id="s-ver">—</b></div>
-
-    <!-- The recordings sit **inside the details** and not on the bar: the night
-         page says what is wrong and what to do now, and leafing through the
-         archive is not something done one-handed in the dark. Whoever looks for
-         them opens the details, which is the place for the things that are
-         looked for rather than announced — and it is the grid's last cell,
-         because it is the only one that leads elsewhere: the rows above are
-         read, this one is pressed. -->
-    <a class="ghost clips-link" id="clips-link" href="/clips">
-      <svg class="ico" viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M15 10l4.553 -2.276a1 1 0 0 1 1.447 .894v6.764a1 1 0 0 1 -1.447 .894l-4.553 -2.276v-3z" />
-        <path d="M3 6m0 2a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2z" />
-      </svg><span data-i18n="clips.title"></span></a>
+             A `<details>` and not a button with a script: it opens and closes
+             by itself, the keyboard and the screen reader already know it, and
+             it starts closed on every opening of the panel because nothing
+             remembers it. The arrow says what the press will do, as on the
+             bar: down while closed, up while open. -->
+        <div class="stats-list">
+          <details class="diag" id="diag">
+            <summary>
+              <span class="card-badge quiet"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M3 12h4l3 8l4 -16l3 8h4" />
+              </svg></span>
+              <span class="diag-name" data-i18n="viewer.stats.diagnostics"></span>
+              <svg class="ico i-open" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M6 9l6 6l6 -6" />
+              </svg>
+              <svg class="ico i-close" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M6 15l6 -6l6 6" />
+              </svg>
+            </summary>
+            <div class="diag-body">
+              <!-- What is being captured and the way in, in one column; what
+                   this run has done since it started, in the other. On a phone
+                   the two are one column, in this order. **No sub-headings, and
+                   no hint on the row**: the owner had them taken out, since the
+                   names of the readings already say what they are about and a
+                   list behind a closed row is read by whoever opened it. -->
+              <div class="rows">
+                <div><span data-i18n="viewer.stats.encoder"></span> <b id="s-enc">—</b></div>
+                <div><span data-i18n="viewer.stats.resolution"></span> <b id="s-res">—</b></div>
+                <div><span data-i18n="viewer.stats.raw"></span> <b id="s-raw">—</b></div>
+                <div><span data-i18n="viewer.stats.level"></span> <b id="s-lvl">—</b></div>
+                <!-- **"Watching now" is gone, and the strip above the picture
+                     is the reason**: that count is written over the picture
+                     whenever there are two or more, and "1" is the normal case.
+                     "Registered devices" stays, and it is a different question:
+                     those that can get in without retyping the password, the
+                     ones "disconnect everybody" in the tray acts on. -->
+                <div><span data-i18n="viewer.stats.path"></span> <b id="s-path">—</b></div>
+                <div><span data-i18n="viewer.stats.devices"></span> <b id="s-dev">—</b></div>
+              </div>
+              <div class="rows">
+                <div><span data-i18n="viewer.stats.keyframes"></span> <b id="s-key">—</b></div>
+                <div><span data-i18n="viewer.stats.keyframe-reqs"></span> <b id="s-plireq">—</b></div>
+                <div><span data-i18n="viewer.stats.restarts"></span> <b id="s-restart">—</b></div>
+                <div><span data-i18n="viewer.stats.dropped"></span> <b id="s-drop">—</b></div>
+                <div><span data-i18n="viewer.stats.uptime"></span> <b id="s-up">—</b></div>
+              </div>
+            </div>
+          </details>
+          <div class="list-row"><span data-i18n="viewer.stats.version"></span> <b id="s-ver">—</b></div>
+        </div>
+      </section>
+    </div>
 
     <!-- **A footnote, not a cell.** The night page states what is not normal,
          so the limit of the product does not go on the bar; it goes where the
-         things that are looked for are, at the foot of the details and across
-         the whole grid, below the recordings, which stay the last cell. See
-         onboarding.html, where the sentence is argued. -->
-    <p class="hint stats-foot" data-i18n="safety.notice"></p>
+         things that are looked for are, at the foot of the panel and across
+         its whole width. It reads as a note, flush left beside a mark, because
+         six centred lines are a shape, not a text. See onboarding.html, where the
+         sentence is argued. -->
+    <p class="stats-foot"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0" />
+        <path d="M12 9h.01" />
+        <path d="M11 12h1v4h1" />
+      </svg><span data-i18n="safety.notice"></span></p>
   </div>
 </div>
 <script src="/dictionary.js"></script>

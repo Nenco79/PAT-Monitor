@@ -2,11 +2,11 @@
 
 // Notifications with the page closed, for this device.
 //
-// **The row appears only where a subscription can work**, and that is decided
+// **The switch appears only where a subscription can work**, and that is decided
 // by asking the browser for each piece rather than by knowing which browser it
 // is: an encrypted page, a service worker, `PushManager` and `Notification`.
 // On an iPhone the third exists only in the web app saved to the Home Screen,
-// so the same four questions hide the row in a Safari tab and show it from the
+// so the same four questions hide the switch in a Safari tab and show it from the
 // icon, with no user agent read anywhere.
 //
 // **Nothing is installed for whoever does not turn them on.** The service
@@ -23,7 +23,6 @@ const pushRow = el('push-row');
 const pushToggle = el('push-toggle');
 const pushTestBtn = el('push-test');
 const pushState = el('push-state');
-const pushGuide = el('push-guide');
 const pushWhy = el('push-why');
 const pushFacts = el('push-facts');
 
@@ -71,8 +70,9 @@ function pushSend(url, sub) {
   return postJSON(url, {endpoint: j.endpoint, keys: j.keys, lang: LANG});
 }
 
-// paintPush draws the row. `state` is off, on, denied or failed; `note` is a
-// line under it, with the tone of the pickers' state line.
+// paintPush draws the card. `state` is off, on, denied or failed; `note` is a
+// line under it, with the tone of the pickers' state line. The link to the
+// guide is not touched: it is always there while the card is.
 function paintPush(state, note, tone) {
   pushToggle.hidden = state === 'denied';
   pushToggle.setAttribute('aria-pressed', state === 'on' ? 'true' : 'false');
@@ -84,7 +84,6 @@ function paintPush(state, note, tone) {
   pushState.textContent = line;
   pushState.hidden = !line;
   pushState.className = 'pick-state' + (tone || (state === 'denied' || state === 'failed' ? ' notice' : ''));
-  pushGuide.hidden = !(state === 'denied' || state === 'failed');
   pushWhy.hidden = state !== 'failed';
 }
 
@@ -97,12 +96,45 @@ function pushFailed(err, code) {
   paintPush('failed');
 }
 
+// pushWhyNot is the one sentence a card with no switch says: the condition this
+// page can see, worded as what to do about it. **No user agent is read**: an
+// iPhone's Safari tab is the browser that has `navigator.standalone` and no
+// `PushManager`, which is a question about features, not about a name.
+function pushWhyNot(c) {
+  if (!c.https || !c.secureContext) return 'viewer.push.off.address';
+  if (!c.pushManager && 'standalone' in navigator && !c.installed) return 'viewer.push.off.home-screen';
+  return 'viewer.push.off.browser';
+}
+
+// pushUnavailable shows the card with no switch, saying why. **The card is
+// always there, and where notifications cannot arrive it says so** — the
+// owner asked for it: a feature that appears on one device and not on the
+// next was a thing nobody could find again, and the reason is the half the
+// page can state. There is still no grey button: nothing is offered that
+// cannot be pressed.
+function pushUnavailable(key) {
+  pushToggle.hidden = true;
+  pushTestBtn.hidden = true;
+  pushWhy.hidden = true;
+  pushState.textContent = T(key);
+  pushState.className = 'pick-state';
+  pushState.hidden = false;
+  pushRow.hidden = false;
+}
+
 async function pushInit() {
   const c = pushConditions();
-  if (!pushPossible(c)) return;
+  if (!pushPossible(c)) { pushUnavailable(pushWhyNot(c)); return; }
   try {
     const res = await fetch('/api/push/key');
-    if (!res.ok) return; // a monitor with no notifications keeps the row hidden
+    if (sessionExpired(res)) return;
+    // **Only a 501 says the monitor cannot send.** A 429, a 5xx or a network
+    // that dropped while the page opened is a moment, not a property, and
+    // stating it as one would tell somebody their notifications cannot work
+    // on a monitor that sends them: the card stays hidden until the next
+    // opening asks again.
+    if (res.status === 501) { pushUnavailable('viewer.push.off.monitor'); return; }
+    if (!res.ok) return;
     pushKey = (await res.json()).key;
   } catch (err) {
     return;

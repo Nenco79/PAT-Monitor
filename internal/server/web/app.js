@@ -598,10 +598,30 @@ const OUTCOME_NOTE = {
   unreachable: 'viewer.remote.unreachable',
 };
 
+// placeRemote puts the "from outside" box where it belongs: last of the panel's
+// cards when it only says that it works, back above the bar otherwise.
+//
+// **One node, moved, and only when its place changes.** Two copies would be the
+// box that diverges, and `order` cannot carry it there: the cards are inside the
+// panel and the band is a sibling of it. The heartbeat calls this every three
+// seconds, so a node already where it should be is left alone — moving it again
+// would be a detach and an attach for nothing, under somebody's finger.
+const remoteHome = {parent: el('remote').parentNode, next: el('remote').nextSibling};
+function placeRemote(inPanel) {
+  const box = el('remote');
+  const slot = el('stats-cards');
+  if (inPanel) {
+    if (box.parentNode !== slot) slot.appendChild(box);
+  } else if (box.parentNode !== remoteHome.parent) {
+    remoteHome.parent.insertBefore(box, remoteHome.next);
+  }
+}
+
 function renderRemote(r) {
   const box = el('remote');
   if (!r || r.phase === 'off') {
     box.className = 'remote';
+    placeRemote(false);
     qrFor(el('r-qr'), '');
     return;
   }
@@ -645,11 +665,11 @@ function renderRemote(r) {
 
   // An address that does not answer from the Internet is a step to take, not a
   // state that is fine: the panel goes back to `todo` and rises out of the
-  // details, which is the right direction — "it works" is not news, "it has
+  // cards, which is the right direction — "it works" is not news, "it has
   // stopped working" is.
-  box.className = r.phase === 'running' && r.reach !== REACH_FAILED
-    ? 'remote show ok'
-    : 'remote show todo';
+  const ok = r.phase === 'running' && r.reach !== REACH_FAILED;
+  box.className = ok ? 'remote show ok' : 'remote show todo';
+  placeRemote(ok);
 }
 
 // ---------- the server's state ----------

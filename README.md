@@ -240,9 +240,10 @@ relays on its own when a direct path is not available.
 
 The same warnings the page shows can reach a phone or a computer with the page
 closed, as system notifications. It is off until it is turned on, one device at
-a time, from **Details → Notifications on this device**, and the row appears only
-where the browser can receive them: on the `https://…ts.net` address, and on an
-iPhone or iPad only in the web app added to the Home Screen. Each device has
+a time, from **More → Notifications on this device**. The switch appears only
+where the browser can receive them — on the `https://…ts.net` address, and on
+an iPhone or iPad only in the web app added to the Home Screen — and elsewhere
+the card says why. Each device has
 settings of its own that decide whether a notification arrives while it sleeps;
 [the procedure for Windows, Android and iPhone](https://nenco79.github.io/PAT-Monitor/notifications.html)
 lists them, in every language of the interface, and the link in the page opens

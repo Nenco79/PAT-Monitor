@@ -58,6 +58,8 @@
    a button that did not respond. */
 .i-close,
 [aria-expanded="true"] .i-open,
-[aria-pressed="true"] .i-open { display: none; }
+[aria-pressed="true"] .i-open,
+details[open] > summary .i-open { display: none; }
 [aria-expanded="true"] .i-close,
-[aria-pressed="true"] .i-close { display: block; }
+[aria-pressed="true"] .i-close,
+details[open] > summary .i-close { display: block; }

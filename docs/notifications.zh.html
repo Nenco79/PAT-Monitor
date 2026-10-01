@@ -84,12 +84,12 @@
 
 <ol>
   <li>在设备上打开监护器的 <code>https://</code> 地址并登录。如果是 iPhone 或 iPad，先按照下一节的步骤操作。</li>
-  <li>按<strong data-key="viewer.details">详情</strong>，然后按<strong data-key="viewer.push.receive">接收</strong>，它在<strong data-key="viewer.push.label">这台设备上的通知</strong>这一行里。</li>
+  <li>按<strong data-key="viewer.more">更多</strong>，然后按<strong data-key="viewer.push.receive">接收</strong>，它在<strong data-key="viewer.push.label">这台设备上的通知</strong>旁边。</li>
   <li>浏览器询问时，允许通知。</li>
   <li>按<strong data-key="viewer.push.test">发送测试</strong>。几秒内应该会出现一条通知。如果没有出现，就要看下面各设备自己的设置。</li>
 </ol>
 
-<p>如果没有这一行，说明页面不是在 <code>https://</code> 地址上打开的；或者在 iPhone 上，页面是在 Safari 浏览器的标签页里打开的，而不是从主屏幕打开的；或者这个浏览器不能接收通知。</p>
+<p>如果通知卡片上没有按钮，卡片上会写明原因：页面不是在 <code>https://</code> 地址上打开的；或者在 iPhone 上，页面是在 Safari 浏览器的标签页里打开的，而不是从主屏幕打开的；或者这个浏览器不能接收通知；或者监护器无法发送通知。</p>
 
 <h2>iPhone 和 iPad</h2>
 
@@ -128,7 +128,7 @@
   <li><strong>Edge</strong>：保持<strong>关闭 Microsoft Edge 后继续运行后台扩展和应用</strong>开启，它在<strong>设置 › 系统和性能</strong>下。这个选项默认是开启的。</li>
   <li><strong>Chrome</strong>：开启<strong>关闭 Google Chrome 后继续运行后台应用</strong>，它在<strong>设置 › 系统</strong>下。把页面安装为应用(地址栏里的安装按钮)也能防止它的权限被自动移除。</li>
   <li><strong>Firefox</strong>：必须一直开着。</li>
-  <li><strong>Brave</strong>：通知需要开启<strong>使用 Google 服务进行推送消息传递</strong>(在 <code>brave://settings/privacy</code> 下)，并重启 Brave。没有这个选项，开启通知会失败，那一行也会这样说明。</li>
+  <li><strong>Brave</strong>：通知需要开启<strong>使用 Google 服务进行推送消息传递</strong>(在 <code>brave://settings/privacy</code> 下)，并重启 Brave。没有这个选项，开启通知会失败，那张卡片也会这样说明。</li>
   <li><strong>Windows 本身</strong>：在<strong>设置 › 系统 › 通知</strong>中必须允许这个浏览器；开着请勿打扰时，它还必须在优先级通知之列。</li>
 </ul>
 
@@ -152,7 +152,7 @@
       <li><em data-key="viewer.push.result.refused">通知服务拒绝了这条消息。</em>监护器的日志里有原因：包含 <code>test notification</code> 的那一行，记着通知服务自己给出的理由(日志是用英文写的)。</li>
     </ul>
   </li>
-  <li>如果开启通知失败，打开这一行下面的<strong data-key="viewer.push.why">浏览器的回应</strong>：里面列出了浏览器具备什么，以及它回答了什么。</li>
+  <li>如果开启通知失败，打开卡片里的<strong data-key="viewer.push.why">浏览器的回应</strong>：里面列出了浏览器具备什么，以及它回答了什么。</li>
   <li>在 iPhone 上，把图标从主屏幕移除，重新添加，然后重新开启通知。</li>
   <li>监护器的日志里，每条提醒都有一行，记着它发给了几台设备、各个推送服务怎么回答；设备能连到监护器时，它每显示一条通知也会有一行，记着用了多长时间。要打开日志，右键点击时钟旁边的监护器图标：在图标的面板里，<strong data-key="tray.menu.logs">日志文件夹</strong>是画着一页纸的那个按钮，就在退出监护器的那个按钮上面。</li>
 </ol>
