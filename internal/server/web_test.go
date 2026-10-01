@@ -285,3 +285,60 @@ func TestEveryWarningSourceIsInTheOrder(t *testing.T) {
 		}
 	}
 }
+
+// **Every form with a password names the user for the keychain**, before the
+// password, because a password manager asks for a user name and the monitor
+// has none: the iPhone's keychain asked for one on every save until a field
+// answered for it. The forms are read from the pages, so a form added
+// tomorrow is held to it with nothing to remember.
+func TestEveryPasswordFormNamesTheUserForTheKeychain(t *testing.T) {
+	comments := regexp.MustCompile(`(?s)<!--.*?-->`)
+	forms := regexp.MustCompile(`(?s)<form\b.*?</form>`)
+	userField := regexp.MustCompile(`(?s)<input\b[^>]*autocomplete="username"[^>]*>`)
+	pages, err := fs.Glob(webFS, "web/*.html")
+	if err != nil || len(pages) == 0 {
+		t.Fatalf("no page to examine: %v", err)
+	}
+	seen := 0
+	for _, p := range pages {
+		name := path.Base(p)
+		html := comments.ReplaceAllString(readAsset(t, name), "")
+		concealed := false
+		for _, m := range reSheet.FindAllStringSubmatch(html, -1) {
+			if strings.Contains(readAsset(t, m[1]), "width: 1px !important") &&
+				strings.Contains(readAsset(t, m[1]), ".visually-hidden {") {
+				concealed = true
+			}
+		}
+		for _, form := range forms.FindAllString(html, -1) {
+			pw := strings.Index(form, `type="password"`)
+			if pw < 0 {
+				continue
+			}
+			seen++
+			loc := userField.FindStringIndex(form)
+			switch {
+			case loc == nil:
+				t.Errorf("%s: a form with a password has no user-name input for the keychain:\n%.120s",
+					name, form)
+				continue
+			case loc[0] > pw:
+				t.Errorf("%s: the user name comes after the password, where a manager does not look", name)
+			}
+			// **Concealed, and by the rule that wins**: without the class the
+			// field drew 390 by 26 and pushed the sign-in sideways; with
+			// `hidden` a manager may skip it.
+			field := form[loc[0]:loc[1]]
+			if !strings.Contains(field, `class="visually-hidden"`) || !concealed {
+				t.Errorf("%s: the user name is not concealed by .visually-hidden from a sheet the page loads", name)
+			}
+			if regexp.MustCompile(`\shidden[\s>]`).MatchString(field) || strings.Contains(field, "display") {
+				t.Errorf("%s: the user name is hidden, which a manager may skip", name)
+			}
+		}
+	}
+	// A guard that stopped finding the forms would pass.
+	if seen == 0 {
+		t.Fatal("no form with a password was found")
+	}
+}

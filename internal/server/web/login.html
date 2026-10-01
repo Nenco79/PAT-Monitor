@@ -170,6 +170,18 @@
     <h1>PAT Monitor</h1>
     <p class="sub" data-i18n="login.subtitle"></p>
 
+    <!-- **A name for the password manager, which asks for one.** The monitor has
+         one password and no users, and a page with a password field alone made
+         the iPhone's keychain ask for a user name before saving it. This field
+         answers for it: it comes before the password, as a manager looks for
+         it, is named "PAT Monitor", and is out of the tab order and the screen
+         reader. It is clipped to a one-pixel box where it sits, not `hidden`,
+         which a manager may skip, and not `readonly`, which one may weigh less
+         as a user name. The monitor never reads it. Every other password form
+         carries the same field and points here. -->
+    <input type="text" name="username" value="PAT Monitor" autocomplete="username"
+           class="visually-hidden" tabindex="-1" aria-hidden="true">
+
     <label for="password" data-i18n="login.password"></label>
     <input type="password" id="password" name="password"
            autocomplete="current-password" required autofocus>

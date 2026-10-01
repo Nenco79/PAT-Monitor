@@ -1414,6 +1414,26 @@ not negotiable", and it is the remedy the specification recommends. It is in
 pages really load those sheets — otherwise the test would be looking at a file
 nobody reads.
 
+#### A password form names its user for the keychain
+
+The monitor has one password and no users, so every form held a password field
+alone, and **the iPhone's keychain asked for a user name at every save** —
+reported by the owner. Every form with a password now carries
+`autocomplete="username"` with the value `PAT Monitor`, **before** the
+password, which is where a manager looks for it. It is clipped to a one-pixel
+box rather than `hidden`, which a manager may skip, and is not `readonly`,
+which one may weigh less as a user name; it is out of the tab order and the
+screen reader, and the monitor never reads it. The keychain keeps entries by
+address, so two monitors under one name do not collide.
+`TestEveryPasswordFormNamesTheUserForTheKeychain` reads the forms from the pages
+and asks for the input, its place, and the rule that conceals it: **the first
+version of that rule lost to `input[type="text"]`**, and the field drew 390 by
+26 on a phone and pushed the sign-in 49 px sideways, so it carries
+`!important` as `[hidden]` does. **What a phone does is not known from here**:
+whether the field is taken as the user name, and what happens to an entry saved
+before under another name — a change of password may update the new entry and
+leave the old one with the old password.
+
 #### A class nobody looks up any more does not complain
 
 Moving the QR code **inside** the address box, the class `.inquadra` disappeared

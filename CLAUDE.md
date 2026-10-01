@@ -103,8 +103,7 @@ everywhere is emphasis nowhere:
 **The documents beside this one have their own readers.** `README.md` is for
 whoever installs the program and says what it does rather than why; the open
 issues are what has not been demonstrated; `baselines/` is evidence, so it is
-re-measured and never rewritten — one of those files carries a verbatim Italian
-transcript, because that is the output the build of that date produced.
+re-measured and never rewritten, for the reason "Language" below gives.
 
 ## The headings are the rules
 
@@ -321,6 +320,7 @@ index when it is stale: use the command above.
     - The explainer is a box, not a step
     - The box promises, the row beside it explains
     - `hidden` hides nothing if a sheet writes a `display`
+    - A password form names its user for the keychain
     - A class nobody looks up any more does not complain
     - Where the real thing is on the page, its drawing does not explain: it
       imitates

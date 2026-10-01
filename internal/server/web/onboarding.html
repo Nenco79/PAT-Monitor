@@ -365,6 +365,9 @@
          executed, the browser still submits by POST and the password does not
          end up in the address bar. -->
     <form id="pw-form" method="post" action="/api/setup" autocomplete="on">
+      <!-- The keychain's name for the password: see login.html. -->
+      <input type="text" name="username" value="PAT Monitor" autocomplete="username"
+             class="visually-hidden" tabindex="-1" aria-hidden="true">
       <label for="password" data-i18n="onb.s0.password"></label>
       <input type="password" id="password" name="password"
              autocomplete="new-password" minlength="8" required>
@@ -391,6 +394,9 @@
           <small data-i18n="onb.s0.have-enter"></small></div></li>
       </ul>
 
+      <!-- The keychain's name for the password: see login.html. -->
+      <input type="text" name="username" value="PAT Monitor" autocomplete="username"
+             class="visually-hidden" tabindex="-1" aria-hidden="true">
       <label for="signin-password" data-i18n="onb.s0.password-plain"></label>
       <input type="password" id="signin-password" name="password"
              autocomplete="current-password" required>
@@ -416,6 +422,9 @@
         <button class="btn ghost" type="button" id="pw-change" data-i18n="onb.s0.change"></button>
       </div>
       <form id="pw-change-form" method="post" action="/api/password" autocomplete="on" hidden>
+        <!-- The keychain's name for the password: see login.html. -->
+        <input type="text" name="username" value="PAT Monitor" autocomplete="username"
+               class="visually-hidden" tabindex="-1" aria-hidden="true">
         <!-- The current password is asked even of somebody who already has a
              session: a cookie says "somebody signed in from this browser", not
              "it is you". See apiPassword. -->

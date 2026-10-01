@@ -63,3 +63,25 @@ details[open] > summary .i-open { display: none; }
 [aria-expanded="true"] .i-close,
 [aria-pressed="true"] .i-close,
 details[open] > summary .i-close { display: block; }
+
+/* **Out of sight, and still read by a password manager.** Not a glyph: it is
+   here because every page with a password form loads this sheet whatever its
+   palette, so the rule is written once. It is for the user name the keychain
+   needs (see login.html): `display: none` or `hidden` may make a manager skip
+   the field, so it is clipped to a one-pixel box where it sits instead.
+
+   **`!important`, for the reason `[hidden]` has it in the palette sheets**:
+   the field is an input, and those sheets dress inputs with selectors that
+   outweigh a class — `input[type="text"]` in style.css, an id inside `:is()`
+   in the guided path. Measured without it, the field came out 390 by 26 on a
+   phone and pushed the sign-in page 49 px sideways. */
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+  padding: 0 !important;
+}
