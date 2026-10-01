@@ -148,11 +148,35 @@ async function pushInit() {
       await pushSub.unsubscribe();
       pushSub = null;
     }
-    if (pushSub) await pushSend('/api/push/subscribe', pushSub);
+    if (pushSub) {
+      const res = await pushSend('/api/push/subscribe', pushSub);
+      if (sessionExpired(res)) return;
+      // **A refusal of the hand-over is the monitor saying it will not write
+      // to this device**: the list is full, or the subscription is one it
+      // cannot take. Showing "on" over it would promise notifications nobody
+      // sends, so it is taken back the way a failed press is. A 429 or a 5xx
+      // is a moment and keeps it: the monitor still has it from before.
+      if (res.status >= 400 && res.status < 500 && res.status !== 429) {
+        const body = await bodyOf(res);
+        await pushTakeBack(reg);
+        paintPush('off', TErr(body.error), ' notice');
+        return;
+      }
+    }
   } catch (err) {
     console.warn('the subscription could not be handed over again', err);
   }
   paintPush(pushSub ? 'on' : 'off');
+}
+
+// pushTakeBack removes this browser's subscription and its worker: **nothing
+// is left installed for a device the monitor will not write to**, otherwise
+// the next opening finds it, hands it over again and shows "on".
+async function pushTakeBack(reg) {
+  if (pushSub) await pushSub.unsubscribe().catch(() => {});
+  pushSub = null;
+  const r = reg || await navigator.serviceWorker.getRegistration('/').catch(() => null);
+  if (r) await r.unregister().catch(() => {});
 }
 
 // pushOn is the press. **The permission is asked in the same turn as the
@@ -165,16 +189,20 @@ async function pushOn() {
   // Measured on Brave: the subscription failed and the worker stayed
   // registered, installed for somebody who had not got what it was for.
   const giveBack = () => reg && reg.unregister().catch(() => {});
-  try {
-    [reg, perm] = await Promise.all([
-      navigator.serviceWorker.register('/sw.js', {scope: '/'}),
-      Notification.requestPermission(),
-    ]);
-  } catch (err) {
+  // **Settled, not `all`**: `all` rejects as soon as one half does and
+  // drops the other's value, so a worker registered beside a refused prompt
+  // had no handle to be taken back by.
+  const [r, p] = await Promise.allSettled([
+    navigator.serviceWorker.register('/sw.js', {scope: '/'}),
+    Notification.requestPermission(),
+  ]);
+  if (r.status === 'fulfilled') reg = r.value;
+  if (r.status === 'rejected' || p.status === 'rejected') {
     giveBack();
-    pushFailed(err);
+    pushFailed(r.status === 'rejected' ? r.reason : p.reason);
     return;
   }
+  perm = p.value;
   if (perm !== 'granted') {
     giveBack();
     paintPush(perm === 'denied' ? 'denied' : 'off');
@@ -239,7 +267,7 @@ async function pushTest() {
   }
   const r = body.result || 'unavailable';
   if (r === 'gone') {
-    pushSub = null;
+    await pushTakeBack();
     paintPush('off', T('viewer.push.result.gone'), ' notice');
     return;
   }

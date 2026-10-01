@@ -99,7 +99,13 @@ self.addEventListener('pushsubscriptionchange', (event) => {
       credentials: 'same-origin',
     });
     const j = sub.toJSON();
-    await post('/api/push/subscribe', {endpoint: j.endpoint, keys: j.keys, lang: self.navigator.language || ''});
+    // The worker cannot know the page's language, so it names what it
+    // replaces and the monitor keeps that one's; the browser's is only the
+    // fallback for a subscription the monitor no longer has.
+    await post('/api/push/subscribe', {
+      endpoint: j.endpoint, keys: j.keys, lang: self.navigator.language || '',
+      replaces: event.oldSubscription ? event.oldSubscription.endpoint : '',
+    });
     if (event.oldSubscription) {
       await post('/api/push/unsubscribe', {endpoint: event.oldSubscription.endpoint});
     }

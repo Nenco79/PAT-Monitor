@@ -140,3 +140,36 @@ func TestTheServiceWorkerIsServedWithoutASession(t *testing.T) {
 		t.Fatalf("%d %q", w.Code, w.Header().Get("Content-Type"))
 	}
 }
+
+// **A subscription the browser renewed keeps the language it was made in.**
+// The service worker cannot know the page's language — the selector can
+// override the browser's — so it names the subscription it replaces, and the
+// monitor carries the language across instead of taking the worker's.
+func TestARenewedSubscriptionKeepsItsLanguage(t *testing.T) {
+	s, token := serverWithPassword(t, "a long enough password")
+	n := withPush(t, s)
+	body := func(endpoint, lang, replaces string) string {
+		ua, _ := ecdh.P256().GenerateKey(rand.Reader)
+		auth := make([]byte, 16)
+		_, _ = rand.Read(auth)
+		enc := base64.RawURLEncoding
+		b, _ := json.Marshal(map[string]any{
+			"endpoint": endpoint,
+			"keys":     map[string]string{"p256dh": enc.EncodeToString(ua.PublicKey().Bytes()), "auth": enc.EncodeToString(auth)},
+			"lang":     lang,
+			"replaces": replaces,
+		})
+		return string(b)
+	}
+	const old, renewed = "https://fcm.googleapis.com/fcm/send/old", "https://fcm.googleapis.com/fcm/send/new"
+	for _, b := range []string{body(old, "it", ""), body(renewed, "en-US", old)} {
+		w := httptest.NewRecorder()
+		s.Handler().ServeHTTP(w, pushRequest(http.MethodPost, "/api/push/subscribe", token, b, true))
+		if w.Code != http.StatusOK {
+			t.Fatalf("subscribing: %d %s", w.Code, w.Body.String())
+		}
+	}
+	if lang, _ := n.LanguageOf(renewed); lang != "it" {
+		t.Errorf("the renewed subscription speaks %q, want the page's %q", lang, "it")
+	}
+}

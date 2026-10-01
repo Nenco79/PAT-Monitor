@@ -64,16 +64,17 @@ func (s Subscription) check() error {
 	if _, err := endpointURL(s.Endpoint); err != nil {
 		return err
 	}
-	pub, err := base64.RawURLEncoding.DecodeString(strings.TrimRight(s.P256dh, "="))
+	// The same decoding the sender uses, so the two cannot disagree about
+	// which encodings a browser may hand over.
+	pub, auth, err := s.keys()
 	if err != nil {
-		return fmt.Errorf("push: the browser's key is not base64url: %w", err)
+		return fmt.Errorf("push: the browser's key or secret is not base64url: %w", err)
 	}
 	if _, err := ecdh.P256().NewPublicKey(pub); err != nil {
 		return fmt.Errorf("push: the browser's key is not a P-256 point: %w", err)
 	}
-	auth, err := base64.RawURLEncoding.DecodeString(strings.TrimRight(s.Auth, "="))
-	if err != nil || len(auth) != 16 {
-		return errors.New("push: the browser's secret is not 16 bytes of base64url")
+	if len(auth) != 16 {
+		return errors.New("push: the browser's secret is not 16 bytes")
 	}
 	if len(s.Lang) > 35 {
 		return errors.New("push: a language tag that long is not one")
@@ -85,7 +86,7 @@ func (s Subscription) check() error {
 	return nil
 }
 
-// keys decodes what check has already accepted.
+// keys decodes the browser's key and secret, for check and for the sender.
 func (s Subscription) keys() (pub, auth []byte, err error) {
 	if pub, err = base64.RawURLEncoding.DecodeString(strings.TrimRight(s.P256dh, "=")); err != nil {
 		return nil, nil, err
@@ -101,6 +102,8 @@ type Store struct {
 	mu   sync.Mutex
 	key  *ecdsa.PrivateKey
 	subs []Subscription
+	// dirty is a LastOK changed in memory and not yet on disk.
+	dirty bool
 }
 
 // file is the shape on disk.
@@ -198,14 +201,27 @@ func (s *Store) Remove(endpoint string) (bool, error) {
 }
 
 // Delivered records that a push service took a message for endpoint.
-func (s *Store) Delivered(endpoint string, now time.Time) error {
+//
+// **In memory, and on disk with the next write or at Flush**: nothing reads
+// LastOK while the monitor runs, and a night of alerts to several devices was
+// one rewrite of the whole file per device per alert, all under this lock.
+func (s *Store) Delivered(endpoint string, now time.Time) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if i := s.find(endpoint); i >= 0 {
 		s.subs[i].LastOK = now.Unix()
-		return s.save()
+		s.dirty = true
 	}
-	return nil
+}
+
+// Flush writes what Delivered kept in memory, if anything.
+func (s *Store) Flush() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if !s.dirty {
+		return nil
+	}
+	return s.save()
 }
 
 // Get is the subscription with that endpoint.
@@ -255,5 +271,6 @@ func (s *Store) save() error {
 		_ = os.Remove(tmp)
 		return fmt.Errorf("push: replacing %s: %w", s.path, err)
 	}
+	s.dirty = false
 	return nil
 }

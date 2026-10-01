@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -65,7 +66,14 @@ func (s *signer) publicKey() string {
 
 // authorization is the `Authorization` header for a message to endpoint.
 func (s *signer) authorization(endpoint *url.URL, now time.Time) (string, error) {
-	aud := endpoint.Scheme + "://" + endpoint.Host
+	// **The origin in its standard form**: `endpointURL` lets `:443` through,
+	// and a service that compares `aud` with its own origin refuses
+	// `https://host:443` as a different one.
+	host := endpoint.Host
+	if endpoint.Port() == "443" {
+		host = strings.TrimSuffix(host, ":443")
+	}
+	aud := endpoint.Scheme + "://" + host
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	t, ok := s.tokens[aud]

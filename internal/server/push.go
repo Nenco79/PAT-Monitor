@@ -29,6 +29,9 @@ type pushBody struct {
 	} `json:"keys"`
 	Lang string `json:"lang"`
 	ID   string `json:"id"`
+	// Replaces is the subscription this one takes the place of, which the
+	// service worker names when the browser has renewed it on its own.
+	Replaces string `json:"replaces"`
 }
 
 func (s *Server) readPush(w http.ResponseWriter, r *http.Request) (pushBody, bool) {
@@ -70,11 +73,19 @@ func (s *Server) apiPushSubscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	origin := url.URL{Scheme: "https", Host: r.Host}
+	// A renewal keeps the language of what it replaces: the worker that sends
+	// it can only say the browser's, and the page may have chosen another.
+	lang := b.Lang
+	if b.Replaces != "" {
+		if was, ok := s.opts.Push.LanguageOf(b.Replaces); ok {
+			lang = was
+		}
+	}
 	err := s.opts.Push.Subscribe(push.Subscription{
 		Endpoint: b.Endpoint,
 		P256dh:   b.Keys.P256dh,
 		Auth:     b.Keys.Auth,
-		Lang:     b.Lang,
+		Lang:     lang,
 		Origin:   origin.String(),
 	})
 	switch {

@@ -203,6 +203,29 @@ Samsung's battery entries in Italian, Spanish and Chinese, taken from
 Samsung's forums and press rather than a string file; and Tailscale's "VPN On
 Demand", kept in English because the app is not localised.
 
+**A review of the first commit found eight things every guard had passed.**
+The five on the monitor have a test each, seen failing before the fix; the
+three in the page have none, there being no browser in `go test`, and they
+want the real button pressed again:
+
+- **The page believed its own hand-over.** At an opening it sent the
+  subscription again and showed "on" without reading the answer, so a full
+  list or a refused subscription read as working; a 4xx now takes it back.
+- **"Gone" on a test left the subscription in the browser**, so the next
+  opening handed the dead endpoint over again and the loop restarted at
+  every alert: `pushTakeBack` removes it and the worker.
+- **`Promise.all` dropped the registration** when the prompt was refused, and
+  the worker stayed: `allSettled` keeps whichever half resolved.
+- **A renewal spoke the browser's language, not the page's**: the worker
+  names the subscription it replaces and the monitor keeps that one's.
+- **The receipt counted one device**, being forgotten at the first; it is kept
+  until it expires, and each receipt is a line.
+- **NAT64 and 6to4 carried the house through**, and the special-purpose
+  blocks counted as public: a translation prefix is judged by what it carries.
+- **`aud` kept `:443`**, which a service comparing origins refuses.
+- **Every delivery rewrote the file**; delivery times stay in memory until the
+  next write or `Close`.
+
 **On an iPhone from the Home Screen it works**, as the owner reported on
 2026-10-01; how long a notification takes there was not measured.
 

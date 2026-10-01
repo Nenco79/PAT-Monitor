@@ -333,13 +333,16 @@ func readCatalogue(t *testing.T, lang string) map[string]string {
 // **An endpoint is held to what a push service is**, and the addresses a page
 // could name to make the monitor call into the house are refused.
 func TestAnEndpointInsideTheHouseIsRefused(t *testing.T) {
+	// An address of the tailnet's range, derived and not written: none of them
+	// goes into the repository, not even in a test.
+	inTailnet := cgnat.Addr().Next().String()
 	for _, raw := range []string{
 		"http://fcm.googleapis.com/fcm/send/x",
 		"https://127.0.0.1/x",
 		"https://[::1]/x",
 		"https://192.168.1.1/x",
 		"https://10.0.0.1/x",
-		"https://100.101.102.103/x",
+		"https://" + inTailnet + "/x",
 		"https://[fd7a:115c:a1e0::1]/x",
 		"https://169.254.1.1/x",
 		"https://fcm.googleapis.com:8443/x",
@@ -364,7 +367,7 @@ func TestAnEndpointInsideTheHouseIsRefused(t *testing.T) {
 	}
 	// And at the moment of dialling, which is where a name that resolves into
 	// the house is caught.
-	for _, addr := range []string{"127.0.0.1:443", "192.168.1.20:443", "100.64.0.1:443", "[fd7a:115c:a1e0::5]:443"} {
+	for _, addr := range []string{"127.0.0.1:443", "192.168.1.20:443", inTailnet + ":443", "[fd7a:115c:a1e0::5]:443"} {
 		if dialPublic("tcp", addr, nil) == nil {
 			t.Errorf("dialling %s was allowed", addr)
 		}
@@ -374,5 +377,32 @@ func TestAnEndpointInsideTheHouseIsRefused(t *testing.T) {
 	}
 	if publicAddress(netip.MustParseAddr("::ffff:192.168.1.1")) {
 		t.Error("an IPv4-mapped private address counts as public")
+	}
+}
+
+// **A translation prefix carries the address it translates**, so an IPv4
+// inside NAT64 or 6to4 is the address that is really reached, and the blocks
+// no push service lives in are not the public Internet either.
+func TestAnAddressInsideATranslationPrefixIsJudgedByWhatItCarries(t *testing.T) {
+	for _, s := range []string{
+		"64:ff9b::c0a8:101", // NAT64 of 192.168.1.1
+		"64:ff9b:1::a00:1",  // local-use NAT64 of 10.0.0.1
+		"2002:c0a8:101::1",  // 6to4 of 192.168.1.1
+		"2001::1",           // Teredo
+		"0.1.2.3",           // "this network"
+		"192.0.0.8",         // IETF protocol assignments
+		"198.18.0.1",        // benchmarking
+		"192.0.2.1",         // documentation
+		"240.0.0.1",         // reserved
+		"2001:db8::1",       // documentation
+	} {
+		if publicAddress(netip.MustParseAddr(s)) {
+			t.Errorf("%s counts as public", s)
+		}
+	}
+	for _, s := range []string{"64:ff9b::8efa:b40a", "2002:8efa:b40a::1", "142.250.180.10", "2a00:1450:4002::1"} {
+		if !publicAddress(netip.MustParseAddr(s)) {
+			t.Errorf("%s counts as not public", s)
+		}
 	}
 }

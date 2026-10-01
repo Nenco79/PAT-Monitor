@@ -63,6 +63,8 @@ type Notifier struct {
 type sentMessage struct {
 	code alerts.Code
 	at   time.Time
+	// shown is how many devices have sent a receipt for it.
+	shown int
 }
 
 // New opens the store in dir and makes a notifier over it.
@@ -88,10 +90,14 @@ func newNotifier(store *Store, send *sender, log *slog.Logger, random io.Reader)
 	}
 }
 
-// Close stops the deliveries under way and waits for them.
+// Close stops the deliveries under way, waits for them, and writes the
+// delivery times kept in memory.
 func (n *Notifier) Close() {
 	n.cancel()
 	n.wg.Wait()
+	if err := n.store.Flush(); err != nil {
+		n.log.Debug("the delivery times were not written", "error", err)
+	}
 }
 
 // PublicKey is what a browser subscribes with.
@@ -108,6 +114,12 @@ func (n *Notifier) Subscribe(sub Subscription) error {
 			"lang", sub.Lang, "devices", len(n.store.All()))
 	}
 	return nil
+}
+
+// LanguageOf is the language a subscription was made in.
+func (n *Notifier) LanguageOf(endpoint string) (string, bool) {
+	sub, ok := n.store.Get(endpoint)
+	return sub.Lang, ok
 }
 
 // Unsubscribe drops a subscription.
@@ -143,16 +155,24 @@ func (n *Notifier) Test(ctx context.Context, endpoint string) Outcome {
 }
 
 // Seen is the receipt a service worker sends once it has shown a message.
+//
+// **The id is kept after the first receipt**, because one message goes to
+// every subscription under one id: forgetting it there left the second
+// device's delivery unmeasured. It goes with the others that `remember`
+// clears, once nobody can answer for it any more.
 func (n *Notifier) Seen(id string) {
 	n.sentMu.Lock()
 	m, ok := n.sent[id]
-	delete(n.sent, id)
+	if ok {
+		m.shown++
+		n.sent[id] = m
+	}
 	n.sentMu.Unlock()
 	if !ok {
 		return
 	}
 	n.log.Info("notification shown", "code", m.code,
-		"after", time.Since(m.at).Round(10*time.Millisecond))
+		"after", time.Since(m.at).Round(10*time.Millisecond), "receipt", m.shown)
 }
 
 // Alerted is the watching round's news: the alerts that appeared and the ones
@@ -218,9 +238,7 @@ func (n *Notifier) dispatch(code alerts.Code, key string, ttl time.Duration) {
 func (n *Notifier) settle(sub Subscription, a answer) {
 	switch a.outcome {
 	case Delivered:
-		if err := n.store.Delivered(sub.Endpoint, time.Now()); err != nil {
-			n.log.Debug("the delivery time was not written", "error", err)
-		}
+		n.store.Delivered(sub.Endpoint, time.Now())
 	case Gone:
 		if removed, err := n.store.Remove(sub.Endpoint); removed {
 			n.log.Info("a device's subscription has ended and was removed",

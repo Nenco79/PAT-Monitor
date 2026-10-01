@@ -63,7 +63,7 @@ func TestASubscriptionHandedOverAgainIsTheSameOne(t *testing.T) {
 	s, _ := OpenStore(t.TempDir(), randomSource)
 	sub := aSubscription(t, "https://web.push.apple.com/abc")
 	_ = s.Put(sub, time.Unix(100, 0))
-	_ = s.Delivered(sub.Endpoint, time.Unix(150, 0))
+	s.Delivered(sub.Endpoint, time.Unix(150, 0))
 	sub.Lang = "it"
 	if err := s.Put(sub, time.Unix(200, 0)); err != nil {
 		t.Fatal(err)
@@ -71,6 +71,28 @@ func TestASubscriptionHandedOverAgainIsTheSameOne(t *testing.T) {
 	all := s.All()
 	if len(all) != 1 || all[0].Lang != "it" || all[0].Created != 100 || all[0].LastOK != 150 {
 		t.Fatalf("after a second hand-over: %+v", all)
+	}
+}
+
+// **A delivery is not a write**: the time a service last took a message is
+// kept in memory and reaches the file with the next change or at Flush, not
+// once per device per alert.
+func TestADeliveryIsWrittenAtFlushAndNotEachTime(t *testing.T) {
+	dir := t.TempDir()
+	s, _ := OpenStore(dir, randomSource)
+	sub := aSubscription(t, "https://web.push.apple.com/abc")
+	_ = s.Put(sub, time.Unix(100, 0))
+	before, _ := os.ReadFile(filepath.Join(dir, FileName))
+	s.Delivered(sub.Endpoint, time.Unix(150, 0))
+	if after, _ := os.ReadFile(filepath.Join(dir, FileName)); string(after) != string(before) {
+		t.Fatal("a delivery rewrote the file")
+	}
+	if err := s.Flush(); err != nil {
+		t.Fatal(err)
+	}
+	again, _ := OpenStore(dir, randomSource)
+	if got, _ := again.Get(sub.Endpoint); got.LastOK != 150 {
+		t.Fatalf("after Flush the file says LastOK %d", got.LastOK)
 	}
 }
 

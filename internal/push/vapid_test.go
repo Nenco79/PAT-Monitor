@@ -118,3 +118,39 @@ func TestATokenIsReusedAndNotSignedPerMessage(t *testing.T) {
 		t.Fatalf("reuse %v, life %v: at least an hour, and less than the life", tokenReuse, tokenLife)
 	}
 }
+
+// **The audience is the origin in its standard form**, without the default
+// port: an endpoint written with `:443` is the same push service, and a
+// service comparing `aud` with its origin refuses `https://host:443`.
+func TestTheAudienceLeavesOutTheDefaultPort(t *testing.T) {
+	key, err := newKey(randomSource)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := newSigner(key, randomSource)
+	now := time.Unix(1_800_000_000, 0)
+	audOf := func(raw string) any {
+		endpoint, _ := url.Parse(raw)
+		auth, err := s.authorization(endpoint, now)
+		if err != nil {
+			t.Fatal(err)
+		}
+		rest, _ := strings.CutPrefix(auth, "vapid t=")
+		jwt, _, _ := strings.Cut(rest, ", k=")
+		raw2, err := base64.RawURLEncoding.DecodeString(strings.Split(jwt, ".")[1])
+		if err != nil {
+			t.Fatal(err)
+		}
+		var claims map[string]any
+		if err := json.Unmarshal(raw2, &claims); err != nil {
+			t.Fatal(err)
+		}
+		return claims["aud"]
+	}
+	if got := audOf("https://push.example:443/x"); got != "https://push.example" {
+		t.Errorf("aud %v for an endpoint with :443", got)
+	}
+	if got := audOf("https://[2a00:1450:4002::1]:443/x"); got != "https://[2a00:1450:4002::1]" {
+		t.Errorf("aud %v for an IPv6 endpoint with :443", got)
+	}
+}

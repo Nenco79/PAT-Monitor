@@ -49,10 +49,36 @@ var (
 	// tailnet6 is Tailscale's IPv6 range. It is inside fc00::/7, so already
 	// private; it is named so that nobody wonders.
 	tailnet6 = netip.MustParsePrefix("fd7a:115c:a1e0::/48")
+
+	// nat64 and sixToFour carry an IPv4 address inside an IPv6 one, and what
+	// is reached through them is that IPv4 address: a NAT64 gateway on the
+	// house's network turns 64:ff9b::c0a8:101 into 192.168.1.1. They are judged
+	// by what they carry, so a push service reached through DNS64 still works.
+	nat64     = netip.MustParsePrefix("64:ff9b::/96")
+	sixToFour = netip.MustParsePrefix("2002::/16")
+
+	// notTheInternet is the special-purpose blocks no push service lives in,
+	// which netip counts as global unicast: "this network", the IETF's own,
+	// documentation, benchmarking, reserved, Teredo, the local-use NAT64
+	// prefix whose embedding is the network's choice, and discard.
+	notTheInternet = []netip.Prefix{
+		netip.MustParsePrefix("0.0.0.0/8"),
+		netip.MustParsePrefix("192.0.0.0/24"),
+		netip.MustParsePrefix("192.0.2.0/24"),
+		netip.MustParsePrefix("198.18.0.0/15"),
+		netip.MustParsePrefix("198.51.100.0/24"),
+		netip.MustParsePrefix("203.0.113.0/24"),
+		netip.MustParsePrefix("240.0.0.0/4"),
+		netip.MustParsePrefix("2001::/32"),
+		netip.MustParsePrefix("2001:db8::/32"),
+		netip.MustParsePrefix("64:ff9b:1::/48"),
+		netip.MustParsePrefix("100::/64"),
+	}
 )
 
 // publicAddress says whether an address is on the public Internet: not this
-// machine, not the house, not the tailnet.
+// machine, not the house, not the tailnet, and not one of them reached
+// through a translation prefix.
 func publicAddress(a netip.Addr) bool {
 	a = a.Unmap()
 	switch {
@@ -60,6 +86,18 @@ func publicAddress(a netip.Addr) bool {
 		return false
 	case cgnat.Contains(a), tailnet6.Contains(a):
 		return false
+	}
+	for _, p := range notTheInternet {
+		if p.Contains(a) {
+			return false
+		}
+	}
+	b := a.As16()
+	switch {
+	case nat64.Contains(a):
+		return publicAddress(netip.AddrFrom4([4]byte{b[12], b[13], b[14], b[15]}))
+	case sixToFour.Contains(a):
+		return publicAddress(netip.AddrFrom4([4]byte{b[2], b[3], b[4], b[5]}))
 	}
 	return true
 }
