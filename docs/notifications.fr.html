@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Notifications de PAT Monitor</title>
+<link rel="alternate" hreflang="de" href="notifications.de.html">
+<link rel="alternate" hreflang="en" href="notifications.html">
+<link rel="alternate" hreflang="es" href="notifications.es.html">
+<link rel="alternate" hreflang="fr" href="notifications.fr.html">
+<link rel="alternate" hreflang="it" href="notifications.it.html">
+<link rel="alternate" hreflang="pt-BR" href="notifications.pt.html">
+<link rel="alternate" hreflang="pt-PT" href="notifications.pt-pt.html">
+<link rel="alternate" hreflang="ja" href="notifications.ja.html">
+<link rel="alternate" hreflang="zh-Hans" href="notifications.zh.html">
+<style>
+  :root {
+    color-scheme: light dark;
+    --ink: #1b1a17;
+    --dim: #5f5a51;
+    --bg: #faf8f4;
+    --rule: #e2ddd3;
+    --link: #2f6b4f;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ink: #e8e3d9;
+      --dim: #a49d90;
+      --bg: #171614;
+      --rule: #302d28;
+      --link: #7fb99a;
+    }
+  }
+  body {
+    margin: 0 auto; padding: 3rem 1.25rem 5rem; max-width: 42rem;
+    background: var(--bg); color: var(--ink);
+    font: 16px/1.65 -apple-system, "Segoe UI", system-ui, sans-serif;
+  }
+  h1 { font-size: 1.65rem; line-height: 1.25; margin: 0 0 .35rem; }
+  h2 { font-size: 1.15rem; margin: 2.6rem 0 .6rem; }
+  h3 { font-size: 1rem; margin: 1.6rem 0 .4rem; }
+  p, li { margin: .7rem 0; }
+  ul, ol { padding-left: 1.2rem; }
+  a { color: var(--link); }
+  code { font-family: ui-monospace, Consolas, monospace; font-size: .9em; }
+  .langs { margin: 0 0 2rem; font-size: .9rem; color: var(--dim); line-height: 2; }
+  .langs a, .langs strong { margin-right: .7rem; white-space: nowrap; }
+  .date { color: var(--dim); font-size: .9rem; margin: 0 0 2rem; }
+  .lead { font-size: 1.05rem; }
+  hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
+  footer { color: var(--dim); font-size: .9rem; }
+</style>
+</head>
+<body>
+
+<nav class="langs" aria-label="Langue">
+  <a href="notifications.de.html" hreflang="de" lang="de">Deutsch</a>
+  <a href="notifications.html" hreflang="en" lang="en">English</a>
+  <a href="notifications.es.html" hreflang="es" lang="es">Español</a>
+  <strong aria-current="page">Français</strong>
+  <a href="notifications.it.html" hreflang="it" lang="it">Italiano</a>
+  <a href="notifications.pt.html" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a>
+  <a href="notifications.pt-pt.html" hreflang="pt-PT" lang="pt-PT">Português (Portugal)</a>
+  <a href="notifications.ja.html" hreflang="ja" lang="ja">日本語</a>
+  <a href="notifications.zh.html" hreflang="zh-Hans" lang="zh-Hans">简体中文</a>
+</nav>
+
+<h1>Les notifications avec la page fermée</h1>
+<p class="date">Dernière mise à jour&nbsp;: 30 septembre 2026</p>
+
+<p class="lead">PAT Monitor peut envoyer les alertes que sa page affiche (un bébé
+qui pleure, un chien qui aboie, du mouvement, une caméra qui s’est arrêtée) à un
+téléphone ou à un ordinateur dont la page est fermée, sous forme de notifications
+système ordinaires. Elles sont désactivées tant que tu ne les actives pas, un
+appareil à la fois.</p>
+
+<p><strong>Elles peuvent arriver en retard, ou ne pas arriver du tout.</strong>
+Qu’une notification atteigne un téléphone en veille dépend des réglages du
+téléphone, de son économiseur de batterie et de son réseau, et le moniteur ne
+peut rien voir de tout cela. PAT Monitor n’est ni un dispositif médical ni un système
+de sécurité.</p>
+
+<h2>Avant de commencer</h2>
+
+<ul>
+  <li><strong>L’accès depuis l’extérieur doit fonctionner.</strong> Les
+      notifications ont besoin de l’adresse <code>https://…ts.net</code> du
+      moniteur, celle que la configuration guidée donne sur son dernier écran
+      pour regarder depuis l’extérieur. L’adresse utilisée à la maison
+      (<code>http://192.168…</code>) ne peut pas les recevoir, et l’option n’y
+      apparaît pas.</li>
+  <li><strong>Utilise toujours la même adresse</strong> sur un même appareil.
+      Pour un navigateur, une autre adresse est un autre site, avec sa propre
+      autorisation.</li>
+  <li>Toucher une notification ouvre le moniteur, qui fonctionne là où cette
+      adresse fonctionne&nbsp;: de partout si l’accès depuis l’extérieur est
+      activé, ou avec l’application Tailscale connectée sur l’appareil.</li>
+</ul>
+
+<h2>Les activer</h2>
+
+<ol>
+  <li>Ouvre l’adresse <code>https://</code> du moniteur sur l’appareil et
+      connecte-toi. Sur un iPhone ou un iPad, suis d’abord les étapes de la
+      section suivante.</li>
+  <li>Appuie sur <strong data-key="viewer.details">Détails</strong>, puis sur
+      <strong data-key="viewer.push.receive">Recevoir</strong> dans la ligne
+      <strong data-key="viewer.push.label">Notifications sur cet appareil</strong>.</li>
+  <li>Autorise les notifications quand le navigateur le demande.</li>
+  <li>Appuie sur <strong data-key="viewer.push.test">Envoyer un test</strong>.
+      Une notification devrait apparaître en quelques secondes. Sinon, c’est dans
+      les réglages de l’appareil, décrits plus bas, qu’il faut regarder.</li>
+</ol>
+
+<p>Si la ligne n’est pas là, la page n’est pas sur l’adresse
+<code>https://</code>, ou, sur un iPhone, elle est ouverte dans un onglet de
+Safari et non depuis l’écran d’accueil, ou bien le navigateur ne peut pas
+recevoir de notifications.</p>
+
+<h2>iPhone et iPad</h2>
+
+<p>iOS et iPadOS 16.4 ou version ultérieure. Safari n’envoie de notifications qu’à une
+app web ajoutée à l’écran d’accueil, jamais à une page ouverte dans un
+onglet.</p>
+
+<ol>
+  <li>Ouvre l’adresse du moniteur dans Safari.</li>
+  <li>Touche le bouton Partager (à partir d’iOS 26, il se trouve dans le menu
+      ••• à côté de l’adresse), puis <strong>Sur l’écran d’accueil</strong>. À
+      partir d’iOS 26, vérifie que l’option <strong>Ouvrir comme app
+      web</strong> est activée. Puis touche <strong>Ajouter</strong>.</li>
+  <li>Ouvre <strong>PAT Monitor</strong> depuis son icône sur l’écran d’accueil
+      et connecte-toi. L’icône garde sa propre connexion, distincte de celle de
+      Safari.</li>
+  <li>Active les notifications comme ci-dessus, et touche
+      <strong>Autoriser</strong>.</li>
+  <li>Dans <strong>Réglages › Notifications › PAT Monitor</strong>, vérifie que
+      les sons et l’écran verrouillé sont autorisés.</li>
+  <li>Si tu utilises un mode de concentration ou Ne pas déranger, ajoute PAT
+      Monitor aux apps que chaque mode autorise&nbsp;: <strong>Réglages ›
+      Concentration</strong>, choisis le mode, puis <strong>Apps</strong>.
+      Sinon, les notifications arrivent sans bruit.</li>
+</ol>
+
+<p>Retirer l’icône de l’écran d’accueil met fin à ses notifications. Après
+l’avoir ajoutée de nouveau, réactive-les.</p>
+
+<p>Si c’est l’application Tailscale qui permet au téléphone d’atteindre le
+moniteur, activer dans l’application l’option <strong>VPN On Demand</strong> la garde connectée,
+pour que toucher une notification ouvre l’image.</p>
+
+<h2>Android</h2>
+
+<p>C’est avec Chrome que tout cela a été construit&nbsp;; Firefox, Edge et
+Samsung Internet reçoivent aussi les notifications.</p>
+
+<ol>
+  <li>Si tu veux, installe la page comme une application&nbsp;: le menu de
+      Chrome (⋮), puis <strong>Installer et créer un raccourci</strong>, puis
+      <strong>Installer</strong> (<strong>Ajouter à l’écran d’accueil</strong>
+      ou <strong>Installer l’application</strong> dans les versions plus
+      anciennes). Une application installée échappe au retrait automatique des
+      autorisations que Chrome applique aux sites qu’il juge inutilisés.</li>
+  <li>Active les notifications comme ci-dessus. Sur Android 13 ou version
+      ultérieure, le système le demande aussi&nbsp;: autorise-les.</li>
+  <li>Rends-les bien audibles&nbsp;: appuie longuement sur une notification de
+      PAT Monitor (celle du test suffit), ouvre ses réglages, et fais en sorte
+      qu’elle émette un son et s’affiche à l’écran. Si tu veux qu’elles passent
+      malgré Ne pas déranger, autorise-le là aussi.</li>
+  <li>Laisse le navigateur fonctionner en arrière-plan&nbsp;:
+      <strong>Paramètres › Applications › Chrome</strong> <strong>›
+      Batterie</strong> (sur un Pixel, <strong>Utilisation de la batterie par
+      l’appli › Autoriser l’utilisation en arrière-plan</strong>), et choisis
+      <strong>Sans restriction</strong>.</li>
+  <li>Sur les téléphones Samsung, vérifie aussi <strong>Paramètres › Batterie ›
+      Limites utilisation arrière-plan</strong>, et retire le navigateur des
+      <strong>Applications en veille</strong> et des <strong>Applications en
+      veille profonde</strong>. Les mises à jour l’y remettent parfois.</li>
+</ol>
+
+<h2>Windows</h2>
+
+<p>Sur un ordinateur, une notification n’arrive que pendant que le navigateur
+tourne, même si aucune de ses fenêtres n’est ouverte.</p>
+
+<ul>
+  <li><strong>Edge</strong>&nbsp;: laisse activée l’option <strong>Continuer à
+      exécuter les extensions et les applications en arrière-plan quand Edge est
+      fermé</strong>, dans <strong>Paramètres › Système et
+      performances</strong>. Elle est activée par défaut.</li>
+  <li><strong>Chrome</strong>&nbsp;: active <strong>Poursuivre l’exécution
+      d’applications en arrière-plan après la fermeture de Google
+      Chrome</strong>, dans <strong>Paramètres › Système</strong>. Installer la
+      page comme une application (le bouton d’installation dans la barre
+      d’adresse) évite aussi que son autorisation soit retirée
+      automatiquement.</li>
+  <li><strong>Firefox</strong>&nbsp;: il doit rester ouvert.</li>
+  <li><strong>Brave</strong>&nbsp;: les notifications ont besoin de
+      <strong>Utiliser les services de Google de messagerie push</strong>, dans
+      <code>brave://settings/privacy</code>, et d’un redémarrage de Brave. Sans
+      cela, les activer échoue et la ligne le dit.</li>
+  <li><strong>Windows lui-même</strong>&nbsp;: dans <strong>Paramètres ›
+      Système › Notifications</strong>, le navigateur doit être autorisé et,
+      avec Ne pas déranger activé, il doit faire partie des notifications
+      prioritaires.</li>
+</ul>
+
+<h2>Ce qui arrive</h2>
+
+<ul>
+  <li>Les mêmes alertes que la page affiche, dans la langue qu’utilisait la page
+      la dernière fois qu’elle a été ouverte sur cet appareil.</li>
+  <li>Quand un problème disparaît (la caméra envoie de nouveau des images, on
+      entend de nouveau le micro), une notification le dit et remplace celle du
+      problème.</li>
+  <li>Les pleurs, les aboiements et le mouvement ne sont pas suivis d’une
+      notification «&nbsp;arrêté&nbsp;», pour que celle qui compte reste dans la
+      liste.</li>
+  <li>Un appareil éteint ou hors de portée reçoit une notification de pleurs,
+      d’aboiement ou de mouvement seulement dans les cinq minutes, et celle d’un
+      problème dans l’heure. Passé ce délai, le message est abandonné, parce que
+      ce ne serait plus une nouvelle.</li>
+  <li>Les interrupteurs de détection de la page s’appliquent&nbsp;: une
+      détection désactivée n’envoie rien.</li>
+</ul>
+
+<h2>Quand rien n’arrive</h2>
+
+<ol>
+  <li>Appuie sur <strong data-key="viewer.push.test">Envoyer un test</strong> et
+      lis la ligne en dessous.
+    <ul>
+      <li><em data-key="viewer.push.result.delivered">Notification envoyée. Elle
+          devrait apparaître dans quelques secondes.</em> Mais rien n’apparaît&nbsp;:
+          le service de notifications a pris en charge le message, et soit
+          l’appareil ne l’a pas encore reçu, soit quelque chose sur l’appareil l’a
+          retenu. Vérifie son mode de concentration ou Ne pas déranger, ses
+          réglages de batterie et, sous Windows, si le navigateur tourne.</li>
+      <li><em data-key="viewer.push.result.gone">Cet appareil ne reçoit plus les
+          notifications. Réactive-les.</em> Sur un iPhone, cela arrive après le
+          retrait de l’icône de l’écran d’accueil.</li>
+      <li><em data-key="viewer.push.result.refused">Le service de notifications
+          a refusé le message.</em> Le journal du moniteur dit pourquoi&nbsp;: la
+          ligne qui contient <code>test notification</code> donne la raison
+          fournie par le service lui-même (le journal est écrit en anglais).</li>
+    </ul>
+  </li>
+  <li>Si l’activation échoue, ouvre
+      <strong data-key="viewer.push.why">Réponse du navigateur</strong> sous la
+      ligne&nbsp;: on y trouve ce dont dispose le navigateur et ce qu’il a
+      répondu.</li>
+  <li>Sur un iPhone, retire l’icône de l’écran d’accueil, ajoute-la de nouveau,
+      et réactive les notifications.</li>
+  <li>Le journal du moniteur a une ligne pour chaque alerte, avec le nombre
+      d’appareils auxquels elle a été envoyée et ce qu’ont répondu les services
+      de notifications, et, quand l’appareil peut atteindre le moniteur, une
+      ligne quand il affiche la notification, avec le temps que cela a pris.
+      Pour l’ouvrir, fais un clic droit sur l’icône du moniteur près de
+      l’horloge&nbsp;: dans le panneau, <strong data-key="tray.menu.logs">Dossier
+      des journaux</strong> est le bouton sur lequel une page est dessinée,
+      juste au-dessus de celui qui quitte et éteint le moniteur.</li>
+</ol>
+
+<h2>Confidentialité</h2>
+
+<p>Chaque message passe par le service de notifications qu’utilise le navigateur
+de l’appareil (Apple, Google, Mozilla ou Microsoft), chiffré pour que seul cet
+appareil puisse le lire. Ce que ces services voient, et ce que le moniteur
+conserve, est décrit dans la
+<a href="privacy.html">politique de confidentialité</a>.</p>
+
+<hr>
+
+<footer>
+<p>PAT Monitor est un logiciel libre sous
+<a href="https://github.com/Nenco79/PAT-Monitor/blob/main/LICENSE">licence Apache
+2.0</a>.</p>
+</footer>
+
+</body>
+</html>

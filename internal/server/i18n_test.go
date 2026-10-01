@@ -18,6 +18,7 @@ import (
 	"patmonitor/internal/config"
 	"patmonitor/internal/detect"
 	"patmonitor/internal/i18n"
+	"patmonitor/internal/push"
 	"patmonitor/internal/tunnel"
 )
 
@@ -176,6 +177,8 @@ var codesForPrefix = map[string][]string{
 	"tunnel.action.":  actionCodes(),
 	"tunnel.step.":    stepCodes(),
 	"tunnel.warning.": warningCodes(),
+	// What a push service answered to the test, as the page shows it.
+	"viewer.push.result.": strs(push.AllOutcomes()),
 }
 
 // strs turns a list of typed codes into the strings a key is composed from.
@@ -331,6 +334,13 @@ func TestNoCatalogueEntryIsAnOrphan(t *testing.T) {
 			// all orphans. That prefix's guard lives in its own package, where
 			// the codes can also be expanded — which cannot be seen from here.
 			if strings.HasPrefix(k, "tray.") {
+				continue
+			}
+			// The `push.` entries are the same case one package across: a
+			// notification's own words are composed by `internal/push`, which
+			// sends them to a phone with no page open, and that package holds
+			// the guard that they are in every catalogue.
+			if strings.HasPrefix(k, "push.") {
 				continue
 			}
 			if !keys[k] {

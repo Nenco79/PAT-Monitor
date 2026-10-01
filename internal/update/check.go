@@ -88,7 +88,7 @@ const (
 
 	// repository is whose releases these are, and releasePages is where their
 	// pages live: see releasePage.
-	repository   = "Nenco79/PAT-Monitor"
+	repository   = version.Repository
 	releasePages = "https://github.com/" + repository + "/releases/"
 
 	// bodyLimit is what we are willing to read. The document wanted is a few

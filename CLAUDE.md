@@ -130,6 +130,7 @@ index when it is stale: use the command above.
 | `70-network.md` | routes, viewers, authentication, the Funnel |
 | `80-encoder.md` | what Media Foundation does at the end of a session |
 | `90-talkback.md` | talk-back, the audio output, libopus |
+| `95-push.md` | notifications with the page closed |
 | `100-recordings.md` | the clips and the page that lists them |
 | `110-recogniser.md` | CED, its front end, and where the thresholds came from |
 | `120-releases.md` | the update check, the signing key, the licence tree |
@@ -242,7 +243,6 @@ index when it is stale: use the command above.
   - An `ICodecAPI` VARIANT's type is not deduced from its meaning
   - Verifying the keyframe
   - A code we have met is named, and the number stays first
-- **Notifications with the page closed — written, tested and removed**
 - **Talk-back is half duplex, and while somebody speaks the room is silent**
   - The place for the voice is laid at negotiation time
   - A box with several sources is not written, it is composed
@@ -256,6 +256,7 @@ index when it is stale: use the command above.
   - Only what one has is written, never filler silence
   - A ceiling the next packet can get round is not a ceiling
   - "Written into the buffer" is not "it was heard"
+- **A notification is offered only where it can arrive**
 - **Recordings are the watcher's files, not the application's data**
   - The folder is proved by writing in it, and the panel is told where it
     really is

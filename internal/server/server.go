@@ -28,6 +28,7 @@ import (
 	"patmonitor/internal/alerts"
 	"patmonitor/internal/config"
 	"patmonitor/internal/guard"
+	"patmonitor/internal/push"
 	"patmonitor/internal/qr"
 	"patmonitor/internal/record"
 	"patmonitor/internal/rtc"
@@ -299,7 +300,12 @@ type Options struct {
 	// name after start-up. Nil means no names at all: only an address or
 	// localhost is let through, which is what the tests see unless they ask.
 	OwnNames func() []string
-	Log      *slog.Logger
+	// Push keeps the devices that asked to be notified with the page closed,
+	// and sends to them. Nil means there are no notifications here: the routes
+	// answer push-unavailable, which is what the tests that do not build one
+	// see.
+	Push *push.Notifier
+	Log  *slog.Logger
 }
 
 // Server is the application's web server.
@@ -495,6 +501,12 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /i18n.js", s.serveAsset("i18n.js"))
 	s.mux.HandleFunc("GET /i18n.css", s.serveAsset("i18n.css"))
 	s.mux.HandleFunc("GET /dictionary.js", s.serveDictionary)
+	// The service worker is open like the manifest: it is code and carries
+	// nothing of the monitor's, and a browser updating it in the background
+	// does so with whatever cookie it has — which, on a session that has
+	// expired, is none. Behind a session, an expired one would leave the old
+	// worker in place for ever.
+	s.mux.HandleFunc("GET /sw.js", s.serveAsset("sw.js"))
 
 	// Everything else requires a valid session.
 	private := func(pattern string, h http.HandlerFunc) { s.mux.Handle(pattern, s.requireAuth(h)) }
@@ -525,6 +537,13 @@ func (s *Server) routes() {
 	// asks the recorder for a clip. It sits beside `/api/detect` for that reason
 	// — they are the two commands the viewer's bar gives the monitor.
 	private("POST /api/record", s.apiRecord)
+	// The notifications with the page closed. See push.go.
+	private("GET /push.js", s.serveAsset("push.js"))
+	private("GET /api/push/key", s.apiPushKey)
+	private("POST /api/push/subscribe", s.apiPushSubscribe)
+	private("POST /api/push/unsubscribe", s.apiPushUnsubscribe)
+	private("POST /api/push/test", s.apiPushTest)
+	private("POST /api/push/seen", s.apiPushSeen)
 }
 
 // ---------- middleware ----------

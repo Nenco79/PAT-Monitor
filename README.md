@@ -103,7 +103,9 @@ not there: a browser asking for `zh-TW` gets the Simplified catalogue.
 
 PAT Monitor is not a medical device or a safety system. It can miss crying,
 barking or motion, the picture stops if the PC or the network does, and it calls
-no one: its warnings appear only on the monitor's PC and on pages that are open.
+no one: its warnings appear only on the monitor's PC, on pages that are open and
+on devices with notifications turned on. Notifications can arrive late or not at
+all.
 
 ## Getting started
 
@@ -234,6 +236,19 @@ blocks UDP, the connection fails: there is no relay to fall back to. The
 remedy for such a network is Tailscale on the device you watch from, which
 relays on its own when a direct path is not available.
 
+## Notifications with the page closed
+
+The same warnings the page shows can reach a phone or a computer with the page
+closed, as system notifications. It is off until it is turned on, one device at
+a time, from **Details → Notifications on this device**, and the row appears only
+where the browser can receive them: on the `https://…ts.net` address, and on an
+iPhone or iPad only in the web app added to the Home Screen. Each device has
+settings of its own that decide whether a notification arrives while it sleeps;
+[the procedure for Windows, Android and iPhone](https://nenco79.github.io/PAT-Monitor/notifications.html)
+lists them, in every language of the interface, and the link in the page opens
+the one in the page's language. The message goes through the push service the browser uses (Apple,
+Google, Mozilla or Microsoft), encrypted for that device.
+
 ## Building
 
 Go 1.26 or newer and PowerShell. No CGo, no C compiler.
@@ -311,6 +326,7 @@ signs an archive with it, which `build.ps1 -Release` calls.
 | `internal/ced`, `internal/gguf` | the sound recogniser that names what it heard, and the reader for the model file it runs |
 | `internal/guard` | a panic turned into a fault of the part it happened in, so the camera does not go off for it |
 | `internal/record` | the seconds before an event, kept in memory, and the clips written from them |
+| `internal/push` | the notifications sent with the page closed, and the devices that asked for them |
 | `internal/i18n` | language catalogues, with English as what the others fall back to |
 | `internal/encoder`, `internal/devices` | quality presets, camera and microphone enumeration |
 | `internal/update` | the daily check for a newer release, and the signing key |

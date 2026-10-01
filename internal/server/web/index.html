@@ -414,6 +414,40 @@
          questions about the way in, and both are asked by whoever is watching
          from outside the house. -->
     <h2 class="stats-group" data-i18n="viewer.stats.group.link"></h2>
+    <!-- **Notifications with the page closed, offered only where they can
+         work.** The row is hidden unless this browser, on this page, has every
+         piece a subscription needs — an encrypted address, a service worker,
+         `PushManager` and `Notification`: on the home address in plain HTTP,
+         and in a Safari tab on an iPhone, it does not appear at all, so there is
+         no grey button that nothing inside the product can unblock. It is the
+         first row of the group because it is pressed, and it is not on the bar
+         or on the guided path because it is not promised: the procedure for each
+         device is in the documents the link points at.
+
+         The switch is a pill with a fixed word, like the bar's: what says it is
+         on is `aria-pressed`, not a label that changes under the finger. -->
+    <div id="push-row" hidden><span id="l-push" data-i18n="viewer.push.label"></span>
+      <span class="push-ctl">
+        <button class="toggle" id="push-toggle" aria-pressed="false"
+                aria-describedby="l-push"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" />
+          <path d="M9 17v1a3 3 0 0 0 6 0v-1" />
+        </svg><span data-i18n="viewer.push.receive"></span></button>
+        <button class="ghost" id="push-test" hidden data-i18n="viewer.push.test"></button>
+      </span>
+      <span id="push-state" class="pick-state" hidden></span>
+      <!-- The guide is one page per language, and which one is the
+           catalogue's to say: `viewer.push.guide-href`. The English address
+           stays in the markup for a page whose dictionary has not arrived. -->
+      <a class="push-guide" id="push-guide" hidden target="_blank" rel="noopener"
+         href="https://nenco79.github.io/PAT-Monitor/notifications.html"
+         data-i18n="viewer.push.guide"
+         data-i18n-attr="href:viewer.push.guide-href"></a>
+      <!-- The conditions observed, closed: the reason a subscription fails
+           exists only in the browser, where whoever installs a baby monitor
+           does not look and whoever wrote it cannot. -->
+      <details class="push-why" id="push-why" hidden><summary data-i18n="viewer.push.why"></summary>
+        <pre id="push-facts"></pre></details></div>
     <!-- **"Watching now" is gone, and the strip above is the reason.** That
          count is written over the picture whenever there are two or more, and
          deliberately left blank when one is alone — "1" is the normal case and
@@ -468,5 +502,6 @@
 <script src="/i18n.js"></script>
 <script src="/page.js"></script>
 <script src="/app.js"></script>
+<script src="/push.js"></script>
 </body>
 </html>

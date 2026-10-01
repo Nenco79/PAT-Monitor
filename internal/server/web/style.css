@@ -1637,6 +1637,52 @@ video {
 .pick-state.fault  { color: var(--c-stop); }
 .pick-state.notice { color: var(--c-note); }
 
+/* ---------- notifications on this device ----------
+
+   **The pill a link in this panel already has**, and not the bare `<button>`'s:
+   a screen's primary action is 48 px and body size, and this row is one of
+   fourteen, pressed once. It is `a.ghost`'s size, which is the other thing in
+   the details that is pressed. The switch keeps `.toggle`'s colours, so on and
+   off are the same two faces as the bar's detections. */
+/* **The row spans the grid.** Measured in the nine languages: the two
+   controls are about 250 px, so beside any Latin-script label they do not fit
+   a 330-470 px track and go to a line of their own — and in a grid a row that
+   tall stretches the rows beside it to 78 px, empty, at 1200. Across the whole
+   width it stays one line where there is room and its neighbours keep their
+   38; a phone has one column and nothing beside it to stretch. */
+#push-row { grid-column: 1 / -1; }
+.stats .push-ctl {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+}
+.stats .push-ctl button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap-ico);
+  width: auto;
+  min-height: 40px;
+  padding: var(--s2) var(--s4);
+  font-size: var(--t-ui);
+  font-weight: 500;
+}
+/* The guide and the browser's own answer are sentences about the row, like the
+   pickers' state line: each takes a line of its own under it. */
+.stats .push-guide,
+.stats .push-why {
+  flex-basis: 100%;
+  margin-top: var(--s1);
+}
+.stats .push-guide { color: var(--ink-2); }
+.stats .push-why summary { cursor: pointer; color: var(--muted); }
+.stats .push-why pre {
+  margin: var(--s2) 0 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+  font-size: var(--t-micro);
+  color: var(--muted);
+}
+
 /* ---------- the link to the recordings ----------
 
    **It lives inside the details panel, not under it.** As a sibling of the

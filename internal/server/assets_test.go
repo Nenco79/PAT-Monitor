@@ -59,6 +59,22 @@ func TestEveryAssetThePagesCiteHasARoute(t *testing.T) {
 		}
 	}
 
+	// **A service worker is cited by a script, not by a page**: it is
+	// registered from JavaScript and no `src` names it. The citation is read
+	// from the scripts themselves, the same way the pages are read, rather than
+	// listed here.
+	registers := regexp.MustCompile(`serviceWorker\.register\(\s*'(/[^']+\.js)'`)
+	scripts, _ := fs.Glob(s.assets, "*.js")
+	for _, sc := range scripts {
+		b, err := fs.ReadFile(s.assets, sc)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, m := range registers.FindAllStringSubmatch(string(b), -1) {
+			seen[m[1]] = append(seen[m[1]], sc)
+		}
+	}
+
 	routes := make([]string, 0, len(seen))
 	for u := range seen {
 		routes = append(routes, u)

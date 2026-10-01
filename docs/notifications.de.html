@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Benachrichtigungen von PAT Monitor</title>
+<link rel="alternate" hreflang="de" href="notifications.de.html">
+<link rel="alternate" hreflang="en" href="notifications.html">
+<link rel="alternate" hreflang="es" href="notifications.es.html">
+<link rel="alternate" hreflang="fr" href="notifications.fr.html">
+<link rel="alternate" hreflang="it" href="notifications.it.html">
+<link rel="alternate" hreflang="pt-BR" href="notifications.pt.html">
+<link rel="alternate" hreflang="pt-PT" href="notifications.pt-pt.html">
+<link rel="alternate" hreflang="ja" href="notifications.ja.html">
+<link rel="alternate" hreflang="zh-Hans" href="notifications.zh.html">
+<style>
+  :root {
+    color-scheme: light dark;
+    --ink: #1b1a17;
+    --dim: #5f5a51;
+    --bg: #faf8f4;
+    --rule: #e2ddd3;
+    --link: #2f6b4f;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ink: #e8e3d9;
+      --dim: #a49d90;
+      --bg: #171614;
+      --rule: #302d28;
+      --link: #7fb99a;
+    }
+  }
+  body {
+    margin: 0 auto; padding: 3rem 1.25rem 5rem; max-width: 42rem;
+    background: var(--bg); color: var(--ink);
+    font: 16px/1.65 -apple-system, "Segoe UI", system-ui, sans-serif;
+  }
+  h1 { font-size: 1.65rem; line-height: 1.25; margin: 0 0 .35rem; }
+  h2 { font-size: 1.15rem; margin: 2.6rem 0 .6rem; }
+  h3 { font-size: 1rem; margin: 1.6rem 0 .4rem; }
+  p, li { margin: .7rem 0; }
+  ul, ol { padding-left: 1.2rem; }
+  a { color: var(--link); }
+  code { font-family: ui-monospace, Consolas, monospace; font-size: .9em; }
+  .langs { margin: 0 0 2rem; font-size: .9rem; color: var(--dim); line-height: 2; }
+  .langs a, .langs strong { margin-right: .7rem; white-space: nowrap; }
+  .date { color: var(--dim); font-size: .9rem; margin: 0 0 2rem; }
+  .lead { font-size: 1.05rem; }
+  hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
+  footer { color: var(--dim); font-size: .9rem; }
+</style>
+</head>
+<body>
+
+<nav class="langs" aria-label="Sprache">
+  <strong aria-current="page">Deutsch</strong>
+  <a href="notifications.html" hreflang="en" lang="en">English</a>
+  <a href="notifications.es.html" hreflang="es" lang="es">Español</a>
+  <a href="notifications.fr.html" hreflang="fr" lang="fr">Français</a>
+  <a href="notifications.it.html" hreflang="it" lang="it">Italiano</a>
+  <a href="notifications.pt.html" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a>
+  <a href="notifications.pt-pt.html" hreflang="pt-PT" lang="pt-PT">Português (Portugal)</a>
+  <a href="notifications.ja.html" hreflang="ja" lang="ja">日本語</a>
+  <a href="notifications.zh.html" hreflang="zh-Hans" lang="zh-Hans">简体中文</a>
+</nav>
+
+<h1>Benachrichtigungen bei geschlossener Seite</h1>
+<p class="date">Zuletzt aktualisiert: 30. September 2026</p>
+
+<p class="lead">PAT Monitor kann die Warnungen, die seine Seite anzeigt (ein
+weinendes Baby, ein bellender Hund, eine Bewegung, eine Kamera, die keine Bilder
+mehr sendet), als ganz normale Systembenachrichtigungen an ein Handy oder einen
+Computer schicken, auf dem die Seite geschlossen ist. Sie sind ausgeschaltet,
+bis du sie einschaltest, und zwar für jedes Gerät einzeln.</p>
+
+<p><strong>Benachrichtigungen können verspätet oder gar nicht ankommen.</strong>
+Ob eine Benachrichtigung ein Handy im Ruhezustand erreicht, entscheiden die
+Einstellungen des Handys, sein Energiesparmodus und sein Netz, und nichts davon
+kann der Monitor sehen. PAT Monitor ist kein Medizinprodukt und kein
+Sicherheitssystem.</p>
+
+<h2>Bevor du anfängst</h2>
+
+<ul>
+  <li><strong>Der Zugang von außerhalb muss funktionieren.</strong>
+      Benachrichtigungen brauchen die Adresse <code>https://…ts.net</code> des
+      Monitors, also die, die die geführte Einrichtung auf ihrer letzten Seite
+      zum Zuschauen von außerhalb angibt. Die Adresse zu Hause
+      (<code>http://192.168…</code>) kann keine empfangen, und dort erscheint
+      die Option gar nicht.</li>
+  <li><strong>Verwende auf einem Gerät immer dieselbe Adresse.</strong> Für
+      einen Browser ist eine andere Adresse eine andere Website, mit einer
+      eigenen Berechtigung.</li>
+  <li>Ein Tippen auf eine Benachrichtigung öffnet den Monitor. Er ist dort
+      erreichbar, wo diese Adresse funktioniert: von überall, wenn der Zugang
+      von außerhalb eingeschaltet ist, oder mit verbundener Tailscale-App auf
+      dem Gerät.</li>
+</ul>
+
+<h2>Einschalten</h2>
+
+<ol>
+  <li>Öffne auf dem Gerät die <code>https://</code>-Adresse des Monitors und
+      melde dich an. Auf einem iPhone oder iPad folge zuerst den Schritten im
+      nächsten Abschnitt.</li>
+  <li>Drücke <strong data-key="viewer.details">Details</strong>, dann
+      <strong data-key="viewer.push.receive">Empfangen</strong> in der Zeile
+      <strong data-key="viewer.push.label">Benachrichtigungen auf diesem Gerät</strong>.</li>
+  <li>Erlaube die Benachrichtigungen, wenn der Browser fragt.</li>
+  <li>Drücke <strong data-key="viewer.push.test">Test senden</strong>. Innerhalb
+      weniger Sekunden sollte eine Benachrichtigung erscheinen. Wenn nicht,
+      sieh in den Einstellungen des Geräts selbst nach, die weiter unten
+      beschrieben sind.</li>
+</ol>
+
+<p>Wenn die Zeile fehlt, ist die Seite nicht über die <code>https://</code>-Adresse
+geöffnet, oder die Seite läuft auf einem iPhone in einem Safari-Tab statt vom
+Home-Bildschirm aus, oder der Browser kann keine Benachrichtigungen
+empfangen.</p>
+
+<h2>iPhone und iPad</h2>
+
+<p>iOS und iPadOS 16.4 oder neuer. Safari sendet Benachrichtigungen nur an eine
+Web-App, die zum Home-Bildschirm hinzugefügt wurde, nie an eine Seite, die in
+einem Tab geöffnet ist.</p>
+
+<ol>
+  <li>Öffne die Adresse des Monitors in Safari.</li>
+  <li>Tippe auf die Taste „Teilen“ (ab iOS 26 steht sie im Menü ••• neben der
+      Adresse), dann auf <strong>Zu Home-Bildschirm hinzufügen</strong>. Prüfe
+      ab iOS 26, dass <strong>Als Web-App öffnen</strong> eingeschaltet ist.
+      Tippe dann auf <strong>Hinzufügen</strong>.</li>
+  <li>Öffne <strong>PAT Monitor</strong> über das Symbol auf dem
+      Home-Bildschirm und melde dich an. Das Symbol hat eine eigene Anmeldung,
+      getrennt von der in Safari.</li>
+  <li>Schalte die Benachrichtigungen wie oben beschrieben ein und tippe auf
+      <strong>Erlauben</strong>.</li>
+  <li>Prüfe unter <strong>Einstellungen › Mitteilungen › PAT Monitor</strong>,
+      dass Töne und der Sperrbildschirm erlaubt sind.</li>
+  <li>Wenn du einen Fokus oder „Nicht stören“ verwendest, füge PAT Monitor zu
+      den Apps hinzu, die jeder Fokus erlaubt: <strong>Einstellungen ›
+      Fokus</strong>, wähle den Fokus aus, dann <strong>Apps</strong>. Sonst
+      kommen die Benachrichtigungen ohne Ton an.</li>
+</ol>
+
+<p>Wenn du das Symbol vom Home-Bildschirm entfernst, erhält es keine
+Benachrichtigungen mehr. Nachdem du es wieder hinzugefügt hast, schalte die
+Benachrichtigungen wieder ein.</p>
+
+<p>Wenn das Handy den Monitor über die Tailscale-App erreicht, schalte in der
+App <strong>VPN On Demand</strong> ein: Dann bleibt sie verbunden, und ein
+Tippen auf eine Benachrichtigung öffnet das Bild.</p>
+
+<h2>Android</h2>
+
+<p>Chrome ist der Browser, mit dem das entwickelt wurde; Firefox, Edge und
+Samsung Internet empfangen ebenfalls Benachrichtigungen.</p>
+
+<ol>
+  <li>Wenn du willst, installiere die Seite als App: Tippe im Chrome-Menü (⋮)
+      auf <strong>Installieren und Verknüpfung erstellen</strong>, dann auf
+      <strong>Installieren</strong> (in älteren Versionen <strong>Zum
+      Startbildschirm hinzufügen</strong> oder <strong>App
+      installieren</strong>). Eine installierte App ist nicht betroffen, wenn
+      Chrome Websites, die es für unbenutzt hält, automatisch die
+      Berechtigungen entzieht.</li>
+  <li>Schalte die Benachrichtigungen wie oben beschrieben ein. Ab Android 13
+      fragt auch das System nach der Berechtigung: Erteile sie.</li>
+  <li>Mach die Benachrichtigungen laut: Tippe lange auf eine Benachrichtigung
+      von PAT Monitor (die Test-Benachrichtigung reicht), öffne ihre
+      Einstellungen und stelle ein, dass sie einen Ton abspielt und auf dem
+      Bildschirm eingeblendet wird. Wenn die Benachrichtigungen auch bei
+      „Bitte nicht stören“ durchkommen sollen, erlaube das dort ebenfalls.</li>
+  <li>Lass den Browser im Hintergrund laufen: <strong>Einstellungen › Apps ›
+      Chrome</strong> <strong>› Akku</strong> (auf einem Pixel <strong>Akkunutzung
+      der App › Hintergrundnutzung zulassen</strong>), und wähle
+      <strong>Uneingeschränkt</strong>.</li>
+  <li>Prüfe auf Samsung-Handys außerdem <strong>Einstellungen › Akku › Grenzen
+      der Hintergrundnutzung</strong>, und nimm den Browser aus <strong>Apps im
+      Standby</strong> und <strong>Apps im tiefen Standby</strong> heraus. Nach
+      Updates steht der Browser manchmal wieder darin.</li>
+</ol>
+
+<h2>Windows</h2>
+
+<p>Auf einem Computer kommt eine Benachrichtigung nur an, solange der Browser
+läuft, auch wenn keines seiner Fenster geöffnet ist.</p>
+
+<ul>
+  <li><strong>Edge</strong>: Lass <strong>Ausführen von Hintergrunderweiterungen
+      und -apps fortsetzen, wenn Edge geschlossen wird</strong> unter
+      <strong>Einstellungen › System und Leistung</strong> eingeschaltet.
+      Standardmäßig ist die Option eingeschaltet.</li>
+  <li><strong>Chrome</strong>: Schalte <strong>Apps im Hintergrund ausführen,
+      wenn Google Chrome geschlossen ist</strong> unter <strong>Einstellungen ›
+      System</strong> ein. Wenn du die Seite als App installierst (über die
+      Installationsschaltfläche in der Adressleiste), wird der App die
+      Berechtigung außerdem nicht automatisch entzogen.</li>
+  <li><strong>Firefox</strong>: Firefox muss geöffnet bleiben.</li>
+  <li><strong>Brave</strong>: Benachrichtigungen brauchen die Option
+      <strong>Nutzen Sie Google-Services für Push-Benachrichtigungen</strong>
+      unter <code>brave://settings/privacy</code> und einen Neustart von Brave.
+      Ohne diese Option schlägt das Einschalten fehl, und die Zeile sagt
+      es.</li>
+  <li><strong>Windows selbst</strong>: Unter <strong>Einstellungen › System ›
+      Benachrichtigungen</strong> muss der Browser erlaubt sein, und wenn
+      „Nicht stören“ eingeschaltet ist, muss er zu den
+      Prioritätsbenachrichtigungen gehören.</li>
+</ul>
+
+<h2>Was ankommt</h2>
+
+<ul>
+  <li>Dieselben Warnungen, die die Seite anzeigt, in der Sprache, die die Seite
+      beim letzten Öffnen auf diesem Gerät verwendet hat.</li>
+  <li>Wenn eine Störung vorbei ist (die Kamera sendet wieder Bilder, das
+      Mikrofon ist wieder zu hören), meldet das eine Benachrichtigung und
+      ersetzt die Benachrichtigung der Störung.</li>
+  <li>Auf Weinen, Bellen und Bewegung folgt keine Benachrichtigung „vorbei“,
+      damit die wichtige in der Liste bleibt.</li>
+  <li>Ein Gerät, das aus oder nicht erreichbar ist, bekommt eine
+      Benachrichtigung über Weinen, Bellen oder Bewegung nur innerhalb von fünf
+      Minuten und eine über eine Störung innerhalb einer Stunde. Danach wird
+      die Nachricht verworfen, weil sie veraltet wäre.</li>
+  <li>Die Schalter für die Erkennung auf der Seite gelten: Eine ausgeschaltete
+      Erkennung sendet nichts.</li>
+</ul>
+
+<h2>Wenn nichts ankommt</h2>
+
+<ol>
+  <li>Drücke <strong data-key="viewer.push.test">Test senden</strong> und lies
+      die Zeile darunter.
+    <ul>
+      <li><em data-key="viewer.push.result.delivered">Gesendet. Die
+          Benachrichtigung sollte in wenigen Sekunden erscheinen.</em> Aber es
+          erscheint nichts: Der Benachrichtigungsdienst hat die Nachricht
+          angenommen, und entweder hat das Gerät sie noch nicht erhalten, oder
+          etwas auf dem Gerät hat sie zurückgehalten. Prüfe am Gerät den Fokus
+          oder „Nicht stören“, die Akkueinstellungen und unter Windows, ob der
+          Browser läuft.</li>
+      <li><em data-key="viewer.push.result.gone">Dieses Gerät erhält keine
+          Benachrichtigungen mehr. Schalte sie wieder ein.</em> Auf einem iPhone
+          passiert das, nachdem das Symbol vom Home-Bildschirm entfernt
+          wurde.</li>
+      <li><em data-key="viewer.push.result.refused">Der Benachrichtigungsdienst
+          hat die Nachricht abgelehnt.</em> Das Log des Monitors sagt, warum: In
+          der Zeile mit <code>test notification</code> steht der Grund, den der
+          Dienst selbst angegeben hat (das Log ist auf Englisch
+          geschrieben).</li>
+    </ul>
+  </li>
+  <li>Wenn das Einschalten fehlschlägt, öffne
+      <strong data-key="viewer.push.why">Antwort des Browsers</strong> unter
+      der Zeile: Dort steht, welche Funktionen der Browser hat und was er
+      geantwortet hat.</li>
+  <li>Auf einem iPhone entferne das Symbol vom Home-Bildschirm, füge es wieder
+      hinzu und schalte die Benachrichtigungen wieder ein.</li>
+  <li>Das Log des Monitors enthält für jede Warnung eine Zeile mit der Zahl der
+      Geräte, an die die Warnung ging, und mit den Antworten der Push-Dienste,
+      und, wenn das Gerät den Monitor erreichen kann, eine Zeile, sobald es eine
+      Benachrichtigung anzeigt, mit der Zeit, die das gedauert hat. Zum Öffnen
+      des Logs klicke mit der rechten Maustaste auf das Symbol des Monitors
+      neben der Uhr: Im Panel ist <strong data-key="tray.menu.logs">Logordner</strong>
+      der Knopf, auf dem ein Blatt Papier gezeichnet ist, direkt über dem Knopf
+      zum Beenden.</li>
+</ol>
+
+<h2>Datenschutz</h2>
+
+<p>Jede Nachricht läuft über den Push-Dienst, den der Browser des Geräts
+verwendet (Apple, Google, Mozilla oder Microsoft), und ist so verschlüsselt,
+dass nur dieses Gerät sie lesen kann. Was diese Dienste sehen und was der
+Monitor speichert, steht in der <a href="privacy.html">Datenschutzerklärung</a>.</p>
+
+<hr>
+
+<footer>
+<p>PAT Monitor ist freie Software unter der
+<a href="https://github.com/Nenco79/PAT-Monitor/blob/main/LICENSE">Apache License
+2.0</a>.</p>
+</footer>
+
+</body>
+</html>

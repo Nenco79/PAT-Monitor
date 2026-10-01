@@ -9,59 +9,6 @@ paths:
 Part of PAT Monitor's engineering record; the index that carries every
 chapter, in order, is in `CLAUDE.md` at the root of the repository.
 
-## Notifications with the page closed — written, tested and removed
-
-**This section describes a piece that no longer exists.** The code —
-`internal/push`, `sw.js`, `cmd/pat-push`, the button in the bar — was written
-and deleted: it worked, and that is not the point.
-
-**It was removed because it has no single solution.** On a baby monitor "tell me
-when the page is closed" has to work because a button is pressed, not because
-the right page of that browser's settings was read. A grey button that **cannot
-be unblocked from inside the product** is not a feature with a warning: it is a
-defect with a label. And the feature is closed for good, not postponed: ntfy,
-Pushover and Telegram are technically better than Web Push — from the monitor
-they are an HTTP request — and all require **an app installed on the phone**,
-and there the decision is a product one. One channel remains, the banner on the
-open page, which goes through nobody and works everywhere.
-
-What was learned by paying for it, and which does not need re-measuring:
-
-- **The notification service is chosen by the browser, not by the system**, and
-  does not go through us: on the same Windows machine, same code, Edge delivered
-  to `notify.windows.com` and Brave to `fcm.googleapis.com`. No Google account,
-  and the code does not know who it is writing to.
-- **A granted permission does not guarantee delivery.** The conditions are five
-  and independent: secure context, permission, service worker, `PushManager`,
-  **and a service the browser manages to subscribe to**. The last is the one
-  nobody thinks of, because the other four are ours or the user's — and on
-  Brave, which keeps that channel off by default, `subscribe()` answers
-  `AbortError` with permission `granted` and everything else in order. A
-  permission can also lapse without taking the subscription with it:
-  **everything answers correctly and nothing arrives.**
-- **A badly encrypted payload is accepted with a 201.** RFC 8291: the body is
-  encrypted for the browser, not for the service. Hence the shape of the tests,
-  which holds for anything of the kind: decrypt **from the receiving side**,
-  with the derivation rewritten from the specification instead of calling one's
-  own — reusing the same function would prove only that it equals itself. **Two
-  implementations of the same wrong idea agree with each other.**
-- **When an external service answers only one thing, interrogate it with two
-  deliberately broken requests to find out in what order it checks.** Sending to
-  a non-existent endpoint: our token → 410, no token → 401, garbage token → 403
-  "VAPID public key must be on the P-256 curve". That is, FCM checks the token
-  before looking for the endpoint, and the 410 is not indifference: it is "the
-  token got through".
-- **Browsers are driven with the DevTools protocol**, and that is the only
-  answer to "from here I cannot see what the browser is doing". A Node process
-  speaking CDP — Node has `WebSocket` among its globals since 22 — starts the
-  browser with `--remote-debugging-port` and a throwaway profile, opens the
-  page, presses the **real** button and reads back what appeared.
-- **And the technical detail must be shown, closed.** That is the only lesson
-  that survives in the product as a rule: the report was "it does not register
-  the device", and the reason existed **only in the browser console** — a place
-  where whoever installs a baby monitor does not look and whoever wrote it
-  cannot look. The observed conditions are shown, inside a `<details>`.
-
 ## Talk-back is half duplex, and while somebody speaks the room is silent
 
 `internal/rtc/talkback.go`, `internal/audio/render_windows.go`, the "Talk"

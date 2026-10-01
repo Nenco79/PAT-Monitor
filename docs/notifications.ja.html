@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PAT Monitor の通知</title>
+<link rel="alternate" hreflang="de" href="notifications.de.html">
+<link rel="alternate" hreflang="en" href="notifications.html">
+<link rel="alternate" hreflang="es" href="notifications.es.html">
+<link rel="alternate" hreflang="fr" href="notifications.fr.html">
+<link rel="alternate" hreflang="it" href="notifications.it.html">
+<link rel="alternate" hreflang="pt-BR" href="notifications.pt.html">
+<link rel="alternate" hreflang="pt-PT" href="notifications.pt-pt.html">
+<link rel="alternate" hreflang="ja" href="notifications.ja.html">
+<link rel="alternate" hreflang="zh-Hans" href="notifications.zh.html">
+<style>
+  :root {
+    color-scheme: light dark;
+    --ink: #1b1a17;
+    --dim: #5f5a51;
+    --bg: #faf8f4;
+    --rule: #e2ddd3;
+    --link: #2f6b4f;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ink: #e8e3d9;
+      --dim: #a49d90;
+      --bg: #171614;
+      --rule: #302d28;
+      --link: #7fb99a;
+    }
+  }
+  body {
+    margin: 0 auto; padding: 3rem 1.25rem 5rem; max-width: 42rem;
+    background: var(--bg); color: var(--ink);
+    font: 16px/1.65 -apple-system, "Segoe UI", system-ui, sans-serif;
+  }
+  h1 { font-size: 1.65rem; line-height: 1.25; margin: 0 0 .35rem; }
+  h2 { font-size: 1.15rem; margin: 2.6rem 0 .6rem; }
+  h3 { font-size: 1rem; margin: 1.6rem 0 .4rem; }
+  p, li { margin: .7rem 0; }
+  ul, ol { padding-left: 1.2rem; }
+  a { color: var(--link); }
+  code { font-family: ui-monospace, Consolas, monospace; font-size: .9em; }
+  .langs { margin: 0 0 2rem; font-size: .9rem; color: var(--dim); line-height: 2; }
+  .langs a, .langs strong { margin-right: .7rem; white-space: nowrap; }
+  .date { color: var(--dim); font-size: .9rem; margin: 0 0 2rem; }
+  .lead { font-size: 1.05rem; }
+  hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
+  footer { color: var(--dim); font-size: .9rem; }
+</style>
+</head>
+<body>
+
+<nav class="langs" aria-label="言語">
+  <a href="notifications.de.html" hreflang="de" lang="de">Deutsch</a>
+  <a href="notifications.html" hreflang="en" lang="en">English</a>
+  <a href="notifications.es.html" hreflang="es" lang="es">Español</a>
+  <a href="notifications.fr.html" hreflang="fr" lang="fr">Français</a>
+  <a href="notifications.it.html" hreflang="it" lang="it">Italiano</a>
+  <a href="notifications.pt.html" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a>
+  <a href="notifications.pt-pt.html" hreflang="pt-PT" lang="pt-PT">Português (Portugal)</a>
+  <strong aria-current="page">日本語</strong>
+  <a href="notifications.zh.html" hreflang="zh-Hans" lang="zh-Hans">简体中文</a>
+</nav>
+
+<h1>ページを閉じているときの通知</h1>
+<p class="date">最終更新: 2026 年 9 月 30 日</p>
+
+<p class="lead">PAT Monitor は、ページに表示されるアラート (赤ちゃんの泣き声、犬の吠え声、動き、カメラの停止) を、ページを閉じているスマートフォンや PC に、通常のシステム通知として送信できます。通知はオンにするまでオフのままで、デバイスごとにオンにします。</p>
+
+<p><strong>通知は遅れて届いたり、届かなかったりすることがあります。</strong>スリープ中のスマートフォンに通知が届くかどうかは、スマートフォンの設定、省電力機能、ネットワークによって決まり、見守りカメラからはそのどれも見えません。PAT Monitor は医療機器ではなく、防犯や安全のためのシステムでもありません。</p>
+
+<h2>始める前に</h2>
+
+<ul>
+  <li><strong>外出先からのアクセスが機能している必要があります。</strong>通知には、見守りカメラの <code>https://…ts.net</code> アドレスが必要です。セットアップ ガイドが最後の画面で、外出先から見るためのアドレスとして表示するものです。自宅のアドレス (<code>http://192.168…</code>) では通知を受け取れず、そのアドレスではこの設定も表示されません。</li>
+  <li><strong>同じデバイスでは、いつも同じアドレスを使ってください。</strong>ブラウザーにとって、別のアドレスは別のサイトであり、許可も別になります。</li>
+  <li>通知をタップすると見守りカメラが開きます。開けるのは、そのアドレスが使える場所に限られます。つまり、外出先からのアクセスがオンならどこからでも、そうでなければデバイスで Tailscale アプリが接続されているときです。</li>
+</ul>
+
+<h2>オンにする</h2>
+
+<ol>
+  <li>デバイスで見守りカメラの <code>https://</code> アドレスを開き、サインインします。iPhone または iPad では、先に次のセクションの手順を行ってください。</li>
+  <li>[<strong data-key="viewer.details">詳細</strong>] を押し、続けて [<strong data-key="viewer.push.receive">受信</strong>] を押します。このボタンは [<strong data-key="viewer.push.label">このデバイスへの通知</strong>] の行にあります。</li>
+  <li>ブラウザーから確認されたら、通知を許可します。</li>
+  <li>[<strong data-key="viewer.push.test">テスト送信</strong>] を押します。数秒以内に通知が表示されるはずです。表示されない場合は、下にあるデバイスごとの設定を確認してください。</li>
+</ol>
+
+<p>この行が見当たらない場合は、ページが <code>https://</code> アドレスで開かれていないか、iPhone でホーム画面からではなく Safari のタブで開いているか、ブラウザーが通知を受け取れないかのいずれかです。</p>
+
+<h2>iPhone と iPad</h2>
+
+<p>iOS および iPadOS 16.4 以降が必要です。Safari が通知を送るのはホーム画面に追加したウェブアプリだけで、タブで開いているページには送りません。</p>
+
+<ol>
+  <li>Safari で見守りカメラのアドレスを開きます。</li>
+  <li>[共有] をタップし (iOS 26 以降では、アドレスの横の [•••] メニューの中にあります)、[<strong>ホーム画面に追加</strong>] をタップします。iOS 26 以降では、[<strong>ウェブアプリとして開く</strong>] がオンになっていることを確認します。続けて [<strong>追加</strong>] をタップします。</li>
+  <li>ホーム画面の <strong>PAT Monitor</strong> のアイコンから開き、サインインします。このアイコンは、Safari とは別に独自のサインイン状態を持ちます。</li>
+  <li>上の手順で通知をオンにし、[<strong>許可</strong>] をタップします。</li>
+  <li><strong>[設定] › [通知] › [PAT Monitor]</strong> で、サウンドとロック画面が許可されていることを確認します。</li>
+  <li>集中モードやおやすみモードを使っている場合は、それぞれの集中モードで許可するアプリに PAT Monitor を追加してください。<strong>[設定] › [集中モード]</strong> で集中モードを選び、<strong>[アプリ]</strong> をタップします。追加しないと、通知は音もなく届きます。</li>
+</ol>
+
+<p>ホーム画面からアイコンを削除すると、その通知も届かなくなります。もう一度追加したら、通知をもう一度オンにしてください。</p>
+
+<p>スマートフォンから Tailscale アプリで見守りカメラにつないでいる場合は、アプリの <strong>VPN On Demand</strong> をオンにすると接続が保たれ、通知をタップしたときに映像が開きます。</p>
+
+<h2>Android</h2>
+
+<p>この機能は Chrome を使って作られました。Firefox、Edge、Samsung Internet でも通知を受け取れます。</p>
+
+<ol>
+  <li>必要に応じて、ページをアプリとしてインストールします。Chrome のメニュー (⋮) から [<strong>ホーム画面に追加</strong>]、[<strong>インストール</strong>] の順にタップします (以前のバージョンでは [<strong>アプリをインストール</strong>] の場合もあります)。インストールしたアプリは、Chrome が使われていないと判断したサイトの許可を自動で削除する機能の対象になりません。</li>
+  <li>上の手順で通知をオンにします。Android 13 以降ではシステムからも確認されるので、許可してください。</li>
+  <li>通知が目立つようにします。PAT Monitor の通知 (テストの通知でかまいません) を長押しして設定を開き、音が鳴り、画面にポップアップ表示されるように設定します。サイレント モード中も通知させたい場合は、そこで許可します。</li>
+  <li>ブラウザーがバックグラウンドで動作できるようにします。<strong>[設定] › [アプリ] › [Chrome]</strong> <strong>› [バッテリー]</strong> (Pixel では <strong>[アプリのバッテリー使用量] › [バックグラウンドでの使用を許可]</strong>) で、<strong>[制限なし]</strong> を選びます。</li>
+  <li>Samsung のスマートフォンでは、<strong>[設定] › [バッテリー] › [バックグラウンドでの使用を制限]</strong> も確認し、ブラウザーを <strong>[スリープ中のアプリ]</strong> と <strong>[ディープスリープ中のアプリ]</strong> から外してください。アップデートで元に戻されることがあります。</li>
+</ol>
+
+<h2>Windows</h2>
+
+<p>PC では、ブラウザーが動作している間だけ通知が届きます。ブラウザーのウィンドウが 1 つも開いていなくてもかまいません。</p>
+
+<ul>
+  <li><strong>Edge</strong>: <strong>[設定] › [システムとパフォーマンス]</strong> で、<strong>[Edge を閉じたときにバックグラウンド拡張機能とアプリの実行を続行する]</strong> をオンのままにします。既定でオンになっています。</li>
+  <li><strong>Chrome</strong>: <strong>[設定] › [システム]</strong> で、<strong>[Google Chrome を閉じた際にバックグラウンド アプリの処理を続行する]</strong> をオンにします。ページをアプリとしてインストールすると (アドレスバーのインストール ボタン)、その許可が自動で削除されることもなくなります。</li>
+  <li><strong>Firefox</strong>: 開いたままにしておく必要があります。</li>
+  <li><strong>Brave</strong>: 通知には、<code>brave://settings/privacy</code> の <strong>[プッシュメッセージングにGoogleサービスを使用]</strong> をオンにして Brave を再起動する必要があります。オフのままだと通知をオンにできず、その行にそう表示されます。</li>
+  <li><strong>Windows 本体</strong>: <strong>[設定] › [システム] › [通知]</strong> でブラウザーが許可されている必要があります。[応答不可] をオンにしている場合は、ブラウザーが優先通知に含まれている必要があります。</li>
+</ul>
+
+<h2>届くもの</h2>
+
+<ul>
+  <li>ページに表示されるものと同じアラートが、そのデバイスで最後にページを開いたときに使われていた言語で届きます。</li>
+  <li>問題が解消されると (カメラがまた映像を送るようになった、マイクの音がまた聞こえるようになったなど)、そのことを知らせる通知が届き、問題の通知と置き換わります。</li>
+  <li>泣き声、吠え声、動きのあとに「止まった」という通知は届きません。大事な通知が一覧に残るようにするためです。</li>
+  <li>電源が切れているデバイスや、つながらない場所にあるデバイスには、泣き声、吠え声、動きの通知は 5 分以内、問題の通知は 1 時間以内に限って届きます。それを過ぎたメッセージは、もう古い知らせなので破棄されます。</li>
+  <li>ページにある検知のスイッチがそのまま適用されます。オフにしている検知からは何も送信されません。</li>
+</ul>
+
+<h2>何も届かないとき</h2>
+
+<ol>
+  <li>[<strong data-key="viewer.push.test">テスト送信</strong>] を押し、その下に表示される行を読みます。<ul>
+      <li>「<em data-key="viewer.push.result.delivered">送信しました。数秒以内に表示されるはずです。</em>」と表示されたのに何も表示されない場合: 通知サービスはメッセージを受け取っており、デバイスにまだ届いていないか、デバイス側の何かが止めています。集中モードやおやすみモード、サイレント モード、バッテリーの設定、Windows ではブラウザーが動作しているかどうかを確認してください。</li>
+      <li>「<em data-key="viewer.push.result.gone">このデバイスは、通知の送信先ではなくなりました。通知をもう一度オンにしてください。</em>」: iPhone では、ホーム画面からアイコンを削除したあとにこう表示されます。</li>
+      <li>「<em data-key="viewer.push.result.refused">通知サービスがメッセージを拒否しました。</em>」: 理由は見守りカメラのログにあります。<code>test notification</code> を含む行に、通知サービス自身が示した理由が記録されています (ログは英語で書かれます)。</li>
+    </ul>
+  </li>
+  <li>通知をオンにできない場合は、行の下にある [<strong data-key="viewer.push.why">ブラウザーの応答</strong>] を開きます。ブラウザーが備えている機能と、ブラウザーの応答が一覧で表示されます。</li>
+  <li>iPhone では、ホーム画面からアイコンを削除してもう一度追加し、通知をもう一度オンにしてください。</li>
+  <li>見守りカメラのログには、アラートごとに、何台のデバイスに送ったかと各プッシュ サービスの応答を記した行があります。デバイスが見守りカメラにつながる場合は、そのデバイスが通知を表示したときにも、かかった時間を記した行が残ります。ログを開くには、時計の横にある見守りカメラのアイコンを右クリックします。パネルの [<strong data-key="tray.menu.logs">ログ フォルダー</strong>] は、紙のページが描かれたボタンで、終了するボタンのすぐ上にあります。</li>
+</ol>
+
+<h2>プライバシー</h2>
+
+<p>各メッセージは、デバイスのブラウザーが使うプッシュ サービス (Apple、Google、Mozilla、Microsoft のいずれか) を経由し、そのデバイスだけが読めるように暗号化されます。これらのサービスに何が見えるか、見守りカメラが何を保存するかは、<a href="privacy.html">プライバシー ポリシー</a>に記載しています。</p>
+
+<hr>
+
+<footer>
+<p>PAT Monitor は、<a href="https://github.com/Nenco79/PAT-Monitor/blob/main/LICENSE">Apache
+License 2.0</a> のもとで提供されるフリー ソフトウェアです。</p>
+</footer>
+
+</body>
+</html>

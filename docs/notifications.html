@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PAT Monitor Notifications</title>
+<link rel="alternate" hreflang="de" href="notifications.de.html">
+<link rel="alternate" hreflang="en" href="notifications.html">
+<link rel="alternate" hreflang="es" href="notifications.es.html">
+<link rel="alternate" hreflang="fr" href="notifications.fr.html">
+<link rel="alternate" hreflang="it" href="notifications.it.html">
+<link rel="alternate" hreflang="pt-BR" href="notifications.pt.html">
+<link rel="alternate" hreflang="pt-PT" href="notifications.pt-pt.html">
+<link rel="alternate" hreflang="ja" href="notifications.ja.html">
+<link rel="alternate" hreflang="zh-Hans" href="notifications.zh.html">
+<style>
+  :root {
+    color-scheme: light dark;
+    --ink: #1b1a17;
+    --dim: #5f5a51;
+    --bg: #faf8f4;
+    --rule: #e2ddd3;
+    --link: #2f6b4f;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ink: #e8e3d9;
+      --dim: #a49d90;
+      --bg: #171614;
+      --rule: #302d28;
+      --link: #7fb99a;
+    }
+  }
+  body {
+    margin: 0 auto; padding: 3rem 1.25rem 5rem; max-width: 42rem;
+    background: var(--bg); color: var(--ink);
+    font: 16px/1.65 -apple-system, "Segoe UI", system-ui, sans-serif;
+  }
+  h1 { font-size: 1.65rem; line-height: 1.25; margin: 0 0 .35rem; }
+  h2 { font-size: 1.15rem; margin: 2.6rem 0 .6rem; }
+  h3 { font-size: 1rem; margin: 1.6rem 0 .4rem; }
+  p, li { margin: .7rem 0; }
+  ul, ol { padding-left: 1.2rem; }
+  a { color: var(--link); }
+  code { font-family: ui-monospace, Consolas, monospace; font-size: .9em; }
+  .langs { margin: 0 0 2rem; font-size: .9rem; color: var(--dim); line-height: 2; }
+  .langs a, .langs strong { margin-right: .7rem; white-space: nowrap; }
+  .date { color: var(--dim); font-size: .9rem; margin: 0 0 2rem; }
+  .lead { font-size: 1.05rem; }
+  hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
+  footer { color: var(--dim); font-size: .9rem; }
+</style>
+</head>
+<body>
+
+<nav class="langs" aria-label="Language">
+  <a href="notifications.de.html" hreflang="de" lang="de">Deutsch</a>
+  <strong aria-current="page">English</strong>
+  <a href="notifications.es.html" hreflang="es" lang="es">Español</a>
+  <a href="notifications.fr.html" hreflang="fr" lang="fr">Français</a>
+  <a href="notifications.it.html" hreflang="it" lang="it">Italiano</a>
+  <a href="notifications.pt.html" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a>
+  <a href="notifications.pt-pt.html" hreflang="pt-PT" lang="pt-PT">Português (Portugal)</a>
+  <a href="notifications.ja.html" hreflang="ja" lang="ja">日本語</a>
+  <a href="notifications.zh.html" hreflang="zh-Hans" lang="zh-Hans">简体中文</a>
+</nav>
+
+<h1>Notifications with the page closed</h1>
+<p class="date">Last updated: 30 September 2026</p>
+
+<p class="lead">PAT Monitor can send the warnings its page shows (a baby crying,
+a dog barking, movement, a camera that stopped) to a phone or a computer whose
+page is closed, as ordinary system notifications. They are off until you turn
+them on, one device at a time.</p>
+
+<p><strong>They can arrive late, or not at all.</strong> Whether a notification
+reaches a phone that is asleep is decided by the phone’s settings, its battery
+saver and its network, and the monitor cannot see any of that. PAT Monitor is
+not a medical device or a safety system.</p>
+
+<h2>Before you start</h2>
+
+<ul>
+  <li><strong>Access from outside must be working.</strong> Notifications need
+      the monitor’s <code>https://…ts.net</code> address, the one the guided
+      setup gives on its last screen for watching from outside. The home
+      address (<code>http://192.168…</code>) cannot receive them, and on it the
+      option does not appear.</li>
+  <li><strong>Always use the same address</strong> on a given device. To a
+      browser, another address is another site, with its own permission.</li>
+  <li>Tapping a notification opens the monitor, which works where that address
+      works: from anywhere with access from outside on, or with the Tailscale
+      app connected on the device.</li>
+</ul>
+
+<h2>Turning them on</h2>
+
+<ol>
+  <li>Open the monitor’s <code>https://</code> address on the device and sign
+      in. On an iPhone or iPad, first follow the steps in the next section.</li>
+  <li>Press <strong data-key="viewer.details">Details</strong>, then
+      <strong data-key="viewer.push.receive">Receive</strong> in the row
+      <strong data-key="viewer.push.label">Notifications on this device</strong>.</li>
+  <li>Allow notifications when the browser asks.</li>
+  <li>Press <strong data-key="viewer.push.test">Send a test</strong>. A
+      notification should appear within a few seconds. If it does not, the
+      device’s own settings below are where to look.</li>
+</ol>
+
+<p>If the row is not there, the page is not on the <code>https://</code>
+address, or, on an iPhone, it is open in a Safari tab rather than from the Home
+Screen, or the browser cannot receive notifications.</p>
+
+<h2>iPhone and iPad</h2>
+
+<p>iOS and iPadOS 16.4 or later. Safari sends notifications only to a web app
+added to the Home Screen, never to a page open in a tab.</p>
+
+<ol>
+  <li>Open the monitor’s address in Safari.</li>
+  <li>Tap the Share button (on iOS 26 and later it is in the ••• menu next to the
+      address), then <strong>Add to Home Screen</strong>. On iOS 26
+      and later, check that <strong>Open as Web App</strong> is on. Then tap
+      <strong>Add</strong>.</li>
+  <li>Open <strong>PAT Monitor</strong> from its icon on the Home Screen and
+      sign in. The icon keeps a sign-in of its own, separate from Safari’s.</li>
+  <li>Turn notifications on as above, and tap <strong>Allow</strong>.</li>
+  <li>In <strong>Settings › Notifications › PAT Monitor</strong>, check that
+      sounds and the Lock Screen are allowed.</li>
+  <li>If you use Focus or Do Not Disturb, add PAT Monitor to the apps each Focus
+      allows: <strong>Settings › Focus</strong>, choose the Focus, then
+      <strong>Apps</strong>. Otherwise the notifications arrive silently.</li>
+</ol>
+
+<p>Removing the icon from the Home Screen ends its notifications. After adding
+it again, turn them on again.</p>
+
+<p>If the Tailscale app is how the phone reaches the monitor, turning on its
+<strong>VPN On Demand</strong> keeps it connected, so that tapping a
+notification opens the picture.</p>
+
+<h2>Android</h2>
+
+<p>Chrome is the browser this was built with; Firefox, Edge and Samsung Internet
+receive notifications too.</p>
+
+<ol>
+  <li>Optionally, install the page as an app: Chrome’s menu (⋮), then
+      <strong>Install and create shortcut</strong>, then <strong>Install</strong>
+      (<strong>Add to Home screen</strong> or <strong>Install app</strong> in
+      older versions). An
+      installed app is not caught by the automatic removal of permissions Chrome
+      applies to sites it considers unused.</li>
+  <li>Turn notifications on as above. On Android 13 and later the system asks
+      too: allow it.</li>
+  <li>Make them loud: long-press a PAT Monitor notification (the test one will
+      do), open its settings, and set it to make a sound and pop up on screen.
+      If you want them through Do Not Disturb, allow that there too.</li>
+  <li>Let the browser run in the background: <strong>Settings › Apps ›
+      Chrome</strong> <strong>› Battery</strong> (on a Pixel, <strong>App
+      battery usage › Allow background usage</strong>), and choose
+      <strong>Unrestricted</strong>.</li>
+  <li>On Samsung phones, also check <strong>Settings › Battery › Background
+      usage limits</strong>, and take the browser out of <strong>Sleeping
+      apps</strong> and <strong>Deep sleeping apps</strong>. Updates sometimes
+      put it back.</li>
+</ol>
+
+<h2>Windows</h2>
+
+<p>On a computer, a notification arrives only while the browser is running, even
+if no window of it is open.</p>
+
+<ul>
+  <li><strong>Edge</strong>: keep <strong>Continue running background extensions
+      and apps when Edge is closed</strong> on, under
+      <strong>Settings › System and performance</strong>. It is on by
+      default.</li>
+  <li><strong>Chrome</strong>: turn on <strong>Continue running background apps
+      when Google Chrome is closed</strong>, under <strong>Settings ›
+      System</strong>. Installing the page as an app (the install button in the
+      address bar) also keeps its permission from being removed
+      automatically.</li>
+  <li><strong>Firefox</strong>: it must stay open.</li>
+  <li><strong>Brave</strong>: notifications need <strong>Use Google services for
+      push messaging</strong>, under <code>brave://settings/privacy</code>, and a
+      restart of Brave. Without it, turning them on fails and the row says
+      so.</li>
+  <li><strong>Windows itself</strong>: in <strong>Settings › System ›
+      Notifications</strong> the browser must be allowed, and with Do not
+      disturb on it must be among the priority notifications.</li>
+</ul>
+
+<h2>What arrives</h2>
+
+<ul>
+  <li>The same warnings the page shows, in the language the page was using the
+      last time it was opened on that device.</li>
+  <li>When a fault clears (the camera sends images again, the microphone can be
+      heard again), a notification says so and replaces the fault’s.</li>
+  <li>Crying, barking and movement are not followed by a “stopped” notification,
+      so that the one that matters stays in the list.</li>
+  <li>A device that is off or out of reach gets a crying, barking or movement
+      notification only within five minutes, and a fault within an hour. After
+      that the message is dropped, because it would be old news.</li>
+  <li>The detection switches on the page apply: a detection that is off sends
+      nothing.</li>
+</ul>
+
+<h2>When nothing arrives</h2>
+
+<ol>
+  <li>Press <strong data-key="viewer.push.test">Send a test</strong> and read the
+      line under it.
+    <ul>
+      <li><em data-key="viewer.push.result.delivered">Sent. It should appear in
+          a few seconds.</em> But nothing appears: the notification service took
+          the message, and either the device has not received it yet or
+          something on it held it back. Check its Focus or Do Not Disturb, its
+          battery settings, and on Windows whether the browser is running.</li>
+      <li><em data-key="viewer.push.result.gone">This device no longer receives
+          notifications. Turn them on again.</em> On an iPhone this follows
+          removing the icon from the Home Screen.</li>
+      <li><em data-key="viewer.push.result.refused">The notification service
+          refused the message.</em> The monitor’s log says why: the line that
+          contains <code>test notification</code> carries the service’s own
+          reason.</li>
+    </ul>
+  </li>
+  <li>If turning them on fails, open
+      <strong data-key="viewer.push.why">What the browser answered</strong> under
+      the row: it lists what the browser has and what it said.</li>
+  <li>On an iPhone, remove the icon from the Home Screen, add it again, and turn
+      notifications on again.</li>
+  <li>The monitor’s log has a line for each warning, with how many devices it
+      went to and what the push services answered, and, when the device can
+      reach the monitor, a line when it shows one, with how long it took. To
+      open it, right-click the monitor’s icon next to the clock: in the panel,
+      <strong data-key="tray.menu.logs">Log folder</strong> is the button with a
+      page drawn on it, just above the one that quits.</li>
+</ol>
+
+<h2>Privacy</h2>
+
+<p>Each message goes through the push service the device’s browser uses (Apple,
+Google, Mozilla or Microsoft), encrypted so that only that device can read it.
+What those services see, and what the monitor keeps, is described in the
+<a href="privacy.html">privacy policy</a>.</p>
+
+<hr>
+
+<footer>
+<p>PAT Monitor is free software under the
+<a href="https://github.com/Nenco79/PAT-Monitor/blob/main/LICENSE">Apache License
+2.0</a>.</p>
+</footer>
+
+</body>
+</html>

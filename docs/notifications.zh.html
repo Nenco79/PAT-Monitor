@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PAT Monitor 通知</title>
+<link rel="alternate" hreflang="de" href="notifications.de.html">
+<link rel="alternate" hreflang="en" href="notifications.html">
+<link rel="alternate" hreflang="es" href="notifications.es.html">
+<link rel="alternate" hreflang="fr" href="notifications.fr.html">
+<link rel="alternate" hreflang="it" href="notifications.it.html">
+<link rel="alternate" hreflang="pt-BR" href="notifications.pt.html">
+<link rel="alternate" hreflang="pt-PT" href="notifications.pt-pt.html">
+<link rel="alternate" hreflang="ja" href="notifications.ja.html">
+<link rel="alternate" hreflang="zh-Hans" href="notifications.zh.html">
+<style>
+  :root {
+    color-scheme: light dark;
+    --ink: #1b1a17;
+    --dim: #5f5a51;
+    --bg: #faf8f4;
+    --rule: #e2ddd3;
+    --link: #2f6b4f;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ink: #e8e3d9;
+      --dim: #a49d90;
+      --bg: #171614;
+      --rule: #302d28;
+      --link: #7fb99a;
+    }
+  }
+  body {
+    margin: 0 auto; padding: 3rem 1.25rem 5rem; max-width: 42rem;
+    background: var(--bg); color: var(--ink);
+    font: 16px/1.65 -apple-system, "Segoe UI", system-ui, sans-serif;
+  }
+  h1 { font-size: 1.65rem; line-height: 1.25; margin: 0 0 .35rem; }
+  h2 { font-size: 1.15rem; margin: 2.6rem 0 .6rem; }
+  h3 { font-size: 1rem; margin: 1.6rem 0 .4rem; }
+  p, li { margin: .7rem 0; }
+  ul, ol { padding-left: 1.2rem; }
+  a { color: var(--link); }
+  code { font-family: ui-monospace, Consolas, monospace; font-size: .9em; }
+  .langs { margin: 0 0 2rem; font-size: .9rem; color: var(--dim); line-height: 2; }
+  .langs a, .langs strong { margin-right: .7rem; white-space: nowrap; }
+  .date { color: var(--dim); font-size: .9rem; margin: 0 0 2rem; }
+  .lead { font-size: 1.05rem; }
+  hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
+  footer { color: var(--dim); font-size: .9rem; }
+</style>
+</head>
+<body>
+
+<nav class="langs" aria-label="语言">
+  <a href="notifications.de.html" hreflang="de" lang="de">Deutsch</a>
+  <a href="notifications.html" hreflang="en" lang="en">English</a>
+  <a href="notifications.es.html" hreflang="es" lang="es">Español</a>
+  <a href="notifications.fr.html" hreflang="fr" lang="fr">Français</a>
+  <a href="notifications.it.html" hreflang="it" lang="it">Italiano</a>
+  <a href="notifications.pt.html" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a>
+  <a href="notifications.pt-pt.html" hreflang="pt-PT" lang="pt-PT">Português (Portugal)</a>
+  <a href="notifications.ja.html" hreflang="ja" lang="ja">日本語</a>
+  <strong aria-current="page">简体中文</strong>
+</nav>
+
+<h1>页面关闭时的通知</h1>
+<p class="date">最后更新：2026 年 9 月 30 日</p>
+
+<p class="lead">PAT Monitor 可以把页面上显示的提醒(孩子在哭、狗在叫、有动静、摄像头停了)作为普通的系统通知，发送到页面已关闭的手机或电脑上。在你开启之前，通知是关闭的，而且要一台设备一台设备地开启。</p>
+
+<p><strong>通知可能延迟，也可能收不到。</strong>通知能不能送到一部处于休眠状态的手机，取决于手机的设置、省电功能和网络，而这些情况监护器都看不到。PAT Monitor 不是医疗器械，也不是安防系统。</p>
+
+<h2>开始之前</h2>
+
+<ul>
+  <li><strong>外网访问必须能用。</strong>通知需要监护器的 <code>https://…ts.net</code> 地址，也就是引导配置在最后一屏给出的、用来从外面看画面的那个地址。家里的地址(<code>http://192.168…</code>)收不到通知，在这个地址上也不会出现这个选项。</li>
+  <li>在同一台设备上<strong>始终使用同一个地址</strong>。对浏览器来说，换一个地址就是换一个网站，权限也是各自分开的。</li>
+  <li>点按通知会打开监护器，而监护器要在这个地址能用的地方才能打开：外网访问开着时在任何地方都可以，或者这台设备上的 Tailscale 应用已连接。</li>
+</ul>
+
+<h2>开启通知</h2>
+
+<ol>
+  <li>在设备上打开监护器的 <code>https://</code> 地址并登录。如果是 iPhone 或 iPad，先按照下一节的步骤操作。</li>
+  <li>按<strong data-key="viewer.details">详情</strong>，然后按<strong data-key="viewer.push.receive">接收</strong>，它在<strong data-key="viewer.push.label">这台设备上的通知</strong>这一行里。</li>
+  <li>浏览器询问时，允许通知。</li>
+  <li>按<strong data-key="viewer.push.test">发送测试</strong>。几秒内应该会出现一条通知。如果没有出现，就要看下面各设备自己的设置。</li>
+</ol>
+
+<p>如果没有这一行，说明页面不是在 <code>https://</code> 地址上打开的；或者在 iPhone 上，页面是在 Safari 浏览器的标签页里打开的，而不是从主屏幕打开的；或者这个浏览器不能接收通知。</p>
+
+<h2>iPhone 和 iPad</h2>
+
+<p>需要 iOS 和 iPadOS 16.4 或更高版本。Safari 浏览器只向添加到主屏幕的网页 App 发送通知，从不向标签页里打开的页面发送。</p>
+
+<ol>
+  <li>在 Safari 浏览器中打开监护器的地址。</li>
+  <li>轻点“共享”按钮(在 iOS 26 及更高版本上，它在地址旁边的 ••• 菜单里)，然后轻点<strong>添加到主屏幕</strong>。在 iOS 26 及更高版本上，确认<strong>作为网页 App 打开</strong>是开着的。然后轻点<strong>添加</strong>。</li>
+  <li>从主屏幕上的图标打开 <strong>PAT Monitor</strong> 并登录。这个图标有自己的登录，和 Safari 浏览器的登录是分开的。</li>
+  <li>按上面的方法开启通知，然后轻点<strong>允许</strong>。</li>
+  <li>在<strong>设置 › 通知 › PAT Monitor</strong> 中，确认声音和锁定屏幕都已允许。</li>
+  <li>如果你使用专注模式或勿扰模式，把 PAT Monitor 加入每个专注模式允许的 App：<strong>设置 › 专注模式</strong>，选择这个专注模式，然后轻点 <strong>App</strong>。否则通知到达时不会有声音。</li>
+</ol>
+
+<p>把图标从主屏幕移除，它的通知也就停止了。重新添加之后，要重新开启通知。</p>
+
+<p>如果手机是通过 Tailscale App 连到监护器的，开启这个 App 里的 <strong>VPN On Demand</strong> 可以让 Tailscale 一直保持连接，这样点按通知就能打开画面。</p>
+
+<h2>Android</h2>
+
+<p>开发这项功能时用的浏览器是 Chrome；Firefox、Edge 和三星浏览器(Samsung Internet)也能接收通知。</p>
+
+<ol>
+  <li>可选：把页面安装为应用。打开 Chrome 的菜单(⋮)，选择<strong>安装并创建快捷方式</strong>，然后选择<strong>安装</strong>(旧版本中是<strong>添加到主屏幕</strong>或<strong>安装应用</strong>)。Chrome 会自动移除它认为不再使用的网站的权限，而安装好的应用不受这种移除影响。</li>
+  <li>按上面的方法开启通知。在 Android 13 及更高版本上，系统也会询问：允许即可。</li>
+  <li>让通知醒目一些：长按一条 PAT Monitor 的通知(测试通知就行)，打开它的设置，设为发出声音并在屏幕上弹出。如果你希望通知在勿扰模式下也能到达，也在那里允许。</li>
+  <li>让浏览器可以在后台运行：<strong>设置 › 应用 › Chrome</strong> <strong>› 电池</strong>(在 Pixel 上是<strong>应用的电池使用情况 › 允许后台使用</strong>)，然后选择<strong>无限制</strong>。</li>
+  <li>在三星手机上，还要检查<strong>设置 › 电池 › 后台使用限制</strong>，并把浏览器从<strong>休眠应用程序</strong>和<strong>深度休眠应用程序</strong>中移出。系统更新有时会把它放回去。</li>
+</ol>
+
+<h2>Windows</h2>
+
+<p>在电脑上，只有浏览器在运行时才能收到通知，即使它没有打开任何窗口。</p>
+
+<ul>
+  <li><strong>Edge</strong>：保持<strong>关闭 Microsoft Edge 后继续运行后台扩展和应用</strong>开启，它在<strong>设置 › 系统和性能</strong>下。这个选项默认是开启的。</li>
+  <li><strong>Chrome</strong>：开启<strong>关闭 Google Chrome 后继续运行后台应用</strong>，它在<strong>设置 › 系统</strong>下。把页面安装为应用(地址栏里的安装按钮)也能防止它的权限被自动移除。</li>
+  <li><strong>Firefox</strong>：必须一直开着。</li>
+  <li><strong>Brave</strong>：通知需要开启<strong>使用 Google 服务进行推送消息传递</strong>(在 <code>brave://settings/privacy</code> 下)，并重启 Brave。没有这个选项，开启通知会失败，那一行也会这样说明。</li>
+  <li><strong>Windows 本身</strong>：在<strong>设置 › 系统 › 通知</strong>中必须允许这个浏览器；开着请勿打扰时，它还必须在优先级通知之列。</li>
+</ul>
+
+<h2>会收到什么</h2>
+
+<ul>
+  <li>和页面上显示的相同的提醒，所用的语言是这台设备上最后一次打开页面时页面所用的语言。</li>
+  <li>故障消除时(摄像头重新传来画面、麦克风又能听到了)，会有一条通知说明这一点，并替换掉那条故障通知。</li>
+  <li>哭声、狗叫和移动之后不会再来一条“已停止”的通知，这样重要的那条会留在列表里。</li>
+  <li>设备关机或连不上时，哭声、狗叫或移动的通知只在 5 分钟内还会送达，故障通知只在 1 小时内。超过这个时间，消息就会被丢弃，因为它已经是旧消息了。</li>
+  <li>页面上的检测开关同样有效：关掉的检测不会发送任何通知。</li>
+</ul>
+
+<h2>收不到通知时</h2>
+
+<ol>
+  <li>按<strong data-key="viewer.push.test">发送测试</strong>，看看它下面的那一行。
+    <ul>
+      <li><em data-key="viewer.push.result.delivered">已发送。几秒内应该会出现。</em>但什么都没有出现：通知服务已经接收了这条消息，要么设备还没收到，要么设备上有什么把它拦住了。检查设备的专注模式或勿扰模式、电池设置，在 Windows 上还要检查浏览器是否在运行。</li>
+      <li><em data-key="viewer.push.result.gone">这台设备已不再接收通知。重新开启通知。</em>在 iPhone 上，这是把图标从主屏幕移除之后出现的。</li>
+      <li><em data-key="viewer.push.result.refused">通知服务拒绝了这条消息。</em>监护器的日志里有原因：包含 <code>test notification</code> 的那一行，记着通知服务自己给出的理由(日志是用英文写的)。</li>
+    </ul>
+  </li>
+  <li>如果开启通知失败，打开这一行下面的<strong data-key="viewer.push.why">浏览器的回应</strong>：里面列出了浏览器具备什么，以及它回答了什么。</li>
+  <li>在 iPhone 上，把图标从主屏幕移除，重新添加，然后重新开启通知。</li>
+  <li>监护器的日志里，每条提醒都有一行，记着它发给了几台设备、各个推送服务怎么回答；设备能连到监护器时，它每显示一条通知也会有一行，记着用了多长时间。要打开日志，右键点击时钟旁边的监护器图标：在图标的面板里，<strong data-key="tray.menu.logs">日志文件夹</strong>是画着一页纸的那个按钮，就在退出监护器的那个按钮上面。</li>
+</ol>
+
+<h2>隐私</h2>
+
+<p>每条消息都经过设备的浏览器所用的推送服务(Apple、Google、Mozilla 或 Microsoft)，并经过加密，只有那台设备能读取。这些服务能看到什么、监护器保存什么，写在<a href="privacy.html">隐私政策</a>里。</p>
+
+<hr>
+
+<footer>
+<p>PAT Monitor 是自由软件，采用
+<a href="https://github.com/Nenco79/PAT-Monitor/blob/main/LICENSE">Apache License
+2.0</a> 许可。</p>
+</footer>
+
+</body>
+</html>

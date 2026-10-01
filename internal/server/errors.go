@@ -95,6 +95,15 @@ const (
 	// it is not a refusal, it is a piece that is not here — the tests see it,
 	// because they do not build the recorder.
 	ErrRecordUnavailable errCode = "record-unavailable"
+	// The notifications are not attached to this server: the same kind of
+	// answer as `record-unavailable`.
+	ErrPushUnavailable errCode = "push-unavailable"
+	// Notifications were asked for from a page that did not arrive encrypted.
+	// A browser offers them only on a secure page, so this is the page on the
+	// PC's own address, where they would have nowhere to lead.
+	ErrPushInsecure errCode = "push-insecure"
+	// As many devices are subscribed as the monitor keeps.
+	ErrPushFull errCode = "push-full"
 )
 
 // AllErrCodes is the authoritative list, for the guard that demands a word in
@@ -113,6 +122,7 @@ func AllErrCodes() []string {
 		string(ErrNoSuchMic), string(ErrMicListFailed),
 		string(ErrNoSuchCam), string(ErrCamListFailed),
 		string(ErrNothingToRecord), string(ErrDiskFull), string(ErrRecordUnavailable),
+		string(ErrPushUnavailable), string(ErrPushInsecure), string(ErrPushFull),
 	}
 }
 

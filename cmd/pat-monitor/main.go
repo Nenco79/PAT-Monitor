@@ -42,6 +42,7 @@ import (
 	"patmonitor/internal/i18n"
 	"patmonitor/internal/media"
 	"patmonitor/internal/pipeline"
+	"patmonitor/internal/push"
 	"patmonitor/internal/record"
 	"patmonitor/internal/rtc"
 	"patmonitor/internal/server"
@@ -791,6 +792,18 @@ func run(log *slog.Logger, path string) error {
 		}
 	}
 
+	// **The notifications live beside the node, not beside the configuration.**
+	// A subscription is bound to the origin a browser subscribed on, and the
+	// origin is the node's name, which belongs to this machine: see push.FileName.
+	// A store that will not open costs the notifications and nothing else.
+	notifier, err := push.New(nodeDir, log)
+	if err != nil {
+		log.Warn("notifications with the page closed are unavailable", "error", err)
+		notifier = nil
+	} else {
+		defer notifier.Close()
+	}
+
 	registry := alerts.NewRegistry()
 	// snapshot is what the monitor knows about itself now. It reads and decides
 	// nothing: the alerts are the watching round's.
@@ -883,8 +896,9 @@ func run(log *slog.Logger, path string) error {
 		recog.Wanted(conf.DetectCry, conf.DetectBark)
 		cry, bark := recog.Verdict(now)
 		// **The switches turn off the event, not its alert.** Whoever has no dog
-		// must not hear a wrong bark: not in the banner, not in the log, and
-		// tomorrow not on the phone.
+		// must not hear a wrong bark: not in the banner, not in the log, and not
+		// on the phone — the notifications are sent from `appeared` below, which
+		// is this set after the mask.
 		cry = cry && conf.DetectCry
 		bark = bark && conf.DetectBark
 		moving = moving && conf.DetectMotion
@@ -933,6 +947,13 @@ func run(log *slog.Logger, path string) error {
 		}
 		for _, c := range recovered {
 			log.Info("alert cleared", "code", c)
+		}
+		// **And to the phones that asked, from the same two lists.** They are
+		// the banner's news with the grace and the switches already applied, so
+		// a notification says nothing the open page would not have said. It
+		// does not wait for the network: the round runs once a second.
+		if notifier != nil {
+			notifier.Alerted(appeared, recovered)
 		}
 		// **The pre-roll declares itself before it is needed.** Noticing it is
 		// empty only when looking at the first clip would mean noticing on the
@@ -1053,7 +1074,8 @@ func run(log *slog.Logger, path string) error {
 			return ownNames(computerNames(), dnsSuffixes(),
 				remote.State().PublicURL, store.Get().FunnelHostname)
 		},
-		Log: log,
+		Push: notifier,
+		Log:  log,
 	})
 	if err != nil {
 		return err

@@ -50,6 +50,12 @@ import (
 // has no business depending on the operating system.
 const Product = "PAT Monitor"
 
+// Repository is where the project lives, as GitHub names it: whose releases
+// the update check asks about, and the address the push services are told is
+// sending. **One name for both**, because the day it moves a second copy would
+// go on asking the old one.
+const Repository = "Nenco79/PAT-Monitor"
+
 // Number is the product version. It changes by hand, and only here.
 //
 // **It is not chosen by whoever has just finished something.** A number decided

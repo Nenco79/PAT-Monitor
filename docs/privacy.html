@@ -43,7 +43,7 @@
 <body>
 
 <h1>PAT Monitor Privacy Policy</h1>
-<p class="date">Last updated: 26 September 2026</p>
+<p class="date">Last updated: 30 September 2026</p>
 
 <p class="lead">PAT Monitor is a pet and baby monitor that runs on your own
 Windows PC. The developer runs no service for it, and the program sends nothing
@@ -67,8 +67,9 @@ says so.</p>
   <li>The program saves recordings as files on your PC and makes no other
       copy.</li>
   <li>Outside parties: public STUN servers; Tailscale, only if you turn on access
-      from outside; GitHub, for the update check outside the Store; Microsoft, if
-      you installed from the Store.</li>
+      from outside; the push service of a device’s browser, only on devices
+      where you turn notifications on; GitHub, for the update check outside the
+      Store; Microsoft, if you installed from the Store.</li>
 </ul>
 
 <h2>What the program handles</h2>
@@ -90,18 +91,19 @@ loses that source and says so.</p>
 
 <h3>Talk-back</h3>
 
-<p>When you turn on talk-back from the page, your browser uses your device's
-microphone, with that browser's permission, and your voice plays from the PC's
+<p>When you turn on talk-back from the page, your browser uses your device’s
+microphone, with that browser’s permission, and your voice plays from the PC’s
 speaker over the same encrypted connection. The program does not save the voice
-it receives. While you talk, the room's audio is not sent to viewers, but the
-PC's microphone keeps recording the room, so your voice from the speaker can end
+it receives. While you talk, the room’s audio is not sent to viewers, but the
+PC’s microphone keeps recording the room, so your voice from the speaker can end
 up in a clip made at that time.</p>
 
 <h3>Detection</h3>
 
 <p>Sound and motion detection run inside the program, on your PC, with a model
 built into the executable. The detectors send nothing over the network. Their
-alerts appear on the monitor's pages and in the log.</p>
+alerts appear on the monitor’s pages and in the log, and as notifications on the
+devices where you turn those on (see below).</p>
 
 <h3>Recordings</h3>
 
@@ -127,18 +129,28 @@ not done by PAT Monitor.</p>
 <p>Outside the Store, the settings are in
 <code>%APPDATA%\PAT Monitor\config.yaml</code>. In the Store version they are
 there too if that folder already exists; otherwise Windows keeps them in the
-app's private folder under <code>%LOCALAPPDATA%\Packages</code>. They hold
+app’s private folder under <code>%LOCALAPPDATA%\Packages</code>. They hold
 your configuration, including camera, microphone and speaker as Windows device
 identifiers, the name used for the public address, and the rest of your
 feature choices. The monitor password itself is not stored, only a hash of it. A
 Tailscale authentication key is stored there only if you put it there
 yourself, as plain text.</p>
 
-<p>If you turn on access from outside, Tailscale's own data for this PC (its
+<p>If you turn on access from outside, Tailscale’s own data for this PC (its
 keys, its certificate and its log files) is kept in a <code>tsnet</code> folder
-with the program's other files on this PC.</p>
+with the program’s other files on this PC.</p>
 
-<p>Your browser keeps a sign-in cookie and your language choice.</p>
+<p>If you turn notifications on for a device, a <code>push.json</code> file in
+the same place keeps, for each such device, the address its browser’s push
+service gave it, the keys that encrypt messages to it, the language of its page
+and when it was last reached, plus a key of the program’s own that signs its
+messages. Turning notifications off on a device removes that device from the
+file.</p>
+
+<p>Your browser keeps a sign-in cookie and your language choice. On a device
+where you turn notifications on, it also keeps the notification permission, and
+a small script (a service worker) that shows them; turning them off removes
+the script.</p>
 
 <h3>Log</h3>
 
@@ -146,7 +158,9 @@ with the program's other files on this PC.</p>
 settings, in rotating files. It records what the monitor did, including
 viewer connections and sign-ins, with the network address and device type of
 each. With access from
-outside on, it also records the public address. Folder paths in it include your
+outside on, it also records the public address. With notifications on, it
+records which push service each device uses, what the service answered and how
+long a notification took to appear. Folder paths in it include your
 Windows user name. It contains no video or audio. You can read it, and delete it
 after quitting the program.</p>
 
@@ -158,7 +172,7 @@ after quitting the program.</p>
 for their public address. By default these are run by Google and by Cloudflare.
 The server receives the public IP address and port of whoever asks. The request
 from the PC carries nothing else; what your browser sends is up to your browser.
-Those companies' own privacy policies apply. You can replace the servers in the
+Those companies’ own privacy policies apply. You can replace the servers in the
 <code>stun_servers</code> setting. An empty list restores the defaults.</p>
 
 <h3>Tailscale, only if you turn on access from outside</h3>
@@ -167,7 +181,7 @@ Those companies' own privacy policies apply. You can replace the servers in the
 start while no password is set. It uses your own Tailscale account. Tailscale
 provides the public address, obtains its HTTPS certificate and carries visits to
 that address to your PC. Those visits, meaning the pages, the recordings and the
-setup of each video call, cross Tailscale's servers encrypted and are decrypted
+setup of each video call, cross Tailscale’s servers encrypted and are decrypted
 only on your PC and on your device (see
 <a href="https://tailscale.com/kb/1223/funnel">how Funnel works</a>). The live video and audio do not use the
 public address. If the Tailscale app is also installed on your PC and your
@@ -175,17 +189,31 @@ phone, the live stream can travel over your Tailscale network, and Tailscale may
 relay it, still encrypted.</p>
 
 <p>While access from outside is on, the Tailscale software built into PAT Monitor
-sends its own diagnostic logs and usage counters to Tailscale, as Tailscale's
+sends its own diagnostic logs and usage counters to Tailscale, as Tailscale’s
 app does. They describe the connection, including network addresses and
 attempts to reach other devices, not the video, the audio or the pages (see
-<a href="https://tailscale.com/kb/1011/log-mesh-traffic">Tailscale's logging
+<a href="https://tailscale.com/kb/1011/log-mesh-traffic">Tailscale’s logging
 overview</a>). PAT Monitor adds nothing about you or your camera to them.
-<a href="https://tailscale.com/privacy-policy">Tailscale's privacy policy</a>
+<a href="https://tailscale.com/privacy-policy">Tailscale’s privacy policy</a>
 covers all of this.</p>
 
 <p>To turn access from outside off, set <code>funnel_enabled</code> to
 <code>false</code> in the settings and restart the program. The PC stays listed
 in your Tailscale account until you remove it there.</p>
+
+<h3>Push services, only on devices where you turn notifications on</h3>
+
+<p>Notifications are off until you turn them on, one device at a time, from the
+monitor’s page. When an alert appears, the PC sends a message for each such
+device to the push service that device’s browser uses: Apple for Safari, Google
+for Chrome and most Android browsers, Mozilla for Firefox, Microsoft for Edge.
+The message is encrypted for that device, and the push service cannot read it.
+The service sees the PC’s public IP address, the device’s address at that
+service, when the message was sent and its size, and the project’s web address,
+which identifies the sender. The program adds nothing about you, your camera or
+your network. Each company’s own privacy policy applies. Removing the web app
+from a phone’s Home Screen, or turning notifications off on the page, ends
+it.</p>
 
 <h3>Update check</h3>
 
@@ -227,13 +255,15 @@ outside.</p>
       time.</li>
   <li><strong>Access from outside</strong>: off until you turn it on; turned off
       in the settings, as described above.</li>
+  <li><strong>Notifications</strong>: off until you turn them on on a device,
+      and turned off on that device from the same row of the page.</li>
   <li><strong>Password</strong>: can be changed at any time, which ends open
       sessions.</li>
   <li><strong>Everything else</strong>: outside the Store, deleting the program
       file and the PAT Monitor folders in <code>%APPDATA%</code> and
-      <code>%LOCALAPPDATA%</code> removes the settings, the log, Tailscale's
+      <code>%LOCALAPPDATA%</code> removes the settings, the log, Tailscale’s
       data and any clips saved there. In the
-      Store version, uninstalling deletes the app's private folder and what is
+      Store version, uninstalling deletes the app’s private folder and what is
       in it. A PAT Monitor folder in <code>%APPDATA%</code> or
       <code>%LOCALAPPDATA%</code>, if one was used, and
       clips in your Videos folder stay until you delete them.</li>
@@ -251,7 +281,7 @@ over your own network without encryption; from outside, over HTTPS.</p>
 
 <p>Where the camera points, what is recorded and who can reach it are your
 choices. Recording in a workplace, a business or premises other people visit,
-or with a camera that covers a street, a shared entrance or a neighbour's
+or with a camera that covers a street, a shared entrance or a neighbour’s
 property, can carry obligations under data protection law.</p>
 
 <p>Sound needs particular care. A microphone picks up conversations the camera
@@ -269,12 +299,14 @@ It is hosted on GitHub Pages, whose servers receive the request for it.</p>
 
 <h2>Changes</h2>
 
-<p>This page changes when the program's handling of information changes, and the
+<p>This page changes when the program’s handling of information changes, and the
 date at the top shows the last change. A change applies from its date. Every
-version is kept as a dated revision in the project's public repository.</p>
+version is kept as a dated revision in the project’s public repository.</p>
 
 <ul>
-  <li><strong>26 September 2026</strong>: where Tailscale's data for this PC is
+  <li><strong>30 September 2026</strong>: notifications with the page closed,
+  what the program keeps for them, and the push services they go through.</li>
+  <li><strong>26 September 2026</strong>: where Tailscale’s data for this PC is
   kept.</li>
   <li><strong>26 September 2026</strong>: recording what people say without
   their consent can be a crime even at home, and the people told should know the

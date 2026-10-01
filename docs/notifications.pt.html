@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Notificações do PAT Monitor</title>
+<link rel="alternate" hreflang="de" href="notifications.de.html">
+<link rel="alternate" hreflang="en" href="notifications.html">
+<link rel="alternate" hreflang="es" href="notifications.es.html">
+<link rel="alternate" hreflang="fr" href="notifications.fr.html">
+<link rel="alternate" hreflang="it" href="notifications.it.html">
+<link rel="alternate" hreflang="pt-BR" href="notifications.pt.html">
+<link rel="alternate" hreflang="pt-PT" href="notifications.pt-pt.html">
+<link rel="alternate" hreflang="ja" href="notifications.ja.html">
+<link rel="alternate" hreflang="zh-Hans" href="notifications.zh.html">
+<style>
+  :root {
+    color-scheme: light dark;
+    --ink: #1b1a17;
+    --dim: #5f5a51;
+    --bg: #faf8f4;
+    --rule: #e2ddd3;
+    --link: #2f6b4f;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ink: #e8e3d9;
+      --dim: #a49d90;
+      --bg: #171614;
+      --rule: #302d28;
+      --link: #7fb99a;
+    }
+  }
+  body {
+    margin: 0 auto; padding: 3rem 1.25rem 5rem; max-width: 42rem;
+    background: var(--bg); color: var(--ink);
+    font: 16px/1.65 -apple-system, "Segoe UI", system-ui, sans-serif;
+  }
+  h1 { font-size: 1.65rem; line-height: 1.25; margin: 0 0 .35rem; }
+  h2 { font-size: 1.15rem; margin: 2.6rem 0 .6rem; }
+  h3 { font-size: 1rem; margin: 1.6rem 0 .4rem; }
+  p, li { margin: .7rem 0; }
+  ul, ol { padding-left: 1.2rem; }
+  a { color: var(--link); }
+  code { font-family: ui-monospace, Consolas, monospace; font-size: .9em; }
+  .langs { margin: 0 0 2rem; font-size: .9rem; color: var(--dim); line-height: 2; }
+  .langs a, .langs strong { margin-right: .7rem; white-space: nowrap; }
+  .date { color: var(--dim); font-size: .9rem; margin: 0 0 2rem; }
+  .lead { font-size: 1.05rem; }
+  hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
+  footer { color: var(--dim); font-size: .9rem; }
+</style>
+</head>
+<body>
+
+<nav class="langs" aria-label="Idioma">
+  <a href="notifications.de.html" hreflang="de" lang="de">Deutsch</a>
+  <a href="notifications.html" hreflang="en" lang="en">English</a>
+  <a href="notifications.es.html" hreflang="es" lang="es">Español</a>
+  <a href="notifications.fr.html" hreflang="fr" lang="fr">Français</a>
+  <a href="notifications.it.html" hreflang="it" lang="it">Italiano</a>
+  <strong aria-current="page">Português (Brasil)</strong>
+  <a href="notifications.pt-pt.html" hreflang="pt-PT" lang="pt-PT">Português (Portugal)</a>
+  <a href="notifications.ja.html" hreflang="ja" lang="ja">日本語</a>
+  <a href="notifications.zh.html" hreflang="zh-Hans" lang="zh-Hans">简体中文</a>
+</nav>
+
+<h1>Notificações com a página fechada</h1>
+<p class="date">Última atualização: 30 de setembro de 2026</p>
+
+<p class="lead">O PAT Monitor pode enviar os avisos que a página dele mostra (um
+bebê chorando, um cachorro latindo, movimento, uma câmera que parou) para um
+celular ou um computador com a página fechada, como notificações comuns do
+sistema. Elas ficam desativadas até você ativá-las, um dispositivo de cada
+vez.</p>
+
+<p><strong>Elas podem chegar atrasadas ou não chegar.</strong> Quem decide se
+uma notificação chega a um celular em repouso são as configurações do celular, a
+economia de bateria e a rede dele, e o monitor não consegue ver nada disso. O
+PAT Monitor não é um dispositivo médico nem um sistema de segurança.</p>
+
+<h2>Antes de começar</h2>
+
+<ul>
+  <li><strong>O acesso de fora de casa precisa estar funcionando.</strong> As
+      notificações precisam do endereço <code>https://…ts.net</code> do monitor,
+      aquele que a configuração guiada mostra na última tela para assistir de
+      fora de casa. O endereço de casa (<code>http://192.168…</code>) não pode
+      recebê-las, e nele a opção não aparece.</li>
+  <li><strong>Use sempre o mesmo endereço</strong> em cada dispositivo. Para um
+      navegador, outro endereço é outro site, com uma permissão própria.</li>
+  <li>Tocar em uma notificação abre o monitor, que funciona onde aquele
+      endereço funciona: de qualquer lugar com o acesso de fora de casa ativado,
+      ou com o app do Tailscale conectado no dispositivo.</li>
+</ul>
+
+<h2>Como ativar</h2>
+
+<ol>
+  <li>Abra o endereço <code>https://</code> do monitor no dispositivo e entre
+      com a senha. No iPhone ou no iPad, siga antes as etapas da próxima
+      seção.</li>
+  <li>Pressione <strong data-key="viewer.details">Detalhes</strong> e depois
+      <strong data-key="viewer.push.receive">Receber</strong> na linha
+      <strong data-key="viewer.push.label">Notificações neste dispositivo</strong>.</li>
+  <li>Permita as notificações quando o navegador perguntar.</li>
+  <li>Pressione <strong data-key="viewer.push.test">Enviar um teste</strong>.
+      Uma notificação deve aparecer em poucos segundos. Se não aparecer, é nas
+      configurações do próprio dispositivo, descritas abaixo, que você deve
+      procurar.</li>
+</ol>
+
+<p>Se a linha não estiver lá, a página não está no endereço
+<code>https://</code>, ou, no iPhone, ela está aberta em uma aba do Safari e não
+a partir da Tela de Início, ou o navegador não consegue receber
+notificações.</p>
+
+<h2>iPhone e iPad</h2>
+
+<p>iOS e iPadOS 16.4 ou posterior. O Safari só envia notificações para um app da
+web adicionado à Tela de Início, nunca para uma página aberta em uma aba.</p>
+
+<ol>
+  <li>Abra o endereço do monitor no Safari.</li>
+  <li>Toque no botão Compartilhar (no iOS 26 e posterior, ele fica no menu •••
+      ao lado do endereço) e depois em <strong>Adicionar à Tela de
+      Início</strong>. No iOS 26 e posterior, verifique se a opção
+      <strong>Abrir como App da Web</strong> está ativada. Depois, toque em
+      <strong>Adicionar</strong>.</li>
+  <li>Abra o <strong>PAT Monitor</strong> pelo ícone dele na Tela de Início e
+      entre com a senha. O ícone mantém uma sessão própria, separada da do
+      Safari.</li>
+  <li>Ative as notificações como descrito acima e toque em
+      <strong>Permitir</strong>.</li>
+  <li>Em <strong>Ajustes › Notificações › PAT Monitor</strong>, verifique se os
+      sons e a Tela Bloqueada estão permitidos.</li>
+  <li>Se você usa Foco ou Não Perturbe, adicione o PAT Monitor aos apps que cada
+      Foco permite: <strong>Ajustes › Foco</strong>, escolha o Foco e depois
+      <strong>Apps</strong>. Caso contrário, as notificações chegam sem
+      som.</li>
+</ol>
+
+<p>Remover o ícone da Tela de Início encerra as notificações dele. Depois de
+adicioná-lo de novo, ative-as de novo.</p>
+
+<p>Se é pelo app do Tailscale que o celular acessa o monitor, ativar a opção
+<strong>VPN On Demand</strong> dele mantém a conexão, para que tocar em uma
+notificação abra a imagem.</p>
+
+<h2>Android</h2>
+
+<p>O Chrome é o navegador com que isto foi feito; o Firefox, o Edge e o Samsung
+Internet também recebem notificações.</p>
+
+<ol>
+  <li>Se quiser, instale a página como app: no menu do Chrome (⋮), toque em
+      <strong>Instalar e criar atalho</strong> e depois em
+      <strong>Instalar</strong> (<strong>Adicionar à tela inicial</strong> ou
+      <strong>Instalar aplicativo</strong> nas versões mais antigas). Um app
+      instalado não é atingido pela remoção automática de permissões que o
+      Chrome aplica aos sites que considera sem uso.</li>
+  <li>Ative as notificações como descrito acima. No Android 13 e posterior, o
+      sistema também pergunta: permita.</li>
+  <li>Faça com que elas chamem a atenção: toque e mantenha pressionada uma
+      notificação do PAT Monitor (a de teste serve), abra as configurações dela
+      e defina que ela emita som e apareça na tela. Se quiser que elas passem
+      pelo Não perturbe, permita isso ali também.</li>
+  <li>Deixe o navegador funcionar em segundo plano: <strong>Configurações › Apps
+      › Chrome</strong> <strong>› Bateria</strong> (no Pixel, <strong>Uso da
+      bateria pelo app › Permitir o uso em segundo plano</strong>) e escolha
+      <strong>Sem restrições</strong>.</li>
+  <li>Em celulares Samsung, verifique também <strong>Configurações › Bateria ›
+      Limites de uso em segundo plano</strong> e tire o navegador de
+      <strong>Aplicativos suspensos</strong> e <strong>Aplicativos em suspensão
+      profunda</strong>. Às vezes as atualizações o colocam de volta.</li>
+</ol>
+
+<h2>Windows</h2>
+
+<p>Em um computador, uma notificação só chega enquanto o navegador está em
+execução, mesmo que nenhuma janela dele esteja aberta.</p>
+
+<ul>
+  <li><strong>Edge</strong>: mantenha ativada a opção <strong>Continuar
+      executando extensões e aplicativos em segundo plano quando o Edge for
+      fechado</strong>, em <strong>Configurações › Sistema e
+      desempenho</strong>. Ela vem ativada por padrão.</li>
+  <li><strong>Chrome</strong>: ative <strong>Executar aplicativos em segundo
+      plano quando o Google Chrome estiver fechado</strong>, em
+      <strong>Configurações › Sistema</strong>. Instalar a página como app (o
+      botão de instalação na barra de endereço) também impede que a permissão
+      dela seja removida automaticamente.</li>
+  <li><strong>Firefox</strong>: ele precisa ficar aberto.</li>
+  <li><strong>Brave</strong>: as notificações precisam da opção <strong>Use os
+      serviços do Google para receber mensagens push</strong>, em
+      <code>brave://settings/privacy</code>, e de uma reinicialização do Brave.
+      Sem ela, a ativação falha e a linha informa isso.</li>
+  <li><strong>O próprio Windows</strong>: em <strong>Configurações › Sistema ›
+      Notificações</strong>, o navegador precisa estar permitido e, com o Não
+      incomodar ativado, precisa estar entre as notificações prioritárias.</li>
+</ul>
+
+<h2>O que chega</h2>
+
+<ul>
+  <li>Os mesmos avisos que a página mostra, no idioma que a página estava usando
+      na última vez em que foi aberta naquele dispositivo.</li>
+  <li>Quando uma falha se resolve (a câmera volta a enviar imagens, o microfone
+      volta a ser ouvido), uma notificação informa isso e substitui a da
+      falha.</li>
+  <li>Choro, latido e movimento não são seguidos de uma notificação de
+      “parou”, para que a que importa continue na lista.</li>
+  <li>Um dispositivo desligado ou fora de alcance só recebe uma notificação de
+      choro, latido ou movimento dentro de cinco minutos, e uma de falha dentro
+      de uma hora. Depois disso a mensagem é descartada, porque já seria notícia
+      velha.</li>
+  <li>Valem as opções de detecção da página: uma detecção desativada não envia
+      nada.</li>
+</ul>
+
+<h2>Quando nada chega</h2>
+
+<ol>
+  <li>Pressione <strong data-key="viewer.push.test">Enviar um teste</strong> e
+      leia a linha embaixo.
+    <ul>
+      <li><em data-key="viewer.push.result.delivered">Notificação enviada. Ela
+          deve aparecer em alguns segundos.</em> Mas nada aparece: o serviço de
+          notificações aceitou a mensagem, e ou o dispositivo ainda não a
+          recebeu ou algo nele a segurou. Verifique o Foco ou o modo Não
+          perturbe dele, as configurações de bateria e, no Windows, se o
+          navegador está em execução.</li>
+      <li><em data-key="viewer.push.result.gone">Este dispositivo não recebe
+          mais as notificações. Ative-as de novo.</em> No iPhone, isso acontece
+          depois que o ícone é removido da Tela de Início.</li>
+      <li><em data-key="viewer.push.result.refused">O serviço de notificações
+          recusou a mensagem.</em> O log do monitor diz por quê: a linha que
+          contém <code>test notification</code> traz a justificativa do próprio
+          serviço (o log é escrito em inglês).</li>
+    </ul>
+  </li>
+  <li>Se a ativação falhar, abra
+      <strong data-key="viewer.push.why">Resposta do navegador</strong> embaixo
+      da linha: ali está o que o navegador tem e o que ele respondeu.</li>
+  <li>No iPhone, remova o ícone da Tela de Início, adicione-o de novo e ative as
+      notificações de novo.</li>
+  <li>O log do monitor tem uma linha para cada aviso, que diz a quantos
+      dispositivos ele foi enviado e o que os serviços push responderam, e,
+      quando o dispositivo consegue acessar o monitor, uma linha quando ele
+      mostra a notificação, com quanto tempo ela levou. Para abri-lo, clique
+      com o botão direito no ícone do monitor perto do relógio: no painel,
+      <strong data-key="tray.menu.logs">Pasta de logs</strong> é o botão com
+      uma página desenhada, logo acima daquele que desliga o monitor.</li>
+</ol>
+
+<h2>Privacidade</h2>
+
+<p>Cada mensagem passa pelo serviço push que o navegador do dispositivo usa
+(Apple, Google, Mozilla ou Microsoft), criptografada para que só aquele
+dispositivo possa lê-la. O que esses serviços veem, e o que o monitor guarda,
+está descrito na <a href="privacy.html">política de privacidade</a>.</p>
+
+<hr>
+
+<footer>
+<p>O PAT Monitor é software livre, sob a
+<a href="https://github.com/Nenco79/PAT-Monitor/blob/main/LICENSE">Licença Apache
+2.0</a>.</p>
+</footer>
+
+</body>
+</html>
