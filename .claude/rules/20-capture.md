@@ -1092,6 +1092,66 @@ recorded where the two boxes are argued against each other: "The camera is chose
 while the monitor watches, and choosing is reopening", under what Windows names
 and what it does not.
 
+### The camera does not choose the frame
+
+Windows' camera settings carry an **Automatic framing** switch where the driver
+offers it, and the owner found it on an AMD laptop with no NPU, so it is not a
+Studio Effects feature only. Behind it is
+`KSPROPERTY_CAMERACONTROL_EXTENDED_DIGITALWINDOW`, which an application reaches
+through `IMFExtendedCameraController`. On a baby monitor it is the camera
+choosing what the room is. Measured on an ACER HD User Facing with the switch
+on: the picture was one face and a strip of wall, and turned off it was the
+door, the wall and the desk. It crops the room in the moment somebody is in it,
+and every move of the window changes the whole picture under the motion
+detector.
+
+So `framingCheck` turns it off **from the first frame of every open**, and the
+moment is not a choice. The control "only applies while the camera is actively
+streaming", so before the first frame the driver refuses it. At the first frame
+the framing has not yet closed in on anybody, so the picture never jumps.
+
+**But the first frame is not the answer, and a second start of the monitor
+said so.** It wrote no line at all, with the switch on. Five opens in a row,
+the state read at every frame: the first, after a rest, said *not following*
+at frame 1 and *following* from frame 5; the other four said *following* at
+frame 1. A check made once had let the framing run for the whole session with
+nothing in the log. So the state is looked at every thirty frames for the first
+three hundred and every three hundred after that, for as long as the camera is
+open, which also catches a driver that turns it back on.
+`TestTheFramingIsTurnedOffWhenItComesOnAfterTheFirstFrame` replays the measured
+sequence, and failed with the one-shot check put back.
+
+**The switch is believed fifteen frames later, not in the next instant**,
+because the state read right after the change can be the echo of what was just
+written. A refusal is an absence only for the codes that mean one, such as
+`E_NOINTERFACE` or a KS property the driver does not have. Anything else, a
+driver not yet streaming included, is tried again at the next look. And a
+payload whose window cannot be found changes nothing, because manual with the
+old window keeps the crop.
+
+Three things were measured rather than assumed, and each one is visible only by
+running it:
+
+- **The reader does not hand the controller over.** `GetServiceForStream` with
+  `GUID_NULL` only queries the source, and answered `E_NOINTERFACE` on a camera
+  Windows offers the switch for. Microsoft's own example takes the source's
+  `IMFGetService` and asks it, and that one answers.
+- **The window lies on this camera, and the state does not.** With the picture
+  plainly a crop, the window read back as origin 0,0 and size 1.000, that is,
+  the whole view. The witness is therefore whether the driver says it is
+  following, read again after the change. What showed the crop was the picture
+  itself: `pat-diag -framing -framing-off -framing-shots <folder>` saves the
+  luma plane before and after, and that is how the effect was seen.
+- **The setting in Windows is not touched.** With the framing off and the camera
+  held for thirty seconds, the switch in Settings stayed on, so other programs
+  keep what the owner chose. That is also why it is asked again at every open:
+  each open is a new session for the driver, which starts from that switch.
+
+**What is not known** is whether other cameras answer the same way: a driver
+behind Studio Effects on an NPU, or one whose window does not lie. On this one,
+thirty seconds after the change it was still off; nobody has watched a whole
+night.
+
 ### A permission Windows has taken away is a state, not a fault
 
 Camera and microphone are **consented to** on Windows 11, and the consent can be

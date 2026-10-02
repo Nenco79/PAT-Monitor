@@ -396,6 +396,11 @@ type Pipeline struct {
 	// camera" about the right one. It is decided once, where the two are
 	// matched.
 	camFellBack atomic.Bool
+	// framingOff and framingTrouble: a line about the camera's automatic
+	// framing has been written once in this process, the success and the
+	// failure each, so that a reopen writes it again at Debug only.
+	framingOff     atomic.Bool
+	framingTrouble atomic.Bool
 	// camWanted is the link of the camera to open: empty means the first usable
 	// one.
 	//
@@ -3038,6 +3043,9 @@ func (p *Pipeline) runVideo(ctx context.Context, sinks Sinks) error {
 	// The configuration knobs remain, and they apply at construction: `MinQP`
 	// and `RateControl` still hold, and are not changed live.
 
+	// framing: the camera's automatic framing, looked after in this open.
+	var framing framingCheck
+
 	for ctx.Err() == nil {
 		v.applyFormat()
 		if err := v.applyReconfig(); err != nil {
@@ -3080,6 +3088,7 @@ func (p *Pipeline) runVideo(ctx context.Context, sinks Sinks) error {
 				if s == nil {
 					return nil // context cancelled
 				}
+				framing.step(p, reader)
 
 				if sinks.Motion != nil && motionGate.due(time.Now()) {
 					if err := v.motion.fromSample(s, func(gray []byte) {
@@ -3485,6 +3494,134 @@ func (v *videoSession) applyReconfig() error {
 func (v *videoSession) publish() {
 	f := v.cur
 	v.p.sentFormat.Store(&f)
+}
+
+// framingCheck turns the camera's automatic face framing off for the
+// monitor, where the driver offers it: the "Automatic framing" switch in
+// Windows' camera settings. One lives for each open of the camera, and step is
+// called with every frame.
+//
+// **On a baby monitor the framing is the camera choosing what the room is.**
+// Measured on an ACER HD User Facing with the switch on, the picture was a
+// face and a strip of wall; turned off, it was the whole room. It crops the
+// room in the moment somebody is in it, and every move of the window is a
+// change of the whole picture to the motion detector.
+//
+// **It starts at the first frame and it does not stop there.** The control
+// "only applies while the camera is actively streaming", so before the first
+// frame the driver refuses it, and at the first frame the framing has not yet
+// closed in on anybody. But the first frame is not the answer: measured over
+// five opens, the first after a rest said "not following" at frame 1 and
+// "following" from frame 5, and a check made once let it run for the session
+// with nothing in the log. So the state is looked at every framingEarly
+// frames for the first framingEarlyFor, and every framingLate afterwards for
+// as long as the camera is open, which also covers a driver that turns it
+// back on later. Each open is a new session for the driver, which starts from
+// Windows' setting, so it is done again at every one.
+//
+// **The setting in Windows is not touched**, and that was measured rather than
+// assumed: with the framing off for thirty seconds of a session, the switch in
+// Settings stayed on, so other programs keep what the owner chose for them.
+//
+// **The witness is the state, read while frames flow, and not the answer.**
+// The window the driver declares said "the whole view" while the picture was
+// plainly a crop, so it is not read at all; and the state read in the instant
+// after the change can be the echo of what was just written, so it is read
+// again framingVerifyAfter frames later. A refusal that is not an absence —
+// a driver not yet streaming, say — is tried again at the next look before it
+// is reported.
+type framingCheck struct {
+	frames   int
+	failures int  // consecutive refusals
+	verifyAt int  // the frame of the reading that believes a switch, 0 when none is due
+	switched bool // turned off at least once in this open
+	done     bool
+}
+
+const (
+	framingEarly       = 30  // frames between looks at the start
+	framingEarlyFor    = 300 // frames the start lasts
+	framingLate        = 300 // frames between looks afterwards
+	framingTries       = 5   // consecutive refusals before one is reported
+	framingVerifyAfter = 15  // frames between the switch and the reading that believes it
+)
+
+// framer is the part of the camera the check talks to: the Source Reader in
+// the monitor, a recorded sequence in its test.
+type framer interface {
+	Framing() (mf.Framing, error)
+	StopFollowing() error
+}
+
+func (c *framingCheck) step(p *Pipeline, reader framer) {
+	if c.done {
+		return
+	}
+	c.frames++
+	if c.verifyAt > 0 {
+		if c.frames < c.verifyAt {
+			return
+		}
+		c.verifyAt = 0
+		f, err := reader.Framing()
+		switch {
+		case err != nil:
+			p.framingLine(&p.framingTrouble, slog.LevelWarn,
+				"the camera's automatic framing could not be read back after turning it off", "error", err)
+		case f.Following:
+			p.framingLine(&p.framingTrouble, slog.LevelWarn,
+				"the camera's automatic framing is still on after turning it off", "frames", framingVerifyAfter)
+		default:
+			p.framingLine(&p.framingOff, slog.LevelInfo, "the camera's automatic framing is off for the monitor",
+				"why", "it crops the room around a face", "windows setting", "unchanged")
+		}
+		return
+	}
+	every := framingLate
+	if c.frames <= framingEarlyFor {
+		every = framingEarly
+	}
+	if c.frames != 1 && c.frames%every != 0 {
+		return
+	}
+	f, err := reader.Framing()
+	if err == nil && !f.Following {
+		c.failures = 0
+		return
+	}
+	if err == nil {
+		if c.switched {
+			p.framingLine(&p.framingTrouble, slog.LevelWarn,
+				"the camera turned its automatic framing back on; turning it off again", "frame", c.frames)
+		}
+		err = reader.StopFollowing()
+		if err == nil {
+			c.failures = 0
+			c.switched = true
+			c.verifyAt = c.frames + framingVerifyAfter
+			return
+		}
+	}
+	if errors.Is(err, mf.ErrNoFraming) {
+		c.done = true
+		return
+	}
+	c.failures++
+	if c.failures >= framingTries {
+		c.done = true
+		p.framingLine(&p.framingTrouble, slog.LevelWarn,
+			"the camera's automatic framing could not be turned off", "error", err, "tries", c.failures)
+	}
+}
+
+// framingLine writes a line about the framing at its level the first time in
+// the process and at Debug afterwards: a capture restart opens again, and the
+// same sentence at every reopen is a log that hides what happened once.
+func (p *Pipeline) framingLine(once *atomic.Bool, level slog.Level, msg string, args ...any) {
+	if once.Swap(true) {
+		level = slog.LevelDebug
+	}
+	p.cfg.Log.Log(context.Background(), level, msg, args...)
 }
 
 // readFrame keeps at it until the camera delivers a frame.

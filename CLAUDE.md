@@ -161,6 +161,7 @@ index when it is stale: use the command above.
   - The microphone is chosen, and the box says what is being captured
   - The camera is chosen while the monitor watches, and choosing is reopening
   - A chosen camera that is gone does not stop the monitor
+  - The camera does not choose the frame
   - A permission Windows has taken away is a state, not a fault
   - A permission Windows is still asking about is not an absence
   - A microphone muted in Windows is a cause, and it was only in the log

@@ -68,10 +68,13 @@ controls floating on the picture:
   exempts or releases the others. Retention is a disk quota plus an age, and
   no clip, kept or not, is written while the disk has less than 1 GB free: the
   page and the tray say so until there is room again.
-- **Camera and microphone are chosen from the page.** The details panel lists
-  the webcams and the microphones the machine has; choosing one reopens that
-  capture without restarting anything, and a line beside the box says which
-  device is really being used when the chosen one is not connected.
+- **Camera and microphone are chosen from the page.** The panel behind **More**
+  lists the webcams and the microphones the machine has; choosing one reopens
+  that capture without restarting anything, and a line beside the box says
+  which device is really being used when the chosen one is not connected.
+  Where Windows offers *Automatic framing* for the webcam, the monitor turns it
+  off while it watches, because it crops the room around a face; the switch in
+  Windows' camera settings stays as it is for other programs.
 - **Talk-back.** Press the button and your voice comes out of the PC speakers.
   Half duplex: while you speak the monitor stops sending the room, so the
   microphone cannot pick up the speakers. One person talks at a time.

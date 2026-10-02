@@ -47,6 +47,12 @@ var (
 	outputTest    = flag.Bool("out", false, "instead of the report, test the talk-back audio output by listening to what it plays")
 	speakerWanted = flag.String("speaker", "", "the output endpoint ID -out tests, the value of speaker_device_id (empty = the default one)")
 	phaseLength   = flag.Duration("d", 6*time.Second, "duration of each measurement phase of -mic-modes and -out")
+
+	framing     = flag.Bool("framing", false, "instead of the report, read the camera's automatic framing (Windows' camera settings)")
+	framingOff  = flag.Bool("framing-off", false, "with -framing, turn automatic framing off for this session and read it again")
+	framingHold = flag.Duration("framing-hold", 0, "with -framing-off, keep the camera open this long afterwards and read it once more")
+	framingShot = flag.String("framing-shots", "", "with -framing, save the picture before and after into this folder")
+	framingCam  = flag.String("cam", "", "with -framing, the camera to open, by name or by the link camera_device_id holds (empty = the one the monitor opens with it empty)")
 )
 
 func main() {
@@ -56,6 +62,15 @@ func main() {
 	flag.Parse()
 	if dllSearchErr != nil {
 		fmt.Printf("WARNING: DLL search path not narrowed as the monitor does it: %v\n", dllSearchErr)
+	}
+	// **A flag that is ignored is a measurement that was not taken**, and the
+	// person who typed it believes it was: the framing's companions are refused
+	// without -framing, and the hold without the switch it holds.
+	if !*framing && (*framingOff || *framingHold > 0 || *framingShot != "" || *framingCam != "") {
+		fatal("-framing-off, -framing-hold, -framing-shots and -cam go with -framing")
+	}
+	if *framingHold > 0 && !*framingOff {
+		fatal("-framing-hold holds the camera after -framing-off: add it, or drop the hold")
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
@@ -104,6 +119,11 @@ func main() {
 		os.Exit(1)
 	}
 	defer mf.Shutdown()
+
+	if *framing {
+		probeFraming(*framingCam, *framingOff, *framingHold, *framingShot)
+		return
+	}
 
 	section("CAPTURE DEVICES")
 	cams, err := devices.ListCameras()
@@ -317,29 +337,33 @@ func probeScaling(all []devices.Device, w, h, fps int) {
 // for a fault would say the resize does not work when in fact nothing had
 // arrived yet.
 func frameBytes(r *mf.SourceReader) (int, error) {
+	n := 0
+	err := withFrame(r, func(b []byte) error { n = len(b); return nil })
+	return n, err
+}
+
+// withFrame reads one frame and lends its bytes to fn: the one read loop the
+// tool has, for the size check and for the pictures alike.
+func withFrame(r *mf.SourceReader, fn func([]byte) error) error {
 	deadline := time.Now().Add(3 * time.Second)
 	for time.Now().Before(deadline) {
 		s, _, err := r.ReadSample()
 		if err != nil {
-			return 0, err
+			return err
 		}
 		if s == nil {
 			time.Sleep(5 * time.Millisecond)
 			continue
 		}
-		n := 0
 		buf, err := s.Buffer()
 		if err == nil {
-			err = buf.WithBytes(func(b []byte) error { n = len(b); return nil })
+			err = buf.WithBytes(fn)
 			buf.Release()
 		}
 		s.Release()
-		if err != nil {
-			return 0, err
-		}
-		return n, nil
+		return err
 	}
-	return 0, fmt.Errorf("no frame within 3s")
+	return fmt.Errorf("no frame within 3s")
 }
 
 // probeMicrophone opens the default microphone and reports what it found.
