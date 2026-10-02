@@ -62,6 +62,8 @@ type answer struct {
 	// reason is the start of the body of a refusal: the services say why
 	// there, Mozilla at length and Apple in one word.
 	reason string
+	// superseded: the retries stopped because newer news took this one's place.
+	superseded bool
 }
 
 // sender writes messages to push services.
@@ -173,7 +175,17 @@ func (s *sender) once(ctx context.Context, sub Subscription, m message) answer {
 // only while the message is still worth having.** The TTL is how long the
 // service would have kept it; a cry retried past that arrives as news about a
 // room that has since changed.
-func (s *sender) deliver(ctx context.Context, sub Subscription, m message) answer {
+//
+// **And only while nothing newer has been said about it.** A fault retried
+// past its own recovery arrives after it, and with the same tag it takes its
+// place: the phone then says the microphone is missing while it works.
+//
+// **Two contexts, and they do not do the same thing.** `ctx` carries every
+// attempt and ends only with the monitor. `waits` is `ctx` or one derived from
+// it, and it ends the waits between attempts and nothing else: cutting an
+// attempt under way would leave the older message neither with the service
+// nor abandoned when the newer one leaves, which is the order this keeps.
+func (s *sender) deliver(ctx, waits context.Context, sub Subscription, m message) answer {
 	start := s.now()
 	wait := 2 * time.Second
 	for {
@@ -190,7 +202,8 @@ func (s *sender) deliver(ctx context.Context, sub Subscription, m message) answe
 		if next >= left {
 			return a
 		}
-		if !s.sleep(ctx, next) {
+		if !s.sleep(waits, next) {
+			a.superseded = ctx.Err() == nil
 			return a
 		}
 		wait = min(wait*4, 2*time.Minute)

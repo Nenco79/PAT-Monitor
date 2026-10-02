@@ -58,6 +58,16 @@ type Notifier struct {
 	// log then says is how long the notification took to be shown.
 	sentMu sync.Mutex
 	sent   map[string]sentMessage
+
+	// latest is the news under way for each code, so that newer news on the
+	// same code stops it and goes out after it.
+	latestMu sync.Mutex
+	latest   map[alerts.Code]newsUnderWay
+}
+
+type newsUnderWay struct {
+	supersede context.CancelFunc
+	done      chan struct{}
 }
 
 type sentMessage struct {
@@ -84,9 +94,10 @@ func newNotifier(store *Store, send *sender, log *slog.Logger, random io.Reader)
 	return &Notifier{
 		store: store, send: send, log: log, random: random,
 		ctx: ctx, cancel: cancel,
-		slots: make(chan struct{}, maxInFlight),
-		dicts: map[string]*i18n.Dictionary{},
-		sent:  map[string]sentMessage{},
+		slots:  make(chan struct{}, maxInFlight),
+		dicts:  map[string]*i18n.Dictionary{},
+		sent:   map[string]sentMessage{},
+		latest: map[alerts.Code]newsUnderWay{},
 	}
 }
 
@@ -142,7 +153,7 @@ func (n *Notifier) Test(ctx context.Context, endpoint string) Outcome {
 	}
 	id := n.newID()
 	m := message{topic: "test", ttl: testTTL,
-		payload: n.payload(sub, "push.test.body", "test", id)}
+		payload: n.payload(sub, "push.test.body", "test", id, time.Now(), false)}
 	// **Remembered before it is sent, not after it is taken**: measured, the
 	// receipt of a test comes back from the device before the push service's
 	// 201 has reached us, and remembered afterwards it found nothing.
@@ -183,32 +194,79 @@ func (n *Notifier) Seen(id string) {
 // A recovery is sent for a fault or a notice, and not for an event: "it has
 // stopped" would replace "a baby crying" in the list of notifications, and
 // the parent who looks at the phone ten minutes later wants to find the cry.
+//
+// **A recovery is quiet.** It takes the fault's place on the phone and does
+// not sound: a fault is worth waking somebody for at three in the morning, and
+// the news that it has cleared is not.
 func (n *Notifier) Alerted(appeared []alerts.Alert, recovered []alerts.Code) {
 	for _, a := range appeared {
 		ttl := stateTTL
 		if a.Level == alerts.Event {
 			ttl = eventTTL
 		}
-		n.dispatch(a.Code, "viewer.alert."+string(a.Code), ttl)
+		n.dispatch(a.Code, "viewer.alert."+string(a.Code), ttl, false)
 	}
 	for _, c := range recovered {
 		if alerts.LevelOf(c) == alerts.Event {
 			continue
 		}
-		n.dispatch(c, "viewer.recovered."+string(c), stateTTL)
+		n.dispatch(c, "viewer.recovered."+string(c), stateTTL, true)
 	}
 }
 
 // dispatch sends one piece of news to every subscription, and writes one line
 // about it when every delivery has finished.
-func (n *Notifier) dispatch(code alerts.Code, key string, ttl time.Duration) {
-	subs := n.store.All()
-	if len(subs) == 0 {
+//
+// **News on a code goes out after the news before it, never beside it.**
+// "The microphone is missing" and "it works now" share a topic and a tag,
+// so whichever arrives last is what the phone keeps; sent side by side, a
+// fault still being retried reached the service after its own recovery. The
+// newer one stops the older one's retries, waits for the attempt under way to
+// end, and only then is sent. The push services do not promise an order
+// either, and that part is not ours.
+//
+// **And news overtaken while it waited is not sent at all**, nor news still
+// waiting when the monitor closes: only the newest says what holds, and a
+// service that hangs would otherwise release a queue of stale faults, each
+// sounding. The wait is for every device of the news before, so one service
+// that hangs holds the others back for the length of one attempt, the
+// client's twenty seconds; the devices are read once the wait is over.
+//
+// The time it carries is when it happened, taken here: a message held by a
+// service for a phone that was off shows when it arrived otherwise.
+func (n *Notifier) dispatch(code alerts.Code, key string, ttl time.Duration, quiet bool) {
+	if len(n.store.All()) == 0 {
 		return
+	}
+	at := time.Now()
+	superseded, supersede := context.WithCancel(n.ctx)
+	done := make(chan struct{})
+	n.latestMu.Lock()
+	before := n.latest[code]
+	n.latest[code] = newsUnderWay{supersede: supersede, done: done}
+	n.latestMu.Unlock()
+	if before.supersede != nil {
+		before.supersede()
 	}
 	n.wg.Add(1)
 	guard.Go(n.log, "a notification", func() {
 		defer n.wg.Done()
+		defer func() {
+			n.latestMu.Lock()
+			if n.latest[code].done == done {
+				delete(n.latest, code)
+			}
+			n.latestMu.Unlock()
+			supersede()
+			close(done)
+		}()
+		if before.done != nil {
+			<-before.done
+		}
+		if superseded.Err() != nil {
+			return
+		}
+		subs := n.store.All()
 		id := n.newID()
 		n.remember(id, code)
 		answers := make([]answer, len(subs))
@@ -224,8 +282,8 @@ func (n *Notifier) dispatch(code alerts.Code, key string, ttl time.Duration) {
 			guard.Go(n.log, "a notification to one device", func() {
 				defer each.Done()
 				defer func() { <-n.slots }()
-				m := message{topic: string(code), ttl: ttl, payload: n.payload(sub, key, code, id)}
-				answers[i] = n.send.deliver(n.ctx, sub, m)
+				m := message{topic: string(code), ttl: ttl, payload: n.payload(sub, key, code, id, at, quiet)}
+				answers[i] = n.send.deliver(n.ctx, superseded, sub, m)
 				n.settle(sub, answers[i])
 			})
 		}
@@ -256,8 +314,12 @@ func (n *Notifier) settle(sub Subscription, a answer) {
 func (n *Notifier) report(code alerts.Code, answers []answer) {
 	counts := map[Outcome]int{}
 	var refused answer
+	superseded := 0
 	for _, a := range answers {
 		counts[a.outcome]++
+		if a.superseded {
+			superseded++
+		}
 		if (a.outcome == Refused || a.outcome == TooLarge) && refused.outcome == "" {
 			refused = a
 		}
@@ -268,6 +330,9 @@ func (n *Notifier) report(code alerts.Code, answers []answer) {
 	}
 	sort.Strings(parts)
 	attrs := []any{"code", code, "devices", len(answers), "answers", strings.Join(parts, " ")}
+	if superseded > 0 {
+		attrs = append(attrs, "superseded", superseded)
+	}
 	if refused.outcome != "" {
 		// A refusal is ours to fix, and the service's own reason is the only
 		// place the cause is written.
@@ -285,17 +350,24 @@ func (n *Notifier) report(code alerts.Code, answers []answer) {
 // others hand the same JSON to the service worker, which shows it. `mutable`
 // lets our worker handle it where both exist, so that one code path shows
 // every notification and sends the receipt.
-func (n *Notifier) payload(sub Subscription, key string, code alerts.Code, id string) []byte {
+//
+// `silent` and `timestamp` are the Notifications API's own options, which the
+// declarative shape carries: a quiet message replaces without sounding, and
+// the time shown is `at` rather than the arrival. Whether a phone honours
+// either is the phone's; neither stops it showing.
+func (n *Notifier) payload(sub Subscription, key string, code alerts.Code, id string, at time.Time, quiet bool) []byte {
 	d := n.dictionary(sub.Lang)
 	body, _ := json.Marshal(map[string]any{
 		"web_push": 8030,
 		"notification": map[string]any{
-			"title":    version.Product,
-			"body":     d.T(key),
-			"lang":     d.Language(),
-			"navigate": sub.Origin + "/?n=" + id,
-			"tag":      string(code),
-			"mutable":  true,
+			"title":     version.Product,
+			"body":      d.T(key),
+			"lang":      d.Language(),
+			"navigate":  sub.Origin + "/?n=" + id,
+			"tag":       string(code),
+			"silent":    quiet,
+			"timestamp": at.UnixMilli(),
+			"mutable":   true,
 		},
 	})
 	return body

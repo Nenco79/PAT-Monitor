@@ -38,13 +38,19 @@ self.addEventListener('push', (event) => {
       icon: '/icon-192.png',
       data: {navigate: target},
     };
+    // When it happened, which a message a service held for a phone that was
+    // off would otherwise lose to when it arrived.
+    if (n.timestamp) options.timestamp = n.timestamp;
     // A tag makes a new notification of the same code take the place of the
     // old one, and `renotify` makes it sound again anyway: a second cry is
-    // news. `renotify` without a tag is an exception, so they go together.
+    // news. A recovery comes `silent` and takes the place quietly, since a
+    // fault is worth waking for and its end is not; `renotify` with `silent`
+    // is an exception, and so is `renotify` without a tag.
     if (n.tag) {
       options.tag = n.tag;
-      options.renotify = true;
+      options.renotify = !n.silent;
     }
+    if (n.silent) options.silent = true;
     await self.registration.showNotification(n.title || 'PAT Monitor', options);
     // The receipt says how long it took to be shown. It needs the monitor to
     // be reachable, and a phone away from home without it is exactly the case

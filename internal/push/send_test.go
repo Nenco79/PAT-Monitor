@@ -176,7 +176,7 @@ func TestARetryStaysInsideTheTTL(t *testing.T) {
 	svc := newFakeService(t, func(int) (int, http.Header) { return 503, nil })
 	r := newRig(t, svc)
 	sub := r.subscribe(t, svc, "/push/one", "en")
-	a := r.send.deliver(context.Background(), sub, message{ttl: eventTTL, payload: []byte("{}")})
+	a := r.send.deliver(context.Background(), context.Background(), sub, message{ttl: eventTTL, payload: []byte("{}")})
 	if a.outcome != Unavailable {
 		t.Fatalf("outcome %s", a.outcome)
 	}
@@ -202,7 +202,7 @@ func TestAThrottledServiceIsWaitedFor(t *testing.T) {
 	})
 	r := newRig(t, svc)
 	sub := r.subscribe(t, svc, "/push/one", "en")
-	a := r.send.deliver(context.Background(), sub, message{ttl: eventTTL, payload: []byte("{}")})
+	a := r.send.deliver(context.Background(), context.Background(), sub, message{ttl: eventTTL, payload: []byte("{}")})
 	if a.outcome != Delivered || len(r.waits) != 1 || r.waits[0] != 17*time.Second {
 		t.Fatalf("outcome %s after waits %v, want delivered after one wait of 17s", a.outcome, r.waits)
 	}
@@ -213,7 +213,7 @@ func TestAThrottledServiceIsWaitedFor(t *testing.T) {
 	})
 	r2 := newRig(t, svc2)
 	sub2 := r2.subscribe(t, svc2, "/push/one", "en")
-	if a := r2.send.deliver(context.Background(), sub2, message{ttl: eventTTL, payload: []byte("{}")}); a.outcome != Throttled || svc2.count() != 1 {
+	if a := r2.send.deliver(context.Background(), context.Background(), sub2, message{ttl: eventTTL, payload: []byte("{}")}); a.outcome != Throttled || svc2.count() != 1 {
 		t.Fatalf("outcome %s in %d attempts, want one throttled attempt", a.outcome, svc2.count())
 	}
 }
@@ -295,6 +295,184 @@ func TestAFaultRecoversAndAnEventDoesNot(t *testing.T) {
 		want := en["viewer.recovered."+topics[i]]
 		if !strings.Contains(string(plain), want) {
 			t.Fatalf("recovery %s says %s, want %q", topics[i], plain, want)
+		}
+	}
+}
+
+// **A fault still being retried does not arrive after its own recovery.** The
+// two share a tag, so the later one is what the phone keeps: "the microphone is
+// missing" retried past "it works now" left the phone saying the microphone
+// was missing while it worked. Here the fault's first attempt finds the service
+// down, and its wait between attempts would end only once the recovery has
+// reached the service. **And the log says the retries stopped**, the one place
+// that tells it from a service that gave up.
+func TestAFaultIsNotRetriedPastItsRecovery(t *testing.T) {
+	failed, recovered := make(chan struct{}), make(chan struct{})
+	svc := newFakeService(t, func(n int) (int, http.Header) {
+		switch n {
+		case 0:
+			close(failed)
+			return 503, nil
+		case 1:
+			close(recovered)
+		}
+		return 201, nil
+	})
+	r := newRig(t, svc)
+	r.send.sleep = func(ctx context.Context, _ time.Duration) bool {
+		select {
+		case <-ctx.Done():
+			return false
+		case <-recovered:
+			return true
+		}
+	}
+	r.subscribe(t, svc, "/push/one", "en")
+	var log lockedBuffer
+	r.n.log = slog.New(slog.NewTextHandler(&log, nil))
+
+	r.n.Alerted([]alerts.Alert{{ID: 1, Code: alerts.MicMissing, Level: alerts.Fault}}, nil)
+	<-failed
+	r.n.Alerted(nil, []alerts.Code{alerts.MicMissing})
+	r.n.wg.Wait()
+
+	en := readCatalogue(t, "en")
+	want := []string{en["viewer.alert.mic-missing"], en["viewer.recovered.mic-missing"]}
+	if said := r.said(t, svc); !slices.Equal(said, want) {
+		t.Fatalf("the service was sent %q, want %q: the phone keeps the last", said, want)
+	}
+	if !strings.Contains(log.String(), `code=mic-missing devices=1 answers="unavailable=1" superseded=1`) {
+		t.Errorf("the log does not say the fault's retries were stopped:\n%s", log.String())
+	}
+}
+
+// **News overtaken while it waited for its turn is not sent at all.** A
+// service that hangs on a fault while the microphone flaps used to release,
+// once it answered, every fault and recovery queued behind it, one after
+// another and each fault sounding; only the newest says what holds. Closing
+// the monitor overtakes everything still waiting the same way. And the devices
+// are the ones there when the news leaves: a phone that subscribed during the
+// wait gets the recovery.
+func TestNewsOvertakenWhileWaitingIsNotSent(t *testing.T) {
+	hanging, release := make(chan struct{}), make(chan struct{})
+	svc := newFakeService(t, func(n int) (int, http.Header) {
+		if n == 0 {
+			close(hanging)
+			<-release
+		}
+		return 201, nil
+	})
+	r := newRig(t, svc)
+	r.subscribe(t, svc, "/push/one", "en")
+
+	fault := []alerts.Alert{{ID: 1, Code: alerts.MicSilent, Level: alerts.Fault}}
+	cleared := []alerts.Code{alerts.MicSilent}
+	r.n.Alerted(fault, nil)
+	<-hanging
+	r.n.Alerted(nil, cleared)
+	r.n.Alerted(fault, nil)
+	r.n.Alerted(nil, cleared)
+	r.subscribe(t, svc, "/push/two", "en")
+	close(release)
+	r.n.wg.Wait()
+
+	en := readCatalogue(t, "en")
+	alert, recovery := en["viewer.alert.mic-silent"], en["viewer.recovered.mic-silent"]
+	said := r.said(t, svc)
+	if len(said) != 3 || said[0] != alert || said[1] != recovery || said[2] != recovery {
+		t.Fatalf("the service was sent %q, want the fault to one device and the recovery to two: "+
+			"what was overtaken went out too, or a device was missed", said)
+	}
+	if p := svc.requests[1].URL.Path + " " + svc.requests[2].URL.Path; p != "/push/one /push/two" && p != "/push/two /push/one" {
+		t.Errorf("the recovery went to %s", p)
+	}
+}
+
+// said is what the service was sent, as the device would read it.
+func (r *testRig) said(t *testing.T, svc *fakeService) []string {
+	t.Helper()
+	svc.mu.Lock()
+	defer svc.mu.Unlock()
+	var said []string
+	for _, body := range svc.bodies {
+		plain, err := decryptAsTheBrowser(body, r.ua, r.auth)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var msg struct{ Notification struct{ Body string } }
+		if err := json.Unmarshal(plain, &msg); err != nil {
+			t.Fatal(err)
+		}
+		said = append(said, msg.Notification.Body)
+	}
+	return said
+}
+
+// lockedBuffer is a log that deliveries on several goroutines can write.
+type lockedBuffer struct {
+	mu  sync.Mutex
+	buf strings.Builder
+}
+
+func (b *lockedBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *lockedBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
+}
+
+// **A fault sounds and its recovery does not, and both carry when they
+// happened.** The recovery takes the fault's place on the phone; making it
+// sound too woke whoever the fault had already woken, for good news. The time
+// is the moment of the news, so a message a service held for a phone that was
+// off does not show as having happened when it arrived.
+func TestARecoveryIsQuietAndEachCarriesItsTime(t *testing.T) {
+	svc := newFakeService(t, func(int) (int, http.Header) { return 201, nil })
+	r := newRig(t, svc)
+	r.subscribe(t, svc, "/push/one", "en")
+
+	before := time.Now().UnixMilli()
+	// One after the other: sent together, the fault would be overtaken before
+	// it left, and not sent at all.
+	r.n.Alerted([]alerts.Alert{{ID: 1, Code: alerts.CaptureStopped, Level: alerts.Fault}}, nil)
+	r.n.wg.Wait()
+	r.n.Alerted(nil, []alerts.Code{alerts.CaptureStopped})
+	r.n.wg.Wait()
+	after := time.Now().UnixMilli()
+
+	if svc.count() != 2 {
+		t.Fatalf("%d requests for a fault and its recovery", svc.count())
+	}
+	en := readCatalogue(t, "en")
+	for i, want := range []struct {
+		key    string
+		silent bool
+	}{{"viewer.alert.capture-stopped", false}, {"viewer.recovered.capture-stopped", true}} {
+		plain, err := decryptAsTheBrowser(svc.bodies[i], r.ua, r.auth)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var msg struct {
+			Notification struct {
+				Body      string
+				Silent    bool
+				Timestamp int64
+			}
+		}
+		if err := json.Unmarshal(plain, &msg); err != nil {
+			t.Fatal(err)
+		}
+		n := msg.Notification
+		if n.Body != en[want.key] || n.Silent != want.silent {
+			t.Errorf("%q came silent=%v, want %q silent=%v", n.Body, n.Silent, en[want.key], want.silent)
+		}
+		if n.Timestamp < before || n.Timestamp > after {
+			t.Errorf("%q carries %d, outside the moment it was sent (%d to %d)", n.Body, n.Timestamp, before, after)
 		}
 	}
 }

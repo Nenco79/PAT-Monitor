@@ -229,6 +229,39 @@ want the real button pressed again:
 **On an iPhone from the Home Screen it works**, as the owner reported on
 2026-10-01; how long a notification takes there was not measured.
 
+**News on a code goes out after the news before it.** The owner received "the
+microphone is missing" and then "it works", when a Remote Desktop connection
+took the audio devices away and gave them back, and asked whether the order
+could be the other way round. It could. Each piece of news went out on its
+own, so a fault still being retried could reach the service after its own
+recovery, and with the same tag the phone would then keep "missing" while the
+microphone worked. Newer news now stops the older one's retries, waits for the
+attempt under way and only then leaves; `TestAFaultIsNotRetriedPastItsRecovery`
+was seen sending the fault a third time without it. News overtaken while it
+waited is not sent at all, so a hanging service on a flapping microphone does
+not release a queue of stale faults, and a fault overtaken before any attempt
+leaves only its quiet recovery — "now" being true either way. The wait is for
+every device of the news before, at most one attempt of twenty seconds, and
+the devices are read once it is over. The push services do not promise an
+order either, and that part is not ours.
+
+**And the question found the rule broken in every language.** "A fault names a
+state" has the recoveries say what holds rather than what came back, since a
+disk full at start, a silent microphone and an absent one raise their alert
+with no before. Three recoveries said *again* across all nine catalogues, the
+microphone's *again* was this change's own first draft, and Spanish and
+Chinese said it for the camera too; they say *now* or the state alone. A reader of Chinese and Japanese found the one alert that still said
+*gone*, `麦克风不见了`, now `找不到麦克风`. `unknown`'s "Back to normal" is the
+base's and was left.
+
+**A recovery is quiet, and every message carries when it happened.** The
+recovery comes `silent` and the worker gives it no `renotify`, so it takes the
+fault's place without waking whoever the fault already woke; `timestamp` is
+the moment of the news, so a message held for an hour does not show as having
+happened when it arrived. Both are options the declarative shape carries, and
+`TestARecoveryIsQuietAndEachCarriesItsTime` failed with each put back. **Whether
+iOS honours either is not known**: a phone is what answers it.
+
 **What is not known is what arrives on a sleeping phone**, and it is not
 knowable from here: an iPhone locked for a while, an Android in Doze, a phone
 on a mobile network with Tailscale off. The receipt is the measurement, and
