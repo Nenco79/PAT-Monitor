@@ -121,8 +121,9 @@ from whichever thread asked — an interface is two words, and the reader of a
 torn one gets a type and somebody else's pointer. `invocations` beside it was
 already atomic and `seen` already had the mutex; this one field had neither.
 **The race detector cannot say so here** — it wants cgo and this machine has no
-C compiler — so the guard reads the syntax tree instead and refuses any mention
-of the field outside its two accessors.
+C compiler, and on the runner, where `check.yml` has both, no test has a Media
+Foundation thread — so the guard reads the syntax tree instead and refuses any
+mention of the field outside its two accessors.
 
 **And a candidate that failed to configure was released and not closed.**
 `configure` walks a fixed order and can fail at any point along it; by the last

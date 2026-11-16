@@ -84,11 +84,13 @@ jobs:
   # The suite again, under Go's race detector.
   #
   # **A job of its own, because it is the one place cgo is switched on.** The
-  # detector wants cgo and a C compiler; the machine this is written on has
-  # neither, which is why two chapters of the record say a data race here is
-  # found "only by reasoning, or by suffering" it. The runner has a gcc. What
-  # ships is still built above with CGO_ENABLED=0: this job builds test
-  # binaries and throws them away.
+  # detector wants cgo and a C compiler; the machine this is written on has no
+  # compiler, which is why two chapters of the record say the detector cannot
+  # be used there. The runner has a gcc. What ships is still built above with
+  # CGO_ENABLED=0: this job builds test binaries and throws them away.
+  #
+  # Its first run found one race, in a test that read the log while a timer
+  # wrote it, and none in the product.
   #
   # **It cannot pass by not looking**, and that was measured rather than
   # assumed: with cgo off the go command answers `-race requires cgo`, and with

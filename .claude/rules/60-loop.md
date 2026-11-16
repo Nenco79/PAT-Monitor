@@ -2114,9 +2114,10 @@ loss — can find themselves holding an already-released COM object, and the fir
 method called on it takes the process out. On a baby monitor that is the camera
 going off in the middle of the night, and it has happened. `encMu` is held for
 reading to command and for writing to replace; the old one is closed **after**
-releasing the lock. Go's race detector is **not usable here**: it wants cgo and
-there is no C compiler on this machine, so concurrency bugs like this one are
-found only by reasoning, or by suffering them.
+releasing the lock. Go's race detector is **not usable on this machine**: it
+wants cgo and there is no C compiler here. `check.yml` runs the suite under it
+on the runner, which has one, and it sees what a test runs: a race that needs a
+camera, like this one, is still found only by reasoning, or by suffering it.
 
 **Rebuilding the encoder starts again from the last commanded bitrate, not from
 the preset**, otherwise the maximum would be sent back on the wire exactly while
