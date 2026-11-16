@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"patmonitor/internal/server/web"
 	"patmonitor/internal/tunnel"
 )
 
@@ -38,7 +39,7 @@ var expectedPhases = []tunnel.Phase{
 
 func readAsset(t *testing.T, name string) string {
 	t.Helper()
-	b, err := webFS.ReadFile("web/" + name)
+	b, err := web.Assets.ReadFile(name)
 	if err != nil {
 		t.Fatalf("asset %s: %v", name, err)
 	}

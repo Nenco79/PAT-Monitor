@@ -1,4 +1,4 @@
-package server
+package web
 
 import (
 	"io/fs"
@@ -127,14 +127,14 @@ func TestNoHoverIsDeclaredOutsideAPointer(t *testing.T) {
 	// here.** A hand-written list watches what somebody remembered: the fifth
 	// stylesheet is exactly the one that would be added and not added here,
 	// and the guard would go on passing over it.
-	sheets, err := fs.Glob(webFS, "web/*.css")
+	sheets, err := fs.Glob(Assets, "*.css")
 	if err != nil || len(sheets) == 0 {
 		t.Fatalf("no stylesheet found: %v", err)
 	}
 	guarded := 0
 	for _, sheet := range sheets {
 		// The comments tell this story and name `:hover` while telling it.
-		css := reCSSComments.ReplaceAllString(readAsset(t, strings.TrimPrefix(sheet, "web/")), "")
+		css := reCSSComments.ReplaceAllString(readAsset(t, sheet), "")
 		out, inside := hoverSelectorsOutsideAPointer(css)
 		guarded += inside
 		for _, sel := range out {

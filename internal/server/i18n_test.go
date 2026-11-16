@@ -19,6 +19,7 @@ import (
 	"patmonitor/internal/detect"
 	"patmonitor/internal/i18n"
 	"patmonitor/internal/push"
+	"patmonitor/internal/server/web"
 	"patmonitor/internal/tunnel"
 )
 
@@ -244,7 +245,7 @@ func allKeys(t *testing.T, s *Server) map[string]bool {
 		if err != nil {
 			t.Fatal(err)
 		}
-		for _, k := range keysFromCode(t, withoutComments(string(b))) {
+		for _, k := range keysFromCode(t, web.WithoutComments(string(b))) {
 			keys[k] = true
 		}
 	}
@@ -440,7 +441,7 @@ func TestNoProseIsWrittenInThePageCode(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		src := withoutComments(string(b))
+		src := web.WithoutComments(string(b))
 
 		for _, re := range []*regexp.Regexp{assign, attribute} {
 			for _, m := range re.FindAllStringSubmatch(src, -1) {
@@ -460,33 +461,6 @@ func TestNoProseIsWrittenInThePageCode(t *testing.T) {
 			}
 		}
 	}
-}
-
-// withoutComments removes `//` and the slash-star sections.
-//
-// It is needed because this project's comments are long and quote freely the
-// sentences they talk about: without removing them the test would accuse the
-// explanations instead of the code.
-func withoutComments(src string) string {
-	var b strings.Builder
-	for i := 0; i < len(src); {
-		switch {
-		case strings.HasPrefix(src[i:], "//"):
-			for i < len(src) && src[i] != '\n' {
-				i++
-			}
-		case strings.HasPrefix(src[i:], "/*"):
-			end := strings.Index(src[i+2:], "*/")
-			if end < 0 {
-				return b.String()
-			}
-			i += end + 4
-		default:
-			b.WriteByte(src[i])
-			i++
-		}
-	}
-	return b.String()
 }
 
 // A key is an identifier, not a sentence.

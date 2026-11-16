@@ -1,4 +1,4 @@
-package server
+package web
 
 import (
 	"regexp"
@@ -56,7 +56,7 @@ func TestNothingSaysWhetherTheAudioIsFilteredWithoutAskingIfThereIsAudio(t *test
 		}
 		seen[c.js] = true
 
-		src := withoutComments(readAsset(t, c.js))
+		src := WithoutComments(readAsset(t, c.js))
 		for _, at := range readsRawAudio.FindAllStringIndex(src, -1) {
 			readers++
 			fn := enclosingTopLevel(src, at[0])
@@ -134,7 +134,7 @@ func TestNothingCallsAMicrophoneMutedWithoutAskingIfThereIsOne(t *testing.T) {
 		}
 		seen[c.js] = true
 
-		src := withoutComments(readAsset(t, c.js))
+		src := WithoutComments(readAsset(t, c.js))
 		for _, at := range readsMicrophoneMuted.FindAllStringIndex(src, -1) {
 			readers++
 			fn := enclosingTopLevel(src, at[0])

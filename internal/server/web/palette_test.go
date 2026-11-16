@@ -1,4 +1,4 @@
-package server
+package web
 
 import (
 	"fmt"
@@ -115,7 +115,7 @@ func resolve(palette map[string]string, v string) string {
 // The sheets are not listed here: they are read **from the page**, which is the
 // only one that knows which it really loads.
 func TestEveryTokenAPageUsesIsDeclaredSomewhereItLoads(t *testing.T) {
-	pages, err := webFS.ReadDir("web")
+	pages, err := Assets.ReadDir(".")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -272,7 +272,7 @@ func TestNoSheetRewritesTheScaleByHand(t *testing.T) {
 		}
 	}
 
-	sheets, err := webFS.ReadDir("web")
+	sheets, err := Assets.ReadDir(".")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -444,7 +444,7 @@ func TestTheDayPaletteOverridesNothingTheNightOneLacks(t *testing.T) {
 // notices; on an `h2`, a `<button>` or an `<input>` the browser has an opinion
 // of its own, and that is what appears.
 func TestNoFontShorthandCarriesAToken(t *testing.T) {
-	sheets, err := fs.Glob(webFS, "web/*.css")
+	sheets, err := fs.Glob(Assets, "*.css")
 	if err != nil || len(sheets) == 0 {
 		t.Fatalf("no stylesheet found: %v", err)
 	}
@@ -453,7 +453,7 @@ func TestNoFontShorthandCarriesAToken(t *testing.T) {
 	for _, sheet := range sheets {
 		// The comment above tells this story and writes the shorthand while
 		// telling it.
-		css := reCSSComments.ReplaceAllString(readAsset(t, strings.TrimPrefix(sheet, "web/")), "")
+		css := reCSSComments.ReplaceAllString(readAsset(t, sheet), "")
 		for line := range strings.SplitSeq(css, "\n") {
 			if reShorthand.MatchString(line) {
 				t.Errorf("%s: %q writes the font as a shorthand carrying a token: "+
@@ -506,15 +506,8 @@ func TestNoFontShorthandCarriesAToken(t *testing.T) {
 // **Verified to catch**: with any one of the seven put back to `#6E6659`, this
 // fails naming the colour.
 func TestTheDrawingOfTheTrayUsesThePalette(t *testing.T) {
-	s := serverWithoutPassword(t)
-	markup, err := fs.ReadFile(s.assets, "onboarding.html")
-	if err != nil {
-		t.Fatal(err)
-	}
-	css, err := fs.ReadFile(s.assets, "onboarding.css")
-	if err != nil {
-		t.Fatal(err)
-	}
+	markup := readAsset(t, "onboarding.html")
+	css := readAsset(t, "onboarding.css")
 
 	declared := map[string]bool{}
 	for _, m := range reToken.FindAllStringSubmatch(string(css), -1) {

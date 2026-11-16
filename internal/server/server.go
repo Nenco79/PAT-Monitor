@@ -4,7 +4,6 @@ package server
 
 import (
 	"context"
-	"embed"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -32,12 +31,10 @@ import (
 	"patmonitor/internal/qr"
 	"patmonitor/internal/record"
 	"patmonitor/internal/rtc"
+	"patmonitor/internal/server/web"
 	"patmonitor/internal/tunnel"
 	"patmonitor/internal/version"
 )
-
-//go:embed web
-var webFS embed.FS
 
 // Status describes the current state, shown in the UI and useful for support.
 type Status struct {
@@ -404,11 +401,6 @@ func New(opts Options) (*Server, error) {
 	if opts.Log == nil {
 		opts.Log = slog.Default()
 	}
-	assets, err := fs.Sub(webFS, "web")
-	if err != nil {
-		return nil, fmt.Errorf("embedded assets: %w", err)
-	}
-
 	if opts.Config == nil {
 		return nil, fmt.Errorf("server: no configuration store")
 	}
@@ -422,7 +414,7 @@ func New(opts Options) (*Server, error) {
 		hashing:     make(chan struct{}, hashSlots-homeSlots),
 		hashingHome: make(chan struct{}, homeSlots),
 		mux:         http.NewServeMux(),
-		assets:      assets,
+		assets:      web.Assets,
 	}
 	s.crossSite = newRefusalRun(s.log, "credentials refused: the submission did not come from our own pages")
 	s.setupElsewhere = newRefusalRun(s.log, "first-time setup refused: request not from this PC")

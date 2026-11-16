@@ -1,4 +1,4 @@
-package server
+package web
 
 import (
 	"regexp"
@@ -29,7 +29,7 @@ func TestTheCheckRowDoesNotDecideOnALatch(t *testing.T) {
 	// the very field the test is refusing. Here the comment above `camOk` says
 	// the word `ready` four times, which would have made the check below pass
 	// over any code at all.
-	js := withoutComments(readAsset(t, "onboarding.js"))
+	js := WithoutComments(readAsset(t, "onboarding.js"))
 
 	// The declaration, not the prose around it: a search for a sentence passes
 	// vacuously the day somebody rewords it.

@@ -1,4 +1,4 @@
-package server
+package web
 
 import (
 	"io/fs"
@@ -32,7 +32,7 @@ var closestClass = regexp.MustCompile(`closest\('\.([a-zA-Z0-9_-]+)'\)`)
 // what interrogates it from JavaScript. This test does.
 func TestEveryClassLookedUpFromTheCodeExistsInItsPage(t *testing.T) {
 	for _, c := range pagesAndScripts(t) {
-		js := withoutComments(readAsset(t, c.js))
+		js := WithoutComments(readAsset(t, c.js))
 		html := readAsset(t, c.html)
 		for _, m := range closestClass.FindAllStringSubmatch(js, -1) {
 			class := m[1]
@@ -65,7 +65,7 @@ var madeByTheCode = map[string]bool{
 
 func TestEveryIdTouchedByTheCodeExistsInItsPage(t *testing.T) {
 	for _, c := range pagesAndScripts(t) {
-		js := withoutComments(readAsset(t, c.js))
+		js := WithoutComments(readAsset(t, c.js))
 		html := readAsset(t, c.html)
 		for _, m := range idLookedUp.FindAllStringSubmatch(js, -1) {
 			id := m[1]
@@ -107,7 +107,7 @@ func declaresClass(html, class string) bool {
 func TestHiddenMeansHiddenOnEveryPage(t *testing.T) {
 	noSpaces := regexp.MustCompile(`\s+`)
 
-	pages, err := fs.Glob(webFS, "web/*.html")
+	pages, err := fs.Glob(Assets, "*.html")
 	if err != nil || len(pages) == 0 {
 		t.Fatalf("no page to examine: %v", err)
 	}
@@ -158,7 +158,7 @@ func TestHiddenMeansHiddenOnEveryPage(t *testing.T) {
 // to read.
 func pagesAndScripts(t *testing.T) []struct{ js, html string } {
 	t.Helper()
-	pages, err := fs.Glob(webFS, "web/*.html")
+	pages, err := fs.Glob(Assets, "*.html")
 	if err != nil || len(pages) == 0 {
 		t.Fatalf("no page to examine: %v", err)
 	}
@@ -220,7 +220,7 @@ func TestNoTwoScriptsOnAPageDeclareTheSameName(t *testing.T) {
 		type decl struct{ js, keyword string }
 		where := map[string]decl{}
 		for _, js := range scripts {
-			src := withoutComments(readAsset(t, js))
+			src := WithoutComments(readAsset(t, js))
 			for _, m := range topLevelDeclaration.FindAllStringSubmatch(src, -1) {
 				keyword, name := m[1], m[2]
 				if first, seen := where[name]; seen && first.js != js {
@@ -251,7 +251,7 @@ var warningSource = regexp.MustCompile(`showWarning\('([a-z-]+)'`)
 var warningOrderList = regexp.MustCompile(`(?s)const warningOrder = \[(.*?)\]`)
 
 func TestEveryWarningSourceIsInTheOrder(t *testing.T) {
-	js := withoutComments(readAsset(t, "app.js"))
+	js := WithoutComments(readAsset(t, "app.js"))
 
 	m := warningOrderList.FindStringSubmatch(js)
 	if m == nil {
@@ -295,7 +295,7 @@ func TestEveryPasswordFormNamesTheUserForTheKeychain(t *testing.T) {
 	comments := regexp.MustCompile(`(?s)<!--.*?-->`)
 	forms := regexp.MustCompile(`(?s)<form\b.*?</form>`)
 	userField := regexp.MustCompile(`(?s)<input\b[^>]*autocomplete="username"[^>]*>`)
-	pages, err := fs.Glob(webFS, "web/*.html")
+	pages, err := fs.Glob(Assets, "*.html")
 	if err != nil || len(pages) == 0 {
 		t.Fatalf("no page to examine: %v", err)
 	}
