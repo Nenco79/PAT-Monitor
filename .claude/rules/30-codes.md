@@ -938,3 +938,25 @@ instead of producing a banner with no words: that is the family of the GUID that
 does not complain. **Events** are tested live, by moving in front of the camera
 or getting someone to bark.
 
+### What only the server knows cannot be filled in by a route
+
+The tray panel declared **zero devices connected** with a phone connected, while
+the same line on the page counted two — in the same instant and from the same
+state.
+
+That number is the one thing the state's producer cannot know: sessions are held
+by the server. It was filled in **inside** `apiStatus`, that is, inside the HTTP
+route, and there are two readers — the page, which goes through it, and the
+tray, which calls `StatusFn` on its own account and received the type's zero
+value. It is the rule that file already states — **whoever owns a datum
+publishes it** — missed in the easiest way there is: the datum *was* published,
+but by a route, and **a route is called by only one of the two readers.** Now
+`server.Status()` composes it, and the route does nothing but write what it is
+handed.
+
+**The defect was not a wrong value: it was a value filled in the wrong place**,
+and no test on the value catches that — from the side being watched the value
+was right. The two guards therefore watch the **shape**:
+`TestTheRouteComposesNothing` refuses any assignment inside `apiStatus`, and
+`TestTheTrayAsksTheServerForTheStatus` reads `main.go` and requires the tray's
+state to come from the server.

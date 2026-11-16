@@ -180,6 +180,7 @@ index when it is stale: use the command above.
       - Japanese: the decisions, and punctuation the other way round from
         Chinese
   - Alerts are the set of what is wrong now, not a list of events
+  - What only the server knows cannot be filled in by a route
   - Motion is measured on the merged frame, with the camera's breathing removed
   - Crying and barking are recognised by shape, and the floor is measured by
     the room
@@ -326,7 +327,6 @@ index when it is stale: use the command above.
       imitates
   - The QR code is engraved, not imported
   - Only the stars one can see pulse, and the price is per element
-  - What only the server knows cannot be filled in by a route
   - Two roles with one name lie, and they do not collide
   - A drawing that follows the measurement is a second instrument in disguise
   - A high level and any level were the same colour

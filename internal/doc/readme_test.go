@@ -74,19 +74,18 @@ func layout(t *testing.T) map[string]bool {
 	return out
 }
 
+// **The packages are the ones the slices are asked about**, `packageDirs`, at
+// any depth. This test used to list `internal/` one level down, so a package
+// inside another could be added and never named: `internal/server/web` was the
+// first, and with its row taken out of the table this fails naming it.
 func TestTheSourceLayoutNamesEveryPackage(t *testing.T) {
 	listed := layout(t)
 
-	dirs, err := os.ReadDir("../")
-	if err != nil {
-		t.Fatalf("internal cannot be listed: %v", err)
-	}
 	onDisk := make(map[string]bool)
-	for _, d := range dirs {
-		if !d.IsDir() {
+	for _, pkg := range packageDirs(t) {
+		if !strings.HasPrefix(pkg, "internal/") {
 			continue
 		}
-		pkg := "internal/" + d.Name()
 		onDisk[pkg] = true
 		if !listed[pkg] {
 			t.Errorf("%s is a package and the README's source layout does not name it", pkg)

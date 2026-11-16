@@ -320,7 +320,8 @@ signs an archive with it, which `build.ps1 -Release` calls.
 | `internal/audio`, `internal/audiocodec`, `internal/resample` | WASAPI capture, Opus encoding, and the rate conversion the analysis stream needs |
 | `internal/pipeline` | capture supervision, restart, resolution and cadence changes |
 | `internal/rtc` | WebRTC hub, congestion control, bitrate, resolution scale, quality loop |
-| `internal/server` | HTTP, authentication, signalling, web pages, session log |
+| `internal/server` | HTTP, authentication, signalling, session log |
+| `internal/server/web` | the pages, sheets and scripts the browser receives, and the guards that read only them |
 | `internal/tunnel` | Tailscale node and Funnel |
 | `internal/tray` | notification area icon and the panel behind it |
 | `internal/qr`, `internal/icon` | QR encoder and Windows icon writer |

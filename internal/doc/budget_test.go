@@ -18,6 +18,13 @@ import (
 // internal/server, the heaviest package. A chapter that pushes a package over
 // is the question "does this belong in the slice every session in that package
 // reads?", not a number to raise.
+//
+// **The heaviest place moved on 2026-11-16 and the ceiling did not.** The pages
+// became a package of their own and their slice names it alone: a session in
+// the server's Go went from 52894 words to 30344, and one among the pages
+// still starts with 52894, because the routes, the codes and the recordings
+// reach the pages too. That folder was always this heavy; until that day this
+// test read the first level of the tree and could not see it.
 const (
 	alwaysBudget  = 7000
 	packageBudget = 53500

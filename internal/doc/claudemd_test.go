@@ -33,6 +33,7 @@ package doc
 
 import (
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -346,32 +347,96 @@ func TestEveryPackageIsGovernedBySomeSlice(t *testing.T) {
 	}
 }
 
-// packageDirs are the directories under `internal/` and `cmd/`, as
+// packageDirs are the directories under `internal/` and `cmd/` that hold Go, as
 // slash-separated paths from the root of the repository.
+//
+// **At any depth, and that is the correction.** It used to list the first level
+// only, which was the whole tree until `internal/server/web` became a package:
+// from that day a session among the pages was a place somebody works that
+// neither the coverage test nor the word budget had ever heard of.
 func packageDirs(t *testing.T) []string {
 	t.Helper()
 	const root = "../../"
 
+	seen := make(map[string]bool)
 	var out []string
 	for _, parent := range []string{"internal", "cmd"} {
-		dirs, err := os.ReadDir(filepath.Join(root, parent))
-		if err != nil {
-			t.Fatalf("%s cannot be listed: %v", parent, err)
-		}
-		for _, d := range dirs {
-			if d.IsDir() {
-				out = append(out, parent+"/"+d.Name())
+		err := filepath.WalkDir(filepath.Join(root, parent), func(p string, d os.DirEntry, err error) error {
+			if err != nil {
+				return err
 			}
+			if d.IsDir() || !strings.HasSuffix(d.Name(), ".go") {
+				return nil
+			}
+			rel, err := filepath.Rel(root, filepath.Dir(p))
+			if err != nil {
+				return err
+			}
+			if pkg := filepath.ToSlash(rel); !seen[pkg] {
+				seen[pkg] = true
+				out = append(out, pkg)
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatalf("%s cannot be walked: %v", parent, err)
 		}
 	}
 	return out
 }
 
 // governs says whether a slice's glob brings it into a session working on pkg:
-// the glob names something inside that directory. The coverage test and the
-// word budget both ask it, so that "governed" means one thing in both.
+// the glob matches a file that sits in that directory. The coverage test and
+// the word budget both ask it, so that "governed" means one thing in both.
+//
+// **It reads the glob the way the loader does, as far as the shapes in use
+// go.** `dir/**` reaches the directory and everything under it; anything else
+// with a plain directory in front reaches that directory alone. It used to be
+// "the glob begins with the package's path", which is the same answer while no
+// package is inside another and the opposite one when one is: it charged
+// `internal/server/web/**` to `internal/server`, the folder above, and would
+// not have charged `internal/server/**` to the folder below.
+//
+// A wildcard in the directory part is a shape nobody has written here. It is
+// answered by its literal prefix, which can only charge too much: a guard that
+// meets something new should not absolve it.
 func governs(glob, pkg string) bool {
-	return strings.HasPrefix(glob, pkg+"/")
+	dir, last := path.Split(glob)
+	dir = strings.TrimSuffix(dir, "/")
+	if i := strings.IndexAny(dir, "*?["); i >= 0 {
+		return strings.HasPrefix(pkg+"/", dir[:i])
+	}
+	if last == "**" {
+		return pkg == dir || strings.HasPrefix(pkg, dir+"/")
+	}
+	return pkg == dir
+}
+
+// **The defect was put back and this fails with it**: with the old body,
+// `strings.HasPrefix(glob, pkg+"/")`, three rows come out wrong, the two about
+// a package inside another and the one with a wildcard in the directory. The
+// budget stayed green over it, naming `internal/server` as the heaviest.
+func TestAGlobGovernsTheFolderItNamesAndTheOnesInside(t *testing.T) {
+	cases := []struct {
+		glob, pkg string
+		want      bool
+	}{
+		{"internal/server/**", "internal/server", true},
+		{"internal/server/**", "internal/server/web", true},
+		{"internal/server/web/**", "internal/server/web", true},
+		{"internal/server/web/**", "internal/server", false},
+		{"internal/server/**", "internal/serverless", false},
+		{"internal/server/*.go", "internal/server", true},
+		{"internal/server/*.go", "internal/server/web", false},
+		{"build.ps1", "internal/server", false},
+		{"internal/*/web/**", "internal/server/web", true},
+		{"internal/*/web/**", "cmd/pat-monitor", false},
+	}
+	for _, c := range cases {
+		if got := governs(c.glob, c.pkg); got != c.want {
+			t.Errorf("governs(%q, %q) = %v, and %v is wanted", c.glob, c.pkg, got, c.want)
+		}
+	}
 }
 
 // mapped reads the table in the index that says which slice carries what.
