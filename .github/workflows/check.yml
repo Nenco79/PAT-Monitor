@@ -1,4 +1,5 @@
-# Format, vet, the suite, and that build.ps1 still produces a binary.
+# Format, vet, the suite, and that build.ps1 still produces a binary; then the
+# suite a second time under the race detector, in a job of its own.
 #
 # Windows only, and that is not an omission: the capture is Media Foundation and
 # WASAPI, most tests carry //go:build windows, and on anything else the tree
@@ -79,3 +80,44 @@ jobs:
       - name: build
         shell: powershell
         run: .\build.ps1
+
+  # The suite again, under Go's race detector.
+  #
+  # **A job of its own, because it is the one place cgo is switched on.** The
+  # detector wants cgo and a C compiler; the machine this is written on has
+  # neither, which is why two chapters of the record say a data race here is
+  # found "only by reasoning, or by suffering" it. The runner has a gcc. What
+  # ships is still built above with CGO_ENABLED=0: this job builds test
+  # binaries and throws them away.
+  #
+  # **It cannot pass by not looking**, and that was measured rather than
+  # assumed: with cgo off the go command answers `-race requires cgo`, and with
+  # cgo on and no compiler `C compiler "gcc" not found`, each a failed build
+  # and not a run without the detector. So a runner image that loses its gcc
+  # turns this red, not quietly green.
+  #
+  # `-race` also turns on checkptr, so a conversion through unsafe.Pointer that
+  # the plain suite walks past stops the test here. In the packages that talk
+  # to COM that is a second thing being asked, and it is wanted.
+  #
+  # What it does not see is what no test runs: a race between the capture and a
+  # viewer needs a camera, and there is none on a runner.
+  race:
+    runs-on: windows-latest
+    env:
+      CGO_ENABLED: "1"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          # As above, so that a test asking git about the tree is answered the
+          # same in both jobs.
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: test under the race detector
+        run: go test -race ./...
