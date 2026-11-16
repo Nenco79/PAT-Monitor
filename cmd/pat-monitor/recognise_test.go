@@ -58,9 +58,16 @@ func TestNothingIsAskedWithBothSwitchesOff(t *testing.T) {
 	// loop leaves the moment the verdict arrives, so the deadline costs
 	// nothing when the test passes and is paid only by a failure — the one
 	// this half exists for, a stream that never became ready.
+	//
+	// **And thirty seconds were a statement about the machine too.** Under the
+	// race detector on a GitHub runner one classification is tens of seconds
+	// and not half of one: of the first four runs there, three passed and one
+	// wrote "no verdict" after 34 s. Five minutes is not a measurement of
+	// anything; it is far enough that what runs out is a stream that is not
+	// coming.
 	r.Wanted(false, true)
 	r.Ask()
-	for deadline := time.Now().Add(30 * time.Second); r.stream.Last() == nil && time.Now().Before(deadline); {
+	for deadline := time.Now().Add(5 * time.Minute); r.stream.Last() == nil && time.Now().Before(deadline); {
 		time.Sleep(20 * time.Millisecond)
 	}
 	res := r.stream.Last()
