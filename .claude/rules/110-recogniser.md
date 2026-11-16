@@ -249,8 +249,8 @@ recogniser answers for a quarter of the cries. The 83% stays declared as what
 it is, cries recorded by parents on a phone, close, indoors, and a fourth
 corpus of that same shape would not repair it.
 
-**What the search did turn up is a different question, and it is in the open
-issues, where open questions go.** Every negative here comes from somebody
+**What the search did turn up is a different question, and it is still
+open.** Every negative here comes from somebody
 else's street or from Freesound, and `pat-sounds dilute` assembles an event at
 the centre of a window over a floor measured on another evening — it
 **simulates** the condition the monitor lives in. `HomeBank`'s de Barbaro corpus

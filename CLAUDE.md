@@ -36,14 +36,13 @@ two slices at once or sits in a slice that declares no code. The list had
 already lost one chapter while it was typed, and an incomplete index looks
 exactly like an index.
 
-**What is not here is what has not been demonstrated.** The milestones are
-closed and the plan has finished its cycle; what is left is measurements nobody
-has taken, and they are **open issues on GitHub**, one each, with how the
-measurement is done and what it costs not to know. Three of the five want
-hardware or a place that is not here — a webcam that cannot reach 720p, a phone
-on a mobile network far from the house, a second machine — which is why they are
-in a tracker somebody else can reach rather than in a file only the author
-edits.
+**What has not been demonstrated says so, in the chapter it limits.** The
+milestones are closed and the plan has finished its cycle; what is left is
+measurements nobody has taken, and each is a sentence beside the claim it stops
+short of. Several want hardware or a place that is not here — a phone asleep on
+a mobile network, a laptop in modern standby on battery, a chip whose bitrate is
+set by rebuilding the encoder. **There is no tracker**: this paragraph once said
+five were open issues on GitHub, and the repository has never had one.
 
 The one chapter here that is a specification rather than a constraint is **"The
 loop: what the monitor decides, and in what order"**: whoever touches bitrate,
@@ -101,9 +100,9 @@ everywhere is emphasis nowhere:
   a test that asks nothing look identical.**
 
 **The documents beside this one have their own readers.** `README.md` is for
-whoever installs the program and says what it does rather than why; the open
-issues are what has not been demonstrated; `baselines/` is evidence, so it is
-re-measured and never rewritten, for the reason "Language" below gives.
+whoever installs the program and says what it does rather than why;
+`baselines/` is evidence, so it is re-measured and never rewritten, for the
+reason "Language" below gives.
 
 ## The headings are the rules
 
