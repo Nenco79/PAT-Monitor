@@ -5,10 +5,47 @@ import (
 	"errors"
 	"log/slog"
 	"strings"
+	"sync"
 	"testing"
 
 	"patmonitor/internal/config"
 )
+
+// logBuffer is the log a test reads while the server may still be writing it.
+//
+// slog's handler holds a lock of its own around each write, and that lock is
+// not the reader's: a test that polls the text while a timer's goroutine closes
+// a run of refusals reads a bytes.Buffer somebody else is growing. It was a
+// plain bytes.Buffer until the suite first ran under the race detector, which
+// reported it five times in TestARunOfRefusalsIsSummedUpWhenItGoesQuiet.
+type logBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *logBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *logBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
+}
+
+func (b *logBuffer) Len() int {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Len()
+}
+
+func (b *logBuffer) Reset() {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.buf.Reset()
+}
 
 // The log must not be fillable by whoever is on the other side.
 //
@@ -16,9 +53,9 @@ import (
 // browser. On a test machine with a broken camera that produced over a thousand
 // identical lines in twenty minutes, one a second, covering the four lines that
 // said what had happened.
-func serverWithLog(t *testing.T) (*Server, *bytes.Buffer) {
+func serverWithLog(t *testing.T) (*Server, *logBuffer) {
 	t.Helper()
-	var buf bytes.Buffer
+	var buf logBuffer
 	s, err := New(Options{
 		Config: storeFor(t, config.Default()),
 		// Info level: it is the one the monitor runs at when nobody has asked
