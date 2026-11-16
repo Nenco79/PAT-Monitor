@@ -1,5 +1,6 @@
 # Format, vet, the suite, and that build.ps1 still produces a binary; then the
-# suite a second time under the race detector, in a job of its own.
+# suite a second time under the race detector, and the known vulnerabilities in
+# what is linked in, each in a job of its own.
 #
 # Windows only, and that is not an omission: the capture is Media Foundation and
 # WASAPI, most tests carry //go:build windows, and on anything else the tree
@@ -15,6 +16,18 @@ on:
   workflow_dispatch:
   # No pull_request trigger: pull requests are turned off on this repository.
   # Adding one here would be a job that never runs, which reads as coverage.
+
+  # **Once a week whether or not anybody pushed**, because two things change
+  # while this repository is still: the list of known vulnerabilities, and the
+  # runner's image. A push is the wrong clock for both, and between 1.5.0 and
+  # the commit that added this line six weeks went by with nothing run.
+  #
+  # **It watches a quiet spell, not an abandoned repository.** GitHub switches
+  # a schedule off in a public repository after sixty days with no activity in
+  # it, and says so by e-mail first. A commit, or pressing the button again,
+  # brings it back.
+  schedule:
+    - cron: "17 5 * * 1"
 
 permissions:
   contents: read
@@ -123,3 +136,42 @@ jobs:
 
       - name: test under the race detector
         run: go test -race ./...
+
+  # Known vulnerabilities, in the code this program can actually reach.
+  #
+  # The monitor answers on the Internet from somebody else's house, through
+  # tsnet, pion and x/crypto, and a release already installed does not learn of
+  # an advisory published after it. Somebody has to: this is that somebody, and
+  # the schedule above is what makes it look when nobody is here.
+  #
+  # **govulncheck and not a list of modules**, because it follows the calls: an
+  # advisory in a function nothing here reaches is printed and does not fail,
+  # one in a function we call exits 3. With a module graph this size a check on
+  # versions alone would be red most weeks over code that is not linked in,
+  # and a guard that is always red is read as one that is always green.
+  #
+  # **`go run` at a version is not a dependency**: it resolves outside go.mod
+  # and leaves it and go.sum as they were. `@latest` for the same reason the
+  # actions are not pinned: it reads the tree with a read-only token, and an
+  # old pinned scanner is one that knows old advisory formats.
+  #
+  # It also reads the Go version in go.mod as the standard library's, so an
+  # advisory fixed in a later patch release of Go turns this red until go.mod
+  # moves. That is the answer wanted, since that toolchain is what links the
+  # release.
+  vulns:
+    runs-on: windows-latest
+    env:
+      CGO_ENABLED: "0"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: govulncheck
+        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
